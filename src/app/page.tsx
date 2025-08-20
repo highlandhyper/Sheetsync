@@ -1,52 +1,45 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ProductCard } from '@/components/product-card';
 import { products as allProducts } from '@/lib/products';
 import type { Product } from '@/lib/types';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery) {
-      return allProducts;
-    }
-    return allProducts.filter((product: Product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  const featuredProducts = useMemo(() => {
+    return allProducts.slice(0, 4);
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 max-w-lg mx-auto">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search for products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 h-12 text-lg rounded-full shadow-inner bg-card"
-            aria-label="Search for products"
-          />
-        </div>
-      </div>
+      <section className="text-center py-16 md:py-24">
+        <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tight">Curated Goods, Delivered.</h1>
+        <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+          Discover a collection of high-quality items, thoughtfully selected for the modern lifestyle.
+        </p>
+        <Button asChild size="lg" className="mt-8">
+          <Link href="#featured-products">Explore Products</Link>
+        </Button>
+      </section>
 
-      {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product: Product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-headline text-foreground">No Products Found</h2>
-          <p className="text-muted-foreground mt-2">Try adjusting your search query.</p>
-        </div>
-      )}
+      <section id="featured-products" className="py-16">
+        <h2 className="text-3xl font-bold font-headline text-center mb-12">Featured Products</h2>
+        {featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {featuredProducts.map((product: Product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <h2 className="text-2xl font-headline text-foreground">No Products Found</h2>
+            <p className="text-muted-foreground mt-2">Check back later for new arrivals.</p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -87,7 +87,7 @@ export function CartSheet({ open, onOpenChange, children }: CartSheetProps) {
                     <span>Subtotal</span>
                     <span>${total.toFixed(2)}</span>
                   </div>
-                  <Button asChild size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg h-12">
+                  <Button asChild size="lg" className="w-full text-lg h-12">
                     <Link href="/checkout" onClick={() => onOpenChange(false)}>Checkout</Link>
                   </Button>
                 </div>

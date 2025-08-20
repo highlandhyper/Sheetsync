@@ -63,7 +63,7 @@ export default function CheckoutPage() {
     <div className="container mx-auto px-4 py-12">
       <h1 className="text-5xl font-headline font-bold text-center mb-12">Checkout</h1>
       <div className="grid lg:grid-cols-2 gap-12">
-        <Card>
+        <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Shipping Information</CardTitle>
           </CardHeader>
@@ -87,7 +87,7 @@ export default function CheckoutPage() {
                     <FormItem><FormLabel>Zip Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
-                <Button type="submit" size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg h-12">
+                <Button type="submit" size="lg" className="w-full text-lg h-12">
                   Place Order & Simulate Payment
                 </Button>
               </form>
@@ -95,16 +95,13 @@ export default function CheckoutPage() {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Order Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="bg-secondary/50 rounded-lg p-8">
+          <h2 className="font-headline text-2xl mb-6">Order Summary</h2>
             <div className="space-y-4">
               {cartItems.map(({ product, quantity }) => (
                 <div key={product.id} className="flex justify-between items-center">
                   <div className="flex items-center gap-4">
-                    <div className="relative h-16 w-16 rounded-md overflow-hidden border">
+                    <div className="relative h-16 w-16 rounded-md overflow-hidden border bg-white">
                       <Image src={product.image} alt={product.name} data-ai-hint={product.dataAiHint} fill className="object-cover" />
                     </div>
                     <div>
@@ -121,8 +118,7 @@ export default function CheckoutPage() {
                 <p>${total.toFixed(2)}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );
