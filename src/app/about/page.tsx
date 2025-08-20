@@ -6,7 +6,7 @@ export default function AboutPage() {
       <div className="grid md:grid-cols-2 gap-16 items-center">
         <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-xl">
           <Image
-            src="https://source.unsplash.com/800x600/?team,business"
+            src="https://placehold.co/800x600.png"
             alt="Our team"
             data-ai-hint="team business"
             fill

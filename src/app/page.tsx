@@ -29,7 +29,7 @@ export default function Home() {
           </div>
           <div className="relative w-full aspect-square max-w-lg mx-auto md:max-w-none">
             <Image
-              src="https://source.unsplash.com/800x800/?lifestyle,products"
+              src="https://placehold.co/800x800.png"
               alt="Modern lifestyle products"
               data-ai-hint="lifestyle products"
               fill
