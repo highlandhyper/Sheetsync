@@ -14,9 +14,9 @@ export default function AboutPage() {
           />
         </div>
         <div className="space-y-6">
-          <h1 className="text-5xl font-headline font-bold">About RBCart Express</h1>
+          <h1 className="text-5xl font-headline font-bold">About rbcart</h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Welcome to RBCart Express, your destination for curated goods that blend quality, style, and function. We believe that the items you bring into your life should be more than just objects; they should be extensions of your personality and enhancements to your daily routines.
+            Welcome to rbcart, your destination for curated goods that blend quality, style, and function. We believe that the items you bring into your life should be more than just objects; they should be extensions of your personality and enhancements to your daily routines.
           </p>
           <p className="text-lg text-muted-foreground leading-relaxed">
             Our journey began with a simple idea: to create a one-stop shop for thoughtfully selected products that we love and use ourselves. From home essentials and modern furniture to cutting-edge electronics and artisanal kitchenware, every item in our collection is chosen with an eye for detail and a commitment to excellence.

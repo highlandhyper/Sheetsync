@@ -5,7 +5,7 @@ import { Header } from '@/components/header';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'RBCart Express',
+  title: 'rbcart',
   description: 'Your one-stop shop for everything you need.',
 };
 
