@@ -29,7 +29,7 @@ export default function Home() {
           </div>
           <div className="relative w-full aspect-square max-w-lg mx-auto md:max-w-none">
             <Image
-              src="/assets/hero.png"
+              src="/assets/img2.jpg"
               alt="Modern lifestyle products"
               data-ai-hint="lifestyle products"
               fill

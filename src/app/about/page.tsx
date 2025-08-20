@@ -6,7 +6,7 @@ export default function AboutPage() {
       <div className="grid md:grid-cols-2 gap-16 items-center">
         <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-xl">
           <Image
-            src="/assets/about.png"
+            src="/assets/img1.jpg"
             alt="Our team"
             data-ai-hint="team business"
             fill
