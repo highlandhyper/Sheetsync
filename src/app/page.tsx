@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
+import Image from 'next/image';
 import { ProductCard } from '@/components/product-card';
 import { products as allProducts } from '@/lib/products';
 import type { Product } from '@/lib/types';
@@ -15,14 +16,28 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <section className="text-center py-16 md:py-24">
-        <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tight">Curated Goods, Delivered.</h1>
-        <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          Discover a collection of high-quality items, thoughtfully selected for the modern lifestyle.
-        </p>
-        <Button asChild size="lg" className="mt-8">
-          <Link href="#featured-products">Explore Products</Link>
-        </Button>
+      <section className="py-16 md:py-24">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tight">Curated Goods, Delivered.</h1>
+            <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto md:mx-0">
+              Discover a collection of high-quality items, thoughtfully selected for the modern lifestyle.
+            </p>
+            <Button asChild size="lg" className="mt-8">
+              <Link href="#featured-products">Explore Products</Link>
+            </Button>
+          </div>
+          <div className="relative w-full aspect-square max-w-lg mx-auto md:max-w-none">
+            <Image
+              src="https://placehold.co/800x800.png"
+              alt="Modern lifestyle products"
+              data-ai-hint="lifestyle products"
+              fill
+              className="object-cover rounded-lg shadow-xl"
+              priority
+            />
+          </div>
+        </div>
       </section>
 
       <section id="featured-products" className="py-16">
