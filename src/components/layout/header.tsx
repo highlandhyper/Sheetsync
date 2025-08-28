@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
@@ -30,10 +31,7 @@ export function Header({ className }: { className?: string }) {
 
   return (
     <header className={cn("sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
-      
-      <Link href={user ? "/products" : "/login"} className="flex items-center gap-2 md:hidden">
-        <span className="font-poppins font-bold text-xl text-primary">SheetSync</span>
-      </Link>
+       <SidebarTrigger className="md:hidden" />
       <div className="flex-1" />
       {loading ? (
         <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
