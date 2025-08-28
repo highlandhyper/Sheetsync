@@ -456,7 +456,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
                 {currentStep < steps.length - 1 ? (
                     <Button type="button" onClick={nextStep} disabled={isFetchingProduct}>
-                        {isFetchingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4" />}
+                        {isFetchingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                        {currentStep === 0 && !isFetchingProduct ? <ArrowRight className="mr-2 h-4 w-4" /> : null}
+                        {currentStep > 0 && !isFetchingProduct ? <ArrowRight className="mr-2 h-4 w-4" /> : null}
                         Next
                     </Button>
                 ) : (
