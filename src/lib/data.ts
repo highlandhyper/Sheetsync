@@ -1,4 +1,5 @@
 
+
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay } from 'date-fns';
@@ -542,6 +543,12 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
   }
 }
 
+async function getNextInventoryRowNumber(): Promise<number> {
+    const inventoryData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:A`);
+    // +2 because sheets are 1-indexed and we have a header row
+    return (inventoryData?.length || 0) + 2; 
+}
+
 export async function addInventoryItem(
   itemFormValues: AddInventoryItemFormValues,
   resolvedProductDetails: { productName: string; supplierName: string; }
@@ -550,7 +557,9 @@ export async function addInventoryItem(
   console.time(timeLabel);
   try {
     const now = new Date();
-    const clientSideUniqueId = `444-${format(now, "yyyyMMddHHmmss")}`;
+    const nextRowNumber = await getNextInventoryRowNumber();
+    const clientSideUniqueId = `${nextRowNumber}-${format(now, "yyyyMMddHHmmss")}`;
+
     const newRowData = new Array(INVENTORY_TOTAL_COLUMNS_FOR_WRITE).fill('');
 
     newRowData[INV_COL_TIMESTAMP] = format(now, "dd/MM/yyyy HH:mm:ss");
