@@ -2,12 +2,15 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { Separator } from '@/components/ui/separator';
+import { AccessControlManager } from '@/components/settings/access-control-manager';
+import { useAuth } from '@/context/auth-context';
 
 export default function SettingsPage() {
+  const { role } = useAuth();
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
@@ -49,6 +52,24 @@ export default function SettingsPage() {
                 </div>
                 </CardContent>
             </Card>
+
+            {role === 'admin' && (
+              <Card className="shadow-xl">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-2xl">User Access Control</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Enable or disable access to specific pages for the 'Viewer' role.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AccessControlManager />
+                </CardContent>
+              </Card>
+            )}
+
         </div>
         <div className="lg:col-span-1">
              <Card className="shadow-xl sticky top-24">

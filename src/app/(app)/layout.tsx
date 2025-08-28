@@ -8,21 +8,23 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Header } from '@/components/layout/header';
 import { useAuth } from '@/context/auth-context';
+import { useAccessControl } from '@/context/access-control-context';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
-const VIEWER_ALLOWED_PATHS = ['/products', '/inventory/lookup', '/settings'];
 const VIEWER_DEFAULT_PATH = '/products';
 
 export default function AppLayout({ children }: PropsWithChildren) {
-  const { user, loading, role } = useAuth();
+  const { user, loading: authLoading, role } = useAuth();
+  const { isAllowed, isInitialized: permissionsInitialized } = useAccessControl();
   const router = useRouter();
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
 
-  // Effect for authentication, role-based redirects
+  const loading = authLoading || !permissionsInitialized;
+
   useEffect(() => {
     if (loading) {
-      return; // Wait until auth state is resolved
+      return; 
     }
 
     if (!user) {
@@ -33,20 +35,16 @@ export default function AppLayout({ children }: PropsWithChildren) {
     }
 
     if (role === 'viewer') {
-      // Use a strict includes check to prevent access to sub-routes like /products/manage
-      const isAllowed = VIEWER_ALLOWED_PATHS.includes(pathname);
-      if (!isAllowed) {
-        router.replace(VIEWER_DEFAULT_PATH);
+      const canAccessCurrentPath = isAllowed(role, pathname);
+      if (!canAccessCurrentPath) {
+        const defaultPathForViewer = isAllowed(role, VIEWER_DEFAULT_PATH) ? VIEWER_DEFAULT_PATH : '/login';
+        router.replace(defaultPathForViewer);
       }
       sessionStorage.removeItem('adminWelcomeShown');
       setShowAdminWelcomeScreen(false);
     }
-    // Admin specific logic for welcome screen is in the next useEffect
+  }, [loading, user, role, router, pathname, isAllowed]);
 
-  }, [loading, user, role, router, pathname]);
-
-
-  // Dedicated Effect for Admin Welcome Screen logic (using sessionStorage)
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
 
@@ -90,11 +88,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
         </div>
     );
   }
-  
-  // Removed redundant redirect block for viewers here.
-  // The useEffect above handles the redirect logic more appropriately.
 
-  // Admin Welcome Screen Render Condition
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
@@ -105,7 +99,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
       </div>
     );
   }
-
 
   return (
     <SidebarProvider defaultOpen={true}>

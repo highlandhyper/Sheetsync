@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/auth-context';
 import { LocalSettingsAuthProvider } from '@/context/local-settings-auth-context';
 import { ThemeProvider } from 'next-themes';
+import { AccessControlProvider } from '@/context/access-control-context';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -51,8 +52,10 @@ export default function RootLayout({
         >
           <LocalSettingsAuthProvider>
             <AuthProvider>
-              {children}
-              <Toaster />
+              <AccessControlProvider>
+                {children}
+                <Toaster />
+              </AccessControlProvider>
             </AuthProvider>
           </LocalSettingsAuthProvider>
         </ThemeProvider>

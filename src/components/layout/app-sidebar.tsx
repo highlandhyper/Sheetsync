@@ -3,7 +3,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -15,32 +14,20 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/auth-context';
+import { useAccessControl } from '@/context/access-control-context';
+import { allNavItems, accountNavItems } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
-const allNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
-  { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, roles: ['admin'] }, 
-  { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'] },
-  { href: '/inventory', label: 'View Inventory', icon: ClipboardList, roles: ['admin'] },
-  { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, roles: ['admin'] },
-  { href: '/inventory/lookup', label: 'Barcode Log Lookup', icon: SearchCode, roles: ['admin', 'viewer'] },
-  { href: '/inventory/returns', label: 'Return Log', icon: History, roles: ['admin'] },
-];
-
-const accountNavItems = [
-   { href: '/products/manage', label: 'Manage Products', icon: ManageProductsIcon, roles: ['admin'] }, 
-   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'viewer'] },
-];
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
+  const { isAllowed } = useAccessControl();
   const { state, isMobile, toggleSidebar } = useSidebar();
 
+  const navItems = allNavItems.filter(item => role && isAllowed(role, item.href));
+  const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
 
-  const navItems = allNavItems.filter(item => item.roles.includes(role || ''));
-  const filteredAccountNavItems = accountNavItems.filter(item => item.roles.includes(role || ''));
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
