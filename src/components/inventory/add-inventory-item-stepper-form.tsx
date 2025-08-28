@@ -17,7 +17,11 @@ import {
     ArrowRight,
     ScanBarcode,
     VideoOff,
-    AlertTriangle
+    AlertTriangle,
+    User,
+    Tag,
+    Hash,
+    MapPin
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Html5QrcodeScanner, type Html5QrcodeResult, type QrcodeError } from 'html5-qrcode';
@@ -50,6 +54,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
 import type { ItemType } from '@/lib/types';
@@ -59,10 +64,10 @@ import { cn } from '@/lib/utils';
 import type { InventoryItem } from '@/lib/types';
 
 const steps = [
-  { id: 1, name: 'Scan Item', fields: ['barcode'] },
-  { id: 2, name: 'Add Details', fields: ['staffName', 'itemType', 'quantity', 'expiryDate'] },
-  { id: 3, name: 'Set Location', fields: ['location'] },
-  { id: 4, name: 'Review & Log' },
+  { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
+  { id: 2, name: 'Add Details', fields: ['staffName', 'itemType', 'quantity', 'expiryDate'], icon: Info },
+  { id: 3, name: 'Set Location', fields: ['location'], icon: Warehouse },
+  { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
 
 const SCANNER_REGION_ID = "stepper-barcode-scanner-region";
@@ -286,21 +291,23 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
             {/* Stepper Progress Bar */}
             <div className="space-y-3">
                 <Progress value={((currentStep + 1) / steps.length) * 100} />
-                <p className="text-sm font-medium text-center text-muted-foreground">
+                <p className="text-sm font-medium text-center text-muted-foreground flex items-center justify-center gap-2">
+                    {React.createElement(steps[currentStep].icon, { className: "h-4 w-4" })}
                     Step {currentStep + 1} of {steps.length}: {steps[currentStep].name}
                 </p>
             </div>
             
             <form 
                 ref={formRef} 
-                action={handleAction} 
-                onSubmit={handleSubmit(() => { /* handled by formAction */})} 
+                onSubmit={handleSubmit(handleAction)}
                 className="space-y-6"
             >
                 {/* Step 1: Barcode */}
-                <div className={cn(currentStep !== 0 && "hidden")}>
-                    <Label htmlFor="barcode" className="text-lg font-semibold">Product Barcode</Label>
-                    <p className="text-sm text-muted-foreground mb-2">Scan or enter the item's barcode.</p>
+                <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
+                    <Label htmlFor="barcode" className="text-base font-semibold flex items-center gap-2">
+                        <Barcode className="h-5 w-5" /> Product Barcode
+                    </Label>
+                    <p className="text-sm text-muted-foreground -mt-2">Scan or enter the item's barcode.</p>
                      <div className="flex gap-2 items-start">
                         <div className="flex-grow">
                             <Input
@@ -345,8 +352,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                        <Label htmlFor="staffName">Staff Name</Label>
+                        <div className="space-y-2">
+                        <Label htmlFor="staffName" className="flex items-center gap-2"><User className="h-4 w-4" />Staff Name</Label>
                         <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" aria-expanded={staffComboboxOpen} className={cn("w-full justify-between font-normal", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
@@ -370,8 +377,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                         {errors.staffName && <p className="text-sm text-destructive mt-1">{errors.staffName.message}</p>}
                         </div>
 
-                        <div>
-                            <Label htmlFor="itemType">Item Type</Label>
+                        <div className="space-y-2">
+                            <Label htmlFor="itemType" className="flex items-center gap-2"><Tag className="h-4 w-4" />Item Type</Label>
                             <Select onValueChange={(v: ItemType) => setValue('itemType', v, { shouldValidate: true })} value={allFormValues.itemType}>
                                 <SelectTrigger id="itemType" className={cn(errors.itemType && 'border-destructive')}><SelectValue placeholder="Select type" /></SelectTrigger>
                                 <SelectContent><SelectItem value="Expiry">Expiry</SelectItem><SelectItem value="Damage">Damage</SelectItem></SelectContent>
@@ -380,13 +387,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                        <Label htmlFor="quantity">Quantity</Label>
+                        <div className="space-y-2">
+                        <Label htmlFor="quantity" className="flex items-center gap-2"><Hash className="h-4 w-4" />Quantity</Label>
                         <Input id="quantity" type="number" placeholder="e.g., 10" {...register('quantity')} className={cn(errors.quantity && 'border-destructive')}/>
                         {errors.quantity && <p className="text-sm text-destructive mt-1">{errors.quantity.message}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="expiryDate">Date (Expiry/Damage)</Label>
+                        <div className="space-y-2">
+                            <Label htmlFor="expiryDate" className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Date (Expiry/Damage)</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !allFormValues.expiryDate && "text-muted-foreground", errors.expiryDate && 'border-destructive')}>
@@ -402,9 +409,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                 </div>
 
                 {/* Step 3: Location */}
-                <div className={cn(currentStep !== 2 && "hidden")}>
-                    <Label htmlFor="location" className="text-lg font-semibold">Storage Location</Label>
-                    <p className="text-sm text-muted-foreground mb-2">Where is this item being stored?</p>
+                 <div className={cn(currentStep !== 2 && "hidden", "space-y-4")}>
+                    <Label htmlFor="location" className="text-base font-semibold flex items-center gap-2">
+                        <MapPin className="h-5 w-5" /> Storage Location
+                    </Label>
+                    <p className="text-sm text-muted-foreground -mt-2">Where is this item being stored?</p>
                     <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" aria-expanded={locationComboboxOpen} className={cn("w-full justify-between font-normal", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
@@ -430,17 +439,46 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                 
                 {/* Step 4: Review */}
                 <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
-                    <div className="p-4 rounded-lg bg-muted/50 border border-muted space-y-3">
-                        <h3 className="font-semibold text-lg">{productName}</h3>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                            <div><span className="font-medium text-muted-foreground">Barcode:</span> {allFormValues.barcode}</div>
-                            <div><span className="font-medium text-muted-foreground">Supplier:</span> {productSupplier}</div>
-                            <div><span className="font-medium text-muted-foreground">Quantity:</span> {allFormValues.quantity}</div>
-                            <div><span className="font-medium text-muted-foreground">Type:</span> {allFormValues.itemType}</div>
-                            <div><span className="font-medium text-muted-foreground">Logged By:</span> {allFormValues.staffName}</div>
-                            <div><span className="font-medium text-muted-foreground">Location:</span> {allFormValues.location}</div>
+                     <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Review Details</AlertTitle>
+                        <AlertDescription>
+                            Please confirm the details below are correct before logging the item.
+                        </AlertDescription>
+                    </Alert>
+                    <div className="p-6 rounded-lg bg-muted/50 border border-muted space-y-4">
+                        <h3 className="font-semibold text-xl mb-2">{productName}</h3>
+                        <Separator />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                            <div className="flex items-start gap-3">
+                                <Barcode className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Barcode</span>{allFormValues.barcode}</div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <User className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Logged By</span>{allFormValues.staffName}</div>
+                            </div>
+                             <div className="flex items-start gap-3">
+                                <Warehouse className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Supplier</span>{productSupplier}</div>
+                            </div>
+                             <div className="flex items-start gap-3">
+                                <MapPin className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Location</span>{allFormValues.location}</div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Hash className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Quantity</span>{allFormValues.quantity}</div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Tag className="h-5 w-5 text-primary mt-0.5" />
+                                <div><span className="font-medium text-muted-foreground block">Type</span>{allFormValues.itemType}</div>
+                            </div>
                             {allFormValues.expiryDate &&
-                                <div className="col-span-2"><span className="font-medium text-muted-foreground">Date:</span> {format(allFormValues.expiryDate, "PPP")}</div>
+                                <div className="flex items-start gap-3 col-span-full">
+                                    <CalendarIcon className="h-5 w-5 text-primary mt-0.5" />
+                                    <div><span className="font-medium text-muted-foreground block">Date</span>{format(allFormValues.expiryDate, "PPP")}</div>
+                                </div>
                             }
                         </div>
                     </div>
@@ -471,3 +509,5 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     </Card>
   );
 }
+
+    
