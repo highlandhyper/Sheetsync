@@ -50,6 +50,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   const [cameraPermissionAttempted, setCameraPermissionAttempted] = useState(false);
   
   const executeSearch = useCallback(async (barcode: string) => {
+    if (!barcode || !barcode.trim()) return;
     setHasSearched(true);
     setLastSearchedBarcode(barcode);
     setSearchResults([]); 
@@ -170,7 +171,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning, toast, executeSearch]); // Added executeSearch
+  }, [isScanning, toast]); // Removed executeSearch from deps as it's passed into scan success
 
 
   const handleSearch = () => {
@@ -280,7 +281,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
             </Button>
           </div>
            {isScanning && (
-            <div id={SCANNER_REGION_ID} className="w-full md:w-1/2 lg:w-1/3 mx-auto aspect-[4/3] border-2 border-dashed border-primary rounded-md overflow-hidden mt-4 bg-muted/30 flex items-center justify-center">
+            <div id={SCANNER_REGION_ID} className="w-full md:w-1/2 lg:w-1/3 mx-auto aspect-video border-2 border-dashed border-primary rounded-md overflow-hidden mt-4 bg-muted/30 flex items-center justify-center">
               {/* Scanner will render here. Placeholder text if needed. */}
               <p className="text-sm text-muted-foreground p-4 text-center">Initializing camera scanner...</p>
             </div>
@@ -446,3 +447,5 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     </div>
   );
 }
+
+    
