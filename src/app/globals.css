@@ -2,92 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 90%;
+}
+
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif; /* Updated to use --font-inter */
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 5.9% 10%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 10% 3.9%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 240 5.9% 90%;
-    --sidebar-ring: 240 5.9% 10%;
-  }
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 0 0% 98%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 0 0% 98%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 240 5.9% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 0 0% 98%;
-  }
-}
+    /* Light Theme (SheetSync PRD) */
+    --background: 208 100% 97%; /* #F0F8FF AliceBlue */
+    --foreground: 220 13% 10%; /* Dark text for readability on light background */
 
-@keyframes liquid-gradient {
-	0% {
-		background-position: 0% 50%;
-	}
-	50% {
-		background-position: 100% 50%;
-	}
-	100% {
-		background-position: 0% 50%;
-	}
+    --card: 0 0% 100%; /* White cards */
+    --card-foreground: 220 13% 10%;
+
+    --popover: 0 0% 100%; /* White popovers */
+    --popover-foreground: 220 13% 10%;
+
+    --primary: 197 71% 53%; /* #29ABE2 Vibrant Blue */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+
+    --secondary: 210 20% 92%; /* Lighter gray for secondary elements */
+    --secondary-foreground: 220 13% 15%; /* Dark text on secondary */
+
+    --muted: 210 20% 96%; /* Very light gray for muted elements */
+    --muted-foreground: 220 10% 40%; /* Medium-dark gray for muted text */
+
+    --accent: 120 73% 75%; /* #90EE90 Light Green */
+    --accent-foreground: 220 13% 10%; /* Dark text on accent for contrast */
+
+    --destructive: 0 70% 50%; /* Standard red */
+    --destructive-foreground: 0 0% 98%; /* Light text on destructive */
+
+    --border: 210 20% 88%; /* Light border */
+    --input: 210 20% 94%; /* Light input background */
+    --ring: 197 71% 53%; /* Primary blue for focus rings */
+
+    --chart-1: 197 71% 53%; /* Primary Blue */
+    --chart-2: 120 73% 65%; /* Slightly darker Accent Green for charts */
+    --chart-3: 30 90% 55%;  /* Orange (from previous dark theme, good contrast) */
+    --chart-4: 260 70% 65%; /* Purple (from previous dark theme) */
+    --chart-5: 0 70% 60%;   /* Red (from previous dark theme) */
+
+    --radius: 0.5rem;
+
+    /* Light Sidebar specific theme variables */
+    --sidebar-background: 208 60% 94%; /* Slightly off-white, related to main background */
+    --sidebar-foreground: 220 13% 15%; /* Dark text */
+    --sidebar-primary: 197 71% 53%; /* Main primary */
+    --sidebar-primary-foreground: 0 0% 100%; /* White text */
+    --sidebar-accent: 197 71% 43%; /* Darker primary for hover/active */
+    --sidebar-accent-foreground: 0 0% 100%; /* White text */
+    --sidebar-border: 208 50% 88%; /* Light border for sidebar */
+    --sidebar-ring: 197 71% 53%; /* Main primary for ring */
+  }
+
+  .dark {
+    /* Dark Theme (Deep Ocean variant) */
+    --background: 220 20% 10%; /* Very Dark Blue/Almost Black */
+    --foreground: 210 25% 96%; /* Off-White */
+
+    --card: 220 20% 14%; /* Darker Card */
+    --card-foreground: 210 25% 96%;
+
+    --popover: 220 20% 8%;
+    --popover-foreground: 210 25% 96%;
+
+    --primary: 170 80% 50%; /* Slightly brighter Teal for dark mode */
+    --primary-foreground: 210 100% 8%; /* Very Dark for contrast */
+
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 210 25% 90%;
+
+    --muted: 215 25% 18%;
+    --muted-foreground: 210 25% 70%;
+
+    --accent: 90 80% 60%; /* Brighter Green for dark mode */
+    --accent-foreground: 210 100% 8%; 
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 20% 22%;
+    --input: 220 20% 19%;
+    --ring: 170 80% 50%; /* Primary Teal for focus rings in dark */
+
+    --chart-1: 170 80% 50%; /* Teal */
+    --chart-2: 90 80% 60%;  /* Green */
+    --chart-3: 30 95% 60%;  /* Orange */
+    --chart-4: 260 75% 70%; /* Purple */
+    --chart-5: 0 75% 65%;   /* Red */
+    
+    /* Dark Sidebar specific theme variables */
+    --sidebar-background: 220 20% 7%; /* Deepest Dark for Sidebar */
+    --sidebar-foreground: 210 25% 92%; 
+    --sidebar-primary: 170 80% 50%;
+    --sidebar-primary-foreground: 210 100% 8%;
+    --sidebar-accent: 170 80% 40%; /* Darker shade of primary for hover */
+    --sidebar-accent-foreground: 210 25% 96%;
+    --sidebar-border: 220 20% 15%;
+    --sidebar-ring: 170 80% 50%;
+  }
 }
 
 @layer base {
@@ -95,9 +113,178 @@ body {
     @apply border-border;
   }
   body {
-    @apply text-foreground;
-    background: linear-gradient(-45deg, #f2f2f2, #e6e6e6, #d9d9d9, #cccccc);
-	  background-size: 400% 400%;
-	  animation: liquid-gradient 15s ease infinite;
+    @apply bg-background text-foreground font-sans; /* font-sans will now use --font-inter */
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-secondary;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/80;
+}
+
+/* Hide elements by default that should only appear in print */
+.print-show-table-cell {
+  display: none;
+}
+
+@media print {
+  body {
+    background-color: white !important; /* Ensure body background is white for printing */
+    color: black !important;
+    -webkit-print-color-adjust: exact !important; /* Ensure colors and backgrounds print in Chrome/Safari */
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide elements marked with .noprint */
+  .noprint {
+    display: none !important;
+  }
+
+  /* Show elements marked with .print-show-table-cell specifically for table cells */
+  .print-show-table-cell {
+    display: table-cell !important;
+  }
+
+
+  /* Reset main layout containers for print */
+  main,
+  main > .container, /* Targets the direct .container child of main */
+  .printable-area {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Hide specific filter cards and print button containers within the printable area */
+  .printable-area .filters-card-noprint,
+  .printable-area .print-button-container {
+    display: none !important;
+  }
+  
+  /* Hide other interactive elements that might overlay content */
+  .printable-area div[role="dialog"],
+  .printable-area [data-radix-popper-content-wrapper],
+  .printable-area [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* Table styling for print */
+  .printable-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important; /* Adjust font size for print */
+    table-layout: auto !important; /* Allow table to adjust column widths */
+  }
+  .printable-area th, .printable-area td,
+  .printable-area thead th, .printable-area tbody td { /* More specific selectors */
+    border: 1px solid #ccc !important;
+    padding: 4px !important;
+    text-align: left !important;
+    word-wrap: break-word; /* Prevent long text from overflowing */
+    color: black !important; /* Ensure text in table cells is black */
+    background-color: transparent !important; /* Ensure table cell backgrounds are transparent */
+  }
+  .printable-area .text-right {
+    text-align: right !important;
+  }
+  .printable-area .text-center {
+    text-align: center !important;
+  }
+
+  /* Reset the div wrapper around ShadCN tables if it restricts flow */
+  .printable-area .relative.w-full.overflow-auto {
+    overflow: visible !important;
+    width: auto !important; /* Let table define its own width, which is 100% */
+  }
+
+  /* Remove extra padding from Card components within printable area */
+  .printable-area .card > .p-4,
+  .printable-area .card > .p-6,
+  .printable-area .card > [class*="p-"],
+  .printable-area .card-content {
+    padding: 0 !important;
+  }
+
+  /* Ensure any background colors on cards or their content are transparent */
+  .printable-area .bg-card,
+  .printable-area .card-content {
+    background-color: transparent !important;
+  }
+
+  /* Hide generic buttons within the printable area unless explicitly shown */
+  .printable-area button:not(.print-show) {
+      display: none !important;
+  }
+
+  /* Ensure page titles (h1) within the printable area are visible and black */
+  .printable-area h1 {
+    display: block !important; /* Or as desired for print */
+    margin-bottom: 1rem !important; /* Example spacing */
+    color: black !important;
+    background-color: transparent !important;
+  }
+
+  /* General text color override for elements within printable-area */
+  .printable-area,
+  .printable-area *,
+  .printable-area p,
+  .printable-area span,
+  .printable-area div,
+  .printable-area li,
+  .printable-area h2, .printable-area h3, .printable-area h4, .printable-area h5, .printable-area h6 {
+    color: black !important;
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Explicitly override common Tailwind text color utilities within printable area */
+  .printable-area .text-muted-foreground,
+  .printable-area .text-primary,
+  .printable-area .text-secondary,
+  .printable-area .text-accent,
+  .printable-area .text-destructive,
+  .printable-area .text-foreground,
+  .printable-area .text-card-foreground,
+  .printable-area .text-popover-foreground,
+  .printable-area .text-primary-foreground,
+  .printable-area .text-secondary-foreground,
+  .printable-area .text-muted-foreground, /* Repeated for emphasis */
+  .printable-area .text-accent-foreground,
+  .printable-area .text-destructive-foreground,
+  .printable-area .text-orange-500, /* Specific for damage type, if used */
+  .printable-area [class*="text-orange-"], /* Catch variations */
+  .printable-area [class*="text-red-"], /* Catch variations for destructive */
+  .printable-area [class*="text-yellow-"] /* Catch variations for warnings if any */
+  {
+    color: black !important;
+  }
+
+  /* Ensure icons (Lucide, SVGs) become black if they use text color or specific fills */
+  .printable-area svg {
+    color: black !important; /* If color is inherited */
+    fill: black !important; /* If SVGs use fill directly and should be black */
+    stroke: black !important; /* If SVGs use stroke directly and should be black */
+  }
+  /* More specific for lucide icons if needed, though above should cover them */
+  .printable-area [class*="lucide-"] {
+     color: black !important;
   }
 }

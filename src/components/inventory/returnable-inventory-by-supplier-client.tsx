@@ -1,0 +1,365 @@
+
+'use client';
+
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useRef
+import type { InventoryItem, Supplier } from '@/lib/types';
+import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton'; 
+import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from "@/hooks/use-toast";
+import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
+import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
+import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { parseISO, isValid } from 'date-fns';
+
+interface ReturnableInventoryBySupplierClientProps {
+  initialInventoryItems: InventoryItem[];
+  allSuppliers: Supplier[];
+}
+
+const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
+
+export function ReturnableInventoryBySupplierClient({ initialInventoryItems, allSuppliers }: ReturnableInventoryBySupplierClientProps) {
+  const { toast } = useToast();
+  const [selectedSupplierNames, setSelectedSupplierNames] = useState<string[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [selectedItemForReturn, setSelectedItemForReturn] = useState<InventoryItem | null>(null);
+
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
+
+
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+  const [supplierFilterInput, setSupplierFilterInput] = useState('');
+  const supplierSearchInputRef = useRef<HTMLInputElement>(null); // Ref for the search input
+
+  const [totalItemsForSelectedSuppliers, setTotalItemsForSelectedSuppliers] = useState(0);
+  const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
+
+  const uniqueDbLocations = useMemo(() => {
+    const locations = new Set<string>();
+    (initialInventoryItems || []).forEach(item => {
+      if (item.location) locations.add(item.location);
+    });
+    return Array.from(locations).sort();
+  }, [initialInventoryItems]);
+
+
+  useEffect(() => {
+    setAllSortedSuppliers((allSuppliers || []).sort((a, b) => a.name.localeCompare(b.name)));
+
+    if (initialInventoryItems) {
+       const sortedAndFiltered = initialInventoryItems
+        .filter(item => item.quantity > 0)
+        .sort((a, b) => {
+          const dateA = a.timestamp ? parseISO(a.timestamp) : null;
+          const dateB = b.timestamp ? parseISO(b.timestamp) : null;
+          if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
+            return dateB.getTime() - dateA.getTime();
+          }
+          if (dateA && isValid(dateA)) return -1;
+          if (dateB && isValid(dateB)) return 1;
+          return 0;
+        });
+      setInventoryItems(sortedAndFiltered);
+    } else {
+      setInventoryItems([]);
+    }
+    setIsLoading(false);
+  }, [initialInventoryItems, allSuppliers]);
+
+  const handleOpenReturnDialog = (item: InventoryItem) => {
+    setSelectedItemForReturn(item);
+    setIsReturnDialogOpen(true);
+  };
+
+  const handleOpenDetailsDialog = (item: InventoryItem) => {
+    setSelectedItemForDetails(item);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (item: InventoryItem) => {
+    setCurrentItemToEdit(item);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = useCallback(() => {
+    // Data revalidation should handle list update by server action revalidatePath
+  }, []);
+
+
+  const handleReturnSuccess = useCallback(() => {
+    setSelectedItemForReturn(null);
+  }, []);
+
+  const filteredInventoryItemsBySupplier = useMemo(() => {
+    if (selectedSupplierNames.length === 0) {
+      setTotalItemsForSelectedSuppliers(0);
+      return [];
+    }
+    const lowerSelectedSupplierNames = selectedSupplierNames.map(name => name.toLowerCase());
+    const filtered = inventoryItems.filter(item =>
+      item.supplierName && lowerSelectedSupplierNames.includes(item.supplierName.toLowerCase()) && item.quantity > 0
+    );
+    setTotalItemsForSelectedSuppliers(filtered.length);
+    return filtered;
+  }, [inventoryItems, selectedSupplierNames]);
+
+  const clearSupplierSelection = () => {
+    setSelectedSupplierNames([]);
+    setSupplierFilterInput('');
+    setTotalItemsForSelectedSuppliers(0);
+  };
+
+  const itemsToRender = useMemo(() => {
+    if (filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY) {
+      return filteredInventoryItemsBySupplier.slice(0, MAX_INVENTORY_ITEMS_TO_DISPLAY);
+    }
+    return filteredInventoryItemsBySupplier;
+  }, [filteredInventoryItemsBySupplier]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const suppliersForCombobox = useMemo(() => {
+    if (!supplierFilterInput) return allSortedSuppliers;
+    const filtered = allSortedSuppliers.filter(supplier =>
+      supplier.name.toLowerCase().includes(supplierFilterInput.toLowerCase())
+    );
+    return filtered;
+  }, [allSortedSuppliers, supplierFilterInput]);
+
+
+  const getSupplierButtonText = () => {
+    if (selectedSupplierNames.length === 0) return "Select supplier(s)...";
+    if (selectedSupplierNames.length === 1) return selectedSupplierNames[0];
+    if (selectedSupplierNames.length > 1 && selectedSupplierNames.length <=3) return selectedSupplierNames.join(', ');
+    return `${selectedSupplierNames.length} suppliers selected`;
+  };
+
+  const handleSupplierDropdownOpenChange = (open: boolean) => {
+    setIsSupplierDropdownOpen(open);
+    if (open) {
+      // Delay focus slightly to ensure input is rendered
+      setTimeout(() => {
+        supplierSearchInputRef.current?.focus();
+      }, 50);
+    }
+  };
+
+
+  if (isLoading) {
+    return ( 
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-center gap-4 p-4 border rounded-lg shadow bg-card mb-6">
+            <Skeleton className="h-10 w-full md:max-w-lg" /> 
+            <Skeleton className="h-10 w-36" /> 
+            <Skeleton className="h-6 w-32 md:ml-auto" /> 
+        </div>
+        <Card className="shadow-md">
+          <Table><TableHeader>
+            <TableRow><TableHead className="w-20 text-center">Return</TableHead><TableHead className="w-20 text-center">Details</TableHead><TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead>Expiry</TableHead><TableHead>Location</TableHead><TableHead>Type</TableHead><TableHead className="w-20 text-center">Edit</TableHead>
+           </TableRow>
+          </TableHeader><TableBody>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <TableRow key={index}><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody></Table>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 printable-area">
+      <Card className="p-4 shadow-md filters-card-noprint">
+        <CardContent className="p-0">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <DropdownMenu open={isSupplierDropdownOpen} onOpenChange={handleSupplierDropdownOpenChange}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full md:max-w-lg justify-between items-center"
+                >
+                  <div className="flex items-center flex-grow overflow-hidden">
+                    <Building className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="flex-grow text-center truncate px-1">
+                      {getSupplierButtonText()}
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width]"
+                align="start"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  Filter by Supplier
+                  {selectedSupplierNames.length > 0 && (
+                     <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation(); 
+                            setSelectedSupplierNames([]);
+                            setSupplierFilterInput('');
+                        }}
+                        className="h-auto p-1 text-xs"
+                      >
+                        Clear All ({selectedSupplierNames.length})
+                      </Button>
+                  )}
+                </DropdownMenuLabel>
+                <div className="p-2">
+                  <Input
+                    ref={supplierSearchInputRef}
+                    placeholder="Search suppliers..."
+                    value={supplierFilterInput}
+                    onChange={(e) => {
+                      setSupplierFilterInput(e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()} 
+                    onKeyDown={(e) => e.stopPropagation()} 
+                    className="w-full h-8"
+                  />
+                </div>
+                <DropdownMenuSeparator />
+                <ScrollArea className="h-72">
+                  {suppliersForCombobox.length === 0 && (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      {supplierFilterInput ? `No suppliers found for "${supplierFilterInput}"` : (allSortedSuppliers.length > 0 ? "Type to search suppliers..." : "No suppliers available.")}
+                    </div>
+                  )}
+                  {suppliersForCombobox.map((supplier) => (
+                    <DropdownMenuCheckboxItem
+                      key={supplier.id}
+                      checked={selectedSupplierNames.includes(supplier.name)}
+                      onCheckedChange={(checked) => {
+                        setSelectedSupplierNames((prev) =>
+                          checked
+                            ? [...prev, supplier.name]
+                            : prev.filter((name) => name !== supplier.name)
+                        );
+                      }}
+                      onSelect={(e) => e.preventDefault()} 
+                    >
+                      {supplier.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {selectedSupplierNames.length > 0 && (
+              <Button variant="ghost" onClick={clearSupplierSelection} className="w-full md:w-auto">
+                 <X className="mr-2 h-4 w-4" /> Clear Selection
+              </Button>
+            )}
+            {selectedSupplierNames.length > 0 && (
+                <div className="flex items-center text-sm text-muted-foreground md:ml-auto whitespace-nowrap">
+                    <ListFilter className="mr-2 h-4 w-4" />
+                    <span>Found: {totalItemsForSelectedSuppliers} item(s)</span>
+                </div>
+            )}
+             <div className="print-button-container ml-auto md:ml-0 md:pl-2">
+                <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
+                    <Printer className="mr-2 h-4 w-4" /> Print List
+                </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedSupplierNames.length === 0 ? (
+         <div className="text-center py-12">
+          <Filter className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h3 className="mt-4 text-xl font-semibold">Filter Inventory by Supplier</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Select one or more suppliers using the button above to view their inventory items eligible for return.
+          </p>
+        </div>
+      ) : itemsToRender.length > 0 ? (
+        <Card className="shadow-md">
+          <Table><TableHeader>
+            <TableRow><TableHead className="w-20 text-center">Return</TableHead><TableHead className="w-20 text-center">Details</TableHead><TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead>Expiry</TableHead><TableHead>Location</TableHead><TableHead>Type</TableHead><TableHead className="w-20 text-center">Edit</TableHead>
+           </TableRow>
+          </TableHeader><TableBody>
+            {itemsToRender.map((item) => (
+              <ReturnableInventoryItemRow
+                key={item.id}
+                item={item}
+                onInitiateReturn={handleOpenReturnDialog}
+                onViewDetails={handleOpenDetailsDialog}
+                onEditItem={handleOpenEditDialog} 
+                isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
+                showSupplierName={false} 
+                showEditButtonText={false} 
+              />
+            ))}
+          </TableBody></Table>
+          {filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
+            <CardContent className="pt-4 text-center filters-card-noprint">
+              <p className="text-sm text-muted-foreground">
+                Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsBySupplier.length} items for this selection.
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      ) : (
+        <div className="text-center py-12">
+          <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h3 className="mt-4 text-xl font-semibold">
+            No inventory items found for the selected supplier(s)
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ensure items for the selected supplier(s) are logged with quantity greater than zero.
+          </p>
+        </div>
+      )}
+      <ReturnQuantityDialog
+        item={selectedItemForReturn}
+        isOpen={isReturnDialogOpen}
+        onOpenChange={setIsReturnDialogOpen}
+        onReturnSuccess={handleReturnSuccess}
+      />
+      <InventoryItemDetailsDialog
+        item={selectedItemForDetails}
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        displayContext="returnBySupplier" 
+        onStartEdit={handleOpenEditDialog} 
+      />
+      <EditInventoryItemDialog
+        item={currentItemToEdit}
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={handleEditSuccess}
+        uniqueLocationsFromDb={uniqueDbLocations}
+      />
+    </div>
+  );
+}

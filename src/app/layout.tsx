@@ -1,12 +1,38 @@
-import type { Metadata } from 'next';
+
+import type {Metadata} from 'next';
+import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
-import { CartProvider } from '@/context/cart-context';
-import { Header } from '@/components/header';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from '@/context/auth-context';
+import { LocalSettingsAuthProvider } from '@/context/local-settings-auth-context';
+import { ThemeProvider } from 'next-themes';
+
+const inter = Inter({
+  variable: '--font-inter',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+const robotoMono = Roboto_Mono({
+  variable: '--font-roboto-mono',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+const poppins = Poppins({
+  variable: '--font-poppins',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
+});
+
 
 export const metadata: Metadata = {
-  title: 'rbcart',
-  description: 'Your one-stop shop for everything you need.',
+  title: 'SheetSync',
+  description: 'Next-Gen Inventory Management',
+  icons: {
+    icon: null, 
+  },
 };
 
 export default function RootLayout({
@@ -15,21 +41,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-body antialiased min-h-screen flex flex-col">
-        <CartProvider>
-          <Header />
-          <main className="flex-grow">{children}</main>
-        </CartProvider>
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <LocalSettingsAuthProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </LocalSettingsAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,20 +1,20 @@
-# **App Name**: RBCart Express
+# **App Name**: SheetSync
 
 ## Core Features:
 
-- Product Catalog: Display product listings with images, descriptions, and prices.
-- Shopping Cart: Allow users to add products to a shopping cart and adjust quantities.
-- Checkout Process: Implement a simple checkout process with a form for contact and shipping information.
-- Payment Simulation: Simulate payment processing (no actual transactions).
-- Product Search: Implement a search feature to find products quickly.
-- Product Suggestions: AI powered tool to suggest additional relevant products, based on items in the cart.
+- Product List Display: Display a sortable list of products with barcode and product name fetched from the 'BAR DATA' sheet.
+- Supplier List Display: Display a list of the suppliers with name fetched from the 'SUP DATA' sheet.
+- Product Search: Implement a search bar to filter the displayed product list by barcode or product name.
+- Add New Product: Allow users to add a new product and its barcode, saving the data to the 'BAR DATA' Google Sheet using the Google Sheets API.
+- Add New Supplier: Allow users to add a new supplier, preventing duplicate entries, and saving the data to the 'SUP DATA' Google Sheet using the Google Sheets API.
 
 ## Style Guidelines:
 
-- Primary color: Deep Indigo (#4B0082) for a sophisticated and trustworthy feel.
-- Background color: Light Lavender (#E6E6FA), subtly desaturated to maintain focus on products.
-- Accent color: Magenta (#FF00FF), providing a vibrant highlight for key CTAs and interactive elements.
-- Headline font: 'Playfair', a modern sans-serif providing an elegant, fashionable feel.
-- Body font: 'PT Sans', a humanist sans-serif, for the body to compliment 'Playfair' used in the headers.
-- Use clean, modern icons to represent product categories and actions (e.g., shopping cart, search).
-- Subtle animations, like smooth transitions between pages and hover effects on product cards, to enhance the user experience.
+- Primary color: Use a vibrant blue (#29ABE2) to give a sense of trustworthiness, cleanliness, and clarity.
+- Background color: A very light, desaturated blue (#F0F8FF) to provide a clean and calm backdrop.
+- Accent color: Employ a bright green (#90EE90) to give a sense of progress, indicate the saving actions are going as planned.
+- Clean, sans-serif font for titles and body text.
+- Simple, modern icons for sidebar navigation and actions.
+- Sidebar navigation with a collapsible menu.
+- Use of rounded cards for product and supplier listings to give a softer, modern feel.
+- Subtle animations when opening/closing modals and updating lists.
