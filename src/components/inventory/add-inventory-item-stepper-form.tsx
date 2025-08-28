@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -393,7 +393,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                         {errors.quantity && <p className="text-sm text-destructive mt-1">{errors.quantity.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="expiryDate" className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Date (Expiry/Damage)</Label>
+                            <Label htmlFor="expiryDate" className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Date</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !allFormValues.expiryDate && "text-muted-foreground", errors.expiryDate && 'border-destructive')}>
@@ -509,5 +509,3 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     </Card>
   );
 }
-
-    
