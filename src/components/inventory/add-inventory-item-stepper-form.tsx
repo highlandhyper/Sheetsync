@@ -113,6 +113,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
       location: '',
       expiryDate: undefined,
     },
+    mode: 'onTouched'
   });
 
   const allFormValues = watch();
@@ -456,10 +457,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
                 {currentStep < steps.length - 1 ? (
                     <Button type="button" onClick={nextStep} disabled={isFetchingProduct}>
-                        {isFetchingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                        {currentStep === 0 && !isFetchingProduct ? <ArrowRight className="mr-2 h-4 w-4" /> : null}
-                        {currentStep > 0 && !isFetchingProduct ? <ArrowRight className="mr-2 h-4 w-4" /> : null}
-                        Next
+                        {isFetchingProduct && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Next <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 ) : (
                     <Button type="submit" disabled={isPending}>
@@ -475,5 +474,3 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     </Card>
   );
 }
-
-    
