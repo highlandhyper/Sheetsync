@@ -549,10 +549,11 @@ export async function addInventoryItem(
   const timeLabel = "GS_Data: addInventoryItem total duration";
   console.time(timeLabel);
   try {
-    const clientSideUniqueId = `inv_gs_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const now = new Date();
+    const clientSideUniqueId = `444-${format(now, "yyyyMMddHHmmss")}`;
     const newRowData = new Array(INVENTORY_TOTAL_COLUMNS_FOR_WRITE).fill('');
 
-    newRowData[INV_COL_TIMESTAMP] = format(new Date(), "dd/MM/yyyy HH:mm:ss");
+    newRowData[INV_COL_TIMESTAMP] = format(now, "dd/MM/yyyy HH:mm:ss");
     newRowData[INV_COL_BARCODE] = itemFormValues.barcode.trim();
     newRowData[INV_COL_QTY] = itemFormValues.quantity;
     newRowData[INV_COL_EXPIRY] = itemFormValues.expiryDate ? format(new Date(itemFormValues.expiryDate), 'dd/MM/yyyy') : '';
@@ -1095,3 +1096,5 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
     console.timeEnd(timeLabel);
   }
 }
+
+    

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2 } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -61,6 +62,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
 
 
   useEffect(() => {
@@ -325,6 +329,15 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     setIsEditDialogOpen(true);
   };
 
+  const handleOpenDeleteDialog = (item: InventoryItem) => {
+    if (role !== 'admin') {
+      toast({ title: 'Permission Denied', description: 'Only admins can delete log entries.', variant: 'destructive'});
+      return;
+    }
+    setSelectedItemForDeletion(item);
+    setIsDeleteDialogOpen(true);
+  };
+
   const handleDialogSuccess = useCallback(() => {
     // Data revalidation should handle list updates via server actions
   }, []);
@@ -477,20 +490,31 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                           <Eye className="h-4 w-4" />
                         </Button>
                         {role === 'admin' && (
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-7 w-7 sm:h-8 sm:w-8" aria-label="Edit Item">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-7 w-7 sm:h-8 sm:w-8" aria-label="Edit Item">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenReturnDialog(item)}
+                              disabled={item.quantity === 0}
+                              className="h-7 w-7 sm:h-8 sm:w-8"
+                              aria-label="Return Item"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                             <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDeleteDialog(item)}
+                              className="h-7 w-7 sm:h-8 sm:w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                              aria-label="Delete Item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenReturnDialog(item)}
-                          disabled={item.quantity === 0 || role === 'viewer'}
-                          className="h-7 w-7 sm:h-8 sm:w-8"
-                          aria-label="Return Item"
-                        >
-                          <Undo2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{item.productName}</TableCell>
@@ -546,6 +570,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         onSuccess={handleDialogSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
       />
+      <DeleteConfirmationDialog
+        item={selectedItemForDeletion}
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onSuccess={handleDialogSuccess}
+      />
     </div>
   );
 }
+
+    
