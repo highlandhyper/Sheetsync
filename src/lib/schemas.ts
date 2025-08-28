@@ -29,16 +29,8 @@ export const addInventoryItemSchema = z.object({
   itemType: z.enum(['Expiry', 'Damage'], { required_error: "Item type is required." }),
   barcode: z.string().min(1, "Barcode is required."),
   quantity: z.coerce.number().int().min(1, "Quantity must be a whole number and at least 1."),
-  expiryDate: z.date().optional(), 
+  expiryDate: z.date({ required_error: "A date is required for this item."}), 
   location: z.string().min(1, "Location is required."),
-}).refine(data => {
-  if (data.itemType === 'Expiry' && !data.expiryDate) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Expiry date is required when item type is 'Expiry'.",
-  path: ['expiryDate'],
 });
 export type AddInventoryItemFormValues = z.infer<typeof addInventoryItemSchema>;
 

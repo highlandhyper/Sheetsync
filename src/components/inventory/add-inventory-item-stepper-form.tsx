@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition, useRef, useCallback } from 'react';
+import { useEffect, useState, useTransition, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -76,10 +76,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   
-  const [state, formAction] = useActionState<ActionResponse<InventoryItem> | undefined, FormData>(
-    addInventoryItemAction,
-    undefined
-  );
   const [isPending, startTransition] = useTransition();
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
@@ -93,6 +89,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [cameraPermissionAttempted, setCameraPermissionAttempted] = useState(false);
+  
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     register,
@@ -102,7 +100,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     watch,
     setValue,
     trigger,
-    formState: { errors },
+    formState: { errors, touchedFields, isSubmitting },
   } = useForm<AddInventoryItemFormValues>({
     resolver: zodResolver(addInventoryItemSchema),
     defaultValues: {
@@ -115,29 +113,32 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     },
     mode: 'onTouched'
   });
-
+  
   const allFormValues = watch();
 
-  useEffect(() => {
-    if (state?.success) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      reset();
-      setProductName('');
-      setProductSupplier('');
-      setProductLookupError('');
-      setCurrentStep(0);
-    } else if (state?.message && !state.success) {
-      toast({
-        title: 'Error Logging Item',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, reset]);
-  
+  const handleAction = async (formData: FormData) => {
+    startTransition(async () => {
+        const response = await addInventoryItemAction(undefined, formData);
+        if (response?.success) {
+            toast({
+                title: 'Success!',
+                description: response.message,
+            });
+            reset();
+            setProductName('');
+            setProductSupplier('');
+            setProductLookupError('');
+            setCurrentStep(0);
+        } else if (response?.message) {
+            toast({
+                title: 'Error Logging Item',
+                description: response.message,
+                variant: 'destructive',
+            });
+        }
+    });
+  };
+
   const handleBarcodeLookup = useCallback(async (barcode: string) => {
       if (!barcode || !barcode.trim()) return false;
       setIsFetchingProduct(true);
@@ -161,13 +162,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
     
-    // Final step has no fields, just advance
+    if (currentStep >= steps.length - 1) {
+      // This should not happen if the "Next" button is disabled on the last step
+      return;
+    }
+
     if (!fields) {
-        if (currentStep < steps.length - 1) {
-            setCurrentStep(step => step + 1);
-        }
+        setCurrentStep(step => step + 1);
         return;
     }
+
     const output = await trigger(fields as FieldName[], { shouldFocus: true });
 
     if (!output) return;
@@ -177,9 +181,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
         if(!barcodeOk) return;
     }
 
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(step => step + 1);
-    }
+    setCurrentStep(step => step + 1);
   };
 
   const prevStep = () => {
@@ -188,18 +190,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     }
   };
   
-  const processFormSubmit = (data: AddInventoryItemFormValues) => {
-    startTransition(() => {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value instanceof Date) {
-            formData.append(key, value.toISOString());
-          } else if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
-          }
-        });
-        formAction(formData);
-    });
+  const handleFormSubmit = () => {
+    formRef.current?.requestSubmit();
   };
 
   const handleToggleScanner = () => {
@@ -214,7 +206,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
         setHasCameraPermission(null);
         
         try {
-          // Check permission without starting stream immediately
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
           stream.getTracks().forEach(track => track.stop());
@@ -300,7 +291,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                 </p>
             </div>
             
-            <div className="space-y-6">
+            <form 
+                ref={formRef} 
+                action={handleAction} 
+                onSubmit={handleSubmit(() => { /* handled by formAction */})} 
+                className="space-y-6"
+            >
                 {/* Step 1: Barcode */}
                 <div className={cn(currentStep !== 0 && "hidden")}>
                     <Label htmlFor="barcode" className="text-lg font-semibold">Product Barcode</Label>
@@ -389,21 +385,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                         <Input id="quantity" type="number" placeholder="e.g., 10" {...register('quantity')} className={cn(errors.quantity && 'border-destructive')}/>
                         {errors.quantity && <p className="text-sm text-destructive mt-1">{errors.quantity.message}</p>}
                         </div>
-                        {allFormValues.itemType === 'Expiry' && (
-                            <div>
-                                <Label htmlFor="expiryDate">Expiry Date</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !allFormValues.expiryDate && "text-muted-foreground", errors.expiryDate && 'border-destructive')}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {allFormValues.expiryDate ? format(allFormValues.expiryDate, "PPP") : <span>Pick a date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(d) => setValue('expiryDate', d, { shouldValidate: true })} initialFocus/></PopoverContent>
-                                </Popover>
-                                {errors.expiryDate && <p className="text-sm text-destructive mt-1">{errors.expiryDate.message}</p>}
-                            </div>
-                        )}
+                        <div>
+                            <Label htmlFor="expiryDate">Date (Expiry/Damage)</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !allFormValues.expiryDate && "text-muted-foreground", errors.expiryDate && 'border-destructive')}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {allFormValues.expiryDate ? format(allFormValues.expiryDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(d) => setValue('expiryDate', d, { shouldValidate: true })} initialFocus/></PopoverContent>
+                            </Popover>
+                            {errors.expiryDate && <p className="text-sm text-destructive mt-1">{errors.expiryDate.message}</p>}
+                        </div>
                     </div>
                 </div>
 
@@ -445,37 +439,35 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                             <div><span className="font-medium text-muted-foreground">Type:</span> {allFormValues.itemType}</div>
                             <div><span className="font-medium text-muted-foreground">Logged By:</span> {allFormValues.staffName}</div>
                             <div><span className="font-medium text-muted-foreground">Location:</span> {allFormValues.location}</div>
-                            {allFormValues.itemType === 'Expiry' && allFormValues.expiryDate &&
-                                <div className="col-span-2"><span className="font-medium text-muted-foreground">Expiry Date:</span> {format(allFormValues.expiryDate, "PPP")}</div>
+                            {allFormValues.expiryDate &&
+                                <div className="col-span-2"><span className="font-medium text-muted-foreground">Date:</span> {format(allFormValues.expiryDate, "PPP")}</div>
                             }
                         </div>
                     </div>
                 </div>
 
-                 <div className="flex justify-between pt-4">
-                    {currentStep > 0 ? (
-                        <Button type="button" onClick={prevStep} variant="outline">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                        </Button>
-                    ) : <div />}
+            </form>
+            <div className="flex justify-between pt-4">
+                {currentStep > 0 ? (
+                    <Button type="button" onClick={prevStep} variant="outline" disabled={isPending}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                    </Button>
+                ) : <div />}
 
-                    {currentStep < steps.length - 1 ? (
-                        <Button type="button" onClick={nextStep} disabled={isFetchingProduct}>
-                            {isFetchingProduct && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                            Next <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    ) : (
-                        <Button type="button" onClick={handleSubmit(processFormSubmit)} disabled={isPending}>
-                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePlus className="mr-2 h-4 w-4" />}
-                            Log Item
-                        </Button>
-                    )}
-                </div>
+                {currentStep < steps.length - 1 ? (
+                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending}>
+                        {isFetchingProduct && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Next <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                ) : (
+                    <Button type="button" onClick={handleFormSubmit} disabled={isPending}>
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePlus className="mr-2 h-4 w-4" />}
+                        Log Item
+                    </Button>
+                )}
             </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-
-    
