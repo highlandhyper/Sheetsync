@@ -160,6 +160,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
+    
+    // Final step has no fields, just advance
     if (!fields) {
         if (currentStep < steps.length - 1) {
             setCurrentStep(step => step + 1);
@@ -298,10 +300,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                 </p>
             </div>
             
-            <form
-            onSubmit={handleSubmit(processFormSubmit)}
-            className="space-y-6"
-            >
+            <div className="space-y-6">
                 {/* Step 1: Barcode */}
                 <div className={cn(currentStep !== 0 && "hidden")}>
                     <Label htmlFor="barcode" className="text-lg font-semibold">Product Barcode</Label>
@@ -453,7 +452,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                     </div>
                 </div>
 
-                {/* Navigation Buttons are outside the form element's children */}
                  <div className="flex justify-between pt-4">
                     {currentStep > 0 ? (
                         <Button type="button" onClick={prevStep} variant="outline">
@@ -467,13 +465,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                             Next <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     ) : (
-                        <Button type="submit" disabled={isPending}>
+                        <Button type="button" onClick={handleSubmit(processFormSubmit)} disabled={isPending}>
                             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePlus className="mr-2 h-4 w-4" />}
                             Log Item
                         </Button>
                     )}
                 </div>
-            </form>
+            </div>
         </div>
       </CardContent>
     </Card>
