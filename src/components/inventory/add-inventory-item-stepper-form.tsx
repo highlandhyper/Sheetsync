@@ -160,6 +160,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
+    if (!fields) {
+        if (currentStep < steps.length - 1) {
+            setCurrentStep(step => step + 1);
+        }
+        return;
+    }
     const output = await trigger(fields as FieldName[], { shouldFocus: true });
 
     if (!output) return;
@@ -447,30 +453,31 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                     </div>
                 </div>
 
-                {/* Navigation Buttons */}
-                <div className="flex justify-between pt-4">
-                {currentStep > 0 ? (
-                    <Button type="button" onClick={prevStep} variant="outline">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                    </Button>
-                ) : <div />}
+                {/* Navigation Buttons are outside the form element's children */}
+                 <div className="flex justify-between pt-4">
+                    {currentStep > 0 ? (
+                        <Button type="button" onClick={prevStep} variant="outline">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                        </Button>
+                    ) : <div />}
 
-                {currentStep < steps.length - 1 ? (
-                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct}>
-                        {isFetchingProduct && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                        Next <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                ) : (
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePlus className="mr-2 h-4 w-4" />}
-                        Log Item
-                    </Button>
-                )}
+                    {currentStep < steps.length - 1 ? (
+                        <Button type="button" onClick={nextStep} disabled={isFetchingProduct}>
+                            {isFetchingProduct && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            Next <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    ) : (
+                        <Button type="submit" disabled={isPending}>
+                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePlus className="mr-2 h-4 w-4" />}
+                            Log Item
+                        </Button>
+                    )}
                 </div>
-
             </form>
         </div>
       </CardContent>
     </Card>
   );
 }
+
+    
