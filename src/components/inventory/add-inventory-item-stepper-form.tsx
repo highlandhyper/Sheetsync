@@ -94,7 +94,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -195,63 +194,72 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
 
   useEffect(() => {
-    const onScanSuccess: QrCodeSuccessCallback = async (decodedText, result) => {
-      console.log(`Scan success: ${decodedText}`);
-      setValue('barcode', decodedText, { shouldValidate: true });
-      setIsScannerDialogOpen(false); // Close dialog on success
-      const lookupSuccess = await handleBarcodeLookup(decodedText);
-      if (lookupSuccess) {
+    if (!isScannerDialogOpen) {
+      if (html5QrcodeScannerRef.current) {
+        html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on dialog close:", err));
+        html5QrcodeScannerRef.current = null;
+      }
+      return;
+    }
+  
+    // Use a short timeout to ensure the dialog's DOM is ready before initializing the scanner.
+    const timerId = setTimeout(() => {
+      if (!document.getElementById(SCANNER_REGION_ID)) {
+        console.error("Scanner region ID not found in DOM after timeout. The dialog might not be mounted correctly.");
+        return;
+      }
+  
+      const onScanSuccess: QrCodeSuccessCallback = async (decodedText, result) => {
+        setValue('barcode', decodedText, { shouldValidate: true });
+        setIsScannerDialogOpen(false); // Close dialog on success
+        const lookupSuccess = await handleBarcodeLookup(decodedText);
+        if (lookupSuccess) {
           toast({ title: "Product Found!", description: "Proceeding to the next step." });
           setCurrentStep(1);
-      } else {
-            toast({ title: "Product Not Found", description: "Please ensure this product exists in the catalog.", variant: "destructive" });
-      }
-    };
-
-    const onScanFailure = (error: string | QrcodeError) => { /* ignore */ };
-
-    if (isScannerDialogOpen) {
-      if (!document.getElementById(SCANNER_REGION_ID)) {
-          console.error("Scanner region ID not found in DOM.");
-          return;
-      }
-      
-      const scanner = new Html5QrcodeScanner(
-          SCANNER_REGION_ID,
-          {
-              fps: 10,
-              qrbox: (viewfinderWidth, viewfinderHeight) => ({
-                  width: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
-                  height: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
-              }),
-              rememberLastUsedCamera: true,
-              supportedScanTypes: [0], // 0 for camera
-              facingMode: 'environment' // Prefer back camera
-          },
-          false // verbose
-      );
-      
-      scanner.render(onScanSuccess, onScanFailure)
-          .catch(err => {
-              console.error("Scanner render error:", err);
-              let description = 'Please enable camera permissions in your browser settings.';
-              if (typeof err === 'string' && err.toLowerCase().includes('permission denied')) {
-                  description = 'Camera access denied. Please enable it in your browser settings.';
-              } else if (err?.name === 'NotAllowedError') {
-                  description = 'Camera access denied. Please enable it in your browser settings.';
-              }
-              toast({ variant: 'destructive', title: 'Camera Access Error', description });
-              setIsScannerDialogOpen(false);
-          });
-          
-      html5QrcodeScannerRef.current = scanner;
-    }
-
-    return () => {
-        if (html5QrcodeScannerRef.current) {
-            html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
-            html5QrcodeScannerRef.current = null;
+        } else {
+          toast({ title: "Product Not Found", description: "Please ensure this product exists in the catalog.", variant: "destructive" });
         }
+      };
+  
+      const onScanFailure = (error: string | QrcodeError) => { /* ignore */ };
+  
+      const scanner = new Html5QrcodeScanner(
+        SCANNER_REGION_ID,
+        {
+          fps: 10,
+          qrbox: (viewfinderWidth, viewfinderHeight) => ({
+            width: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
+            height: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
+          }),
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [0], // 0 for camera
+          facingMode: 'environment' // Prefer back camera
+        },
+        false // verbose
+      );
+  
+      scanner.render(onScanSuccess, onScanFailure)
+        .catch(err => {
+          console.error("Scanner render error:", err);
+          let description = 'Please enable camera permissions in your browser settings.';
+          if (typeof err === 'string' && err.toLowerCase().includes('permission denied')) {
+            description = 'Camera access denied. Please enable it in your browser settings.';
+          } else if (err?.name === 'NotAllowedError') {
+            description = 'Camera access denied. Please enable it in your browser settings.';
+          }
+          toast({ variant: 'destructive', title: 'Camera Access Error', description });
+          setIsScannerDialogOpen(false);
+        });
+  
+      html5QrcodeScannerRef.current = scanner;
+    }, 100); // 100ms delay to allow DOM to render
+  
+    return () => {
+      clearTimeout(timerId);
+      if (html5QrcodeScannerRef.current) {
+        html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
+        html5QrcodeScannerRef.current = null;
+      }
     };
   }, [isScannerDialogOpen, handleBarcodeLookup, setValue, toast]);
 
