@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -24,8 +23,7 @@ import {
     MapPin
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Html5QrcodeScanner, type Html5QrcodeResult, type QrcodeError, type QrCodeSuccessCallback } from 'html5-qrcode';
-
+import { Html5Qrcode } from 'html5-qrcode';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,7 +55,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 
-
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
 import type { ItemType } from '@/lib/types';
 import { addInventoryItemAction, fetchProductAction, type ActionResponse } from '@/app/actions';
@@ -71,8 +68,6 @@ const steps = [
   { id: 3, name: 'Set Location', fields: ['location'], icon: Warehouse },
   { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
-
-const SCANNER_REGION_ID = "stepper-barcode-scanner-region";
 
 interface AddInventoryItemStepperFormProps {
   uniqueLocations: string[];
@@ -93,8 +88,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const [productLookupError, setProductLookupError] = useState('');
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
-  const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
-  
+  const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const SCANNER_REGION_ID = 'scanner';
+
   const formRef = useRef<HTMLFormElement>(null);
 
   const {
@@ -120,27 +116,46 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   
   const allFormValues = watch();
 
-  const handleAction = async (formData: FormData) => {
-    startTransition(async () => {
-        const response = await addInventoryItemAction(undefined, formData);
-        if (response?.success) {
+  const onSubmit = async (data: AddInventoryItemFormValues) => {
+    try {
+      startTransition(async () => {
+        try {
+          // Convert form data to FormData
+          const formData = new FormData();
+          formData.append('barcode', data.barcode);
+          formData.append('staffName', data.staffName);
+          formData.append('itemType', data.itemType);
+          formData.append('quantity', data.quantity.toString());
+          formData.append('expiryDate', data.expiryDate ? data.expiryDate.toISOString() : '');
+          formData.append('location', data.location);
+
+          const response = await addInventoryItemAction(undefined, formData);
+          
+          if (response.success) {
             toast({
-                title: 'Success!',
-                description: response.message,
+              title: 'Success!',
+              description: 'Inventory item added successfully.'
             });
             reset();
             setProductName('');
             setProductSupplier('');
             setProductLookupError('');
             setCurrentStep(0);
-        } else if (response?.message) {
-            toast({
-                title: 'Error Logging Item',
-                description: response.message,
-                variant: 'destructive',
-            });
+          } else {
+            throw new Error(response.errors?.join(', ') || 'Failed to add inventory item');
+          }
+        } catch (error) {
+          throw error;
         }
-    });
+      });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add inventory item'
+      });
+    }
   };
 
   const handleBarcodeLookup = useCallback(async (barcode: string) => {
@@ -184,7 +199,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep(step => step + 1);
+      setCurrentStep(step => step - 1);
     }
   };
   
@@ -192,80 +207,50 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     formRef.current?.requestSubmit();
   };
 
+  const onScanSuccess = useCallback((decodedText: string) => {
+    setValue('barcode', decodedText, { shouldValidate: true });
+    setIsScannerDialogOpen(false);
+    
+    if (html5QrcodeScannerRef.current) {
+      html5QrcodeScannerRef.current.stop().catch(console.error);
+      html5QrcodeScannerRef.current = null;
+    }
+  }, [setValue]);
 
   useEffect(() => {
-    if (!isScannerDialogOpen) {
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on dialog close:", err));
-        html5QrcodeScannerRef.current = null;
-      }
-      return;
-    }
-  
-    // Use a short timeout to ensure the dialog's DOM is ready before initializing the scanner.
-    const timerId = setTimeout(() => {
-      if (!document.getElementById(SCANNER_REGION_ID)) {
-        console.error("Scanner region ID not found in DOM after timeout. The dialog might not be mounted correctly.");
-        return;
-      }
-  
-      const onScanSuccess: QrCodeSuccessCallback = async (decodedText, result) => {
-        setValue('barcode', decodedText, { shouldValidate: true });
-        setIsScannerDialogOpen(false); // Close dialog on success
-        const lookupSuccess = await handleBarcodeLookup(decodedText);
-        if (lookupSuccess) {
-          toast({ title: "Product Found!", description: "Proceeding to the next step." });
-          setCurrentStep(1);
-        } else {
-          toast({ title: "Product Not Found", description: "Please ensure this product exists in the catalog.", variant: "destructive" });
+    if (isScannerDialogOpen) {
+      // Small timeout to ensure the dialog is fully rendered
+      const timer = setTimeout(() => {
+        if (!html5QrcodeScannerRef.current) {
+          const scanner = new Html5Qrcode(SCANNER_REGION_ID);
+          const qrConfig = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          };
+
+          scanner.start(
+            { facingMode: 'environment' },
+            qrConfig,
+            onScanSuccess,
+            (errorMessage: string) => {
+              console.error('QR Code scan error:', errorMessage);
+            }
+          ).then(() => {
+            html5QrcodeScannerRef.current = scanner;
+          }).catch(console.error);
+        }
+      }, 300); // Small delay to ensure DOM is ready
+
+      return () => {
+        clearTimeout(timer);
+        if (html5QrcodeScannerRef.current) {
+          html5QrcodeScannerRef.current.stop().catch(console.error);
+          html5QrcodeScannerRef.current = null;
         }
       };
-  
-      const onScanFailure = (error: string | QrcodeError) => { /* ignore */ };
-  
-      const scanner = new Html5QrcodeScanner(
-        SCANNER_REGION_ID,
-        {
-          fps: 10,
-          qrbox: (viewfinderWidth, viewfinderHeight) => ({
-            width: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
-            height: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
-          }),
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [0], // 0 for camera
-          facingMode: 'environment' // Prefer back camera
-        },
-        false // verbose
-      );
-  
-      scanner.render(onScanSuccess, onScanFailure)
-        .catch(err => {
-          console.error("Scanner render error:", err);
-          let description = 'Please enable camera permissions in your browser settings.';
-          if (typeof err === 'string' && err.toLowerCase().includes('permission denied')) {
-            description = 'Camera access denied. Please enable it in your browser settings.';
-          } else if (err?.name === 'NotAllowedError') {
-            description = 'Camera access denied. Please enable it in your browser settings.';
-          }
-          toast({ variant: 'destructive', title: 'Camera Access Error', description });
-          setIsScannerDialogOpen(false);
-        });
-  
-      html5QrcodeScannerRef.current = scanner;
-    }, 100); // 100ms delay to allow DOM to render
-  
-    return () => {
-      clearTimeout(timerId);
-      if (html5QrcodeScannerRef.current) {
-        // Check if clearing is already in progress or done to avoid errors.
-        if (html5QrcodeScannerRef.current.getState() === 2 /* SCANNING */) {
-          html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
-        }
-        html5QrcodeScannerRef.current = null;
-      }
-    };
-  }, [isScannerDialogOpen, handleBarcodeLookup, setValue, toast]);
-
+    }
+  }, [isScannerDialogOpen, onScanSuccess]);
 
   return (
     <>
@@ -289,7 +274,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
             
             <form 
                 ref={formRef} 
-                onSubmit={handleSubmit(handleAction)}
+                onSubmit={handleSubmit(onSubmit)}
                 className="space-y-6"
             >
                 {/* Step 1: Barcode */}
@@ -373,14 +358,33 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                             <Label htmlFor="expiryDate" className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Date</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !allFormValues.expiryDate && "text-muted-foreground", errors.expiryDate && 'border-destructive')}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {allFormValues.expiryDate ? format(allFormValues.expiryDate, "PPP") : <span>Pick a date</span>}
+                                    <Button
+                                      variant={'outline'}
+                                      className={cn(
+                                        'w-full pl-3 text-left font-normal',
+                                        !allFormValues.expiryDate && 'text-muted-foreground',
+                                        errors.expiryDate && 'border-destructive'
+                                      )}
+                                    >
+                                      {allFormValues.expiryDate ? (
+                                        format(allFormValues.expiryDate, 'PPP')
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(d) => setValue('expiryDate', d, { shouldValidate: true })} initialFocus/></PopoverContent>
-                            </Popover>
-                            {errors.expiryDate && <p className="text-sm text-destructive mt-1">{errors.expiryDate.message}</p>}
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={allFormValues.expiryDate}
+                                    onSelect={(date) => setValue('expiryDate', date || new Date())}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              {errors.expiryDate && <p className="text-sm text-destructive mt-1">{errors.expiryDate.message}</p>}
                         </div>
                     </div>
                 </div>
@@ -492,6 +496,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                 </DialogDescription>
             </DialogHeader>
             <div id={SCANNER_REGION_ID} className="w-full aspect-video [&>span]:hidden" />
+            <div className="p-6 pt-0 flex justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsScannerDialogOpen(false)}
+                  className="mt-4"
+                >
+                  Cancel
+                </Button>
+            </div>
         </DialogContent>
     </Dialog>
     </>

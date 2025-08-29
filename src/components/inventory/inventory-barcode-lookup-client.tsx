@@ -14,10 +14,11 @@ import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { useAuth } from '@/context/auth-context';
-import { Html5QrcodeScanner, type Html5QrcodeResult, type QrcodeError } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 
 
 const SCANNER_REGION_ID = "barcode-scanner-region";
@@ -44,10 +45,8 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const [isScanning, setIsScanning] = useState(false);
-  const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [cameraPermissionAttempted, setCameraPermissionAttempted] = useState(false);
+  const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
+  const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   
   const executeSearch = useCallback(async (barcode: string) => {
     if (!barcode || !barcode.trim()) return;
@@ -76,102 +75,56 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     });
   }, [toast]);
 
+  const onScanSuccess = useCallback((decodedText: string) => {
+    setBarcodeToSearch(decodedText);
+    setIsScannerDialogOpen(false);
+    toast({
+      title: 'Barcode Scanned & Searching!',
+      description: `Automatically searching for barcode: ${decodedText}`,
+    });
+    executeSearch(decodedText);
+  }, [executeSearch, toast]);
+
 
   useEffect(() => {
-    let scannerInstance: Html5QrcodeScanner | null = null;
+    if (isScannerDialogOpen) {
+      const timer = setTimeout(() => {
+        if (html5QrcodeScannerRef.current) return; // Already initialized
 
-    const attemptScannerSetup = async () => {
-      if (isScanning) {
-        setCameraPermissionAttempted(false); // Reset attempt flag when starting new scan session
-        setHasCameraPermission(null); // Reset permission status
+        const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
+        const qrConfig = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        };
 
-        try {
-          // Attempt to get camera permission first
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setHasCameraPermission(true);
-          // Important: Stop tracks to release camera immediately if only for permission check
-          stream.getTracks().forEach(track => track.stop());
-
-          if (!document.getElementById(SCANNER_REGION_ID)) {
-            console.warn("Scanner region ID not found in DOM. Skipping scanner render.");
-            setIsScanning(false); // Stop scanning if region not found
-            return;
-          }
-          
-          scannerInstance = new Html5QrcodeScanner(
-            SCANNER_REGION_ID,
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 150 },
-              rememberLastUsedCamera: true,
-              supportedScanTypes: [0 /* SCAN_TYPE_CAMERA */],
-            },
-            false // verbose
-          );
-
-          const onScanSuccess = (decodedText: string, result: Html5QrcodeResult) => {
-            console.log(`Barcode scan success: ${decodedText}`, result);
-            setBarcodeToSearch(decodedText);
-            setIsScanning(false); // This will trigger cleanup effect
-            toast({
-              title: 'Barcode Scanned & Searching!',
-              description: `Automatically searching for barcode: ${decodedText}`,
-            });
-            executeSearch(decodedText);
-          };
-
-          const onScanFailure = (error: string | QrcodeError) => {
-            // console.warn(`Barcode scan error: ${error}`);
-          };
-          
-          scannerInstance.render(onScanSuccess, onScanFailure);
-          html5QrcodeScannerRef.current = scannerInstance;
-
-        } catch (error: any) {
-          console.error('Error accessing or setting up camera:', error);
-          setHasCameraPermission(false);
-          let description = 'Please enable camera permissions in your browser settings.';
-          if (error.name === 'NotAllowedError') {
-            description = 'Camera access was denied. Please enable permissions in your browser settings.';
-          } else if (error.name === 'NotFoundError') {
-            description = 'No camera was found. Please ensure a camera is connected and enabled.';
-          } else if (error.message && error.message.toLowerCase().includes('secure context')) {
-            description = 'Camera access is only allowed in secure contexts (HTTPS or localhost). If accessing via IP, ensure it\'s over HTTPS.';
-          } else if (error.name === 'NotReadableError') {
-            description = 'The camera is already in use by another application or browser tab.';
-          }
+        scanner.start(
+          { facingMode: 'environment' },
+          qrConfig,
+          onScanSuccess,
+          (errorMessage: string) => { /* ignore errors */ }
+        ).then(() => {
+          html5QrcodeScannerRef.current = scanner;
+        }).catch(err => {
+          console.error("Failed to start QR code scanner:", err);
           toast({
             variant: 'destructive',
-            title: 'Camera Access Issue',
-            description: description,
+            title: 'Scanner Error',
+            description: 'Could not start the camera. Please check permissions and ensure another app is not using it.'
           });
-          setIsScanning(false); // Turn off scanning toggle if permission fails
-        } finally {
-            setCameraPermissionAttempted(true);
-        }
-      } else { // When isScanning becomes false
+          setIsScannerDialogOpen(false); // Close dialog on start failure
+        });
+      }, 300); // Delay to ensure DOM is ready
+
+      return () => {
+        clearTimeout(timer);
         if (html5QrcodeScannerRef.current) {
-          html5QrcodeScannerRef.current.clear().catch(err => {
-            console.error("Failed to clear html5QrcodeScanner: ", err);
-          });
+          html5QrcodeScannerRef.current.stop().catch(console.error);
           html5QrcodeScannerRef.current = null;
         }
-      }
-    };
-
-    attemptScannerSetup();
-
-    return () => {
-      // Cleanup when component unmounts or isScanning changes to false
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(error => {
-          console.error("Failed to clear html5QrcodeScanner on cleanup: ", error);
-        });
-        html5QrcodeScannerRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning, toast]); // Removed executeSearch from deps as it's passed into scan success
+      };
+    }
+  }, [isScannerDialogOpen, onScanSuccess, toast]);
 
 
   const handleSearch = () => {
@@ -184,10 +137,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
       return;
     }
     executeSearch(barcodeToSearch.trim());
-  };
-
-  const handleToggleScanner = () => {
-    setIsScanning(prev => !prev);
   };
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
@@ -250,7 +199,8 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
       <Card className="shadow-md">
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch gap-2">
-            <div className="flex-grow flex items-center gap-0.5">
+            <div className="relative flex-grow">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Enter or scan barcode to lookup..."
@@ -262,41 +212,23 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                     handleSearch();
                   }
                 }}
-                className="flex-grow text-base rounded-r-none focus-visible:ring-offset-0"
+                className="flex-grow text-base pl-10"
                 aria-label="Barcode Input"
               />
-              <Button 
-                onClick={handleToggleScanner} 
-                variant="outline" 
-                size="icon" 
-                className="h-10 w-10 rounded-l-none border-l-0"
-                aria-label={isScanning ? 'Stop Barcode Scanner' : 'Start Barcode Scanner'}
-              >
-                {isScanning ? <VideoOff className="h-5 w-5" /> : <ScanBarcode className="h-5 w-5" />}
-              </Button>
             </div>
+             <Button 
+                onClick={() => setIsScannerDialogOpen(true)}
+                variant="outline" 
+                className="w-full sm:w-auto"
+                aria-label="Start Barcode Scanner"
+              >
+                <ScanBarcode className="mr-2 h-5 w-5" /> Scan
+              </Button>
             <Button onClick={handleSearch} disabled={isLoading || !barcodeToSearch.trim()} className="w-full sm:w-auto">
               {isLoading && lastSearchedBarcode === barcodeToSearch.trim() ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               Search Log
             </Button>
           </div>
-           {isScanning && (
-            <div id={SCANNER_REGION_ID} className="w-full md:w-1/2 lg:w-1/3 mx-auto aspect-video border-2 border-dashed border-primary rounded-md overflow-hidden mt-4 bg-muted/30 flex items-center justify-center">
-              {/* Scanner will render here. Placeholder text if needed. */}
-              <p className="text-sm text-muted-foreground p-4 text-center">Initializing camera scanner...</p>
-            </div>
-          )}
-          {cameraPermissionAttempted && hasCameraPermission === false && !isScanning && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Camera Access Issue</AlertTitle>
-              <AlertDescription>
-                Could not access the camera. This feature requires a secure context (HTTPS or localhost).
-                If you are accessing this page via an IP address, please ensure it's served over HTTPS.
-                Also, check your browser's camera permissions for this site.
-              </AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 
@@ -417,6 +349,27 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
         </div>
       )}
 
+      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
+        <DialogContent className="max-w-2xl w-full p-0">
+            <DialogHeader className="p-6 pb-2">
+                <DialogTitle>Scan Barcode</DialogTitle>
+                <DialogDescription>
+                    Position the barcode within the frame. The scanner will automatically detect it.
+                </DialogDescription>
+            </DialogHeader>
+            <div id={SCANNER_REGION_ID} className="w-full aspect-video [&>span]:hidden" />
+            <div className="p-6 pt-0 flex justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsScannerDialogOpen(false)}
+                  className="mt-4"
+                >
+                  Cancel
+                </Button>
+            </div>
+        </DialogContent>
+      </Dialog>
+
       {selectedItemForReturn && (
         <ReturnQuantityDialog
             item={selectedItemForReturn}
@@ -447,5 +400,3 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     </div>
   );
 }
-
-    
