@@ -112,7 +112,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
       staffName: '',
       itemType: undefined,
       barcode: '',
-      quantity: '',
+      quantity: 1, // Default to 1
       expiryDate: new Date(),
     },
     mode: 'onTouched'
@@ -184,7 +184,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep(step => step - 1);
+      setCurrentStep(step => step + 1);
     }
   };
   
@@ -257,7 +257,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     return () => {
       clearTimeout(timerId);
       if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
+        // Check if clearing is already in progress or done to avoid errors.
+        if (html5QrcodeScannerRef.current.getState() === 2 /* SCANNING */) {
+          html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
+        }
         html5QrcodeScannerRef.current = null;
       }
     };
