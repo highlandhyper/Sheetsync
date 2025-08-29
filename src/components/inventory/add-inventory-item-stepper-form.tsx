@@ -24,7 +24,7 @@ import {
     MapPin
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Html5QrcodeScanner, type Html5QrcodeResult, type QrcodeError } from 'html5-qrcode';
+import { Html5QrcodeScanner, type Html5QrcodeResult, type QrcodeError, type QrCodeSuccessCallback } from 'html5-qrcode';
 
 
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
 import type { ItemType } from '@/lib/types';
@@ -90,10 +92,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
 
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [cameraPermissionAttempted, setCameraPermissionAttempted] = useState(false);
   
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -113,8 +114,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
       itemType: undefined,
       barcode: '',
       quantity: '',
-      location: '',
-      expiryDate: undefined,
+      expiryDate: new Date(),
     },
     mode: 'onTouched'
   });
@@ -168,20 +168,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     const fields = steps[currentStep].fields;
     
     if (currentStep >= steps.length - 1) {
-      // This should not happen if the "Next" button is disabled on the last step
       return;
     }
 
-    if (!fields) {
-        setCurrentStep(step => step + 1);
-        return;
-    }
-
-    const output = await trigger(fields as FieldName[], { shouldFocus: true });
+    const output = fields ? await trigger(fields as FieldName[], { shouldFocus: true }) : true;
 
     if (!output) return;
 
-    if (currentStep === 0) { // Barcode step
+    if (currentStep === 0) {
         const barcodeOk = await handleBarcodeLookup(allFormValues.barcode);
         if(!barcodeOk) return;
     }
@@ -199,86 +193,71 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
     formRef.current?.requestSubmit();
   };
 
-  const handleToggleScanner = () => {
-      setIsScanning(prev => !prev);
-  };
 
   useEffect(() => {
-    let scannerInstance: Html5QrcodeScanner | null = null;
-    const attemptScannerSetup = async () => {
-      if (isScanning) {
-        setCameraPermissionAttempted(false);
-        setHasCameraPermission(null);
-        
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setHasCameraPermission(true);
-          stream.getTracks().forEach(track => track.stop());
-
-          if (!document.getElementById(SCANNER_REGION_ID)) {
-             console.warn("Scanner region ID not found. Aborting scanner render.");
-             setIsScanning(false);
-             return;
-          }
-
-          scannerInstance = new Html5QrcodeScanner(
-            SCANNER_REGION_ID,
-            { fps: 10, qrbox: { width: 250, height: 150 }, rememberLastUsedCamera: true, supportedScanTypes: [0] },
-            false
-          );
-
-          const onScanSuccess = async (decodedText: string, result: Html5QrcodeResult) => {
-            console.log(`Scan success: ${decodedText}`);
-            setValue('barcode', decodedText, { shouldValidate: true });
-            setIsScanning(false);
-            const lookupSuccess = await handleBarcodeLookup(decodedText);
-            if (lookupSuccess) {
-                toast({ title: "Product Found!", description: "Proceeding to the next step." });
-                setCurrentStep(1);
-            } else {
-                 toast({ title: "Product Not Found", description: "Please ensure this product exists in the catalog.", variant: "destructive" });
-            }
-          };
-
-          const onScanFailure = (error: string | QrcodeError) => { /* ignore */ };
-          
-          scannerInstance.render(onScanSuccess, onScanFailure);
-          html5QrcodeScannerRef.current = scannerInstance;
-
-        } catch (error: any) {
-          console.error('Error with camera scanner:', error);
-          setHasCameraPermission(false);
-          let description = 'Please enable camera permissions in your browser settings.';
-          if (error.name === 'NotAllowedError') {
-            description = 'Camera access denied. Please enable it in your browser settings.';
-          } else if (error.name === 'NotFoundError') {
-            description = 'No camera found. Please ensure a camera is connected.';
-          } else if (error.message?.toLowerCase().includes('secure context')) {
-            description = 'Camera access requires a secure connection (HTTPS or localhost).';
-          }
-          toast({ variant: 'destructive', title: 'Camera Access Error', description });
-          setIsScanning(false);
-        } finally {
-            setCameraPermissionAttempted(true);
-        }
+    const onScanSuccess: QrCodeSuccessCallback = async (decodedText, result) => {
+      console.log(`Scan success: ${decodedText}`);
+      setValue('barcode', decodedText, { shouldValidate: true });
+      setIsScannerDialogOpen(false); // Close dialog on success
+      const lookupSuccess = await handleBarcodeLookup(decodedText);
+      if (lookupSuccess) {
+          toast({ title: "Product Found!", description: "Proceeding to the next step." });
+          setCurrentStep(1);
       } else {
-        if (html5QrcodeScannerRef.current) {
-          html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner:", err));
-          html5QrcodeScannerRef.current = null;
-        }
+            toast({ title: "Product Not Found", description: "Please ensure this product exists in the catalog.", variant: "destructive" });
       }
     };
-    attemptScannerSetup();
+
+    const onScanFailure = (error: string | QrcodeError) => { /* ignore */ };
+
+    if (isScannerDialogOpen) {
+      if (!document.getElementById(SCANNER_REGION_ID)) {
+          console.error("Scanner region ID not found in DOM.");
+          return;
+      }
+      
+      const scanner = new Html5QrcodeScanner(
+          SCANNER_REGION_ID,
+          {
+              fps: 10,
+              qrbox: (viewfinderWidth, viewfinderHeight) => ({
+                  width: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
+                  height: Math.min(viewfinderWidth, viewfinderHeight) * 0.8,
+              }),
+              rememberLastUsedCamera: true,
+              supportedScanTypes: [0], // 0 for camera
+              facingMode: 'environment' // Prefer back camera
+          },
+          false // verbose
+      );
+      
+      scanner.render(onScanSuccess, onScanFailure)
+          .catch(err => {
+              console.error("Scanner render error:", err);
+              let description = 'Please enable camera permissions in your browser settings.';
+              if (typeof err === 'string' && err.toLowerCase().includes('permission denied')) {
+                  description = 'Camera access denied. Please enable it in your browser settings.';
+              } else if (err?.name === 'NotAllowedError') {
+                  description = 'Camera access denied. Please enable it in your browser settings.';
+              }
+              toast({ variant: 'destructive', title: 'Camera Access Error', description });
+              setIsScannerDialogOpen(false);
+          });
+          
+      html5QrcodeScannerRef.current = scanner;
+    }
+
     return () => {
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
-        html5QrcodeScannerRef.current = null;
-      }
+        if (html5QrcodeScannerRef.current) {
+            html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on cleanup:", err));
+            html5QrcodeScannerRef.current = null;
+        }
     };
-  }, [isScanning, toast, setValue, handleBarcodeLookup]);
+  }, [isScannerDialogOpen, handleBarcodeLookup, setValue, toast]);
 
 
   return (
+    <>
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Log New Inventory Item</CardTitle>
@@ -318,25 +297,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                             />
                             {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
                         </div>
-                        <Button type="button" onClick={handleToggleScanner} variant="outline" size="icon" className="h-10 w-10 shrink-0">
-                            {isScanning ? <VideoOff className="h-5 w-5" /> : <ScanBarcode className="h-5 w-5" />}
-                            <span className="sr-only">{isScanning ? "Close Scanner" : "Open Scanner"}</span>
+                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-10 w-10 shrink-0">
+                           <ScanBarcode className="h-5 w-5" />
+                           <span className="sr-only">Open Scanner</span>
                         </Button>
                     </div>
-                     {isScanning && (
-                        <div id={SCANNER_REGION_ID} className="w-full md:w-1/2 lg:w-1/3 mx-auto aspect-video border-2 border-dashed border-primary rounded-md overflow-hidden mt-4 bg-muted/30 flex items-center justify-center">
-                            <p className="text-sm text-muted-foreground p-4 text-center">Initializing scanner...</p>
-                        </div>
-                    )}
-                    {cameraPermissionAttempted && hasCameraPermission === false && !isScanning && (
-                        <Alert variant="destructive" className="mt-4">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Camera Access Denied</AlertTitle>
-                            <AlertDescription>
-                                Could not start the scanner. Please enable camera permissions for this site in your browser settings.
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                    
                     <div className="pt-2 min-h-[20px]">
                         {productLookupError && !isFetchingProduct && <p className="text-sm text-destructive">! {productLookupError}</p>}
                     </div>
@@ -486,11 +452,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
             </form>
             <div className="flex justify-between pt-4">
-                {currentStep > 0 ? (
-                    <Button type="button" onClick={prevStep} variant="outline" disabled={isPending}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                    </Button>
-                ) : <div />}
+                <Button type="button" onClick={prevStep} variant="outline" disabled={isPending || currentStep === 0}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                </Button>
 
                 {currentStep < steps.length - 1 ? (
                     <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending}>
@@ -507,5 +471,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
+        <DialogContent className="max-w-2xl w-full p-0">
+            <DialogHeader className="p-6 pb-2">
+                <DialogTitle>Scan Barcode</DialogTitle>
+                <DialogDescription>
+                    Position the barcode within the frame. The scanner will automatically detect it.
+                </DialogDescription>
+            </DialogHeader>
+            <div id={SCANNER_REGION_ID} className="w-full aspect-video [&>span]:hidden" />
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
