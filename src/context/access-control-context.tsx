@@ -100,19 +100,9 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
 
     const userPermissions = permissions[userRole] || [];
 
-    // Check for exact path match
-    if (userPermissions.includes(path)) {
-      return true;
-    }
-
-    // Check for parent path match (e.g., allow /inventory/add if /inventory is allowed)
-    // This allows sub-routes to be accessible if the parent is.
-    const parentPath = userPermissions.find(p => path.startsWith(p + '/'));
-    if (parentPath) {
-        return true;
-    }
-
-    return false;
+    // Check for exact path match only.
+    return userPermissions.includes(path);
+    
   }, [permissions, isInitialized]);
 
 
