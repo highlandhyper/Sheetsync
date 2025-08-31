@@ -95,14 +95,23 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
 
 
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string): boolean => {
-    if (userRole === 'admin') return true; 
-    if (!isInitialized) return false; 
+    if (userRole === 'admin') return true;
+    if (!isInitialized) return false;
+
+    const userPermissions = permissions[userRole] || [];
 
     // Check for exact path match
-    if (permissions[userRole] && permissions[userRole].includes(path)) {
+    if (userPermissions.includes(path)) {
       return true;
     }
-    
+
+    // Check for parent path match (e.g., allow /inventory/add if /inventory is allowed)
+    // This allows sub-routes to be accessible if the parent is.
+    const parentPath = userPermissions.find(p => path.startsWith(p + '/'));
+    if (parentPath) {
+        return true;
+    }
+
     return false;
   }, [permissions, isInitialized]);
 
