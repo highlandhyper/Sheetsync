@@ -1,6 +1,7 @@
 
 
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier } from '@/lib/types';
+
+import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay } from 'date-fns';
 
@@ -9,6 +10,7 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const BAR_DATA_SHEET_NAME = "BAR DATA";
 const SUP_DATA_SHEET_NAME = "SUP DATA";
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
+const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
 
 // --- Column Indices (0-based - MUST MATCH YOUR ACTUAL SHEET STRUCTURE) ---
 // "Form responses 2" - Inventory Log (Assuming A-I, with J for app-generated Unique ID)
@@ -48,18 +50,25 @@ const RL_COL_ITEM_TYPE = 8;       // I
 const RL_COL_PROCESSED_BY = 9;    // J (Staff who processed the return)
 const RL_COL_RETURN_TIMESTAMP = 10; // K (Timestamp of when the return was processed)
 
+// "APP_SETTINGS" - Key-Value store for application settings
+const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
+const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
+
 
 // --- Read Ranges ---
 const PRODUCTS_READ_RANGE = `${BAR_DATA_SHEET_NAME}!A2:B`;
 const SUPPLIERS_READ_RANGE = `${SUP_DATA_SHEET_NAME}!A2:B`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
+const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 
 // --- Append Ranges (for adding new rows) ---
 const PRODUCTS_APPEND_RANGE = `${BAR_DATA_SHEET_NAME}!A:B`;
 const SUPPLIERS_APPEND_RANGE = `${SUP_DATA_SHEET_NAME}!A:B`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
+const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
+
 
 function excelSerialDateToJSDate(serial: number): Date | null {
   if (isNaN(serial) || serial <= 0) return null;
@@ -1106,4 +1115,78 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
   }
 }
 
+// --- New Functions for Centralized Permissions ---
+
+const PERMISSIONS_KEY = 'accessPermissions';
+
+/**
+ * Loads the permissions object from the APP_SETTINGS sheet.
+ */
+export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
+    try {
+        const settingsData = await readSheetData(APP_SETTINGS_READ_RANGE);
+        if (!settingsData) {
+            console.warn("GS_Data: loadPermissionsFromSheet - Could not read from APP_SETTINGS sheet. It might not exist yet.");
+            return null;
+        }
+
+        const permissionsRow = settingsData.find(row => row[SETTINGS_COL_KEY] === PERMISSIONS_KEY);
+        if (permissionsRow && permissionsRow[SETTINGS_COL_VALUE]) {
+            try {
+                const permissionsJson = permissionsRow[SETTINGS_COL_VALUE];
+                const permissions = JSON.parse(permissionsJson);
+                // Basic validation
+                if (permissions.admin && permissions.viewer) {
+                    console.log("GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.");
+                    return permissions;
+                }
+            } catch (e) {
+                console.error("GS_Data: loadPermissionsFromSheet - Failed to parse permissions JSON from sheet.", e);
+                return null;
+            }
+        }
+        console.log("GS_Data: loadPermissionsFromSheet - No permissions entry found in APP_SETTINGS sheet.");
+        return null;
+    } catch (error) {
+        console.error("GS_Data: Critical error in loadPermissionsFromSheet:", error);
+        return null;
+    }
+}
+
+/**
+ * Saves the permissions object to the APP_SETTINGS sheet.
+ * It will overwrite the existing permissions entry or create a new one.
+ */
+export async function savePermissionsToSheet(permissions: Permissions): Promise<boolean> {
+    const timeLabel = "GS_Data: savePermissionsToSheet total duration";
+    console.time(timeLabel);
+    try {
+        const permissionsJson = JSON.stringify(permissions);
+        const settingsData = await readSheetData(APP_SETTINGS_READ_RANGE);
+
+        let rowNumberToUpdate: number | null = null;
+        if (settingsData) {
+            const rowIndex = settingsData.findIndex(row => row[SETTINGS_COL_KEY] === PERMISSIONS_KEY);
+            if (rowIndex !== -1) {
+                rowNumberToUpdate = rowIndex + 2; // +2 because read range starts at A2
+            }
+        }
+        
+        if (rowNumberToUpdate) {
+            // Update existing row
+            const range = `${APP_SETTINGS_SHEET_NAME}!B${rowNumberToUpdate}`;
+            console.log(`GS_Data: savePermissionsToSheet - Updating permissions at range: ${range}`);
+            return await updateSheetData(range, [[permissionsJson]]);
+        } else {
+            // Append new row
+            console.log("GS_Data: savePermissionsToSheet - No existing permissions found, appending new row.");
+            return await appendSheetData(APP_SETTINGS_APPEND_RANGE, [[PERMISSIONS_KEY, permissionsJson]]);
+        }
+    } catch (error) {
+        console.error("GS_Data: Critical error in savePermissionsToSheet:", error);
+        return false;
+    } finally {
+        console.timeEnd(timeLabel);
+    }
+}
     

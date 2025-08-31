@@ -21,9 +21,11 @@ import {
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
   getInventoryLogEntriesByBarcode, 
   getDashboardMetrics,
-  deleteInventoryItemById as dbDeleteInventoryItemById
+  deleteInventoryItemById as dbDeleteInventoryItemById,
+  loadPermissionsFromSheet,
+  savePermissionsToSheet
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions } from '@/lib/types';
 import { format } from 'date-fns';
 
 
@@ -554,4 +556,38 @@ export async function deleteInventoryItemAction(itemId: string): Promise<ActionR
   }
 }
 
+
+// --- New Actions for Centralized Permissions ---
+
+export async function getPermissionsAction(): Promise<ActionResponse<Permissions>> {
+  try {
+    const permissions = await loadPermissionsFromSheet();
+    if (permissions) {
+      return { success: true, data: permissions };
+    }
+    // If null, it could be that the sheet/entry doesn't exist yet, which is not a hard error.
+    // The client-side context will handle creating default permissions.
+    return { success: true, data: null, message: "No permissions configured in sheet yet. Defaults will be used." };
+  } catch (error) {
+    console.error('Error in getPermissionsAction:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to load permissions: ${errorMessage}` };
+  }
+}
+
+export async function setPermissionsAction(permissions: Permissions): Promise<ActionResponse> {
+  try {
+    const success = await savePermissionsToSheet(permissions);
+    if (success) {
+      revalidatePath('/settings'); // Revalidate to ensure all clients get the new settings
+      return { success: true, message: 'Permissions updated successfully.' };
+    } else {
+      return { success: false, message: 'Failed to save permissions to the data source.' };
+    }
+  } catch (error) {
+    console.error('Error in setPermissionsAction:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to save permissions: ${errorMessage}` };
+  }
+}
     

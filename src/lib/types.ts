@@ -84,3 +84,9 @@ export interface DashboardMetrics {
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
   netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
 }
+
+export type Role = 'admin' | 'viewer';
+
+export type Permissions = {
+  [key in Role]: string[];
+};
