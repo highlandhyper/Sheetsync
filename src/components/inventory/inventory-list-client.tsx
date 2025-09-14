@@ -384,20 +384,20 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="relative lg:col-span-1">
+          <div className="flex flex-col md:flex-row md:flex-wrap gap-4">
+             <div className="relative flex-grow min-w-48 md:flex-grow-0 md:w-full lg:w-auto lg:flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search product, barcode, staff, supplier..."
+                placeholder="Search product, barcode, staff..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 className="pl-10 w-full"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 items-center lg:col-span-1">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
                   <SelectValue placeholder="Filter by Supplier" />
                 </SelectTrigger>
                 <SelectContent>
@@ -411,7 +411,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
               </Select>
               
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
                   <SelectValue placeholder="Filter by Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -427,7 +427,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full sm:w-auto justify-start text-left font-normal min-w-48",
                       !selectedDateRange && "text-muted-foreground"
                     )}
                   >
