@@ -591,3 +591,110 @@ export async function setPermissionsAction(permissions: Permissions): Promise<Ac
   }
 }
     
+// --- Bulk Actions ---
+
+export async function bulkDeleteInventoryItemsAction(itemIds: string[]): Promise<ActionResponse> {
+  const timeLabel = `Action: bulkDeleteInventoryItemsAction for ${itemIds.length} items`;
+  console.time(timeLabel);
+  try {
+    if (!itemIds || itemIds.length === 0) {
+      return { success: false, message: 'No item IDs provided for deletion.' };
+    }
+
+    let successfulDeletions = 0;
+    let failedDeletions = 0;
+    
+    // Process deletions sequentially to avoid rate-limiting issues.
+    // For higher throughput, a batch-delete function in google-sheets-client.ts would be better.
+    for (const itemId of itemIds) {
+      const success = await dbDeleteInventoryItemById(itemId);
+      if (success) {
+        successfulDeletions++;
+      } else {
+        failedDeletions++;
+      }
+    }
+
+    if (failedDeletions > 0) {
+      revalidateRelevantPaths();
+      return {
+        success: false,
+        message: `Deleted ${successfulDeletions} items, but failed to delete ${failedDeletions} items. The list has been refreshed.`,
+      };
+    }
+
+    revalidateRelevantPaths();
+    return { success: true, message: `Successfully deleted all ${successfulDeletions} selected items.` };
+
+  } catch (error) {
+    console.error('Error in bulkDeleteInventoryItemsAction:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during bulk deletion.';
+    return { success: false, message: `Failed to bulk delete items: ${errorMessage}` };
+  } finally {
+    console.timeEnd(timeLabel);
+  }
+}
+
+export async function bulkReturnInventoryItemsAction(
+  itemIds: string[], 
+  staffName: string, 
+  returnType: 'all' | 'specific',
+  quantity?: number
+): Promise<ActionResponse> {
+  const timeLabel = `Action: bulkReturnInventoryItemsAction for ${itemIds.length} items`;
+  console.time(timeLabel);
+  try {
+    if (!itemIds || itemIds.length === 0) {
+      return { success: false, message: 'No item IDs provided for return.' };
+    }
+    if (!staffName) {
+      return { success: false, message: 'Processing staff name is required.' };
+    }
+    if (returnType === 'specific' && (!quantity || quantity < 1)) {
+        return { success: false, message: 'A specific quantity of at least 1 is required.' };
+    }
+
+    let successfulReturns = 0;
+    let failedReturns = 0;
+
+    // Process sequentially to be safe with the sheet API.
+    for (const itemId of itemIds) {
+        // For 'all', we pass a very large number; the backend logic will cap it at the available quantity.
+        const quantityToReturn = returnType === 'all' ? Number.MAX_SAFE_INTEGER : quantity!;
+        const result = await dbProcessReturn(itemId, quantityToReturn, staffName);
+      if (result.success) {
+        successfulReturns++;
+      } else {
+        failedReturns++;
+      }
+    }
+
+    if (failedReturns > 0) {
+      revalidateRelevantPaths();
+      return {
+        success: false,
+        message: `Processed ${successfulReturns} returns, but failed on ${failedReturns} items. The list has been refreshed.`,
+      };
+    }
+
+    revalidateRelevantPaths();
+    return { success: true, message: `Successfully processed return for all ${successfulReturns} selected items.` };
+
+  } catch (error) {
+    console.error('Error in bulkReturnInventoryItemsAction:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during bulk return.';
+    return { success: false, message: `Failed to bulk return items: ${errorMessage}` };
+  } finally {
+    console.timeEnd(timeLabel);
+  }
+}
+
+
+function revalidateRelevantPaths() {
+    revalidatePath('/inventory');
+    revalidatePath('/inventory/returns');
+    revalidatePath('/products/by-supplier');
+    revalidatePath('/dashboard');
+    revalidatePath('/inventory/lookup');
+    revalidatePath('/products');
+}
