@@ -315,11 +315,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                        <Label htmlFor="staffName" className="flex items-center gap-2"><User className="h-4 w-4" />Staff Name</Label>
+                        <Label htmlFor="staffName">Staff Name</Label>
                         <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" aria-expanded={staffComboboxOpen} className={cn("w-full justify-between font-normal", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
-                                    {allFormValues.staffName ? uniqueStaffNames.find((staff) => staff.toLowerCase() === allFormValues.staffName.toLowerCase()) || allFormValues.staffName : "Select or type staff name..."}
+                                     <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                        <span>{allFormValues.staffName ? uniqueStaffNames.find((staff) => staff.toLowerCase() === allFormValues.staffName.toLowerCase()) || allFormValues.staffName : "Select or type staff name..."}</span>
+                                     </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -340,9 +343,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="itemType" className="flex items-center gap-2"><Tag className="h-4 w-4" />Item Type</Label>
+                            <Label htmlFor="itemType">Item Type</Label>
                             <Select onValueChange={(v: ItemType) => setValue('itemType', v, { shouldValidate: true })} value={allFormValues.itemType}>
-                                <SelectTrigger id="itemType" className={cn(errors.itemType && 'border-destructive')}><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectTrigger id="itemType" className={cn(errors.itemType && 'border-destructive')}>
+                                    <div className="flex items-center gap-2">
+                                        <Tag className="h-4 w-4 text-muted-foreground" />
+                                        <SelectValue placeholder="Select type" />
+                                    </div>
+                                </SelectTrigger>
                                 <SelectContent><SelectItem value="Expiry">Expiry</SelectItem><SelectItem value="Damage">Damage</SelectItem></SelectContent>
                             </Select>
                             {errors.itemType && <p className="text-sm text-destructive mt-1">{errors.itemType.message}</p>}
@@ -350,12 +358,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                        <Label htmlFor="quantity" className="flex items-center gap-2"><Hash className="h-4 w-4" />Quantity</Label>
-                        <Input id="quantity" type="number" placeholder="e.g., 10" {...register('quantity')} className={cn(errors.quantity && 'border-destructive')}/>
+                        <Label htmlFor="quantity">Quantity</Label>
+                        <div className="relative">
+                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input id="quantity" type="number" placeholder="e.g., 10" {...register('quantity')} className={cn('pl-8', errors.quantity && 'border-destructive')}/>
+                        </div>
                         {errors.quantity && <p className="text-sm text-destructive mt-1">{errors.quantity.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="expiryDate" className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Date</Label>
+                            <Label htmlFor="expiryDate">Date</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -366,12 +377,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                                         errors.expiryDate && 'border-destructive'
                                       )}
                                     >
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
                                       {allFormValues.expiryDate ? (
                                         format(allFormValues.expiryDate, 'PPP')
                                       ) : (
                                         <span>Pick a date</span>
                                       )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
@@ -398,7 +409,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                     <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" aria-expanded={locationComboboxOpen} className={cn("w-full justify-between font-normal", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
-                            {allFormValues.location ? uniqueLocations.find((loc) => loc.toLowerCase() === allFormValues.location.toLowerCase()) || allFormValues.location : "Select or type location..."}
+                             <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <span>{allFormValues.location ? uniqueLocations.find((loc) => loc.toLowerCase() === allFormValues.location.toLowerCase()) || allFormValues.location : "Select or type location..."}</span>
+                             </div>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>

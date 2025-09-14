@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -166,7 +165,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         }
       }
     }
-  }, [isMultiSelectMode, toast]);
+  }, [isMultiSelectMode]);
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
@@ -582,12 +581,12 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                     <TableCell className="text-center noprint">
                       <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-7 w-7 sm:h-8 sm:w-8" aria-label="View Details">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
                           <Eye className="h-4 w-4" />
                         </Button>
                         {role === 'admin' && (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-7 w-7 sm:h-8 sm:w-8" aria-label="Edit Item">
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -595,7 +594,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                               size="icon"
                               onClick={() => handleOpenReturnDialog(item)}
                               disabled={item.quantity === 0}
-                              className="h-7 w-7 sm:h-8 sm:w-8"
+                              className="h-8 w-8"
                               aria-label="Return Item"
                             >
                               <Undo2 className="h-4 w-4" />
@@ -604,7 +603,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenDeleteDialog(item)}
-                              className="h-7 w-7 sm:h-8 sm:w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                               aria-label="Delete Item"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -692,5 +691,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
-
-    

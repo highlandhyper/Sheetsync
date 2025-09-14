@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
@@ -78,11 +77,11 @@ export function ReturnableInventoryItemRow({
       <TableCell className="text-center">
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={() => onInitiateReturn?.(item)}
           disabled={isProcessing || item.quantity === 0 || disableReturnButton || !onInitiateReturn}
           aria-label={`Return ${item.productName}`}
-          className="p-2 h-auto"
+          className="h-8 w-8"
         >
           <Undo2 className="h-4 w-4" />
         </Button>
@@ -90,10 +89,10 @@ export function ReturnableInventoryItemRow({
       <TableCell className="text-center">
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => onViewDetails(item)}
           aria-label={`View details for ${item.productName}`}
-          className="p-2 h-auto"
+          className="h-8 w-8"
         >
           <Eye className="h-4 w-4" />
         </Button>
@@ -115,19 +114,16 @@ export function ReturnableInventoryItemRow({
         <TableCell className="text-center">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => onEditItem(item)}
             aria-label={`Edit ${item.productName}`}
-            className="p-2 h-auto"
+            className="h-8 w-8"
             disabled={isProcessing} // Also disable if main row processing
           >
-            <Pencil className={cn("h-4 w-4", showEditButtonText && "mr-1")} />
-            {showEditButtonText && "Edit"}
+            <Pencil className="h-4 w-4" />
           </Button>
         </TableCell>
       )}
     </TableRow>
   );
 }
-
-    

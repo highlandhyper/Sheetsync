@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Hash, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -102,26 +101,32 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2">
+            <div className="space-y-2">
               <Label htmlFor="quantityToReturn">Quantity to Return</Label>
-              <Input
-                id="quantityToReturn"
-                type="number"
-                {...register('quantityToReturn')}
-                className={cn(errors.quantityToReturn && 'border-destructive')}
-              />
+               <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="quantityToReturn"
+                  type="number"
+                  {...register('quantityToReturn')}
+                  className={cn('pl-8', errors.quantityToReturn && 'border-destructive')}
+                />
+              </div>
               {errors.quantityToReturn && (
                 <p className="text-sm text-destructive mt-1">{errors.quantityToReturn.message}</p>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="space-y-2">
               <Label htmlFor="staffName">Your Name (Processing Return)</Label>
-              <Input
-                id="staffName"
-                placeholder="Enter your name"
-                {...register('staffName')}
-                className={cn(errors.staffName && 'border-destructive')}
-              />
+               <div className="relative">
+                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="staffName"
+                  placeholder="Enter your name"
+                  {...register('staffName')}
+                  className={cn('pl-8', errors.staffName && 'border-destructive')}
+                />
+              </div>
               {errors.staffName && (
                 <p className="text-sm text-destructive mt-1">{errors.staffName.message}</p>
               )}
