@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
@@ -19,6 +20,7 @@ interface ReturnableInventoryItemRowProps {
   disableReturnButton?: boolean; // New prop
   isSelected?: boolean;
   onSelectRow?: (id: string) => void;
+  showCheckbox?: boolean;
 }
 
 export function ReturnableInventoryItemRow({
@@ -31,7 +33,8 @@ export function ReturnableInventoryItemRow({
   showEditButtonText = true, 
   disableReturnButton = false,
   isSelected = false,
-  onSelectRow
+  onSelectRow,
+  showCheckbox = false,
 }: ReturnableInventoryItemRowProps) {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
@@ -63,14 +66,16 @@ export function ReturnableInventoryItemRow({
 
   return (
     <TableRow data-state={isSelected ? 'selected' : ''} className={cn(isProcessing && "opacity-50 pointer-events-none")}>
-      <TableCell className="text-center noprint">
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={() => onSelectRow?.(item.id)}
-          aria-label={`Select row for ${item.productName}`}
-        />
-      </TableCell>
-   <TableCell className="text-center">
+      {showCheckbox && (
+        <TableCell className="text-center noprint">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onSelectRow?.(item.id)}
+            aria-label={`Select row for ${item.productName}`}
+          />
+        </TableCell>
+      )}
+      <TableCell className="text-center">
         <Button
           variant="outline"
           size="sm"
@@ -82,7 +87,7 @@ export function ReturnableInventoryItemRow({
           <Undo2 className="h-4 w-4" />
         </Button>
       </TableCell>
-   <TableCell className="text-center">
+      <TableCell className="text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -93,20 +98,20 @@ export function ReturnableInventoryItemRow({
           <Eye className="h-4 w-4" />
         </Button>
       </TableCell>
-   <TableCell className="font-medium">{item.productName}</TableCell>
-   <TableCell className="text-muted-foreground">{item.barcode}</TableCell>
-   {showSupplierName && (
+      <TableCell className="font-medium">{item.productName}</TableCell>
+      <TableCell className="text-muted-foreground">{item.barcode}</TableCell>
+      {showSupplierName && (
         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
       )}
-   <TableCell className="text-right">{item.quantity}</TableCell>
-   <TableCell className={cn(isExpired && isValidExpiry ? "text-destructive font-semibold" : "text-muted-foreground")}>
+      <TableCell className="text-right">{item.quantity}</TableCell>
+      <TableCell className={cn(isExpired && isValidExpiry ? "text-destructive font-semibold" : "text-muted-foreground")}>
         {formattedExpiryDate}
       </TableCell>
-   <TableCell className="text-muted-foreground">{item.location}</TableCell>
-   <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500 font-medium" : "text-muted-foreground")}>
+      <TableCell className="text-muted-foreground">{item.location}</TableCell>
+      <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500 font-medium" : "text-muted-foreground")}>
         {item.itemType}
       </TableCell>
-   {onEditItem && (
+      {onEditItem && (
         <TableCell className="text-center">
           <Button
             variant="ghost"
@@ -124,3 +129,5 @@ export function ReturnableInventoryItemRow({
     </TableRow>
   );
 }
+
+    

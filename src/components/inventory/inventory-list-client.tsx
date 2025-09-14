@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2 } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Keyboard } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -25,7 +25,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { bulkDeleteInventoryItemsAction, bulkReturnInventoryItemsAction } from '@/app/actions';
 
 
 interface InventoryListClientProps {
@@ -73,6 +72,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
@@ -135,6 +136,27 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, suppliers, toast, router]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
+        event.preventDefault();
+        setIsMultiSelectMode(prev => {
+          const newMode = !prev;
+          if (!newMode) {
+            setSelectedItemIds(new Set()); // Clear selections when exiting mode
+          }
+          toast({
+            title: `Multi-select mode ${newMode ? 'activated' : 'deactivated'}.`,
+            description: newMode ? 'You can now select multiple items.' : '',
+          });
+          return newMode;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toast]);
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
@@ -485,6 +507,16 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </Alert>
       )}
 
+      {isMultiSelectMode && (
+        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
+            <ListChecks className="h-4 w-4 !text-blue-500" />
+            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+            <AlertDescription>
+                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+            </AlertDescription>
+        </Alert>
+      )}
+
       {isLoading ? (
         <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
       ) : itemsToRender.length > 0 ? (
@@ -492,7 +524,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           <Table>
             <TableHeader>
               <TableRow>
-                {role === 'admin' && (
+                {role === 'admin' && isMultiSelectMode && (
                   <TableHead className="w-12 text-center noprint">
                     <Checkbox
                       checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
@@ -528,7 +560,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 }
                 return (
                   <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                     {role === 'admin' && (
+                     {role === 'admin' && isMultiSelectMode && (
                       <TableCell className="text-center noprint">
                         <Checkbox
                           checked={selectedItemIds.has(item.id)}
@@ -650,3 +682,5 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
+
+    

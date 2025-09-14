@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -27,6 +28,7 @@ import { parseISO, isValid } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 
 interface ReturnableInventoryBySupplierClientProps {
@@ -61,6 +63,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
@@ -96,6 +100,27 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     }
     setIsLoading(false);
   }, [initialInventoryItems, allSuppliers]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
+        event.preventDefault();
+        setIsMultiSelectMode(prev => {
+          const newMode = !prev;
+          if (!newMode) {
+            setSelectedItemIds(new Set());
+          }
+          toast({
+            title: `Multi-select mode ${newMode ? 'activated' : 'deactivated'}.`,
+            description: newMode ? 'You can now select multiple items.' : '',
+          });
+          return newMode;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toast]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     setSelectedItemForReturn(item);
@@ -340,6 +365,16 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           )}
         </CardContent>
       </Card>
+      
+      {isMultiSelectMode && selectedSupplierNames.length > 0 && (
+        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
+            <ListChecks className="h-4 w-4 !text-blue-500" />
+            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+            <AlertDescription>
+                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+            </AlertDescription>
+        </Alert>
+      )}
 
       {selectedSupplierNames.length === 0 ? (
          <div className="text-center py-12">
@@ -354,13 +389,15 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           <Table>
             <TableHeader>
             <TableRow>
-              <TableHead className="w-12 text-center noprint">
-                <Checkbox
-                  checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                  onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                  aria-label="Select all rows"
-                />
-              </TableHead>
+              {isMultiSelectMode && (
+                <TableHead className="w-12 text-center noprint">
+                  <Checkbox
+                    checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                    onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                    aria-label="Select all rows"
+                  />
+                </TableHead>
+              )}
               <TableHead className="w-20 text-center">Return</TableHead>
               <TableHead className="w-20 text-center">Details</TableHead>
               <TableHead>Product Name</TableHead>
@@ -384,7 +421,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 showSupplierName={false} 
                 showEditButtonText={false}
                 isSelected={selectedItemIds.has(item.id)}
-                onSelectRow={handleSelectRow}
+                onSelectRow={isMultiSelectMode ? handleSelectRow : undefined}
+                showCheckbox={isMultiSelectMode}
               />
             ))}
           </TableBody></Table>
@@ -448,3 +486,5 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     </div>
   );
 }
+
+    
