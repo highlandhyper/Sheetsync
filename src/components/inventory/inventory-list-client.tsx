@@ -22,6 +22,10 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
+import { BulkReturnDialog } from './bulk-return-dialog';
+import { BulkDeleteDialog } from './bulk-delete-dialog';
+import { bulkDeleteInventoryItemsAction, bulkReturnInventoryItemsAction } from '@/app/actions';
+
 
 interface InventoryListClientProps {
   initialInventoryItems: InventoryItem[];
@@ -67,6 +71,11 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  
+  // State for bulk action dialogs
+  const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+
 
 
   useEffect(() => {
@@ -85,8 +94,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     const fromDateQuery = searchParams.get('from');
     const toDateQuery = searchParams.get('to');
 
-    // console.log('[InventoryListClient Effect] URL Params:', { filterTypeFromQuery, suppliersFromQuery, fromDateQuery, toDateQuery });
-
     let newPotentialFilter: DashboardFilterType = null;
     let clearUrlParams = false;
 
@@ -96,13 +103,12 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         setSelectedSupplier(specificSupplierName);
         setSearchTerm(''); // Clear other local filters
         setSelectedDateRange(undefined);
-        // No need to set activeDashboardFilter, local filter will apply
         toast({ title: "Filter Applied", description: `Showing items for supplier: ${specificSupplierName} (from dashboard).` });
       } else {
         toast({ title: "Filter Error", description: `Supplier "${specificSupplierName}" from dashboard link not found. Displaying all items.`, variant: "destructive" });
       }
-      clearUrlParams = true; // Clear URL params as we've handled this via local state
-      newPotentialFilter = null; // Prevent activeDashboardFilter from being set for this type
+      clearUrlParams = true; 
+      newPotentialFilter = null; 
     } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
       newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
     } else if (filterTypeFromQuery === 'damaged') {
@@ -114,20 +120,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
       newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
     }
 
-    // console.log('[InventoryListClient Effect] Derived newPotentialFilter:', newPotentialFilter);
-    // console.log('[InventoryListClient Effect] Current activeDashboardFilter before set:', activeDashboardFilter);
-
     if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
-      // console.log('[InventoryListClient Effect] Filter change detected. Setting new filter and potentially clearing local search/filters.');
       setActiveDashboardFilter(newPotentialFilter);
       if (newPotentialFilter && newPotentialFilter.type !== 'specificSupplier') { // specificSupplier uses local state
         setSearchTerm('');
         setSelectedSupplier('');
         setSelectedDateRange(undefined);
       }
-    } else {
-      // console.log('[InventoryListClient Effect] No change in dashboard filter from URL detected.');
-    }
+    } 
     
     if (clearUrlParams) {
         router.replace('/inventory', { shallow: true });
@@ -262,7 +262,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     } else {
       setSelectedSupplier(value);
     }
-     // If user manually changes supplier, clear any active dashboard URL filter for suppliers
     if (activeDashboardFilter && (activeDashboardFilter.type === 'otherSuppliers' || activeDashboardFilter.type === 'specificSupplier')) {
         setActiveDashboardFilter(null);
         router.replace('/inventory', { shallow: true });
@@ -276,9 +275,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setSelectedDateRange(range);
     if (range?.from && range?.to) {
-      setIsDatePopoverOpen(false); // Close popover when a range is selected
+      setIsDatePopoverOpen(false);
     }
-    // If user manually changes date range, clear any active dashboard URL filter for expiry
     if (activeDashboardFilter && (activeDashboardFilter.type === 'expiringSoon' || activeDashboardFilter.type === 'customExpiry')) {
         setActiveDashboardFilter(null);
         router.replace('/inventory', { shallow: true });
@@ -342,6 +340,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const handleDialogSuccess = useCallback(() => {
     setSelectedItemIds(new Set());
+    // Data is revalidated by server actions, so we just clear selections
   }, []);
 
   const handlePrint = () => {
@@ -373,14 +372,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
-          {selectedItemIds.size > 0 ? (
+          {selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected
                </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm"><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
-                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
                 </div>
              </div>
           ) : (
@@ -602,6 +601,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </div>
       )}
 
+      {/* Single Item Dialogs */}
       <ReturnQuantityDialog
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
@@ -627,6 +627,22 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         onSuccess={handleDialogSuccess}
+      />
+      
+      {/* Bulk Action Dialogs */}
+      <BulkReturnDialog 
+        isOpen={isBulkReturnOpen}
+        onOpenChange={setIsBulkReturnOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleDialogSuccess}
+        itemCount={selectedItemIds.size}
+      />
+      <BulkDeleteDialog
+        isOpen={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleDialogSuccess}
+        itemCount={selectedItemIds.size}
       />
     </div>
   );

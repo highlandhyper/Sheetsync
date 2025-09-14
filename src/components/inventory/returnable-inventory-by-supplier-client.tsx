@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useRef
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
 import type { InventoryItem, Supplier } from '@/lib/types';
 import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { parseISO, isValid } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
+import { BulkReturnDialog } from './bulk-return-dialog';
+import { BulkDeleteDialog } from './bulk-delete-dialog';
+
 
 interface ReturnableInventoryBySupplierClientProps {
   initialInventoryItems: InventoryItem[];
@@ -51,12 +54,16 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   const [supplierFilterInput, setSupplierFilterInput] = useState('');
-  const supplierSearchInputRef = useRef<HTMLInputElement>(null); // Ref for the search input
+  const supplierSearchInputRef = useRef<HTMLInputElement>(null); 
 
   const [totalItemsForSelectedSuppliers, setTotalItemsForSelectedSuppliers] = useState(0);
   const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  
+  // State for bulk action dialogs
+  const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const uniqueDbLocations = useMemo(() => {
     const locations = new Set<string>();
@@ -230,8 +237,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                   {selectedItemIds.size} item(s) selected
                </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm"><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
-                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
                 </div>
              </div>
           ) : (
@@ -400,6 +407,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           </p>
         </div>
       )}
+
+      {/* Single Item Dialogs */}
       <ReturnQuantityDialog
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
@@ -419,6 +428,22 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
+      />
+      
+      {/* Bulk Action Dialogs */}
+      <BulkReturnDialog 
+        isOpen={isBulkReturnOpen}
+        onOpenChange={setIsBulkReturnOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleReturnSuccess}
+        itemCount={selectedItemIds.size}
+      />
+      <BulkDeleteDialog
+        isOpen={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleEditSuccess}
+        itemCount={selectedItemIds.size}
       />
     </div>
   );
