@@ -105,22 +105,30 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
         event.preventDefault();
-        setIsMultiSelectMode(prev => {
-          const newMode = !prev;
-          if (!newMode) {
-            setSelectedItemIds(new Set());
-          }
-          toast({
-            title: `Multi-select mode ${newMode ? 'activated' : 'deactivated'}.`,
-            description: newMode ? 'You can now select multiple items.' : '',
-          });
-          return newMode;
-        });
+        setIsMultiSelectMode(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toast]);
+  }, []);
+  
+  // Effect to show toast *after* state has changed
+  useEffect(() => {
+    const isMounted = inventoryItems.length > 0 || selectedSupplierNames.length > 0;
+    
+    if (isMounted) {
+        if (isMultiSelectMode) {
+            toast({
+                title: `Multi-select mode activated.`,
+                description: 'You can now select multiple items.',
+            });
+        } else {
+             if (selectedItemIds.size > 0) {
+                setSelectedItemIds(new Set());
+            }
+        }
+    }
+  }, [isMultiSelectMode, toast]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     setSelectedItemForReturn(item);

@@ -141,22 +141,32 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
         event.preventDefault();
-        setIsMultiSelectMode(prev => {
-          const newMode = !prev;
-          if (!newMode) {
-            setSelectedItemIds(new Set()); // Clear selections when exiting mode
-          }
-          toast({
-            title: `Multi-select mode ${newMode ? 'activated' : 'deactivated'}.`,
-            description: newMode ? 'You can now select multiple items.' : '',
-          });
-          return newMode;
-        });
+        setIsMultiSelectMode(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toast]);
+  }, []);
+
+  // Effect to show toast *after* state has changed
+  useEffect(() => {
+    // We check if the component is already mounted to avoid showing toast on initial load
+    const isMounted = inventoryItems.length > 0 || searchTerm || selectedSupplier;
+
+    if (isMounted) {
+      if (isMultiSelectMode) {
+        toast({
+          title: `Multi-select mode activated.`,
+          description: 'You can now select multiple items.',
+        });
+      } else {
+        // Clear selections when exiting mode
+        if (selectedItemIds.size > 0) {
+            setSelectedItemIds(new Set());
+        }
+      }
+    }
+  }, [isMultiSelectMode, toast]);
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
@@ -406,8 +416,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-          <div className="flex flex-col md:flex-row md:flex-wrap gap-4">
-             <div className="relative flex-grow min-w-48 md:flex-grow-0 md:w-full lg:w-auto lg:flex-grow">
+          <div className="flex flex-col gap-4">
+            <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -417,9 +427,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 className="pl-10 w-full"
               />
             </div>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
-              <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
                   <SelectValue placeholder="Filter by Supplier" />
                 </SelectTrigger>
                 <SelectContent>
@@ -433,7 +443,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
               </Select>
               
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
                   <SelectValue placeholder="Filter by Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -449,7 +459,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full sm:w-auto justify-start text-left font-normal min-w-48",
+                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1",
                       !selectedDateRange && "text-muted-foreground"
                     )}
                   >
