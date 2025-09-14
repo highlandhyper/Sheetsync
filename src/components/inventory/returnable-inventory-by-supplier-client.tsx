@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useRef
 import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil } from 'lucide-react';
+import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -25,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { parseISO, isValid } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
 
 interface ReturnableInventoryBySupplierClientProps {
   initialInventoryItems: InventoryItem[];
@@ -55,6 +55,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
   const [totalItemsForSelectedSuppliers, setTotalItemsForSelectedSuppliers] = useState(0);
   const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
+
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const uniqueDbLocations = useMemo(() => {
     const locations = new Set<string>();
@@ -104,12 +106,13 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   };
 
   const handleEditSuccess = useCallback(() => {
-    // Data revalidation should handle list update by server action revalidatePath
+    setSelectedItemIds(new Set());
   }, []);
 
 
   const handleReturnSuccess = useCallback(() => {
     setSelectedItemForReturn(null);
+    setSelectedItemIds(new Set());
   }, []);
 
   const filteredInventoryItemsBySupplier = useMemo(() => {
@@ -124,6 +127,10 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     setTotalItemsForSelectedSuppliers(filtered.length);
     return filtered;
   }, [inventoryItems, selectedSupplierNames]);
+
+  useEffect(() => {
+    setSelectedItemIds(new Set());
+  }, [selectedSupplierNames])
 
   const clearSupplierSelection = () => {
     setSelectedSupplierNames([]);
@@ -168,6 +175,27 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allItemIds = new Set(itemsToRender.map(item => item.id));
+      setSelectedItemIds(allItemIds);
+    } else {
+      setSelectedItemIds(new Set());
+    }
+  };
+
+  const handleSelectRow = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
 
   if (isLoading) {
     return ( 
@@ -196,6 +224,17 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
+          {selectedItemIds.size > 0 ? (
+             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
+               <div className="text-sm font-medium text-muted-foreground">
+                  {selectedItemIds.size} item(s) selected
+               </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm"><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
+                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                </div>
+             </div>
+          ) : (
           <div className="flex flex-col md:flex-row items-center gap-4">
             <DropdownMenu open={isSupplierDropdownOpen} onOpenChange={handleSupplierDropdownOpenChange}>
               <DropdownMenuTrigger asChild>
@@ -291,6 +330,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 </Button>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -304,10 +344,28 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         </div>
       ) : itemsToRender.length > 0 ? (
         <Card className="shadow-md">
-          <Table><TableHeader>
-            <TableRow><TableHead className="w-20 text-center">Return</TableHead><TableHead className="w-20 text-center">Details</TableHead><TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead>Expiry</TableHead><TableHead>Location</TableHead><TableHead>Type</TableHead><TableHead className="w-20 text-center">Edit</TableHead>
-           </TableRow>
-          </TableHeader><TableBody>
+          <Table>
+            <TableHeader>
+            <TableRow>
+              <TableHead className="w-12 text-center noprint">
+                <Checkbox
+                  checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                  onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                  aria-label="Select all rows"
+                />
+              </TableHead>
+              <TableHead className="w-20 text-center">Return</TableHead>
+              <TableHead className="w-20 text-center">Details</TableHead>
+              <TableHead>Product Name</TableHead>
+              <TableHead>Barcode</TableHead>
+              <TableHead className="text-right">In Stock</TableHead>
+              <TableHead>Expiry</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className="w-20 text-center">Edit</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {itemsToRender.map((item) => (
               <ReturnableInventoryItemRow
                 key={item.id}
@@ -317,7 +375,9 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 onEditItem={handleOpenEditDialog} 
                 isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
                 showSupplierName={false} 
-                showEditButtonText={false} 
+                showEditButtonText={false}
+                isSelected={selectedItemIds.has(item.id)}
+                onSelectRow={handleSelectRow}
               />
             ))}
           </TableBody></Table>

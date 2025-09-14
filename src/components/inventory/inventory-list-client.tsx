@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -22,6 +21,7 @@ import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '../ui/checkbox';
 
 interface InventoryListClientProps {
   initialInventoryItems: InventoryItem[];
@@ -65,6 +65,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
+
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
 
   useEffect(() => {
@@ -339,18 +341,49 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   };
 
   const handleDialogSuccess = useCallback(() => {
-    // Data revalidation should handle list updates via server actions
+    setSelectedItemIds(new Set());
   }, []);
 
   const handlePrint = () => {
     window.print();
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allItemIds = new Set(itemsToRender.map(item => item.id));
+      setSelectedItemIds(allItemIds);
+    } else {
+      setSelectedItemIds(new Set());
+    }
+  };
+
+  const handleSelectRow = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
+          {selectedItemIds.size > 0 ? (
+             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
+               <div className="text-sm font-medium text-muted-foreground">
+                  {selectedItemIds.size} item(s) selected
+               </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm"><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
+                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                </div>
+             </div>
+          ) : (
           <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
             <div className="relative w-full md:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -436,6 +469,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </Button>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -456,6 +490,15 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           <Table>
             <TableHeader>
               <TableRow>
+                {role === 'admin' && (
+                  <TableHead className="w-12 text-center noprint">
+                    <Checkbox
+                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                      aria-label="Select all rows"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
                 <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                 <TableHead>Product Name</TableHead>
@@ -482,7 +525,16 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   }
                 }
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                     {role === 'admin' && (
+                      <TableCell className="text-center noprint">
+                        <Checkbox
+                          checked={selectedItemIds.has(item.id)}
+                          onCheckedChange={() => handleSelectRow(item.id)}
+                          aria-label={`Select row for ${item.productName}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                     <TableCell className="text-center noprint">
                       <div className="flex justify-center items-center gap-1 sm:gap-1.5">
@@ -579,5 +631,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
-
-    

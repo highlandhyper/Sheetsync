@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Undo2, Eye, Pencil } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
 
 interface ReturnableInventoryItemRowProps {
   item: InventoryItem;
@@ -17,6 +17,8 @@ interface ReturnableInventoryItemRowProps {
   showSupplierName?: boolean;
   showEditButtonText?: boolean; 
   disableReturnButton?: boolean; // New prop
+  isSelected?: boolean;
+  onSelectRow?: (id: string) => void;
 }
 
 export function ReturnableInventoryItemRow({
@@ -28,6 +30,8 @@ export function ReturnableInventoryItemRow({
   showSupplierName = true,
   showEditButtonText = true, 
   disableReturnButton = false,
+  isSelected = false,
+  onSelectRow
 }: ReturnableInventoryItemRowProps) {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
@@ -58,8 +62,15 @@ export function ReturnableInventoryItemRow({
 
 
   return (
-    <TableRow className={cn(isProcessing && "opacity-50 pointer-events-none")}>{/*
-   */}<TableCell className="text-center">
+    <TableRow data-state={isSelected ? 'selected' : ''} className={cn(isProcessing && "opacity-50 pointer-events-none")}>
+      <TableCell className="text-center noprint">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onSelectRow?.(item.id)}
+          aria-label={`Select row for ${item.productName}`}
+        />
+      </TableCell>
+   <TableCell className="text-center">
         <Button
           variant="outline"
           size="sm"
@@ -70,8 +81,8 @@ export function ReturnableInventoryItemRow({
         >
           <Undo2 className="h-4 w-4" />
         </Button>
-      </TableCell>{/*
-   */}<TableCell className="text-center">
+      </TableCell>
+   <TableCell className="text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -81,21 +92,21 @@ export function ReturnableInventoryItemRow({
         >
           <Eye className="h-4 w-4" />
         </Button>
-      </TableCell>{/*
-   */}<TableCell className="font-medium">{item.productName}</TableCell>{/*
-   */}<TableCell className="text-muted-foreground">{item.barcode}</TableCell>{/*
-   */}{showSupplierName && (
+      </TableCell>
+   <TableCell className="font-medium">{item.productName}</TableCell>
+   <TableCell className="text-muted-foreground">{item.barcode}</TableCell>
+   {showSupplierName && (
         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
-      )}{/*
-   */}<TableCell className="text-right">{item.quantity}</TableCell>{/*
-   */}<TableCell className={cn(isExpired && isValidExpiry ? "text-destructive font-semibold" : "text-muted-foreground")}>
+      )}
+   <TableCell className="text-right">{item.quantity}</TableCell>
+   <TableCell className={cn(isExpired && isValidExpiry ? "text-destructive font-semibold" : "text-muted-foreground")}>
         {formattedExpiryDate}
-      </TableCell>{/*
-   */}<TableCell className="text-muted-foreground">{item.location}</TableCell>{/*
-   */}<TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500 font-medium" : "text-muted-foreground")}>
+      </TableCell>
+   <TableCell className="text-muted-foreground">{item.location}</TableCell>
+   <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500 font-medium" : "text-muted-foreground")}>
         {item.itemType}
-      </TableCell>{/*
-   */}{onEditItem && (
+      </TableCell>
+   {onEditItem && (
         <TableCell className="text-center">
           <Button
             variant="ghost"
