@@ -73,9 +73,9 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex flex-col items-center justify-center h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading application...</p>
+        <p className="ml-4 text-lg mt-4">Loading application, please wait...</p>
       </div>
     );
   }
@@ -91,10 +91,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in">
         <ShieldCheck className="h-20 w-20 text-primary mb-6 animate-pulse" strokeWidth={1.5} />
         <h1 className="text-4xl font-bold text-primary mb-3">Welcome back, Chief!</h1>
-        <p className="text-xl text-muted-foreground mb-8">Entering the command center...</p>
+        <p className="text-xl text-muted-foreground mb-8">Your command center is ready. Let's get to work.</p>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );

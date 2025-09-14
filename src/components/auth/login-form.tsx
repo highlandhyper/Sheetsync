@@ -60,10 +60,10 @@ export function LoginForm() {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-sm shadow-xl">
       <CardHeader>
-        <CardTitle className="text-2xl">Login</CardTitle>
-        <CardDescription>Enter your credentials to access your account.</CardDescription>
+        <CardTitle className="text-2xl">Account Login</CardTitle>
+        <CardDescription>Enter your credentials to access the application.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">

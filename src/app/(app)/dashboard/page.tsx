@@ -35,8 +35,8 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 
   const cardContainerClassName = cn(
-    "shadow-lg transition-shadow duration-300 rounded-lg hover:shadow-xl h-full", 
-    href ? "hover:bg-accent/10" : "",
+    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full", 
+    href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/50" : "",
     className
   );
   
@@ -281,8 +281,7 @@ export default function DashboardPage() {
           description="Next 7 days"
           href="/inventory?filterType=expiringSoon"
           className={cn(
-            metrics.itemsExpiringSoon > 0 ? "border-yellow-500/50 hover:border-yellow-500" : "",
-            "relative" 
+            metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400 animate-pulse"
           )}
         />
         <MetricCard 
