@@ -384,8 +384,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="relative flex-grow min-w-[250px] sm:flex-grow-0 sm:w-full sm:max-w-xs">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="relative lg:col-span-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -395,9 +395,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 className="pl-10 w-full"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2 flex-grow justify-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 items-center lg:col-span-1">
               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="min-w-[180px] flex-grow sm:flex-grow-0">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filter by Supplier" />
                 </SelectTrigger>
                 <SelectContent>
@@ -411,7 +411,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
               </Select>
               
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="min-w-[180px] flex-grow sm:flex-grow-0">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filter by Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -427,7 +427,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "min-w-[200px] justify-start text-left font-normal flex-grow sm:flex-grow-0",
+                      "w-full justify-start text-left font-normal",
                       !selectedDateRange && "text-muted-foreground"
                     )}
                   >
@@ -457,16 +457,18 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </PopoverContent>
               </Popover>
 
-              {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                <Button variant="ghost" onClick={clearFilters}>
-                    <FilterX className="mr-2 h-4 w-4" /> Clear
-                </Button>
-              )}
-               <div className="print-button-container">
-                <Button onClick={handlePrint} variant="outline" className="w-full sm:w-auto shrink-0 ">
-                <Printer className="mr-2 h-4 w-4" /> Print List
-                </Button>
-            </div>
+              <div className="flex gap-2">
+                 {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+                    <Button variant="ghost" onClick={clearFilters} className="w-full">
+                        <FilterX className="mr-2 h-4 w-4" /> Clear
+                    </Button>
+                  )}
+                   <div className="print-button-container w-full">
+                    <Button onClick={handlePrint} variant="outline" className="w-full">
+                    <Printer className="mr-2 h-4 w-4" /> Print
+                    </Button>
+                </div>
+              </div>
             </div>
           </div>
           )}
