@@ -281,7 +281,7 @@ export default function DashboardPage() {
           description="Next 7 days"
           href="/inventory?filterType=expiringSoon"
           className={cn(
-            metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400 animate-pulse"
+            metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400 animate-pulse-slow"
           )}
         />
         <MetricCard 
