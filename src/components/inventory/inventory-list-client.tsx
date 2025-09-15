@@ -408,7 +408,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="filters-card-noprint shadow-md sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
         <CardContent className="p-4 space-y-4">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -422,15 +422,17 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
              </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search product, barcode, staff..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-10 w-full"
-                />
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search product, barcode, staff..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="pl-10 w-full"
+                  />
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
