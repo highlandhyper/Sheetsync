@@ -408,7 +408,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
+       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm -mt-8">
         <CardContent className="p-4 space-y-4">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -513,145 +513,147 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           )}
         </CardContent>
       </Card>
-
-      {activeDashboardFilter && (
-        <Alert variant="default" className="bg-primary/10 border-primary/30">
-          <Info className="h-4 w-4 !text-primary" />
-          <AlertTitle>Dashboard Filter Active</AlertTitle>
-          <AlertDescription>
-            {getDashboardFilterMessage()} Local filters will apply to this subset. Use "Clear Filters" to reset all.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {isMultiSelectMode && (
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-            <ListChecks className="h-4 w-4 !text-blue-500" />
-            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+      
+      <div className="px-4 md:px-6 lg:px-8">
+        {activeDashboardFilter && (
+          <Alert variant="default" className="bg-primary/10 border-primary/30">
+            <Info className="h-4 w-4 !text-primary" />
+            <AlertTitle>Dashboard Filter Active</AlertTitle>
             <AlertDescription>
-                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+              {getDashboardFilterMessage()} Local filters will apply to this subset. Use "Clear Filters" to reset all.
             </AlertDescription>
-        </Alert>
-      )}
+          </Alert>
+        )}
 
-      {isLoading ? (
-        <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
-      ) : itemsToRender.length > 0 ? (
-        <Card className="shadow-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {role === 'admin' && isMultiSelectMode && (
-                  <TableHead className="w-12 text-center noprint">
-                    <Checkbox
-                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                      aria-label="Select all rows"
-                    />
-                  </TableHead>
-                )}
-                <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead className="hidden md:table-cell">Barcode</TableHead>
-                <TableHead className="hidden lg:table-cell">Supplier</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead className="hidden sm:table-cell">Location</TableHead>
-                <TableHead>Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itemsToRender.map((item, index) => {
-                const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
-                const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-                const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
-                let formattedExpiryDate = 'N/A';
-                if (item.expiryDate) {
-                  if (isValidExpiry) {
-                    formattedExpiryDate = format(parsedExpiryDate!, 'PP');
-                    if (isExpired) formattedExpiryDate += " (Expired)";
-                  } else {
-                    formattedExpiryDate = "Invalid Date";
+        {isMultiSelectMode && (
+          <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
+              <ListChecks className="h-4 w-4 !text-blue-500" />
+              <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+              <AlertDescription>
+                  You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+              </AlertDescription>
+          </Alert>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
+        ) : itemsToRender.length > 0 ? (
+          <Card className="shadow-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {role === 'admin' && isMultiSelectMode && (
+                    <TableHead className="w-12 text-center noprint">
+                      <Checkbox
+                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                        aria-label="Select all rows"
+                      />
+                    </TableHead>
+                  )}
+                  <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
+                  <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead className="hidden md:table-cell">Barcode</TableHead>
+                  <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead className="hidden sm:table-cell">Location</TableHead>
+                  <TableHead>Type</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {itemsToRender.map((item, index) => {
+                  const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
+                  const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
+                  const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
+                  let formattedExpiryDate = 'N/A';
+                  if (item.expiryDate) {
+                    if (isValidExpiry) {
+                      formattedExpiryDate = format(parsedExpiryDate!, 'PP');
+                      if (isExpired) formattedExpiryDate += " (Expired)";
+                    } else {
+                      formattedExpiryDate = "Invalid Date";
+                    }
                   }
-                }
-                return (
-                  <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                     {role === 'admin' && isMultiSelectMode && (
+                  return (
+                    <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                      {role === 'admin' && isMultiSelectMode && (
+                        <TableCell className="text-center noprint">
+                          <Checkbox
+                            checked={selectedItemIds.has(item.id)}
+                            onCheckedChange={() => handleSelectRow(item.id)}
+                            aria-label={`Select row for ${item.productName}`}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                       <TableCell className="text-center noprint">
-                        <Checkbox
-                          checked={selectedItemIds.has(item.id)}
-                          onCheckedChange={() => handleSelectRow(item.id)}
-                          aria-label={`Select row for ${item.productName}`}
-                        />
+                        <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {role === 'admin' && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenReturnDialog(item)}
+                                disabled={item.quantity === 0}
+                                className="h-8 w-8"
+                                aria-label="Return Item"
+                              >
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenDeleteDialog(item)}
+                                className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                aria-label="Delete Item"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
-                    )}
-                    <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                    <TableCell className="text-center noprint">
-                      <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {role === 'admin' && (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenReturnDialog(item)}
-                              disabled={item.quantity === 0}
-                              className="h-8 w-8"
-                              aria-label="Return Item"
-                            >
-                              <Undo2 className="h-4 w-4" />
-                            </Button>
-                             <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDeleteDialog(item)}
-                              className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                              aria-label="Delete Item"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{item.productName}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
-                    <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
-                    <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                    <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
-                      {formattedExpiryDate}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
-                    <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
-                      {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
-                      {item.itemType}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Card>
-      ) : (
-        <div className="text-center py-12">
-          <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeDashboardFilter || searchTerm || selectedSupplier || selectedDateRange ? "Try adjusting your search or filters." : "Log new items to see them here."}
-          </p>
-          {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-             <Button variant="outline" onClick={clearFilters} className="mt-6">
-                <FilterX className="mr-2 h-4 w-4" /> Clear All Filters and Search
-            </Button>
-          )}
-        </div>
-      )}
+                      <TableCell className="font-medium">{item.productName}</TableCell>
+                      <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
+                      <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
+                      <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                      <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
+                        {formattedExpiryDate}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
+                      <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
+                        {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
+                        {item.itemType}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        ) : (
+          <div className="text-center py-12">
+            <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
+            <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeDashboardFilter || searchTerm || selectedSupplier || selectedDateRange ? "Try adjusting your search or filters." : "Log new items to see them here."}
+            </p>
+            {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+              <Button variant="outline" onClick={clearFilters} className="mt-6">
+                  <FilterX className="mr-2 h-4 w-4" /> Clear All Filters and Search
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Single Item Dialogs */}
       <ReturnQuantityDialog
