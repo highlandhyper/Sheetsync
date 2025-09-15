@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 export function LocalCredentialsForm() {
   const { credentials, updateCredentials, isInitialized } = useLocalSettingsAuth();
@@ -84,10 +85,17 @@ export function LocalCredentialsForm() {
         />
         {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
       </div>
-      <Button type="submit" disabled={!isDirty || isSubmitting}>
-        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-        Save Changes
-      </Button>
+      <DialogFooter className="pt-4">
+        <DialogClose asChild>
+            <Button type="button" variant="outline">
+                Cancel
+            </Button>
+        </DialogClose>
+        <Button type="submit" disabled={!isDirty || isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Changes
+        </Button>
+      </DialogFooter>
     </form>
   );
 }
