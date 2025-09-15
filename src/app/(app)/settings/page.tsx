@@ -20,6 +20,7 @@ import { LocalCredentialsForm } from '@/components/settings/local-credentials-fo
 import { Separator } from '@/components/ui/separator';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
 import { useAuth } from '@/context/auth-context';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -100,8 +101,8 @@ export default function SettingsPage() {
                     </div>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
+              <DialogHeader className="p-6 pb-2">
                  <div className="flex items-center gap-3 mb-2">
                     <ShieldCheck className="h-6 w-6 text-primary" />
                     <DialogTitle className="text-2xl">User Access Control</DialogTitle>
@@ -110,10 +111,12 @@ export default function SettingsPage() {
                   Enable or disable access to specific pages for the 'Viewer' role. Changes are saved automatically.
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                <AccessControlManager />
+              <div className="px-6">
+                <ScrollArea className="h-full max-h-[60vh] pr-4">
+                    <AccessControlManager />
+                </ScrollArea>
               </div>
-               <DialogFooter>
+               <DialogFooter className="p-6 pt-2">
                 <DialogClose asChild>
                     <Button type="button" variant="outline">Close</Button>
                 </DialogClose>
