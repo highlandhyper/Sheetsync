@@ -104,7 +104,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <AppSidebar className="noprint" />
       <SidebarInset className="flex flex-col h-screen">
         <Header className="noprint" />
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </SidebarInset>
