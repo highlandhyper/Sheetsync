@@ -364,8 +364,9 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 </div>
             )}
              <div className="print-button-container ml-auto md:ml-0 md:pl-2">
-                <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                    <Printer className="mr-2 h-4 w-4" /> Print List
+                <Button onClick={handlePrint} variant="outline" size="icon" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
+                    <Printer className="h-4 w-4" />
+                    <span className="sr-only">Print List</span>
                 </Button>
             </div>
           </div>
