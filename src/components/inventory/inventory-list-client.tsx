@@ -408,7 +408,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-      <Card className="p-4 shadow-md filters-card-noprint sticky top-0 z-30">
+       <Card className="p-4 shadow-md filters-card-noprint sticky top-0 z-30">
         <CardContent className="p-0">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -421,93 +421,93 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search product, barcode, staff..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="pl-10 w-full"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
-               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
-                  <SelectValue placeholder="Filter by Supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
-                  {suppliers.map(supplier => (
-                    <SelectItem key={supplier.id} value={supplier.name}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
-                  <SelectValue placeholder="Filter by Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Item Types</SelectItem>
-                  <SelectItem value="expiry">Expiry Items</SelectItem>
-                  <SelectItem value="damage">Damaged Items</SelectItem>
-                  <SelectItem value="expired">Already Expired</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search product, barcode, staff..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-10 w-full"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full">
+                <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
+                  <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
+                    <SelectValue placeholder="Filter by Supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
+                    {suppliers.map(supplier => (
+                      <SelectItem key={supplier.id} value={supplier.name}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+                  <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
+                    <SelectValue placeholder="Filter by Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Item Types</SelectItem>
+                    <SelectItem value="expiry">Expiry Items</SelectItem>
+                    <SelectItem value="damage">Damaged Items</SelectItem>
+                    <SelectItem value="expired">Already Expired</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48",
-                      !selectedDateRange && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDateRange?.from ? (
-                      selectedDateRange.to ? (
-                        <>
-                          {format(selectedDateRange.from, "LLL dd, y")} - {format(selectedDateRange.to, "LLL dd, y")}
-                        </>
+                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48",
+                        !selectedDateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDateRange?.from ? (
+                        selectedDateRange.to ? (
+                          <>
+                            {format(selectedDateRange.from, "LLL dd, y")} - {format(selectedDateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(selectedDateRange.from, "LLL dd, y")
+                        )
                       ) : (
-                        format(selectedDateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Filter by Expiry Date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={selectedDateRange?.from}
-                    selected={selectedDateRange}
-                    onSelect={handleDateRangeSelect}
-                    numberOfMonths={1}
-                  />
-                </PopoverContent>
-              </Popover>
+                        <span>Filter by Expiry Date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={selectedDateRange?.from}
+                      selected={selectedDateRange}
+                      onSelect={handleDateRangeSelect}
+                      numberOfMonths={1}
+                    />
+                  </PopoverContent>
+                </Popover>
 
-              <div className="flex gap-2">
-                 {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
-                        <FilterX className="mr-2 h-4 w-4" /> Clear
-                    </Button>
-                  )}
-                   <div className="print-button-container w-full sm:w-auto">
-                    <Button onClick={handlePrint} variant="outline" className="w-full">
-                    <Printer className="mr-2 h-4 w-4" /> Print
-                    </Button>
+                <div className="flex gap-2">
+                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+                      <Button variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
+                          <FilterX className="mr-2 h-4 w-4" /> Clear
+                      </Button>
+                    )}
+                    <div className="print-button-container w-full sm:w-auto">
+                      <Button onClick={handlePrint} variant="outline" className="w-full">
+                      <Printer className="mr-2 h-4 w-4" /> Print
+                      </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           )}
         </CardContent>
       </Card>
