@@ -408,7 +408,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-      <Card className="p-4 shadow-md filters-card-noprint sticky top-16 z-30">
+      <Card className="p-4 shadow-md filters-card-noprint sticky top-0 z-30">
         <CardContent className="p-0">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -421,8 +421,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-          <div className="flex flex-col gap-4">
-            <div className="relative flex-grow">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="relative flex-grow w-full sm:flex-grow-0 sm:w-auto sm:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -432,9 +432,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 className="pl-10 w-full"
               />
             </div>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
                   <SelectValue placeholder="Filter by Supplier" />
                 </SelectTrigger>
                 <SelectContent>
@@ -448,7 +448,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
               </Select>
               
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40">
                   <SelectValue placeholder="Filter by Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -464,7 +464,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1",
+                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48",
                       !selectedDateRange && "text-muted-foreground"
                     )}
                   >
@@ -496,11 +496,11 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
               <div className="flex gap-2">
                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters} className="w-full">
+                    <Button variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
                         <FilterX className="mr-2 h-4 w-4" /> Clear
                     </Button>
                   )}
-                   <div className="print-button-container w-full">
+                   <div className="print-button-container w-full sm:w-auto">
                     <Button onClick={handlePrint} variant="outline" className="w-full">
                     <Printer className="mr-2 h-4 w-4" /> Print
                     </Button>
