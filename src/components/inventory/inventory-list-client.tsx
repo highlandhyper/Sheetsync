@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
+import { useSettings } from '@/context/settings-context';
 
 
 interface InventoryListClientProps {
@@ -46,6 +47,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const router = useRouter();
   const { toast } = useToast();
   const { role } = useAuth();
+  const { isMultiSelectEnabled } = useSettings();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -137,18 +139,22 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   }, [searchParams, suppliers, toast, router]);
 
   useEffect(() => {
+    if (!isMultiSelectEnabled) {
+      setIsMultiSelectMode(false);
+    }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
+      if (isMultiSelectEnabled && (event.metaKey || event.ctrlKey) && event.key === 'm') {
         event.preventDefault();
         setIsMultiSelectMode(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isMultiSelectEnabled]);
 
   // Effect to show toast *after* state has changed
   useEffect(() => {
+    if (!isMultiSelectEnabled) return;
     const isMounted = inventoryItems.length > 0 || searchTerm || selectedSupplier;
 
     if (isMounted) {
@@ -402,9 +408,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-      <Card className="p-4 shadow-md filters-card-noprint sticky top-0 z-30">
+      <Card className="p-4 shadow-md filters-card-noprint sticky top-16 z-30">
         <CardContent className="p-0">
-          {selectedItemIds.size > 0 && role === 'admin' ? (
+          {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected

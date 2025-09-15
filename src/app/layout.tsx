@@ -7,6 +7,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { LocalSettingsAuthProvider } from '@/context/local-settings-auth-context';
 import { ThemeProvider } from 'next-themes';
 import { AccessControlProvider } from '@/context/access-control-context';
+import { SettingsProvider } from '@/context/settings-context';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -50,14 +51,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <LocalSettingsAuthProvider>
-            <AuthProvider>
-              <AccessControlProvider>
-                {children}
-                <Toaster />
-              </AccessControlProvider>
-            </AuthProvider>
-          </LocalSettingsAuthProvider>
+          <SettingsProvider>
+            <LocalSettingsAuthProvider>
+              <AuthProvider>
+                <AccessControlProvider>
+                  {children}
+                  <Toaster />
+                </AccessControlProvider>
+              </AuthProvider>
+            </LocalSettingsAuthProvider>
+          </SettingsProvider>
         </ThemeProvider>
       </body>
     </html>

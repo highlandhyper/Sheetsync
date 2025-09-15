@@ -19,7 +19,7 @@ import {
   updateSupplierNameAndReferences as dbUpdateSupplierName,
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
-  getInventoryLogEntriesByBarcode, 
+  getInventoryLogEntriesByBarcode,
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
   loadPermissionsFromSheet,

@@ -14,16 +14,21 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, UserCog, Palette, Settings2 } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, UserCog, Palette, Settings2, ToyBrick } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { Separator } from '@/components/ui/separator';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
 import { useAuth } from '@/context/auth-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useSettings } from '@/context/settings-context';
+
 
 export default function SettingsPage() {
   const { role } = useAuth();
+  const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useSettings();
   
   return (
     <div className="container mx-auto py-2">
@@ -42,7 +47,7 @@ export default function SettingsPage() {
                     <Palette className="mr-4 h-6 w-6 text-primary" />
                     <div className="flex flex-col">
                         <span className="font-semibold text-base">General Settings</span>
-                        <span className="text-sm text-muted-foreground">Appearance and theme.</span>
+                        <span className="text-sm text-muted-foreground">Appearance, theme, and features.</span>
                     </div>
                 </div>
             </Button>
@@ -63,19 +68,31 @@ export default function SettingsPage() {
                     <ThemeToggle />
                 </div>
                 <Separator />
+                {role === 'admin' && (
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                            <ToyBrick className="h-5 w-5" />
+                            Feature Previews
+                        </h3>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <Label htmlFor="multi-select-toggle" className="flex flex-col gap-1 cursor-pointer">
+                                <span className="font-medium">Enable Multi-Select Mode</span>
+                                <span className="text-xs text-muted-foreground">Adds checkboxes for bulk actions in inventory lists.</span>
+                            </Label>
+                            <Switch
+                                id="multi-select-toggle"
+                                checked={isMultiSelectEnabled}
+                                onCheckedChange={setIsMultiSelectEnabled}
+                            />
+                        </div>
+                    </div>
+                )}
+                 <Separator />
                 <div className="pt-4">
                     <h3 className="text-lg font-semibold mb-2">Data Sync Settings</h3>
                     <p className="text-muted-foreground">
                     If connected to an external source like Google Sheets, settings for sheet IDs,
                     sync frequency, or specific ranges could be managed here. (Placeholder)
-                    </p>
-                </div>
-                 <Separator />
-                <div>
-                    <h3 className="text-lg font-semibold mb-2">Notification Preferences</h3>
-                    <p className="text-muted-foreground">
-                    Controls for enabling/disabling email or in-app notifications for events like
-                    low stock, expiring items, etc. (Placeholder)
                     </p>
                 </div>
             </div>
