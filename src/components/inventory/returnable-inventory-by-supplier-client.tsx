@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -262,7 +261,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
   return (
     <div className="space-y-6 printable-area">
-      <Card className="p-4 shadow-md filters-card-noprint">
+      <Card className="p-4 shadow-md filters-card-noprint sticky top-16 z-30">
         <CardContent className="p-0">
           {selectedItemIds.size > 0 ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -494,5 +493,3 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     </div>
   );
 }
-
-    

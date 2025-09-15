@@ -149,7 +149,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   // Effect to show toast *after* state has changed
   useEffect(() => {
-    // We check if the component is already mounted to avoid showing toast on initial load
     const isMounted = inventoryItems.length > 0 || searchTerm || selectedSupplier;
 
     if (isMounted) {
@@ -165,6 +164,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiSelectMode]);
 
 
@@ -402,7 +402,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-      <Card className="p-4 shadow-md filters-card-noprint">
+      <Card className="p-4 shadow-md filters-card-noprint sticky top-16 z-30">
         <CardContent className="p-0">
           {selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
