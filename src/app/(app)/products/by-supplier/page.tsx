@@ -61,7 +61,7 @@ export default async function ReturnInventoryBySupplierPage() {
   ]);
 
   return (
-    <div className="container mx-auto py-2">
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Supplier</h1>
       <Suspense fallback={<ReturnableInventorySkeleton />}>
         <ReturnableInventoryBySupplierClient

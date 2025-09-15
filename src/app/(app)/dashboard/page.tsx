@@ -153,7 +153,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8 p-4 md:p-6 lg:p-8">
+    <div className="space-y-8">
        <Skeleton className="h-10 w-1/3 mb-6" />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"> 
         <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5 text-muted-foreground" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
@@ -213,7 +213,7 @@ export default function DashboardPage() {
 
   if (isLoading || !metrics) {
     return (
-      <div className="p-4 md:p-6 lg:p-8">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8">
          <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
           <Activity className="mr-3 h-8 w-8" />
           Inventory Dashboard
@@ -254,7 +254,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
         <Activity className="mr-3 h-8 w-8" />
         Inventory Dashboard
