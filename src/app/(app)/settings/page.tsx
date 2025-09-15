@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -31,7 +30,7 @@ export default function SettingsPage() {
   const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useSettings();
   
   return (
-    <div className="container mx-auto py-2">
+    <div className="container mx-auto py-2 p-4 md:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
         <Cog className="mr-3 h-8 w-8" />
         Application Settings

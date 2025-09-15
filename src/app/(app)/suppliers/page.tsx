@@ -1,4 +1,3 @@
-
 import { getSuppliers } from '@/lib/data';
 import { SupplierListClient } from '@/components/suppliers/supplier-list-client';
 import { Suspense } from 'react';
@@ -43,7 +42,7 @@ export default async function SuppliersPage() {
   const initialSuppliers = await getSuppliers();
 
   return (
-    <div className="container mx-auto py-2">
+    <div className="container mx-auto py-2 p-4 md:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-8 text-primary">Manage Suppliers</h1>
       <Suspense fallback={<SupplierListSkeleton />}>
         <SupplierListClient initialSuppliers={initialSuppliers || []} />

@@ -1,4 +1,3 @@
-
 import { getInventoryItems, getSuppliers, getUniqueLocations } from '@/lib/data';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
@@ -81,4 +80,3 @@ export default async function InventoryPage() {
 }
 
 export const revalidate = 0;
-

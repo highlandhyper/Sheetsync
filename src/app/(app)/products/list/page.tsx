@@ -1,4 +1,3 @@
-
 import { getProducts } from '@/lib/data';
 import { ProductListClient } from '@/components/products/product-list-client';
 import { Suspense } from 'react';
@@ -41,7 +40,7 @@ export default async function ProductsListPage() {
   const initialProducts = await getProducts();
 
   return (
-    <div className="container mx-auto py-2">
+    <div className="container mx-auto py-2 p-4 md:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-8 text-primary">Product Catalog</h1>
       <Suspense fallback={<ProductListSkeleton />}>
         <ProductListClient initialProducts={initialProducts || []} />

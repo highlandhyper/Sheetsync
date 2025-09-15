@@ -1,4 +1,3 @@
-
 import { AddInventoryItemStepperForm } from '@/components/inventory/add-inventory-item-stepper-form';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +28,7 @@ export default async function AddInventoryItemPage() {
   ]);
   
   return (
-    <div className="container mx-auto py-2">
+    <div className="container mx-auto py-2 p-4 md:p-6 lg:p-8">
       <Suspense fallback={<AddInventoryFormSkeleton />}>
         <AddInventoryItemStepperForm
           uniqueLocations={uniqueLocations || []} 

@@ -1,4 +1,3 @@
-
 import { getInventoryItems, getSuppliers } from '@/lib/data';
 import { ReturnableInventoryBySupplierClient } from '@/components/inventory/returnable-inventory-by-supplier-client';
 import { Suspense } from 'react';
