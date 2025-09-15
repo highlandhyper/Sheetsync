@@ -66,11 +66,9 @@ export default async function InventoryPage() {
   ]);
 
   return (
-    <div className="h-full w-full">
-      <div className="p-4 md:p-6 lg:p-8">
-        <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Overview</h1>
-      </div>
-      <Suspense fallback={<div className="p-4 md:p-6 lg:p-8"><InventoryListSkeleton /></div>}>
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+      <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Overview</h1>
+      <Suspense fallback={<InventoryListSkeleton />}>
         <InventoryListClient 
           initialInventoryItems={initialInventoryItems || []} 
           suppliers={suppliers || []} 
