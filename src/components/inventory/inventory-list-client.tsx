@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -408,7 +409,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="p-4 shadow-md filters-card-noprint sticky top-0 md:top-16 z-30 bg-background/95 backdrop-blur-sm">
+       <Card className="p-4 shadow-md filters-card-noprint sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
         <CardContent className="p-0">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
