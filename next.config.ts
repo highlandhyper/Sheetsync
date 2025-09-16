@@ -1,14 +1,27 @@
+import { readFileSync } from 'fs';
+import path from 'path';
+import type { NextConfig } from 'next';
 
-import type {NextConfig} from 'next';
+// Load certs (still useful if you want a custom HTTPS server later)
+const httpsConfig = {
+  key: readFileSync(path.join(process.cwd(), '.certs/localhost+3-key.pem')),
+  cert: readFileSync(path.join(process.cwd(), '.certs/localhost+3.pem')),
+};
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: false,
+  compiler: {
+    // Remove React strict mode to prevent double rendering in development
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Remove devIndicators as it's deprecated
+  // The development badge is automatically hidden in production builds
+  // No need to configure it explicitly
   images: {
     remotePatterns: [
       {
@@ -19,33 +32,41 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer, webpack }) => {
-    // For client-side bundles, provide fallbacks for Node.js core modules
-    // that are not available in the browser. This helps prevent errors when
-    // server-side libraries (like googleapis or google-auth-library)
-    // are indirectly pulled into the client bundle.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+        ],
+      },
+    ];
+  },
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
-        ...(config.resolve.fallback || {}), // Ensure fallback object exists and spread it
-        net: false, // 'net' module is not available in the browser
-        tls: false, // 'tls' module is not available in the browser
-        fs: false,  // 'fs' module is not available in the browser
-        child_process: false, // 'child_process' is not available
-        http2: false, // 'http2' is not available
-        events: false, // 'events' module fallback
-        'node:events': false, // Fallback for 'node:events'
-        'node:process': false, // Fallback for 'node:process'
+        ...(config.resolve.fallback || {}),
+        net: false,
+        tls: false,
+        fs: false,
+        child_process: false,
+        http2: false,
+        'node:util': false,
       };
-
-      // Add IgnorePlugin for 'node:events' and 'node:process' as fallbacks might not be sufficient
-      config.plugins.push(
-        new webpack.IgnorePlugin({
-          resourceRegExp: /^(node:events|node:process)$/,
-        })
-      );
+      
+      // Only force NODE_ENV to production when NOT in development.
+      // This fixes the 'Conflicting values for process.env.NODE_ENV' error.
+      if (!dev) {
+        config.plugins.push(
+          new (require('webpack').DefinePlugin)({
+            'process.env.NODE_ENV': JSON.stringify('production')
+          })
+        );
+      }
     }
-
-    // Important: return the modified config
     return config;
   },
 };

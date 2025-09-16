@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
-export function Header({ className, show = true }: { className?: string, show?: boolean }) {
+export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
 
   const getInitials = (email?: string | null) => {
@@ -30,11 +30,7 @@ export function Header({ className, show = true }: { className?: string, show?: 
   };
 
   return (
-    <header className={cn(
-      "sticky top-0 z-20 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 transition-transform duration-300",
-      !show && "-translate-y-full",
-      className
-    )}>
+    <header className={cn("sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
        <SidebarTrigger className="md:hidden" />
       <div className="flex-1" />
       {loading ? (

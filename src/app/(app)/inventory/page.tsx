@@ -1,3 +1,4 @@
+
 import { getInventoryItems, getSuppliers, getUniqueLocations } from '@/lib/data';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
@@ -8,7 +9,7 @@ import { Card } from '@/components/ui/card';
 
 function InventoryListSkeleton() {
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border rounded-lg shadow bg-card">
         <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
         <Skeleton className="h-10 w-full sm:max-w-[200px]" /> {/* Supplier Filter */}
@@ -66,8 +67,8 @@ export default async function InventoryPage() {
   ]);
 
   return (
-    <div className="container mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-primary p-4 md:p-6 lg:p-8 pb-0">Inventory Overview</h1>
+    <div className="container mx-auto py-2">
+      <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Overview</h1>
       <Suspense fallback={<InventoryListSkeleton />}>
         <InventoryListClient 
           initialInventoryItems={initialInventoryItems || []} 
@@ -80,3 +81,4 @@ export default async function InventoryPage() {
 }
 
 export const revalidate = 0;
+

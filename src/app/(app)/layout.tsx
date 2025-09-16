@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -102,9 +103,9 @@ export default function AppLayout({ children }: PropsWithChildren) {
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar className="noprint" />
-      <SidebarInset className="flex flex-col h-screen">
-        <Header className="noprint shrink-0" />
-        <main className="flex-1 overflow-y-auto">
+      <SidebarInset className="flex flex-col">
+        <Header className="noprint" />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </SidebarInset>

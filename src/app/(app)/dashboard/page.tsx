@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { fetchDashboardMetricsAction, type ActionResponse } from '@/app/actions';
@@ -213,7 +214,7 @@ export default function DashboardPage() {
 
   if (isLoading || !metrics) {
     return (
-      <div className="container mx-auto p-4 md:p-6 lg:p-8">
+      <div className="container mx-auto py-2">
          <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
           <Activity className="mr-3 h-8 w-8" />
           Inventory Dashboard
@@ -254,7 +255,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+    <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
         <Activity className="mr-3 h-8 w-8" />
         Inventory Dashboard
@@ -309,3 +310,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { useSettings } from '@/context/settings-context';
 
 
 interface InventoryListClientProps {
@@ -48,7 +46,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const router = useRouter();
   const { toast } = useToast();
   const { role } = useAuth();
-  const { isMultiSelectEnabled } = useSettings();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -74,48 +71,12 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
-  
-  const [showHeader, setShowHeader] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const headerRef = useRef<HTMLElement | null>(null);
 
-
-  useEffect(() => {
-    headerRef.current = document.querySelector('header');
-  }, []);
-
-  const controlNavbar = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      if (window.scrollY > 64 && window.scrollY > lastScrollY) { // 64 is header height
-        setShowHeader(false);
-      } else {
-        setShowHeader(true);
-      }
-      setLastScrollY(window.scrollY);
-    }
-  }, [lastScrollY]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', controlNavbar);
-      return () => {
-        window.removeEventListener('scroll', controlNavbar);
-      };
-    }
-  }, [controlNavbar]);
-
-  useEffect(() => {
-    if (headerRef.current) {
-      if (showHeader) {
-        headerRef.current.classList.remove('-translate-y-full');
-      } else {
-        headerRef.current.classList.add('-translate-y-full');
-      }
-    }
-  }, [showHeader]);
 
 
   useEffect(() => {
@@ -175,14 +136,36 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, suppliers, toast, router]);
 
-   useEffect(() => {
-    // When multi-select is disabled from settings, clear any existing selections.
-    if (!isMultiSelectEnabled) {
-      if (selectedItemIds.size > 0) {
-        setSelectedItemIds(new Set());
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
+        event.preventDefault();
+        setIsMultiSelectMode(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Effect to show toast *after* state has changed
+  useEffect(() => {
+    // We check if the component is already mounted to avoid showing toast on initial load
+    const isMounted = inventoryItems.length > 0 || searchTerm || selectedSupplier;
+
+    if (isMounted) {
+      if (isMultiSelectMode) {
+        toast({
+          title: `Multi-select mode activated.`,
+          description: 'You can now select multiple items.',
+        });
+      } else {
+        // Clear selections when exiting mode
+        if (selectedItemIds.size > 0) {
+            setSelectedItemIds(new Set());
+        }
       }
     }
-  }, [isMultiSelectEnabled, selectedItemIds.size]);
+  }, [isMultiSelectMode]);
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
@@ -419,11 +402,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className={cn("filters-card-noprint shadow-md transition-all duration-300 z-30 bg-background/95 backdrop-blur-sm",
-        showHeader ? 'sticky top-16' : 'sticky top-0'
-       )}>
-        <CardContent className="p-4 space-y-4">
-          {isMultiSelectEnabled && selectedItemIds.size > 0 && role === 'admin' ? (
+      <Card className="p-4 shadow-md filters-card-noprint">
+        <CardContent className="p-0">
+          {selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected
@@ -434,231 +415,235 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 </div>
              </div>
           ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search product, barcode, staff..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    className="pl-10 w-full"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                  <SelectTrigger className="flex-1 min-w-40">
-                    <SelectValue placeholder="Filter by Supplier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
-                    {suppliers.map(supplier => (
-                      <SelectItem key={supplier.id} value={supplier.name}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                  <SelectTrigger className="flex-1 min-w-40">
-                    <SelectValue placeholder="Filter by Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Item Types</SelectItem>
-                    <SelectItem value="expiry">Expiry Items</SelectItem>
-                    <SelectItem value="damage">Damaged Items</SelectItem>
-                    <SelectItem value="expired">Already Expired</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="flex flex-col gap-4">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search product, barcode, staff..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="pl-10 w-full"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
+                  <SelectValue placeholder="Filter by Supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
+                  {suppliers.map(supplier => (
+                    <SelectItem key={supplier.id} value={supplier.name}>
+                      {supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
+                  <SelectValue placeholder="Filter by Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Item Types</SelectItem>
+                  <SelectItem value="expiry">Expiry Items</SelectItem>
+                  <SelectItem value="damage">Damaged Items</SelectItem>
+                  <SelectItem value="expired">Already Expired</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "flex-1 justify-start text-left font-normal min-w-48",
-                        !selectedDateRange && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDateRange?.from ? (
-                        selectedDateRange.to ? (
-                          <>
-                            {format(selectedDateRange.from, "LLL dd, y")} - {format(selectedDateRange.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(selectedDateRange.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Filter by Expiry Date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={selectedDateRange?.from}
-                      selected={selectedDateRange}
-                      onSelect={handleDateRangeSelect}
-                      numberOfMonths={1}
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <div className="flex gap-2">
-                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                      <Button variant="ghost" onClick={clearFilters} className="flex-1 sm:flex-initial">
-                          <FilterX className="mr-2 h-4 w-4" /> Clear
-                      </Button>
+              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1",
+                      !selectedDateRange && "text-muted-foreground"
                     )}
-                    <div className="print-button-container">
-                      <Button onClick={handlePrint} variant="outline" className="w-full">
-                      <Printer className="mr-2 h-4 w-4" /> Print
-                      </Button>
-                  </div>
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDateRange?.from ? (
+                      selectedDateRange.to ? (
+                        <>
+                          {format(selectedDateRange.from, "LLL dd, y")} - {format(selectedDateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(selectedDateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Filter by Expiry Date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={selectedDateRange?.from}
+                    selected={selectedDateRange}
+                    onSelect={handleDateRangeSelect}
+                    numberOfMonths={1}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <div className="flex gap-2">
+                 {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+                    <Button variant="ghost" onClick={clearFilters} className="w-full">
+                        <FilterX className="mr-2 h-4 w-4" /> Clear
+                    </Button>
+                  )}
+                   <div className="print-button-container w-full">
+                    <Button onClick={handlePrint} variant="outline" className="w-full">
+                    <Printer className="mr-2 h-4 w-4" /> Print
+                    </Button>
                 </div>
               </div>
             </div>
+          </div>
           )}
         </CardContent>
       </Card>
-      
-      <div className="p-4 md:p-6 lg:p-8 pt-0">
-        {activeDashboardFilter && (
-          <Alert variant="default" className="bg-primary/10 border-primary/30 mb-6">
-            <Info className="h-4 w-4 !text-primary" />
-            <AlertTitle>Dashboard Filter Active</AlertTitle>
-            <AlertDescription>
-              {getDashboardFilterMessage()} Local filters will apply to this subset. Use "Clear Filters" to reset all.
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {isLoading ? (
-          <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
-        ) : itemsToRender.length > 0 ? (
-          <Card className="shadow-md">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {role === 'admin' && isMultiSelectEnabled && (
-                      <TableHead className="w-12 text-center noprint">
+      {activeDashboardFilter && (
+        <Alert variant="default" className="bg-primary/10 border-primary/30">
+          <Info className="h-4 w-4 !text-primary" />
+          <AlertTitle>Dashboard Filter Active</AlertTitle>
+          <AlertDescription>
+            {getDashboardFilterMessage()} Local filters will apply to this subset. Use "Clear Filters" to reset all.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isMultiSelectMode && (
+        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
+            <ListChecks className="h-4 w-4 !text-blue-500" />
+            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+            <AlertDescription>
+                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+            </AlertDescription>
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
+      ) : itemsToRender.length > 0 ? (
+        <Card className="shadow-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {role === 'admin' && isMultiSelectMode && (
+                  <TableHead className="w-12 text-center noprint">
+                    <Checkbox
+                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                      aria-label="Select all rows"
+                    />
+                  </TableHead>
+                )}
+                <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
+                <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                <TableHead>Product Name</TableHead>
+                <TableHead className="hidden md:table-cell">Barcode</TableHead>
+                <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead className="hidden sm:table-cell">Location</TableHead>
+                <TableHead>Type</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {itemsToRender.map((item, index) => {
+                const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
+                const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
+                const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
+                let formattedExpiryDate = 'N/A';
+                if (item.expiryDate) {
+                  if (isValidExpiry) {
+                    formattedExpiryDate = format(parsedExpiryDate!, 'PP');
+                    if (isExpired) formattedExpiryDate += " (Expired)";
+                  } else {
+                    formattedExpiryDate = "Invalid Date";
+                  }
+                }
+                return (
+                  <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                     {role === 'admin' && isMultiSelectMode && (
+                      <TableCell className="text-center noprint">
                         <Checkbox
-                          checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                          onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                          aria-label="Select all rows"
+                          checked={selectedItemIds.has(item.id)}
+                          onCheckedChange={() => handleSelectRow(item.id)}
+                          aria-label={`Select row for ${item.productName}`}
                         />
-                      </TableHead>
+                      </TableCell>
                     )}
-                    <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Barcode</TableHead>
-                    <TableHead className="hidden lg:table-cell">Supplier</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead>Expiry</TableHead>
-                    <TableHead className="hidden sm:table-cell">Location</TableHead>
-                    <TableHead>Type</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {itemsToRender.map((item, index) => {
-                    const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
-                    const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-                    const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
-                    let formattedExpiryDate = 'N/A';
-                    if (item.expiryDate) {
-                      if (isValidExpiry) {
-                        formattedExpiryDate = format(parsedExpiryDate!, 'PP');
-                        if (isExpired) formattedExpiryDate += " (Expired)";
-                      } else {
-                        formattedExpiryDate = "Invalid Date";
-                      }
-                    }
-                    return (
-                      <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                        {role === 'admin' && isMultiSelectEnabled && (
-                          <TableCell className="text-center noprint">
-                            <Checkbox
-                              checked={selectedItemIds.has(item.id)}
-                              onCheckedChange={() => handleSelectRow(item.id)}
-                              aria-label={`Select row for ${item.productName}`}
-                            />
-                          </TableCell>
-                        )}
-                        <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                        <TableCell className="text-center noprint">
-                          <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
-                              <Eye className="h-4 w-4" />
+                    <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
+                    <TableCell className="text-center noprint">
+                      <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {role === 'admin' && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
+                              <Edit className="h-4 w-4" />
                             </Button>
-                            {role === 'admin' && (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenReturnDialog(item)}
-                                  disabled={item.quantity === 0}
-                                  className="h-8 w-8"
-                                  aria-label="Return Item"
-                                >
-                                  <Undo2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenDeleteDialog(item)}
-                                  className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                  aria-label="Delete Item"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{item.productName}</TableCell>
-                        <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
-                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                        <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
-                          {formattedExpiryDate}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
-                        <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
-                          {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
-                          {item.itemType}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        ) : (
-          <div className="text-center py-12">
-            <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
-            <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {activeDashboardFilter || searchTerm || selectedSupplier || selectedDateRange ? "Try adjusting your search or filters." : "Log new items to see them here."}
-            </p>
-            {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-              <Button variant="outline" onClick={clearFilters} className="mt-6">
-                  <FilterX className="mr-2 h-4 w-4" /> Clear All Filters and Search
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenReturnDialog(item)}
+                              disabled={item.quantity === 0}
+                              className="h-8 w-8"
+                              aria-label="Return Item"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                             <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDeleteDialog(item)}
+                              className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                              aria-label="Delete Item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
+                    <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
+                    <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                    <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
+                      {formattedExpiryDate}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
+                    <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
+                      {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
+                      {item.itemType}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : (
+        <div className="text-center py-12">
+          <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {activeDashboardFilter || searchTerm || selectedSupplier || selectedDateRange ? "Try adjusting your search or filters." : "Log new items to see them here."}
+          </p>
+          {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+             <Button variant="outline" onClick={clearFilters} className="mt-6">
+                <FilterX className="mr-2 h-4 w-4" /> Clear All Filters and Search
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Single Item Dialogs */}
       <ReturnQuantityDialog
