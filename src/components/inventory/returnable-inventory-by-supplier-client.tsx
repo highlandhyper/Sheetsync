@@ -29,6 +29,7 @@ import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { useMultiSelect } from '@/context/multi-select-context';
 
 
 interface ReturnableInventoryBySupplierClientProps {
@@ -40,6 +41,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
 export function ReturnableInventoryBySupplierClient({ initialInventoryItems, allSuppliers }: ReturnableInventoryBySupplierClientProps) {
   const { toast } = useToast();
+  const { isMultiSelectEnabled } = useMultiSelect();
   const [selectedSupplierNames, setSelectedSupplierNames] = useState<string[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,8 +64,6 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
@@ -100,35 +100,13 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     }
     setIsLoading(false);
   }, [initialInventoryItems, allSuppliers]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'm') {
-        event.preventDefault();
-        setIsMultiSelectMode(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
   
-  // Effect to show toast *after* state has changed
   useEffect(() => {
-    const isMounted = inventoryItems.length > 0 || selectedSupplierNames.length > 0;
-    
-    if (isMounted) {
-        if (isMultiSelectMode) {
-            toast({
-                title: `Multi-select mode activated.`,
-                description: 'You can now select multiple items.',
-            });
-        } else {
-             if (selectedItemIds.size > 0) {
-                setSelectedItemIds(new Set());
-            }
-        }
+    if (!isMultiSelectEnabled) {
+      setSelectedItemIds(new Set());
     }
-  }, [isMultiSelectMode, toast]);
+  }, [isMultiSelectEnabled]);
+
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     setSelectedItemForReturn(item);
@@ -264,7 +242,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
-          {selectedItemIds.size > 0 ? (
+          {selectedItemIds.size > 0 && isMultiSelectEnabled ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected
@@ -374,12 +352,12 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         </CardContent>
       </Card>
       
-      {isMultiSelectMode && selectedSupplierNames.length > 0 && (
+      {isMultiSelectEnabled && selectedSupplierNames.length > 0 && (
         <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
             <ListChecks className="h-4 w-4 !text-blue-500" />
             <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
             <AlertDescription>
-                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
+                Checkboxes are now available for bulk actions. You can disable this in settings.
             </AlertDescription>
         </Alert>
       )}
@@ -397,7 +375,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           <Table>
             <TableHeader>
             <TableRow>
-              {isMultiSelectMode && (
+              {isMultiSelectEnabled && (
                 <TableHead className="w-12 text-center noprint">
                   <Checkbox
                     checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
@@ -429,8 +407,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 showSupplierName={false} 
                 showEditButtonText={false}
                 isSelected={selectedItemIds.has(item.id)}
-                onSelectRow={isMultiSelectMode ? handleSelectRow : undefined}
-                showCheckbox={isMultiSelectMode}
+                onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
+                showCheckbox={isMultiSelectEnabled}
               />
             ))}
           </TableBody></Table>
