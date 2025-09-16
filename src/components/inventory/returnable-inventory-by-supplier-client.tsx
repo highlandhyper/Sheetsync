@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -65,8 +66,6 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
@@ -105,38 +104,13 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   }, [initialInventoryItems, allSuppliers]);
 
   useEffect(() => {
+    // When multi-select is disabled from settings, clear any existing selections.
     if (!isMultiSelectEnabled) {
-      setIsMultiSelectMode(false);
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isMultiSelectEnabled && (event.metaKey || event.ctrlKey) && event.key === 'm') {
-        event.preventDefault();
-        setIsMultiSelectMode(prev => !prev);
+      if (selectedItemIds.size > 0) {
+        setSelectedItemIds(new Set());
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMultiSelectEnabled]);
-  
-  // Effect to show toast *after* state has changed
-  useEffect(() => {
-    if (!isMultiSelectEnabled) return;
-
-    const isMounted = inventoryItems.length > 0 || selectedSupplierNames.length > 0;
-    
-    if (isMounted) {
-        if (isMultiSelectMode) {
-            toast({
-                title: `Multi-select mode activated.`,
-                description: 'You can now select multiple items.',
-            });
-        } else {
-             if (selectedItemIds.size > 0) {
-                setSelectedItemIds(new Set());
-            }
-        }
     }
-  }, [isMultiSelectMode, toast, inventoryItems, selectedSupplierNames]);
+  }, [isMultiSelectEnabled, selectedItemIds.size]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     setSelectedItemForReturn(item);
@@ -266,7 +240,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     <div className="space-y-6 printable-area">
       <Card className="filters-card-noprint shadow-md p-4 sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
         <CardContent className="p-0">
-          {isMultiSelectMode && selectedItemIds.size > 0 ? (
+          {isMultiSelectEnabled && selectedItemIds.size > 0 ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected
@@ -379,16 +353,6 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         </CardContent>
       </Card>
       
-      {isMultiSelectMode && selectedSupplierNames.length > 0 && (
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-            <ListChecks className="h-4 w-4 !text-blue-500" />
-            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
-            <AlertDescription>
-                You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
-            </AlertDescription>
-        </Alert>
-      )}
-
       {selectedSupplierNames.length === 0 ? (
          <div className="text-center py-12">
           <Filter className="mx-auto h-16 w-16 text-muted-foreground" />
@@ -402,7 +366,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           <Table>
             <TableHeader>
             <TableRow>
-              {role === 'admin' && isMultiSelectMode && (
+              {role === 'admin' && isMultiSelectEnabled && (
                 <TableHead className="w-12 text-center noprint">
                   <Checkbox
                     checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
@@ -434,8 +398,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 showSupplierName={false} 
                 showEditButtonText={false}
                 isSelected={selectedItemIds.has(item.id)}
-                onSelectRow={isMultiSelectMode ? handleSelectRow : undefined}
-                showCheckbox={isMultiSelectMode && role === 'admin'}
+                onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
+                showCheckbox={isMultiSelectEnabled && role === 'admin'}
               />
             ))}
           </TableBody></Table>
@@ -499,3 +463,5 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -73,8 +74,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
@@ -138,40 +137,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, suppliers, toast, router]);
 
-  useEffect(() => {
+   useEffect(() => {
+    // When multi-select is disabled from settings, clear any existing selections.
     if (!isMultiSelectEnabled) {
-      setIsMultiSelectMode(false);
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isMultiSelectEnabled && (event.metaKey || event.ctrlKey) && event.key === 'm') {
-        event.preventDefault();
-        setIsMultiSelectMode(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMultiSelectEnabled]);
-
-  // Effect to show toast *after* state has changed
-  useEffect(() => {
-    if (!isMultiSelectEnabled) return;
-    const isMounted = inventoryItems.length > 0 || searchTerm || selectedSupplier;
-
-    if (isMounted) {
-      if (isMultiSelectMode) {
-        toast({
-          title: `Multi-select mode activated.`,
-          description: 'You can now select multiple items.',
-        });
-      } else {
-        // Clear selections when exiting mode
-        if (selectedItemIds.size > 0) {
-            setSelectedItemIds(new Set());
-        }
+      if (selectedItemIds.size > 0) {
+        setSelectedItemIds(new Set());
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMultiSelectMode]);
+  }, [isMultiSelectEnabled, selectedItemIds.size]);
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
@@ -408,9 +381,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="filters-card-noprint shadow-md">
+       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
         <CardContent className="p-4 space-y-4">
-          {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
+          {isMultiSelectEnabled && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="text-sm font-medium text-muted-foreground">
                   {selectedItemIds.size} item(s) selected
@@ -514,7 +487,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </CardContent>
       </Card>
       
-      <div>
+      <div className="pt-4">
         {activeDashboardFilter && (
           <Alert variant="default" className="bg-primary/10 border-primary/30">
             <Info className="h-4 w-4 !text-primary" />
@@ -525,16 +498,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           </Alert>
         )}
 
-        {isMultiSelectMode && (
-          <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-              <ListChecks className="h-4 w-4 !text-blue-500" />
-              <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
-              <AlertDescription>
-                  You can now select multiple items. Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Ctrl/Cmd + M</kbd> to exit this mode.
-              </AlertDescription>
-          </Alert>
-        )}
-
         {isLoading ? (
           <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
         ) : itemsToRender.length > 0 ? (
@@ -542,7 +505,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
             <Table>
               <TableHeader>
                 <TableRow>
-                  {role === 'admin' && isMultiSelectMode && (
+                  {role === 'admin' && isMultiSelectEnabled && (
                     <TableHead className="w-12 text-center noprint">
                       <Checkbox
                         checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
@@ -578,7 +541,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                   }
                   return (
                     <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                      {role === 'admin' && isMultiSelectMode && (
+                      {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
                           <Checkbox
                             checked={selectedItemIds.has(item.id)}
@@ -701,3 +664,5 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
+
+    
