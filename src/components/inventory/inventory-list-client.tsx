@@ -408,7 +408,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
+       <Card className="filters-card-noprint shadow-md">
         <CardContent className="p-4 space-y-4">
           {isMultiSelectMode && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -514,7 +514,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </CardContent>
       </Card>
       
-      <div className="px-4 md:px-6 lg:px-8">
+      <div>
         {activeDashboardFilter && (
           <Alert variant="default" className="bg-primary/10 border-primary/30">
             <Info className="h-4 w-4 !text-primary" />
