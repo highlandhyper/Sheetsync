@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -77,7 +77,45 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const headerRef = useRef<HTMLElement | null>(null);
 
+
+  useEffect(() => {
+    headerRef.current = document.querySelector('header');
+  }, []);
+
+  const controlNavbar = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      if (window.scrollY > 64 && window.scrollY > lastScrollY) { // 64 is header height
+        setShowHeader(false);
+      } else {
+        setShowHeader(true);
+      }
+      setLastScrollY(window.scrollY);
+    }
+  }, [lastScrollY]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', controlNavbar);
+      return () => {
+        window.removeEventListener('scroll', controlNavbar);
+      };
+    }
+  }, [controlNavbar]);
+
+  useEffect(() => {
+    if (headerRef.current) {
+      if (showHeader) {
+        headerRef.current.classList.remove('-translate-y-full');
+      } else {
+        headerRef.current.classList.add('-translate-y-full');
+      }
+    }
+  }, [showHeader]);
 
 
   useEffect(() => {
@@ -381,7 +419,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   return (
     <div className="space-y-6 printable-area">
-       <Card className="filters-card-noprint shadow-md sticky top-16 z-30 bg-background/95 backdrop-blur-sm">
+       <Card className={cn("filters-card-noprint shadow-md transition-all duration-300 z-30 bg-background/95 backdrop-blur-sm",
+        showHeader ? 'sticky top-16' : 'sticky top-0'
+       )}>
         <CardContent className="p-4 space-y-4">
           {isMultiSelectEnabled && selectedItemIds.size > 0 && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
@@ -487,9 +527,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </CardContent>
       </Card>
       
-      <div className="pt-4">
+      <div className="p-4 md:p-6 lg:p-8 pt-0">
         {activeDashboardFilter && (
-          <Alert variant="default" className="bg-primary/10 border-primary/30">
+          <Alert variant="default" className="bg-primary/10 border-primary/30 mb-6">
             <Info className="h-4 w-4 !text-primary" />
             <AlertTitle>Dashboard Filter Active</AlertTitle>
             <AlertDescription>
@@ -502,105 +542,107 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
         ) : itemsToRender.length > 0 ? (
           <Card className="shadow-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {role === 'admin' && isMultiSelectEnabled && (
-                    <TableHead className="w-12 text-center noprint">
-                      <Checkbox
-                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                        aria-label="Select all rows"
-                      />
-                    </TableHead>
-                  )}
-                  <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                  <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Barcode</TableHead>
-                  <TableHead className="hidden lg:table-cell">Supplier</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead>Expiry</TableHead>
-                  <TableHead className="hidden sm:table-cell">Location</TableHead>
-                  <TableHead>Type</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itemsToRender.map((item, index) => {
-                  const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
-                  const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-                  const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
-                  let formattedExpiryDate = 'N/A';
-                  if (item.expiryDate) {
-                    if (isValidExpiry) {
-                      formattedExpiryDate = format(parsedExpiryDate!, 'PP');
-                      if (isExpired) formattedExpiryDate += " (Expired)";
-                    } else {
-                      formattedExpiryDate = "Invalid Date";
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {role === 'admin' && isMultiSelectEnabled && (
+                      <TableHead className="w-12 text-center noprint">
+                        <Checkbox
+                          checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                          onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                          aria-label="Select all rows"
+                        />
+                      </TableHead>
+                    )}
+                    <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
+                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Barcode</TableHead>
+                    <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead>Expiry</TableHead>
+                    <TableHead className="hidden sm:table-cell">Location</TableHead>
+                    <TableHead>Type</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itemsToRender.map((item, index) => {
+                    const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
+                    const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
+                    const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
+                    let formattedExpiryDate = 'N/A';
+                    if (item.expiryDate) {
+                      if (isValidExpiry) {
+                        formattedExpiryDate = format(parsedExpiryDate!, 'PP');
+                        if (isExpired) formattedExpiryDate += " (Expired)";
+                      } else {
+                        formattedExpiryDate = "Invalid Date";
+                      }
                     }
-                  }
-                  return (
-                    <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                      {role === 'admin' && isMultiSelectEnabled && (
+                    return (
+                      <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                        {role === 'admin' && isMultiSelectEnabled && (
+                          <TableCell className="text-center noprint">
+                            <Checkbox
+                              checked={selectedItemIds.has(item.id)}
+                              onCheckedChange={() => handleSelectRow(item.id)}
+                              aria-label={`Select row for ${item.productName}`}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                         <TableCell className="text-center noprint">
-                          <Checkbox
-                            checked={selectedItemIds.has(item.id)}
-                            onCheckedChange={() => handleSelectRow(item.id)}
-                            aria-label={`Select row for ${item.productName}`}
-                          />
+                          <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {role === 'admin' && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenReturnDialog(item)}
+                                  disabled={item.quantity === 0}
+                                  className="h-8 w-8"
+                                  aria-label="Return Item"
+                                >
+                                  <Undo2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenDeleteDialog(item)}
+                                  className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                  aria-label="Delete Item"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
-                      )}
-                      <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                      <TableCell className="text-center noprint">
-                        <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {role === 'admin' && (
-                            <>
-                              <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleOpenReturnDialog(item)}
-                                disabled={item.quantity === 0}
-                                className="h-8 w-8"
-                                aria-label="Return Item"
-                              >
-                                <Undo2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleOpenDeleteDialog(item)}
-                                className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                aria-label="Delete Item"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{item.productName}</TableCell>
-                      <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
-                      <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
-                      <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                      <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
-                        {formattedExpiryDate}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
-                      <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
-                        {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
-                        {item.itemType}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        <TableCell className="font-medium">{item.productName}</TableCell>
+                        <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
+                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                        <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
+                          {formattedExpiryDate}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
+                        <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
+                          {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
+                          {item.itemType}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         ) : (
           <div className="text-center py-12">
@@ -664,5 +706,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
-
-    

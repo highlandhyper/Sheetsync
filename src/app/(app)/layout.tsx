@@ -103,7 +103,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
     <SidebarProvider defaultOpen={true}>
       <AppSidebar className="noprint" />
       <SidebarInset className="flex flex-col h-screen">
-        <Header className="noprint" />
+        <Header className="noprint shrink-0" />
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>
