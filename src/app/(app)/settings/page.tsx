@@ -1,6 +1,7 @@
 
 'use client';
 
+import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
