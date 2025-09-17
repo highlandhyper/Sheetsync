@@ -49,6 +49,9 @@ const prompt = ai.definePrompt({
   name: 'inventoryAssistantPrompt',
   input: { schema: InventoryInsightsRequestSchema },
   output: { schema: InventoryInsightsResponseSchema },
+  config: {
+    model: 'googleai/gemini-1.5-pro-latest',
+  },
   prompt: `You are an expert inventory management analyst. Your task is to analyze the provided inventory data to identify anomalies and provide urgent expiry warnings. Today's date is ${format(new Date(), 'yyyy-MM-dd')}.
 
 Analyze the inventory data provided below.
