@@ -90,21 +90,3 @@ export type Role = 'admin' | 'viewer';
 export type Permissions = {
   [key in Role]: string[];
 };
-
-// AI Assistant Types
-export interface InventoryInsightsRequest {
-  inventoryData: string; // JSON string of sanitized inventory data
-}
-
-export interface InventoryInsightsResponse {
-  anomalyDetections: {
-    productName: string;
-    finding: string;
-  }[];
-  expiryWarnings: {
-    productName: string;
-    quantity: number;
-    daysUntilExpiry: number;
-    recommendation: string;
-  }[];
-}
