@@ -26,16 +26,32 @@ function LoginFormSkeleton() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center login-background p-4">
-       <div className="text-center mb-8">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden login-background p-4">
+      {/* Abstract background elements */}
+      <div
+        className="absolute -top-1/4 -left-1/4 h-1/2 w-1/2 rounded-full bg-primary/20 blur-3xl animate-pulse"
+        style={{ animationDuration: '8s' }}
+      ></div>
+      <div
+        className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-accent/20 blur-3xl animate-pulse"
+        style={{ animationDuration: '10s', animationDelay: '2s' }}
+      ></div>
+       <div
+        className="absolute top-1/4 right-1/4 h-1/3 w-1/3 rounded-3xl bg-secondary/20 blur-3xl animate-pulse"
+        style={{ animationDuration: '12s', animationDelay: '4s' }}
+      ></div>
+
+      <div className="relative z-10 w-full flex flex-col items-center">
+        <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-primary font-poppins tracking-tight">
                 SheetSync
             </h1>
             <p className="text-muted-foreground mt-2">Next-Gen Inventory Management</p>
         </div>
-      <Suspense fallback={<LoginFormSkeleton />}>
-        <LoginForm /> {/* Updated to use the new LoginForm */}
-      </Suspense>
+        <Suspense fallback={<LoginFormSkeleton />}>
+          <LoginForm /> {/* Updated to use the new LoginForm */}
+        </Suspense>
+      </div>
     </div>
   );
 }
