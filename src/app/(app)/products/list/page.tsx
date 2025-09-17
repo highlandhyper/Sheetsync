@@ -4,6 +4,7 @@ import { ProductListClient } from '@/components/products/product-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
+import { Package } from 'lucide-react';
 
 function ProductListSkeleton() {
   return (
@@ -42,7 +43,10 @@ export default async function ProductsListPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Product Catalog</h1>
+       <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
+        <Package className="mr-3 h-8 w-8" />
+        Product Catalog
+      </h1>
       <Suspense fallback={<ProductListSkeleton />}>
         <ProductListClient initialProducts={initialProducts || []} />
       </Suspense>

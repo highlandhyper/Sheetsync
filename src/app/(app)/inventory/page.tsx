@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Supplier, InventoryItem } from '@/lib/types';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { ClipboardList } from 'lucide-react';
 
 function InventoryListSkeleton() {
   return (
@@ -68,7 +69,10 @@ export default async function InventoryPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Overview</h1>
+      <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
+        <ClipboardList className="mr-3 h-8 w-8" />
+        Inventory Overview
+      </h1>
       <Suspense fallback={<InventoryListSkeleton />}>
         <InventoryListClient 
           initialInventoryItems={initialInventoryItems || []} 
@@ -81,4 +85,3 @@ export default async function InventoryPage() {
 }
 
 export const revalidate = 0;
-

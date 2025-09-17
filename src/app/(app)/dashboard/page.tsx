@@ -20,7 +20,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
     <>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {iconNode}
+        <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -35,7 +35,8 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 
   const cardContainerClassName = cn(
-    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full", 
+    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full",
+    "bg-gradient-to-tr from-card to-card/90",
     href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/50" : "",
     className
   );
@@ -157,13 +158,13 @@ function DashboardSkeleton() {
     <div className="space-y-8">
        <Skeleton className="h-10 w-1/3 mb-6" />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"> 
-        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5 text-muted-foreground" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
-        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5 text-muted-foreground" />} isLoading={true} description="Unique suppliers registered" />
-        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5 text-muted-foreground" />} isLoading={true} description="Next 7 days" />
+        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
+        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description="Unique suppliers registered" />
+        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description="Next 7 days" />
         <MetricCard 
             title="Damaged Items" 
             value="" 
-            iconNode={<AlertTriangle className="h-5 w-5 text-muted-foreground" />}
+            iconNode={<AlertTriangle className="h-5 w-5" />}
             isLoading={true}
             description="Items marked as damage"
         />
@@ -215,7 +216,7 @@ export default function DashboardPage() {
   if (isLoading || !metrics) {
     return (
       <div className="container mx-auto py-2">
-         <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
+         <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
           <Activity className="mr-3 h-8 w-8" />
           Inventory Dashboard
         </h1>
@@ -256,7 +257,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
+      <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
         <Activity className="mr-3 h-8 w-8" />
         Inventory Dashboard
       </h1>
@@ -264,20 +265,20 @@ export default function DashboardPage() {
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
-          iconNode={<Warehouse className="h-5 w-5 text-muted-foreground" />}
+          iconNode={<Warehouse className="h-5 w-5" />}
           description={totalStockDescription}
           href="/inventory"
         />
          <MetricCard 
           title="Total Suppliers" 
           value={metrics.totalSuppliers} 
-          iconNode={<Users className="h-5 w-5 text-muted-foreground" />}
+          iconNode={<Users className="h-5 w-5" />}
           description="Unique suppliers registered"
         />
         <MetricCard 
           title="Items Expiring Soon" 
           value={metrics.itemsExpiringSoon} 
-          iconNode={<CalendarClock className="h-5 w-5 text-muted-foreground" />}
+          iconNode={<CalendarClock className="h-5 w-5" />}
           description="Next 7 days"
           href="/inventory?filterType=expiringSoon"
           className={cn(
@@ -287,7 +288,7 @@ export default function DashboardPage() {
         <MetricCard 
             title="Damaged Items" 
             value={metrics.damagedItemsCount} 
-            iconNode={<AlertTriangle className="h-5 w-5 text-muted-foreground" />}
+            iconNode={<AlertTriangle className="h-5 w-5" />}
             description="Items marked as damage"
             href="/inventory?filterType=damaged"
             className={metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : ""} 
@@ -310,5 +311,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
