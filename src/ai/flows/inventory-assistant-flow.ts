@@ -8,7 +8,7 @@
  * - InventoryInsightsResponse - The return type for the assistant.
  */
 
-import { ai } from '@/lib/genkit-client';
+import { ai } from '@/lib/genkit';
 import { z } from 'zod';
 import { format, parseISO, differenceInDays } from 'date-fns';
 
