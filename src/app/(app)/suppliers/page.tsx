@@ -3,8 +3,8 @@ import { getSuppliers } from '@/lib/data';
 import { SupplierListClient } from '@/components/suppliers/supplier-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Building } from 'lucide-react';
 
 function SupplierListSkeleton() {
   return (
@@ -13,26 +13,23 @@ function SupplierListSkeleton() {
         <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
         <Skeleton className="h-10 w-36" /> {/* Add Supplier Button */}
       </div>
-      <Card className="shadow-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Supplier Name</TableHead>
-              <TableHead>ID (Sheet-derived)</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
-                <TableCell className="text-right"><Skeleton className="h-8 w-20" /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+            <Card key={index} className="w-full">
+                <CardHeader>
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-5 w-3/4" />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-4 w-1/2" />
+                </CardContent>
+            </Card>
+        ))}
+      </div>
        {/* Max items warning skeleton */}
       <Skeleton className="h-5 w-3/4 mx-auto" />
     </div>
@@ -44,7 +41,10 @@ export default async function SuppliersPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Manage Suppliers</h1>
+      <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
+        <Building className="mr-3 h-8 w-8" />
+        Manage Suppliers
+      </h1>
       <Suspense fallback={<SupplierListSkeleton />}>
         <SupplierListClient initialSuppliers={initialSuppliers || []} />
       </Suspense>

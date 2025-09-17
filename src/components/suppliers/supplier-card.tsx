@@ -1,35 +1,40 @@
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Building, Edit } from 'lucide-react';
 import type { Supplier } from '@/lib/types';
 
 interface SupplierCardProps {
   supplier: Supplier;
+  onEdit: (supplier: Supplier) => void;
 }
 
-export function SupplierCard({ supplier }: SupplierCardProps) {
+export function SupplierCard({ supplier, onEdit }: SupplierCardProps) {
   return (
-    <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300">
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <Image
-            src={`https://placehold.co/80x80.png?text=${supplier.name.substring(0,1)}`}
+    <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+      <CardHeader className="pb-3">
+         <Image
+            src={`https://placehold.co/400x200/e2e8f0/64748b.png?text=${supplier.name.substring(0,1)}`}
             alt={supplier.name}
-            width={50}
-            height={50}
-            className="rounded-full object-cover"
+            width={400}
+            height={200}
+            className="rounded-t-lg aspect-[2/1] object-cover -mt-6 -mx-6 mb-4"
             data-ai-hint="office building"
           />
-          <CardTitle className="text-lg">{supplier.name}</CardTitle>
-        </div>
+        <CardTitle className="text-lg leading-tight">{supplier.name}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-sm text-muted-foreground flex items-center">
-          <Building className="w-4 h-4 mr-2 text-primary" />
-          <span>Supplier ID: {supplier.id}</span>
+      <CardContent className="flex-grow">
+        <div className="text-xs text-muted-foreground flex items-center">
+          <Building className="w-3 h-3 mr-1.5" />
+          <span>ID: {supplier.id}</span>
         </div>
-        {/* Future: Could add number of products from this supplier, contact info, etc. */}
       </CardContent>
+      <CardFooter className="p-4 pt-0">
+          <Button variant="outline" size="sm" className="w-full" onClick={() => onEdit(supplier)}>
+              <Edit className="mr-2 h-3.5 w-3.5" />
+              Edit Supplier
+          </Button>
+      </CardFooter>
     </Card>
   );
 }

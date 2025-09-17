@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddSupplierDialog } from './add-supplier-dialog';
 import { EditSupplierDialog } from './edit-supplier-dialog';
+import { SupplierCard } from './supplier-card';
 
 interface SupplierListClientProps {
   initialSuppliers: Supplier[];
@@ -100,58 +101,35 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
       </div>
 
       {isLoading ? (
-         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Supplier Name</TableHead>
-                <TableHead>ID (Sheet-derived)</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-20" /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-         </Card>
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+                <Card key={index} className="w-full">
+                    <CardHeader>
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-5 w-3/4" />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-4 w-1/2" />
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
       ) : itemsToRender.length > 0 ? (
         <>
-          <Card className="shadow-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Supplier Name</TableHead>
-                  <TableHead>ID (Sheet-derived)</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itemsToRender.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{supplier.id}</TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEditSupplier(supplier)}
-                        className="mr-2"
-                        aria-label={`Edit supplier ${supplier.name}`}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {itemsToRender.map((supplier) => (
+                <SupplierCard 
+                    key={supplier.id} 
+                    supplier={supplier} 
+                    onEdit={() => handleEditSupplier(supplier)}
+                />
+            ))}
+          </div>
+
           {totalUniqueSuppliers > MAX_SUPPLIERS_TO_DISPLAY && !searchTerm && (
             <p className="text-sm text-muted-foreground text-center mt-4">
               Displaying first {MAX_SUPPLIERS_TO_DISPLAY} of {totalUniqueSuppliers} suppliers. Use search to find others.

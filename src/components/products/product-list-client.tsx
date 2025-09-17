@@ -45,7 +45,8 @@ export function ProductListClient({ initialProducts }: ProductListClientProps) {
       items = items.filter(
         (product) =>
           product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.barcode.toLowerCase().includes(searchTerm.toLowerCase())
+          product.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.supplierName && product.supplierName.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -75,7 +76,7 @@ export function ProductListClient({ initialProducts }: ProductListClientProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search products or barcodes..."
+            placeholder="Search products, barcodes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full"
