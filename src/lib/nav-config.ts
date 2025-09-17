@@ -1,9 +1,8 @@
 
-import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, BrainCircuit } from 'lucide-react';
+import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building } from 'lucide-react';
 
 export const allNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
-  { href: '/assistant', label: 'AI Assistant', icon: BrainCircuit, roles: ['admin'] },
   { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, roles: ['admin'] },
   { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'] },
   { href: '/inventory', label: 'View Inventory', icon: ClipboardList, roles: ['admin'] },
