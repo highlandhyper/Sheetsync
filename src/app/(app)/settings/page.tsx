@@ -38,7 +38,7 @@ export default function SettingsPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-3"><icon className="h-5 w-5" />{title}</DialogTitle>
+              <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
             <div className="py-4">{children}</div>
