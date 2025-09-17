@@ -91,10 +91,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4">
         <ShieldCheck className="h-20 w-20 text-primary mb-6 animate-pulse" strokeWidth={1.5} />
-        <h1 className="text-4xl font-bold text-primary mb-3">Welcome back, Chief!</h1>
-        <p className="text-xl text-muted-foreground mb-8">Your command center is ready. Let's get to work.</p>
+        <h1 className="text-4xl font-bold text-primary mb-3 text-center">Welcome back, Chief!</h1>
+        <p className="text-xl text-muted-foreground mb-8 text-center">Your command center is ready. Let's get to work.</p>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
