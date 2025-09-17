@@ -8,9 +8,16 @@
  * - InventoryInsightsResponse - The return type for the assistant.
  */
 
-import { ai } from '@/lib/genkit';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
+
+// Initialize Genkit AI instance directly in the server-side flow
+const ai = genkit({
+  plugins: [googleAI({ apiVersion: 'v1beta' })],
+  enableTracing: true,
+});
 
 const InventoryInsightsRequestSchema = z.object({
   inventoryData: z
