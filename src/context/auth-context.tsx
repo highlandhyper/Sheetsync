@@ -82,11 +82,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
-    if (!auth) {
-      console.error("Login: Firebase Auth is not initialized. Cannot log in.");
-      return { success: false, error: "Authentication service is not available. Please try again later." };
+    if (loading || !auth) {
+      const errorMessage = "Authentication service is not ready. Please try again in a moment.";
+      console.error(`Login failed: ${errorMessage} (loading: ${loading}, auth: ${!!auth})`);
+      return { success: false, error: errorMessage };
     }
-    setLoading(true);
+
     try {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       // Role and user state will be set by onAuthStateChanged, but we determine it here for immediate use.
@@ -101,11 +102,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       // setLoading will be set to false by onAuthStateChanged
       return { success: true, role: determinedRole };
     } catch (error: any) {
-      setLoading(false);
+      // onAuthStateChanged will keep loading as false. We don't need to set it here.
       setRole(null); // Clear role on login failure
       return { success: false, error: error.message };
     }
-  }, []);
+  }, [loading, auth]);
 
   const signup = useCallback(async (values: SignupFormValues) => {
     if (!auth) {
