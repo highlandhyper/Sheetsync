@@ -1,6 +1,5 @@
 
 
-
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay } from 'date-fns';
@@ -393,6 +392,7 @@ export async function getUniqueLocations(): Promise<string[]> {
     const inventoryData = await readSheetData(INVENTORY_READ_RANGE);
     if (!inventoryData) {
       console.log("GS_Data: getUniqueLocations - No inventory data from readSheetData.");
+      console.timeEnd(timeLabel);
       return [];
     }
     const locations = new Set<string>();
@@ -404,12 +404,12 @@ export async function getUniqueLocations(): Promise<string[]> {
     });
     const sortedLocations = Array.from(locations).sort((a,b) => a.localeCompare(b));
     console.log(`GS_Data: getUniqueLocations - Found ${sortedLocations.length} unique locations.`);
+    console.timeEnd(timeLabel);
     return sortedLocations;
   } catch (error) {
     console.error("GS_Data: Error in getUniqueLocations:", error);
-    return [];
-  } finally {
     console.timeEnd(timeLabel);
+    return [];
   }
 }
 

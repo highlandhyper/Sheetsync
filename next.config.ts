@@ -2,12 +2,6 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import type { NextConfig } from 'next';
 
-// Load certs (still useful if you want a custom HTTPS server later)
-const httpsConfig = {
-  key: readFileSync(path.join(process.cwd(), '.certs/localhost+3-key.pem')),
-  cert: readFileSync(path.join(process.cwd(), '.certs/localhost+3.pem')),
-};
-
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   compiler: {
