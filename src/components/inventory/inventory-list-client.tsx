@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -34,6 +35,8 @@ interface InventoryListClientProps {
 }
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
+const MULTI_SELECT_ON_COMMAND = "multion";
+const MULTI_SELECT_OFF_COMMAND = "multioff";
 
 type DashboardFilterType = {
   type: 'damaged' | 'expiringSoon' | 'otherSuppliers' | 'customExpiry';
@@ -47,7 +50,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const router = useRouter();
   const { toast } = useToast();
   const { role } = useAuth();
-  const { isMultiSelectEnabled } = useMultiSelect();
+  const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useMultiSelect();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -280,6 +283,24 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     setSearchTerm(e.target.value);
   }
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const command = searchTerm.trim().toLowerCase();
+      if (command === MULTI_SELECT_ON_COMMAND) {
+        e.preventDefault();
+        setIsMultiSelectEnabled(true);
+        toast({ title: "Multi-Select Enabled", description: "You can now select multiple items for bulk actions." });
+        setSearchTerm(''); // Clear the command from search bar
+      } else if (command === MULTI_SELECT_OFF_COMMAND) {
+        e.preventDefault();
+        setIsMultiSelectEnabled(false);
+        toast({ title: "Multi-Select Disabled" });
+        setSearchTerm(''); // Clear the command
+      }
+    }
+  };
+
+
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setSelectedDateRange(range);
     if (range?.from && range?.to) {
@@ -399,6 +420,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                 placeholder="Search product, barcode, staff..."
                 value={searchTerm}
                 onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
                 className="pl-10 w-full"
               />
             </div>
