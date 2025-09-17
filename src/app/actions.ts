@@ -23,10 +23,12 @@ import {
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
   loadPermissionsFromSheet,
-  savePermissionsToSheet
+  savePermissionsToSheet,
+  getInventoryItems
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, InventoryInsightsResponse } from '@/lib/types';
 import { format } from 'date-fns';
+import { generateInventoryInsights } from '@/ai/flows/inventory-assistant-flow';
 
 
 export interface ActionResponse<T = any> {
@@ -367,6 +369,7 @@ export async function addInventoryItemAction(
     revalidatePath('/inventory/lookup'); 
     revalidatePath('/dashboard'); 
     revalidatePath('/suppliers');
+    revalidatePath('/assistant');
 
     return {
       success: true,
@@ -408,6 +411,7 @@ export async function returnInventoryItemAction(itemId: string, quantityToReturn
       revalidatePath('/inventory/lookup'); 
       revalidatePath('/dashboard'); 
       revalidatePath('/suppliers');
+      revalidatePath('/assistant');
       return { success: true, message: result.message || 'Item processed for return.' };
     } else {
       return { success: false, message: result.message || 'Failed to process return. Check server logs.' };
@@ -473,6 +477,7 @@ export async function editInventoryItemAction(
     revalidatePath('/inventory/lookup'); 
     revalidatePath('/dashboard'); 
     revalidatePath('/suppliers');
+    revalidatePath('/assistant');
 
     return {
       success: true,
@@ -543,6 +548,7 @@ export async function deleteInventoryItemAction(itemId: string): Promise<ActionR
       revalidatePath('/dashboard');
       revalidatePath('/products/by-supplier');
       revalidatePath('/products');
+      revalidatePath('/assistant');
       return { success: true, message: 'Inventory log entry permanently deleted.' };
     } else {
       return { success: false, message: 'Failed to delete inventory log entry from the data source.' };
@@ -697,4 +703,36 @@ function revalidateRelevantPaths() {
     revalidatePath('/dashboard');
     revalidatePath('/inventory/lookup');
     revalidatePath('/products');
+    revalidatePath('/assistant');
+}
+
+// AI Assistant Action
+export async function getInventoryInsightsAction(): Promise<ActionResponse<InventoryInsightsResponse>> {
+  try {
+    const allItems = await getInventoryItems();
+    
+    if (!allItems || allItems.length === 0) {
+      return { success: true, data: { anomalyDetections: [], expiryWarnings: [] }, message: "No inventory items to analyze." };
+    }
+
+    // Sanitize and simplify data for the AI model to save tokens and improve focus
+    const sanitizedData = allItems.map(item => ({
+      productName: item.productName,
+      quantity: item.quantity,
+      itemType: item.itemType,
+      expiryDate: item.expiryDate,
+      timestamp: item.timestamp, // To detect recent changes
+    }));
+
+    const insights = await generateInventoryInsights({
+      inventoryData: JSON.stringify(sanitizedData),
+    });
+
+    return { success: true, data: insights };
+
+  } catch (error) {
+    console.error("Error in getInventoryInsightsAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while generating inventory insights.";
+    return { success: false, message: errorMessage };
+  }
 }
