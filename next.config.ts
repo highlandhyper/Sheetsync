@@ -1,5 +1,4 @@
-import { readFileSync } from 'fs';
-import path from 'path';
+require('dotenv').config();
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
