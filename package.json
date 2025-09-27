@@ -4,13 +4,14 @@
   "version": "0.1.0",
   "private": "true",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 9002 --hostname 0.0.0.0",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate-to-firestore": "tsx scripts/migrate-to-firestore.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.1",
@@ -45,6 +46,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
+    "firebase-admin": "^12.2.0",
     "genkit": "^1.8.0",
     "googleapis": "^140.0.1",
     "google-auth-library": "^9.11.0",
