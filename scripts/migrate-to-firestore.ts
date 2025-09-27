@@ -8,7 +8,6 @@ import {
   getSuppliers as getSuppliersFromSheet,
 } from '../src/lib/data';
 import type { Product, InventoryItem, Supplier } from '../src/lib/types';
-import {-l} from "firebase-admin/lib/auth";
 
 // ////////////////////////////////////////////////////////////////////
 // SETUP: CONFIGURE YOUR FIREBASE ADMIN SDK
