@@ -46,8 +46,6 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       if (response.success && response.data) {
         setPermissions(response.data);
       } else {
-        // This is expected on first run. The default permissions will be used
-        // and saved on the first change by an admin.
         console.log(response.message || "Using default permissions.");
         setPermissions(getDefaultPermissions());
       }
@@ -85,7 +83,6 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
             description: response.message || "Could not save permissions to the server.",
             variant: "destructive",
           });
-          // Note: We are not reverting the state optimistically. The UI reflects the change instantly.
         }
       });
 

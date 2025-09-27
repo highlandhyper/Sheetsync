@@ -22,8 +22,8 @@ import {
   getInventoryLogEntriesByBarcode, 
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
-  loadPermissionsFromSheet,
-  savePermissionsToSheet,
+  loadPermissions,
+  savePermissions,
   getInventoryItems
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions } from '@/lib/types';
@@ -348,7 +348,6 @@ export async function addInventoryItemAction(
         barcode: validatedItemData.barcode,
         quantity: validatedItemData.quantity,
         expiryDate: validatedItemData.expiryDate,
-        location: validatedItemData.location,
     };
 
     const newInventoryItem = await dbAddInventoryItem(
@@ -454,12 +453,12 @@ export async function editInventoryItemAction(
       location?: string;
       itemType?: ItemType;
       quantity?: number;
-      expiryDate?: string | null;
+      expiryDate?: Date | null;
     } = {
       location,
       itemType,
       quantity,
-      expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
+      expiryDate: expiryDate, // Pass Date object directly
     };
 
     const success = await dbUpdateInventoryItemDetails(itemId, updates);
@@ -562,7 +561,7 @@ export async function deleteInventoryItemAction(itemId: string): Promise<ActionR
 
 export async function getPermissionsAction(): Promise<ActionResponse<Permissions>> {
   try {
-    const permissions = await loadPermissionsFromSheet();
+    const permissions = await loadPermissions();
     if (permissions) {
       return { success: true, data: permissions };
     }
@@ -578,7 +577,7 @@ export async function getPermissionsAction(): Promise<ActionResponse<Permissions
 
 export async function setPermissionsAction(permissions: Permissions): Promise<ActionResponse> {
   try {
-    const success = await savePermissionsToSheet(permissions);
+    const success = await savePermissions(permissions);
     if (success) {
       revalidatePath('/settings'); // Revalidate to ensure all clients get the new settings
       return { success: true, message: 'Permissions updated successfully.' };
