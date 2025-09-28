@@ -1,34 +1,9 @@
 
-'use client';
-
-import * as fs from 'fs';
-import * as path from 'path';
-
-// --- Robust .env loader ---
-const envPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(envPath)) {
-  const envFileContent = fs.readFileSync(envPath, 'utf8');
-  envFileContent.split('\n').forEach(line => {
-    const trimmedLine = line.trim();
-    if (trimmedLine && !trimmedLine.startsWith('#')) {
-      const [key, ...valueParts] = trimmedLine.split('=');
-      const value = valueParts.join('=').replace(/^['"]|['"]$/g, ''); // Remove surrounding quotes
-      if (key && value) {
-        process.env[key] = value;
-      }
-    }
-  });
-  console.log('.env.local file loaded successfully by migration script.');
-} else {
-    console.warn('Migration Script: .env.local file not found. The script may fail if required variables are not set elsewhere.');
-}
-// --- End .env loader ---
-
 
 import { initializeAdminApp } from '../src/lib/firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-// Initialize the admin app *after* .env has been loaded.
+// Initialize the admin app *after* .env has been loaded by the runner.
 const adminApp = initializeAdminApp();
 const db = getFirestore(adminApp);
 
