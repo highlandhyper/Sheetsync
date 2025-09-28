@@ -20,7 +20,7 @@ import {
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
   getInventoryLogEntriesByBarcode, 
-  getDashboardMetrics,
+  getDashboardMetrics as dbGetDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
   loadPermissions,
   savePermissions,
@@ -516,7 +516,7 @@ export async function fetchDashboardMetricsAction(): Promise<ActionResponse<Dash
   const timeLabel = "Action: fetchDashboardMetricsAction";
   console.time(timeLabel);
   try {
-    const metrics = await getDashboardMetrics();
+    const metrics = await dbGetDashboardMetrics();
     return { success: true, data: metrics };
   } catch (error) {
     console.error("Error in fetchDashboardMetricsAction:", error);
