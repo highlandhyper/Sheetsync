@@ -20,19 +20,11 @@ import {
   updateDoc,
   collectionGroup
 } from 'firebase/firestore';
-import { initializeAdminApp } from './firebase-admin'; // Only used for type, but will ensure it's initialized on server
+import { initializeAdminApp } from './firebase-admin';
 import { format, parseISO, isValid, addDays, isBefore, startOfDay, isSameDay } from 'date-fns';
 
-// Initialize on first data access on the server
-let db: FirebaseFirestore.Firestore;
-try {
-  const adminApp = initializeAdminApp();
-  db = getFirestore(adminApp);
-} catch (e) {
-  console.error("data.ts: Failed to get Firestore instance. The Admin SDK may not be initialized.", e);
-  // We don't throw here, to allow client-side to still work.
-  // Server-side functions will fail if db is not initialized.
-}
+// This is a client-side file. We get the firestore instance from the client-side firebase library.
+import { firestore as db } from './firebase';
 
 
 // Collection names
@@ -42,7 +34,7 @@ const INVENTORY_COLLECTION = 'inventory';
 const RETURNS_LOG_COLLECTION = 'returns';
 const SETTINGS_COLLECTION = 'settings';
 
-function docToProduct(doc: FirebaseFirestore.DocumentSnapshot): Product {
+function docToProduct(doc: any): Product {
     const data = doc.data() as any;
     return {
         id: doc.id,
@@ -53,7 +45,7 @@ function docToProduct(doc: FirebaseFirestore.DocumentSnapshot): Product {
     };
 }
 
-function docToSupplier(doc: FirebaseFirestore.DocumentSnapshot): Supplier {
+function docToSupplier(doc: any): Supplier {
     const data = doc.data() as any;
     return {
         id: doc.id,
@@ -62,7 +54,7 @@ function docToSupplier(doc: FirebaseFirestore.DocumentSnapshot): Supplier {
     };
 }
 
-function docToInventoryItem(doc: FirebaseFirestore.DocumentSnapshot): InventoryItem {
+function docToInventoryItem(doc: any): InventoryItem {
     const data = doc.data() as any;
     return {
         id: doc.id,
@@ -78,7 +70,7 @@ function docToInventoryItem(doc: FirebaseFirestore.DocumentSnapshot): InventoryI
     };
 }
 
-function docToReturnedItem(doc: FirebaseFirestore.DocumentSnapshot): ReturnedItem {
+function docToReturnedItem(doc: any): ReturnedItem {
     const data = doc.data() as any;
     return {
         id: doc.id,
@@ -98,32 +90,36 @@ function docToReturnedItem(doc: FirebaseFirestore.DocumentSnapshot): ReturnedIte
 
 
 export async function getProducts(): Promise<Product[]> {
-    const productsSnapshot = await db.collection(PRODUCTS_COLLECTION).get();
+    const productsCollection = collection(db, PRODUCTS_COLLECTION);
+    const productsSnapshot = await getDocs(productsCollection);
     const products = productsSnapshot.docs.map(docToProduct);
     console.log(`Firestore: getProducts - Fetched ${products.length} products.`);
     return products;
 }
 
 export async function getSuppliers(): Promise<Supplier[]> {
-    const suppliersSnapshot = await db.collection(SUPPLIERS_COLLECTION).get();
+    const suppliersCollection = collection(db, SUPPLIERS_COLLECTION);
+    const suppliersSnapshot = await getDocs(suppliersCollection);
     const suppliers = suppliersSnapshot.docs.map(docToSupplier);
     console.log(`Firestore: getSuppliers - Fetched ${suppliers.length} suppliers.`);
     return suppliers;
 }
 
 export async function getInventoryItems(filters?: { supplierName?: string; staffName?: string }): Promise<InventoryItem[]> {
-    let q: FirebaseFirestore.Query = db.collection(INVENTORY_COLLECTION)
-        .where('quantity', '>', 0)
-        .orderBy('timestamp', 'desc');
+    let q = query(
+      collection(db, INVENTORY_COLLECTION),
+      where('quantity', '>', 0),
+      orderBy('timestamp', 'desc')
+    );
 
     if (filters?.supplierName) {
-        q = q.where('supplierName', '==', filters.supplierName);
+        q = query(q, where('supplierName', '==', filters.supplierName));
     }
     if (filters?.staffName) {
-        q = q.where('staffName', '==', filters.staffName);
+        q = query(q, where('staffName', '==', filters.staffName));
     }
     
-    const inventorySnapshot = await q.get();
+    const inventorySnapshot = await getDocs(q);
     const items = inventorySnapshot.docs.map(docToInventoryItem);
     console.log(`Firestore: getInventoryItems - Fetched ${items.length} items.`);
     return items;
@@ -131,7 +127,7 @@ export async function getInventoryItems(filters?: { supplierName?: string; staff
 
 
 export async function getUniqueStaffNames(): Promise<string[]> {
-    const inventorySnapshot = await db.collection(INVENTORY_COLLECTION).orderBy('staffName').get();
+    const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('staffName')));
     const staffNames = new Set<string>();
     inventorySnapshot.docs.forEach(doc => {
         const name = doc.data().staffName;
@@ -142,7 +138,7 @@ export async function getUniqueStaffNames(): Promise<string[]> {
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
-    const inventorySnapshot = await db.collection(INVENTORY_COLLECTION).orderBy('location').get();
+    const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('location')));
     const locations = new Set<string>();
     inventorySnapshot.docs.forEach(doc => {
         const loc = doc.data().location;
@@ -153,7 +149,7 @@ export async function getUniqueLocations(): Promise<string[]> {
 }
 
 export async function getReturnedItems(): Promise<ReturnedItem[]> {
-    const returnsSnapshot = await db.collection(RETURNS_LOG_COLLECTION).orderBy('returnTimestamp', 'desc').get();
+    const returnsSnapshot = await getDocs(query(collection(db, RETURNS_LOG_COLLECTION), orderBy('returnTimestamp', 'desc')));
     const items = returnsSnapshot.docs.map(docToReturnedItem);
     console.log(`Firestore: getReturnedItems - Fetched ${items.length} returned items.`);
     return items;
@@ -161,27 +157,24 @@ export async function getReturnedItems(): Promise<ReturnedItem[]> {
 
 export async function addProduct(productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
     try {
-        const productRef = db.collection(PRODUCTS_COLLECTION).doc(productData.barcode);
+        const productRef = doc(db, PRODUCTS_COLLECTION, productData.barcode);
         
-        await db.runTransaction(async (transaction) => {
+        await runTransaction(db, async (transaction) => {
             const productDoc = await transaction.get(productRef);
-            if (productDoc.exists) {
-                // Update existing product if needed
+            if (productDoc.exists()) {
                 transaction.update(productRef, { 
                     productName: productData.productName,
                     supplierName: productData.supplierName,
                 });
             } else {
-                // Create new product
                 transaction.set(productRef, {
                     productName: productData.productName,
                     supplierName: productData.supplierName,
-                    createdAt: FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 });
             }
         });
 
-        // Also ensure supplier exists
         await addSupplier({ name: productData.supplierName });
         
         return {
@@ -197,9 +190,9 @@ export async function addProduct(productData: { barcode: string; productName: st
 
 export async function addSupplier(supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
     const supplierName = supplierData.name.trim();
-    const suppliersRef = db.collection(SUPPLIERS_COLLECTION);
-    const q = suppliersRef.where('name', '==', supplierName).limit(1);
-    const existing = await q.get();
+    const suppliersRef = collection(db, SUPPLIERS_COLLECTION);
+    const q = query(suppliersRef, where('name', '==', supplierName), limit(1));
+    const existing = await getDocs(q);
 
     if (!existing.empty) {
         console.log(`Firestore: addSupplier - Supplier "${supplierName}" already exists.`);
@@ -207,9 +200,9 @@ export async function addSupplier(supplierData: { name: string }): Promise<{ sup
     }
     
     try {
-        const docRef = await suppliersRef.add({
+        const docRef = await addDoc(suppliersRef, {
             name: supplierName,
-            createdAt: FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         return { supplier: { id: docRef.id, name: supplierName, createdAt: new Date().toISOString() } };
     } catch (error) {
@@ -219,9 +212,9 @@ export async function addSupplier(supplierData: { name: string }): Promise<{ sup
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
-    const productRef = db.collection(PRODUCTS_COLLECTION).doc(barcode);
-    const productDoc = await productRef.get();
-    if (!productDoc.exists) {
+    const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
+    const productDoc = await getDoc(productRef);
+    if (!productDoc.exists()) {
         console.warn(`Firestore: getProductDetailsByBarcode - Barcode ${barcode} not found.`);
         return null;
     }
@@ -234,7 +227,7 @@ export async function addInventoryItem(
   resolvedProductDetails: { productName: string; supplierName: string; }
 ): Promise<InventoryItem | null> {
     try {
-        const docRef = await db.collection(INVENTORY_COLLECTION).add({
+        const docRef = await addDoc(collection(db, INVENTORY_COLLECTION), {
             barcode: itemFormValues.barcode.trim(),
             productName: resolvedProductDetails.productName,
             supplierName: resolvedProductDetails.supplierName,
@@ -243,7 +236,7 @@ export async function addInventoryItem(
             location: itemFormValues.location.trim(),
             staffName: itemFormValues.staffName.trim(),
             itemType: itemFormValues.itemType,
-            timestamp: FieldValue.serverTimestamp(),
+            timestamp: serverTimestamp(),
         });
 
         return {
@@ -261,12 +254,12 @@ export async function addInventoryItem(
 }
 
 export async function processReturn(itemId: string, quantityToReturn: number, staffNameProcessingReturn: string): Promise<{ success: boolean; message?: string }> {
-    const itemRef = db.collection(INVENTORY_COLLECTION).doc(itemId);
+    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
 
     try {
-        await db.runTransaction(async (transaction) => {
+        await runTransaction(db, async (transaction) => {
             const itemDoc = await transaction.get(itemRef);
-            if (!itemDoc.exists) {
+            if (!itemDoc.exists()) {
                 throw new Error(`Item with ID ${itemId} not found.`);
             }
 
@@ -284,8 +277,7 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
                 transaction.delete(itemRef);
             }
 
-            // Log the return
-            const returnLogRef = db.collection(RETURNS_LOG_COLLECTION).doc();
+            const returnLogRef = doc(collection(db, RETURNS_LOG_COLLECTION));
             transaction.set(returnLogRef, {
                 originalInventoryItemId: itemId,
                 productName: currentItem.productName,
@@ -297,7 +289,7 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
                 staffName: currentItem.staffName,
                 itemType: currentItem.itemType,
                 processedBy: staffNameProcessingReturn.trim(),
-                returnTimestamp: FieldValue.serverTimestamp()
+                returnTimestamp: serverTimestamp()
             });
         });
         return { success: true, message: `Return processed successfully for item ID ${itemId}.`};
@@ -309,15 +301,13 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
 
 
 export async function updateSupplierNameAndReferences(currentName: string, newName: string): Promise<boolean> {
-    const batch = db.batch();
+    const batch = writeBatch(db);
     try {
-        // 1. Find the supplier document to update its name
-        const suppliersQuery = db.collection(SUPPLIERS_COLLECTION).where('name', '==', currentName);
-        const suppliersSnapshot = await suppliersQuery.get();
+        const suppliersQuery = query(collection(db, SUPPLIERS_COLLECTION), where('name', '==', currentName));
+        const suppliersSnapshot = await getDocs(suppliersQuery);
 
         if (suppliersSnapshot.empty) {
             console.warn(`Firestore: updateSupplierName - No supplier found with name "${currentName}".`);
-            // If you want this to be a "soft" failure, return true. If it's a hard failure, return false.
             return true; 
         }
         
@@ -325,23 +315,20 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
             batch.update(doc.ref, { name: newName });
         });
 
-        // 2. Find and update all products referencing this supplier
-        const productsQuery = db.collection(PRODUCTS_COLLECTION).where('supplierName', '==', currentName);
-        const productsSnapshot = await productsQuery.get();
+        const productsQuery = query(collection(db, PRODUCTS_COLLECTION), where('supplierName', '==', currentName));
+        const productsSnapshot = await getDocs(productsQuery);
         productsSnapshot.forEach(doc => {
             batch.update(doc.ref, { supplierName: newName });
         });
 
-        // 3. Find and update all inventory items referencing this supplier
-        const inventoryQuery = db.collection(INVENTORY_COLLECTION).where('supplierName', '==', currentName);
-        const inventorySnapshot = await inventoryQuery.get();
+        const inventoryQuery = query(collection(db, INVENTORY_COLLECTION), where('supplierName', '==', currentName));
+        const inventorySnapshot = await getDocs(inventoryQuery);
         inventorySnapshot.forEach(doc => {
             batch.update(doc.ref, { supplierName: newName });
         });
 
-        // 4. Find and update all return log entries referencing this supplier
-        const returnsQuery = db.collection(RETURNS_LOG_COLLECTION).where('supplierName', '==', currentName);
-        const returnsSnapshot = await returnsQuery.get();
+        const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('supplierName', '==', currentName));
+        const returnsSnapshot = await getDocs(returnsQuery);
         returnsSnapshot.forEach(doc => {
             batch.update(doc.ref, { supplierName: newName });
         });
@@ -359,15 +346,13 @@ export async function updateInventoryItemDetails(
   itemId: string,
   updates: { location?: string; expiryDate?: Date | null; itemType?: 'Expiry' | 'Damage', quantity?: number }
 ): Promise<boolean> {
-    const itemRef = db.collection(INVENTORY_COLLECTION).doc(itemId);
+    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
     
-    // Create a plain object for the update, filtering out any undefined values
     const updateData: {[key: string]: any} = {};
     if (updates.location !== undefined) updateData.location = updates.location;
     if (updates.itemType !== undefined) updateData.itemType = updates.itemType;
     if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
 
-    // Handle date conversion to Firestore Timestamp or null
     if (updates.expiryDate !== undefined) {
         updateData.expiryDate = updates.expiryDate ? Timestamp.fromDate(updates.expiryDate) : null;
     }
@@ -378,7 +363,7 @@ export async function updateInventoryItemDetails(
     }
 
     try {
-        await itemRef.update(updateData);
+        await updateDoc(itemRef, updateData);
         console.log(`Firestore: Successfully updated details for item ${itemId}.`);
         return true;
     } catch (error) {
@@ -389,12 +374,12 @@ export async function updateInventoryItemDetails(
 
 
 export async function updateProductAndSupplierLinks(barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
-    const batch = db.batch();
+    const batch = writeBatch(db);
     try {
-        const productRef = db.collection(PRODUCTS_COLLECTION).doc(barcode);
-        const productDoc = await productRef.get();
+        const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
+        const productDoc = await getDoc(productRef);
 
-        if (!productDoc.exists) {
+        if (!productDoc.exists()) {
             console.error(`Firestore: updateProductAndSupplierLinks - Product with barcode ${barcode} not found.`);
             return false;
         }
@@ -402,24 +387,20 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
         const oldProductName = productDoc.data()!.productName;
         const productNameChanged = oldProductName !== newProductName;
 
-        // 1. Update the product document itself
         batch.update(productRef, {
             productName: newProductName,
             supplierName: newSupplierName
         });
 
-        // 2. If product name changed, cascade update to other collections
         if (productNameChanged) {
-            // Update inventory
-            const inventoryQuery = db.collection(INVENTORY_COLLECTION).where('barcode', '==', barcode);
-            const inventorySnapshot = await inventoryQuery.get();
+            const inventoryQuery = query(collection(db, INVENTORY_COLLECTION), where('barcode', '==', barcode));
+            const inventorySnapshot = await getDocs(inventoryQuery);
             inventorySnapshot.forEach(doc => {
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
             });
 
-            // Update returns log
-            const returnsQuery = db.collection(RETURNS_LOG_COLLECTION).where('barcode', '==', barcode);
-            const returnsSnapshot = await returnsQuery.get();
+            const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('barcode', '==', barcode));
+            const returnsSnapshot = await getDocs(returnsQuery);
             returnsSnapshot.forEach(doc => {
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
             });
@@ -436,10 +417,9 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
 
 
 export async function getInventoryLogEntriesByBarcode(barcode: string): Promise<InventoryItem[]> {
-    const inventoryRef = db.collection(INVENTORY_COLLECTION);
-    const q = inventoryRef.where('barcode', '==', barcode).orderBy('timestamp', 'desc');
+    const q = query(collection(db, INVENTORY_COLLECTION), where('barcode', '==', barcode), orderBy('timestamp', 'desc'));
     
-    const snapshot = await q.get();
+    const snapshot = await getDocs(q);
     const items = snapshot.docs.map(docToInventoryItem);
     console.log(`Firestore: getInventoryLogEntriesByBarcode - Found ${items.length} log entries for barcode ${barcode}.`);
     return items;
@@ -447,17 +427,18 @@ export async function getInventoryLogEntriesByBarcode(barcode: string): Promise<
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     try {
-        const [products, currentInventoryItems, suppliersList] = await Promise.all([
-            db.collection(PRODUCTS_COLLECTION).get(),
-            db.collection(INVENTORY_COLLECTION).where('quantity', '>', 0).get(),
-            db.collection(SUPPLIERS_COLLECTION).get(),
+        if (!db) throw new Error("Firestore is not initialized");
+        const [productsSnapshot, inventorySnapshot, suppliersSnapshot] = await Promise.all([
+            getDocs(collection(db, PRODUCTS_COLLECTION)),
+            getDocs(query(collection(db, INVENTORY_COLLECTION), where('quantity', '>', 0))),
+            getDocs(collection(db, SUPPLIERS_COLLECTION)),
         ]);
         
-        const inventoryItems = currentInventoryItems.docs.map(docToInventoryItem);
+        const inventoryItems = inventorySnapshot.docs.map(docToInventoryItem);
 
-        const totalProducts = products.size;
+        const totalProducts = productsSnapshot.size;
         const totalStockQuantity = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
-        const totalSuppliers = suppliersList.size;
+        const totalSuppliers = suppliersSnapshot.size;
         
         let itemsExpiringSoon = 0;
         const today = startOfDay(new Date());
@@ -487,13 +468,12 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
           .map(([name, totalStock]) => ({ name, totalStock }))
           .sort((a, b) => b.totalStock - a.totalStock);
 
-        // Calculate daily changes
         const startOfToday = Timestamp.fromDate(startOfDay(new Date()));
 
-        const addedTodayQuery = db.collection(INVENTORY_COLLECTION).where('timestamp', '>=', startOfToday);
-        const returnedTodayQuery = db.collection(RETURNS_LOG_COLLECTION).where('returnTimestamp', '>=', startOfToday);
+        const addedTodayQuery = query(collection(db, INVENTORY_COLLECTION), where('timestamp', '>=', startOfToday));
+        const returnedTodayQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('returnTimestamp', '>=', startOfToday));
 
-        const [addedSnapshot, returnedSnapshot] = await Promise.all([addedTodayQuery.get(), returnedTodayQuery.get()]);
+        const [addedSnapshot, returnedSnapshot] = await Promise.all([getDocs(addedTodayQuery), getDocs(returnedTodayQuery)]);
 
         const quantityAddedToday = addedSnapshot.docs.reduce((sum, doc) => sum + (doc.data().quantity || 0), 0);
         const quantityReturnedToday = returnedSnapshot.docs.reduce((sum, doc) => sum + (doc.data().returnedQuantity || 0), 0);
@@ -544,9 +524,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 }
 
 export async function deleteInventoryItemById(itemId: string): Promise<boolean> {
-    const itemRef = db.collection(INVENTORY_COLLECTION).doc(itemId);
+    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
     try {
-        await itemRef.delete();
+        await deleteDoc(itemRef);
         console.log(`Firestore: Successfully deleted inventory item ${itemId}.`);
         return true;
     } catch (error) {
@@ -559,10 +539,14 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
 const PERMISSIONS_DOC_ID = 'accessControl';
 
 export async function loadPermissions(): Promise<Permissions | null> {
-    const permissionsRef = db.collection(SETTINGS_COLLECTION).doc(PERMISSIONS_DOC_ID);
+    if (!db) {
+        console.error("Firestore: loadPermissions - db instance is not available.");
+        return null;
+    }
+    const permissionsRef = doc(db, SETTINGS_COLLECTION, PERMISSIONS_DOC_ID);
     try {
-        const docSnap = await permissionsRef.get();
-        if (docSnap.exists) {
+        const docSnap = await getDoc(permissionsRef);
+        if (docSnap.exists()) {
             console.log("Firestore: Successfully loaded permissions.");
             return docSnap.data()! as Permissions;
         }
@@ -575,9 +559,13 @@ export async function loadPermissions(): Promise<Permissions | null> {
 }
 
 export async function savePermissions(permissions: Permissions): Promise<boolean> {
-    const permissionsRef = db.collection(SETTINGS_COLLECTION).doc(PERMISSIONS_DOC_ID);
+     if (!db) {
+        console.error("Firestore: savePermissions - db instance is not available.");
+        return false;
+    }
+    const permissionsRef = doc(db, SETTINGS_COLLECTION, PERMISSIONS_DOC_ID);
     try {
-        await db.runTransaction(async (transaction) => {
+        await runTransaction(db, async (transaction) => {
             transaction.set(permissionsRef, permissions);
         });
         console.log("Firestore: Successfully saved permissions.");
