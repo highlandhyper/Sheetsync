@@ -53,9 +53,9 @@ interface RawSupplier {
   name: string;
 }
 async function getSuppliersFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupplier[]> {
-  const sheetData = await readSheetData(sheets, "'Form_Responses2'!H2:H");
+  const sheetData = await readSheetData(sheets, "'Form responses 2'!H2:H");
   if (!sheetData) return [];
-  return sheetData.map(row => ({ name: row[0] })).filter(s => s.name);
+  return sheetData.map(row => ({ name: row[0] })).filter(s => s && s.name);
 }
 
 interface RawProduct {
@@ -64,9 +64,9 @@ interface RawProduct {
   supplierName: string;
 }
 async function getProductsFromSheet(sheets: sheets_v4.Sheets): Promise<RawProduct[]> {
-    const sheetData = await readSheetData(sheets, "'Form_Responses2'!B2:H");
+    const sheetData = await readSheetData(sheets, "'Form responses 2'!B2:H");
     if (!sheetData) return [];
-    // Correct mapping based on 'Form_Responses2'
+    // Correct mapping based on 'Form responses 2'
     // B: BARCODE, G: PRODUCT NAME, H: SUPPLIER
     return sheetData.map(row => ({
         barcode: row[0],       // Column B
@@ -85,9 +85,9 @@ interface RawInventoryItem {
   itemType: string;
 }
 async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInventoryItem[]> {
-    const sheetData = await readSheetData(sheets, "'Form_Responses2'!A2:I");
+    const sheetData = await readSheetData(sheets, "'Form responses 2'!A2:I");
     if (!sheetData) return [];
-    // Correct mapping based on 'Form_Responses2'
+    // Correct mapping based on 'Form responses 2'
     // A: Timestamp, B: BARCODE, C: QTY, D: DATE OF EX, E: where, F: WHO I, I: EXP OR DMG
     return sheetData.map(row => ({
         timestamp: row[0],
@@ -97,7 +97,7 @@ async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInven
         location: row[4],
         staffName: row[5],
         itemType: row[8],
-    })).filter(i => i.barcode && i.quantity);
+    })).filter(i => i && i.barcode && i.quantity);
 }
 
 // --- Migration Functions ---
@@ -110,32 +110,49 @@ async function migrateSuppliers(suppliers: RawSupplier[]) {
   }
   const batch = db.batch();
   const suppliersCol = db.collection('suppliers');
-  let uniqueCount = 0;
+  const uniqueSupplierNames = new Set<string>();
   
-  for (const supplier of suppliers) {
-    const q = suppliersCol.where("name", "==", supplier.name.trim());
-    const existing = await q.get();
-    if (existing.empty) {
+  // Create a unique set of non-empty supplier names
+  suppliers.forEach(supplier => {
+    if (supplier.name && supplier.name.trim()) {
+      uniqueSupplierNames.add(supplier.name.trim());
+    }
+  });
+
+  if (uniqueSupplierNames.size === 0) {
+      console.log("No valid supplier names found to migrate.");
+      return;
+  }
+  
+  console.log(`Found ${uniqueSupplierNames.size} unique supplier names from sheet. Checking against Firestore...`);
+  
+  const existingSuppliersSnapshot = await suppliersCol.get();
+  const existingSupplierNames = new Set(existingSuppliersSnapshot.docs.map(doc => doc.data().name));
+  
+  let newSuppliersCount = 0;
+  for (const name of uniqueSupplierNames) {
+    if (!existingSupplierNames.has(name)) {
       const docRef = suppliersCol.doc(); 
       batch.set(docRef, {
-        name: supplier.name.trim(),
+        name: name,
         createdAt: FieldValue.serverTimestamp()
       });
-      uniqueCount++;
+      newSuppliersCount++;
     } else {
-        console.log(`Skipping existing supplier: ${supplier.name}`);
+      console.log(`- Skipping existing supplier: ${name}`);
     }
   }
   
-  if (uniqueCount > 0) {
+  if (newSuppliersCount > 0) {
     await batch.commit();
-    console.log(`✅ Migrated ${uniqueCount} unique suppliers to Firestore.`);
+    console.log(`✅ Migrated ${newSuppliersCount} new unique suppliers to Firestore.`);
   } else {
     console.log("All suppliers from sheet already exist in Firestore.");
   }
 }
 
-async function migrateProducts(products: RawProduct[], productMap: Map<string, any>) {
+
+async function migrateProducts(products: RawProduct[]) {
     console.log(`--- Starting Product Migration ---`);
     if (products.length === 0) {
         console.log("No products found in sheet to migrate.");
@@ -143,38 +160,60 @@ async function migrateProducts(products: RawProduct[], productMap: Map<string, a
     }
     const batch = db.batch();
     const productsCol = db.collection('products');
+    let migratedCount = 0;
 
     for (const product of products) {
+        if (!product.barcode) continue;
+
         const docRef = productsCol.doc(product.barcode);
         const productData = {
             productName: product.productName.trim(),
             supplierName: product.supplierName ? product.supplierName.trim() : null,
             createdAt: FieldValue.serverTimestamp()
         };
-        batch.set(docRef, productData);
-        productMap.set(product.barcode, productData);
+        batch.set(docRef, productData, { merge: true }); // Use merge to avoid overwriting createdAt on existing docs
+        migratedCount++;
     }
 
-    await batch.commit();
-    console.log(`✅ Migrated ${products.length} products to Firestore.`);
+    if (migratedCount > 0) {
+        await batch.commit();
+        console.log(`✅ Migrated or updated ${migratedCount} products in Firestore.`);
+    } else {
+        console.log("No products with barcodes found to migrate.");
+    }
 }
 
-async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<string, any>) {
+
+async function migrateInventory(inventory: RawInventoryItem[], products: RawProduct[]) {
   console.log(`--- Starting Inventory Migration ---`);
   if (inventory.length === 0) {
     console.log("No inventory items found in sheet to migrate.");
     return;
   }
+
+  // Create lookup maps for product name and supplier name from the comprehensive products list
+  const productDetailsMap = new Map<string, { productName: string; supplierName: string | null }>();
+  products.forEach(p => {
+    if (p.barcode) {
+      productDetailsMap.set(p.barcode, {
+        productName: p.productName.trim(),
+        supplierName: p.supplierName ? p.supplierName.trim() : null
+      });
+    }
+  });
+
   const batch = db.batch();
   const inventoryCol = db.collection('inventory');
   let migratedCount = 0;
 
   for (const item of inventory) {
-    const productDetails = productMap.get(item.barcode);
+    const productDetails = productDetailsMap.get(item.barcode);
+
     if (!productDetails) {
-        console.warn(`-  Skipping inventory item with unknown barcode: ${item.barcode}`);
+        console.warn(`-  Skipping inventory item with unknown barcode: ${item.barcode}. Product details not found in 'Form responses 2'.`);
         continue;
     }
+
     const docRef = inventoryCol.doc();
     batch.set(docRef, {
       productName: productDetails.productName,
@@ -194,7 +233,7 @@ async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<s
     await batch.commit();
     console.log(`✅ Migrated ${migratedCount} inventory items to Firestore.`);
   } else {
-      console.log("No new inventory items to migrate.");
+      console.log("No new valid inventory items to migrate.");
   }
 }
 
@@ -214,15 +253,15 @@ It will NOT modify or delete any data in your Google Sheet.
         const sheets = await getSheetsClient();
         console.log("Authentication successful.");
 
-        const suppliers = await getSuppliersFromSheet(sheets);
-        const products = await getProductsFromSheet(sheets);
-        const inventory = await getInventoryFromSheet(sheets);
+        // Fetch all data first
+        const allSuppliersFromSheet = await getSuppliersFromSheet(sheets);
+        const allProductsFromSheet = await getProductsFromSheet(sheets);
+        const allInventoryFromSheet = await getInventoryFromSheet(sheets);
         
-        const productMap = new Map<string, any>();
-
-        await migrateSuppliers(suppliers);
-        await migrateProducts(products, productMap);
-        await migrateInventory(inventory, productMap);
+        // Now, migrate each collection
+        await migrateSuppliers(allSuppliersFromSheet);
+        await migrateProducts(allProductsFromSheet);
+        await migrateInventory(allInventoryFromSheet, allProductsFromSheet); // Pass product data to enrich inventory
 
         console.log(`
 =============================================
