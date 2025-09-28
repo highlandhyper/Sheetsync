@@ -190,6 +190,9 @@ export async function addProduct(productData: { barcode: string; productName: st
 
 export async function addSupplier(supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
     const supplierName = supplierData.name.trim();
+    if (!supplierName) {
+        return { supplier: null, error: "Supplier name cannot be empty." };
+    }
     const suppliersRef = collection(db, SUPPLIERS_COLLECTION);
     const q = query(suppliersRef, where('name', '==', supplierName), limit(1));
     const existing = await getDocs(q);
