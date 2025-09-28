@@ -1,5 +1,5 @@
 
-import { getProducts } from '@/lib/data';
+
 import { ProductListClient } from '@/components/products/product-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,10 +37,7 @@ function ProductListSkeleton() {
 }
 
 
-export default async function ProductsListPage() { 
-  // This fetches all products from 'BAR DATA' and enriches them with supplier info
-  const initialProducts = await getProducts();
-
+export default function ProductsListPage() { 
   return (
     <div className="container mx-auto py-2">
        <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
@@ -48,7 +45,7 @@ export default async function ProductsListPage() {
         Product Catalog
       </h1>
       <Suspense fallback={<ProductListSkeleton />}>
-        <ProductListClient initialProducts={initialProducts || []} />
+        <ProductListClient />
       </Suspense>
     </div>
   );
