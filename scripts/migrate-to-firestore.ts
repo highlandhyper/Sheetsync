@@ -1,6 +1,10 @@
 
 // tsx scripts/migrate-to-firestore.ts
-import 'dotenv/config'; // Load .env files
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+// Explicitly load .env.local from the root directory
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
 import * as admin from 'firebase-admin';
 import { google } from 'googleapis';
 import type { Product, InventoryItem, Supplier } from '../src/lib/types';
