@@ -2,11 +2,7 @@
 // tsx scripts/migrate-to-firestore.ts
 import 'dotenv/config'; // Load .env files
 import * as admin from 'firebase-admin';
-import {
-  getProducts as getProductsFromSheet,
-  getInventoryItems as getInventoryItemsFromSheet,
-  getSuppliers as getSuppliersFromSheet,
-} from '../src/lib/data';
+import { google } from 'googleapis';
 import type { Product, InventoryItem, Supplier } from '../src/lib/types';
 
 // ////////////////////////////////////////////////////////////////////
@@ -37,6 +33,89 @@ try {
 const db = admin.firestore();
 const BATCH_SIZE = 250; // Firestore batch writes can have max 500 operations
 
+
+// ////////////////////////////////////////////////////////////////////
+// GOOGLE SHEETS CLIENT LOGIC (Restored for Migration)
+// ////////////////////////////////////////////////////////////////////
+const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
+const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
+
+if (!SPREADSHEET_ID || !GOOGLE_SHEETS_API_KEY) {
+  throw new Error("Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env file.");
+}
+
+const sheets = google.sheets({
+  version: 'v4',
+  auth: GOOGLE_SHEETS_API_KEY,
+});
+
+async function readSheetData(range: string): Promise<any[][] | undefined> {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: range,
+    });
+    return response.data.values;
+  } catch (error) {
+    console.error(`Google Sheets API Error reading range "${range}":`, error);
+    throw new Error('Failed to read data from Google Sheet.');
+  }
+}
+
+async function getProductsFromSheet(): Promise<Product[]> {
+    const barData = await readSheetData("'BAR DATA'!A2:C");
+    if (!barData) return [];
+
+    return barData.map((row) => ({
+        id: row[0], // Barcode
+        barcode: row[0],
+        productName: row[1],
+        supplierName: row[2] || null,
+    }));
+}
+
+async function getSuppliersFromSheet(): Promise<Supplier[]> {
+    const supData = await readSheetData("'SUP DATA'!A2:A");
+    if (!supData) return [];
+    
+    const uniqueSupplierNames = [...new Set(supData.flat())].filter(Boolean);
+
+    return uniqueSupplierNames.map((name, index) => ({
+        id: name.replace(/\s+/g, '-').toLowerCase() + `-${index}`, // Create a stable ID
+        name: name,
+    }));
+}
+
+async function getInventoryItemsFromSheet(): Promise<InventoryItem[]> {
+    const inventoryData = await readSheetData("'Form responses 2'!A2:I");
+    if (!inventoryData) return [];
+
+    const products = await getProductsFromSheet();
+    const productMap = new Map(products.map(p => [p.productName, p]));
+
+    return inventoryData.map((row, index) => {
+        const productName = row[1];
+        const productInfo = productMap.get(productName) || { barcode: 'N/A', supplierName: 'N/A' };
+        
+        return {
+            id: `sheet-item-${index + 2}`, // Create a stable ID based on row number
+            timestamp: row[0] ? new Date(row[0]).toISOString() : new Date().toISOString(),
+            productName: productName,
+            barcode: productInfo.barcode,
+            supplierName: productInfo.supplierName,
+            itemType: row[2] as 'Expiry' | 'Damage',
+            quantity: parseInt(row[3], 10) || 0,
+            expiryDate: row[4] ? new Date(row[4]).toISOString().split('T')[0] : undefined,
+            location: row[5] || 'N/A',
+            staffName: row[6] || 'N/A',
+        };
+    }).filter(item => item.quantity > 0); // Only migrate items with quantity > 0
+}
+
+
+// ////////////////////////////////////////////////////////////////////
+// BATCH COMMIT LOGIC
+// ////////////////////////////////////////////////////////////////////
 async function batchCommit<T>(collectionName: string, data: T[], transform: (item: T) => { id: string, data: any }) {
   console.log(`Starting batch commit for ${data.length} items to '${collectionName}' collection...`);
   let batch = db.batch();
@@ -77,7 +156,7 @@ async function migrateSuppliers() {
     suppliers,
     (supplier) => ({
       id: supplier.id,
-      data: { name: supplier.name } // Only storing name, id is the doc id
+      data: { name: supplier.name, createdAt: admin.firestore.FieldValue.serverTimestamp() }
     })
   );
 }
@@ -99,6 +178,7 @@ async function migrateProducts() {
       data: {
         productName: product.productName,
         supplierName: product.supplierName || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       }
     })
   );
