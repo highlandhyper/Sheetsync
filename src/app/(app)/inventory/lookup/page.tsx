@@ -1,10 +1,14 @@
 
+'use client';
+
 import { InventoryBarcodeLookupClient } from '@/components/inventory/inventory-barcode-lookup-client';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { getUniqueLocations } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 function BarcodeLookupSkeleton() {
   return (
@@ -47,14 +51,48 @@ function BarcodeLookupSkeleton() {
   );
 }
 
-export default async function InventoryLogLookupPage() {
-  const uniqueLocations = await getUniqueLocations();
+export default function InventoryLogLookupPage() {
+  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const locations = await getUniqueLocations();
+        setUniqueLocations(locations || []);
+      } catch (error) {
+        console.error("Failed to fetch unique locations:", error);
+        toast({
+          title: "Error",
+          description: "Could not load location data for editing.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [toast]);
+  
+  if (isLoading) {
+     return (
+       <div className="container mx-auto py-2">
+         <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Log Lookup</h1>
+         <div className="flex items-center justify-center p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-4 text-muted-foreground">Loading page data...</p>
+          </div>
+       </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Log Lookup</h1>
       <Suspense fallback={<BarcodeLookupSkeleton />}>
-        <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations || []} />
+        <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations} />
       </Suspense>
     </div>
   );

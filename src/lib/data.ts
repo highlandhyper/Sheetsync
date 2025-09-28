@@ -91,6 +91,7 @@ function docToReturnedItem(doc: any): ReturnedItem {
 
 
 export async function getProducts(): Promise<Product[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const productsCollection = collection(db, PRODUCTS_COLLECTION);
     const productsSnapshot = await getDocs(productsCollection);
     const products = productsSnapshot.docs.map(docToProduct);
@@ -99,6 +100,7 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getSuppliers(): Promise<Supplier[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const suppliersCollection = collection(db, SUPPLIERS_COLLECTION);
     const suppliersSnapshot = await getDocs(suppliersCollection);
     const suppliers = suppliersSnapshot.docs.map(docToSupplier);
@@ -107,6 +109,7 @@ export async function getSuppliers(): Promise<Supplier[]> {
 }
 
 export async function getInventoryItems(): Promise<InventoryItem[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const q = query(
       collection(db, INVENTORY_COLLECTION),
       where('quantity', '>', 0),
@@ -121,6 +124,7 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 
 
 export async function getUniqueStaffNames(): Promise<string[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('staffName')));
     const staffNames = new Set<string>();
     inventorySnapshot.docs.forEach(doc => {
@@ -132,6 +136,7 @@ export async function getUniqueStaffNames(): Promise<string[]> {
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('location')));
     const locations = new Set<string>();
     inventorySnapshot.docs.forEach(doc => {
@@ -143,6 +148,7 @@ export async function getUniqueLocations(): Promise<string[]> {
 }
 
 export async function getReturnedItems(): Promise<ReturnedItem[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const returnsSnapshot = await getDocs(query(collection(db, RETURNS_LOG_COLLECTION), orderBy('returnTimestamp', 'desc')));
     const items = returnsSnapshot.docs.map(docToReturnedItem);
     console.log(`Firestore: getReturnedItems - Fetched ${items.length} returned items.`);
@@ -150,6 +156,7 @@ export async function getReturnedItems(): Promise<ReturnedItem[]> {
 }
 
 export async function addProduct(productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
+    if (!db) throw new Error("Firestore is not initialized");
     try {
         const productRef = doc(db, PRODUCTS_COLLECTION, productData.barcode);
         
@@ -183,6 +190,7 @@ export async function addProduct(productData: { barcode: string; productName: st
 }
 
 export async function addSupplier(supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
+    if (!db) throw new Error("Firestore is not initialized");
     const supplierName = supplierData.name.trim();
     if (!supplierName) {
         return { supplier: null, error: "Supplier name cannot be empty." };
@@ -209,6 +217,7 @@ export async function addSupplier(supplierData: { name: string }): Promise<{ sup
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
+    if (!db) throw new Error("Firestore is not initialized");
     const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
     const productDoc = await getDoc(productRef);
     if (!productDoc.exists()) {
@@ -223,6 +232,7 @@ export async function addInventoryItem(
   itemFormValues: AddInventoryItemFormValues,
   resolvedProductDetails: { productName: string; supplierName: string; }
 ): Promise<InventoryItem | null> {
+    if (!db) throw new Error("Firestore is not initialized");
     try {
         const docRef = await addDoc(collection(db, INVENTORY_COLLECTION), {
             barcode: itemFormValues.barcode.trim(),
@@ -251,6 +261,7 @@ export async function addInventoryItem(
 }
 
 export async function processReturn(itemId: string, quantityToReturn: number, staffNameProcessingReturn: string): Promise<{ success: boolean; message?: string }> {
+    if (!db) throw new Error("Firestore is not initialized");
     const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
 
     try {
@@ -298,6 +309,7 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
 
 
 export async function updateSupplierNameAndReferences(currentName: string, newName: string): Promise<boolean> {
+    if (!db) throw new Error("Firestore is not initialized");
     const batch = writeBatch(db);
     try {
         const suppliersQuery = query(collection(db, SUPPLIERS_COLLECTION), where('name', '==', currentName));
@@ -343,6 +355,7 @@ export async function updateInventoryItemDetails(
   itemId: string,
   updates: { location?: string; expiryDate?: Date | null; itemType?: 'Expiry' | 'Damage', quantity?: number }
 ): Promise<boolean> {
+    if (!db) throw new Error("Firestore is not initialized");
     const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
     
     const updateData: {[key: string]: any} = {};
@@ -371,6 +384,7 @@ export async function updateInventoryItemDetails(
 
 
 export async function updateProductAndSupplierLinks(barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
+    if (!db) throw new Error("Firestore is not initialized");
     const batch = writeBatch(db);
     try {
         const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
@@ -414,6 +428,7 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
 
 
 export async function getInventoryLogEntriesByBarcode(barcode: string): Promise<InventoryItem[]> {
+    if (!db) throw new Error("Firestore is not initialized");
     const q = query(collection(db, INVENTORY_COLLECTION), where('barcode', '==', barcode), orderBy('timestamp', 'desc'));
     
     const snapshot = await getDocs(q);
@@ -511,6 +526,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 }
 
 export async function deleteInventoryItemById(itemId: string): Promise<boolean> {
+    if (!db) throw new Error("Firestore is not initialized");
     const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
     try {
         await deleteDoc(itemRef);
@@ -562,5 +578,3 @@ export async function savePermissions(permissions: Permissions): Promise<boolean
         return false;
     }
 }
-
-    
