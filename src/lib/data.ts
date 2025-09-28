@@ -106,19 +106,12 @@ export async function getSuppliers(): Promise<Supplier[]> {
     return suppliers;
 }
 
-export async function getInventoryItems(filters?: { supplierName?: string; staffName?: string }): Promise<InventoryItem[]> {
-    let q = query(
+export async function getInventoryItems(): Promise<InventoryItem[]> {
+    const q = query(
       collection(db, INVENTORY_COLLECTION),
       where('quantity', '>', 0),
       orderBy('timestamp', 'desc')
     );
-
-    if (filters?.supplierName) {
-        q = query(q, where('supplierName', '==', filters.supplierName));
-    }
-    if (filters?.staffName) {
-        q = query(q, where('staffName', '==', filters.staffName));
-    }
     
     const inventorySnapshot = await getDocs(q);
     const items = inventorySnapshot.docs.map(docToInventoryItem);
@@ -403,7 +396,7 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
             });
 
-            const returnsQuery = query(collection(db, RETURNS_LOG_COLlection), where('barcode', '==', barcode));
+            const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('barcode', '==', barcode));
             const returnsSnapshot = await getDocs(returnsQuery);
             returnsSnapshot.forEach(doc => {
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
@@ -513,17 +506,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
         };
     } catch (error) {
         console.error("Firestore: Critical error in getDashboardMetrics:", error);
-        return {
-          totalProducts: 0,
-          totalStockQuantity: 0,
-          itemsExpiringSoon: 0,
-          damagedItemsCount: 0,
-          stockBySupplier: [],
-          totalSuppliers: 0,
-          dailyStockChangePercent: undefined,
-          dailyStockChangeDirection: 'none',
-          netItemsAddedToday: undefined,
-        };
+        throw new Error(`Failed to fetch dashboard metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
