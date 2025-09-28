@@ -3,7 +3,7 @@
 
 import 'dotenv/config'; 
 import { initializeAdminApp } from '../src/lib/firebase-admin';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import type { sheets_v4 } from 'googleapis';
 
@@ -214,6 +214,32 @@ async function migrateInventory(inventory: RawInventoryItem[], products: RawProd
         continue;
     }
 
+    // --- Date Validation ---
+    let validTimestamp: Date | null = null;
+    if (item.timestamp && item.timestamp.trim()) {
+      const parsedTimestamp = new Date(item.timestamp);
+      if (!isNaN(parsedTimestamp.getTime())) {
+        validTimestamp = parsedTimestamp;
+      } else {
+        console.warn(`- Skipping inventory item with invalid timestamp: '${item.timestamp}' for barcode ${item.barcode}`);
+        continue; // Skip this record if the main timestamp is invalid
+      }
+    } else {
+        console.warn(`- Skipping inventory item with empty timestamp for barcode ${item.barcode}`);
+        continue; // Skip this record if the main timestamp is empty
+    }
+
+    let validExpiryDate: Date | null = null;
+    if (item.expiryDate && item.expiryDate.trim()) {
+      const parsedExpiry = new Date(item.expiryDate);
+      if (!isNaN(parsedExpiry.getTime())) {
+        validExpiryDate = parsedExpiry;
+      } else {
+        console.warn(`- Invalid expiry date format: '${item.expiryDate}' for barcode ${item.barcode}. Setting to null.`);
+      }
+    }
+    // --- End Date Validation ---
+
     const docRef = inventoryCol.doc();
     batch.set(docRef, {
       productName: productDetails.productName,
@@ -223,8 +249,8 @@ async function migrateInventory(inventory: RawInventoryItem[], products: RawProd
       location: item.location ? item.location.trim() : 'N/A',
       staffName: item.staffName ? item.staffName.trim() : 'N/A',
       itemType: item.itemType === 'Damage' ? 'Damage' : 'Expiry',
-      timestamp: new Date(item.timestamp),
-      expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+      timestamp: validTimestamp, // Use validated Date object
+      expiryDate: validExpiryDate,   // Use validated Date object or null
     });
     migratedCount++;
   }
