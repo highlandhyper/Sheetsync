@@ -26,7 +26,7 @@ if (fs.existsSync(envPath)) {
 
 
 import { getAdminApp } from '../src/lib/firebase-admin';
-import { getFirestore, collection, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 const db = getFirestore(getAdminApp());
 
@@ -127,13 +127,13 @@ async function migrateSuppliers(suppliers: RawSupplier[]) {
   
   for (const supplier of suppliers) {
     // Check if supplier already exists to avoid duplicates
-    const q = query(suppliersCol, where("name", "==", supplier.name.trim()));
-    const existing = await getDocs(q);
+    const q = suppliersCol.where("name", "==", supplier.name.trim());
+    const existing = await q.get();
     if (existing.empty) {
       const docRef = suppliersCol.doc(); // Auto-generate ID
       batch.set(docRef, {
         name: supplier.name.trim(),
-        createdAt: serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
     } else {
         console.log(`Skipping existing supplier: ${supplier.name}`);
@@ -158,7 +158,7 @@ async function migrateProducts(products: RawProduct[], productMap: Map<string, a
         const productData = {
             productName: product.productName.trim(),
             supplierName: product.supplierName ? product.supplierName.trim() : null,
-            createdAt: serverTimestamp()
+            createdAt: FieldValue.serverTimestamp()
         };
         batch.set(docRef, productData);
         productMap.set(product.barcode, productData);
