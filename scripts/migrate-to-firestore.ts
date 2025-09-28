@@ -1,49 +1,48 @@
 
 'use client';
 
-import 'dotenv/config'; // Explicitly load environment variables at the very start
+import 'dotenv/config'; 
 import { initializeAdminApp } from '../src/lib/firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { google } from 'googleapis';
+import type { sheets_v4 } from 'googleapis';
 
-// Initialize the admin app *after* .env has been loaded.
 const adminApp = initializeAdminApp();
 const db = getFirestore(adminApp);
 
 
 // --- Google Sheets Reading Logic (Self-Contained) ---
 
-const GOOGLE_SHEETS_API_BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
 
-interface SheetData {
-  range: string;
-  majorDimension: string;
-  values: string[][];
+async function getSheetsClient(): Promise<sheets_v4.Sheets> {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const authClient = await auth.getClient();
+  return google.sheets({ version: 'v4', auth: authClient });
 }
 
-async function readSheetData(range: string): Promise<string[][] | null> {
-  if (!GOOGLE_SHEET_ID || !GOOGLE_SHEETS_API_KEY) {
-    console.error("Google Sheets API Error reading range", range + ": Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env.local file.");
+
+async function readSheetData(sheets: sheets_v4.Sheets, range: string): Promise<any[][] | null> {
+  if (!GOOGLE_SHEET_ID) {
+    console.error("Google Sheets API Error reading range", range + ": Missing GOOGLE_SHEET_ID from .env.local file.");
     throw new Error("Failed to read data from Google Sheet due to missing configuration.");
   }
   
-  // URL-encode the range to handle special characters like spaces.
-  const encodedRange = encodeURIComponent(range);
-  const url = `${GOOGLE_SHEETS_API_BASE_URL}/${GOOGLE_SHEET_ID}/values/${encodedRange}?key=${GOOGLE_SHEETS_API_KEY}`;
-  
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(`Google Sheets API Error for range '${range}': ${errorData.error.message}`);
-      throw new Error(`Google Sheets API responded with status ${response.status}.`);
-    }
-    const data: SheetData = await response.json();
-    return data.values || [];
-  } catch (error) {
-    console.error(`Failed to fetch data from Google Sheets for range '${range}'.`, error);
-    return null;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range,
+    });
+    return response.data.values || [];
+  } catch (error: any) {
+    console.error(`Google Sheets API Error for range '${range}': ${error.message}`);
+    throw new Error(`Google Sheets API responded with status ${error.code}.`);
   }
 }
 
@@ -52,8 +51,8 @@ async function readSheetData(range: string): Promise<string[][] | null> {
 interface RawSupplier {
   name: string;
 }
-async function getSuppliersFromSheet(): Promise<RawSupplier[]> {
-  const sheetData = await readSheetData("'SUP DATA'!A2:A");
+async function getSuppliersFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupplier[]> {
+  const sheetData = await readSheetData(sheets, "'SUP DATA'!A2:A");
   if (!sheetData) return [];
   return sheetData.map(row => ({ name: row[0] })).filter(s => s.name);
 }
@@ -63,8 +62,8 @@ interface RawProduct {
   productName: string;
   supplierName: string;
 }
-async function getProductsFromSheet(): Promise<RawProduct[]> {
-    const sheetData = await readSheetData("'BAR DATA'!A2:C");
+async function getProductsFromSheet(sheets: sheets_v4.Sheets): Promise<RawProduct[]> {
+    const sheetData = await readSheetData(sheets, "'BAR DATA'!A2:C");
     if (!sheetData) return [];
     return sheetData.map(row => ({
         barcode: row[0],
@@ -82,8 +81,8 @@ interface RawInventoryItem {
   expiryDate: string;
   location: string;
 }
-async function getInventoryFromSheet(): Promise<RawInventoryItem[]> {
-    const sheetData = await readSheetData("'INV DATA'!A2:G");
+async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInventoryItem[]> {
+    const sheetData = await readSheetData(sheets, "'INV DATA'!A2:G");
     if (!sheetData) return [];
     return sheetData.map(row => ({
         timestamp: row[0],
@@ -106,24 +105,29 @@ async function migrateSuppliers(suppliers: RawSupplier[]) {
   }
   const batch = db.batch();
   const suppliersCol = db.collection('suppliers');
+  let uniqueCount = 0;
   
   for (const supplier of suppliers) {
-    // Check if supplier already exists to avoid duplicates
     const q = suppliersCol.where("name", "==", supplier.name.trim());
     const existing = await q.get();
     if (existing.empty) {
-      const docRef = suppliersCol.doc(); // Auto-generate ID
+      const docRef = suppliersCol.doc(); 
       batch.set(docRef, {
         name: supplier.name.trim(),
         createdAt: FieldValue.serverTimestamp()
       });
+      uniqueCount++;
     } else {
         console.log(`Skipping existing supplier: ${supplier.name}`);
     }
   }
   
-  await batch.commit();
-  console.log(`✅ Migrated ${suppliers.length} unique suppliers to Firestore.`);
+  if (uniqueCount > 0) {
+    await batch.commit();
+    console.log(`✅ Migrated ${uniqueCount} unique suppliers to Firestore.`);
+  } else {
+    console.log("All suppliers from sheet already exist in Firestore.");
+  }
 }
 
 async function migrateProducts(products: RawProduct[], productMap: Map<string, any>) {
@@ -158,6 +162,7 @@ async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<s
   }
   const batch = db.batch();
   const inventoryCol = db.collection('inventory');
+  let migratedCount = 0;
 
   for (const item of inventory) {
     const productDetails = productMap.get(item.barcode);
@@ -174,14 +179,18 @@ async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<s
       location: item.location ? item.location.trim() : 'N/A',
       staffName: item.staffName ? item.staffName.trim() : 'N/A',
       itemType: item.itemType === 'Damage' ? 'Damage' : 'Expiry',
-      // Timestamps
       timestamp: new Date(item.timestamp),
       expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
     });
+    migratedCount++;
   }
 
-  await batch.commit();
-  console.log(`✅ Migrated ${inventory.length} inventory items to Firestore.`);
+  if (migratedCount > 0) {
+    await batch.commit();
+    console.log(`✅ Migrated ${migratedCount} inventory items to Firestore.`);
+  } else {
+      console.log("No new inventory items to migrate.");
+  }
 }
 
 
@@ -196,11 +205,14 @@ It will NOT modify or delete any data in your Google Sheet.
 `);
 
     try {
-        const suppliers = await getSuppliersFromSheet();
-        const products = await getProductsFromSheet();
-        const inventory = await getInventoryFromSheet();
+        console.log("Authenticating with Google Sheets API...");
+        const sheets = await getSheetsClient();
+        console.log("Authentication successful.");
+
+        const suppliers = await getSuppliersFromSheet(sheets);
+        const products = await getProductsFromSheet(sheets);
+        const inventory = await getInventoryFromSheet(sheets);
         
-        // This map will store product details to enrich inventory items
         const productMap = new Map<string, any>();
 
         await migrateSuppliers(suppliers);
