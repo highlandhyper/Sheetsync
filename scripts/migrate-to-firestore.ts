@@ -1,4 +1,5 @@
 
+'use client';
 
 import { initializeAdminApp } from '../src/lib/firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -27,7 +28,9 @@ async function readSheetData(range: string): Promise<string[][] | null> {
     throw new Error("Failed to read data from Google Sheet due to missing configuration.");
   }
   
-  const url = `${GOOGLE_SHEETS_API_BASE_URL}/${GOOGLE_SHEET_ID}/values/${range}?key=${GOOGLE_SHEETS_API_KEY}`;
+  // URL-encode the range to handle special characters like spaces.
+  const encodedRange = encodeURIComponent(range);
+  const url = `${GOOGLE_SHEETS_API_BASE_URL}/${GOOGLE_SHEET_ID}/values/${encodedRange}?key=${GOOGLE_SHEETS_API_KEY}`;
   
   try {
     const response = await fetch(url);
