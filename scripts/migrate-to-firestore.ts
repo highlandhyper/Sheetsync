@@ -70,7 +70,7 @@ async function getSupDataFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupData
   const sheetData = await readSheetData(sheets, "'SUP DATA'!A2:B");
   return sheetData
     .map(row => ({ productName: row[0], supplierName: row[1] }))
-    .filter(d => d.supplierName); // Product name can sometimes be blank, supplier is key
+    .filter(d => d.productName && d.supplierName); 
 }
 
 
@@ -115,7 +115,16 @@ function parseDateString(dateString: string): Date | null {
     }
     // Reassemble into YYYY-MM-DD which is universally parsable by `new Date()`
     const [day, month, year] = parts;
-    const isoDateString = `${year}-${month}-${day}`;
+
+    // Basic sanity check for year, month, day parts
+    if (isNaN(parseInt(year, 10)) || isNaN(parseInt(month, 10)) || isNaN(parseInt(day, 10)) ||
+        parseInt(year, 10) < 1900 || parseInt(year, 10) > 2100 ||
+        parseInt(month, 10) < 1 || parseInt(month, 10) > 12 ||
+        parseInt(day, 10) < 1 || parseInt(day, 10) > 31) {
+        return null;
+    }
+
+    const isoDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     const date = new Date(isoDateString);
      if (isNaN(date.getTime())) {
         return null;
@@ -142,7 +151,6 @@ async function migrateSuppliers(supData: RawSupData[]) {
     console.log("No supplier data found in 'SUP DATA' sheet to migrate.");
     return;
   }
-  const batch = db.batch();
   const suppliersCol = db.collection('suppliers');
   const uniqueSupplierNames = new Set<string>();
   
@@ -163,6 +171,10 @@ async function migrateSuppliers(supData: RawSupData[]) {
   const existingSupplierNames = new Set(existingSuppliersSnapshot.docs.map(doc => doc.data().name));
   
   let newSuppliersCount = 0;
+  let batch = db.batch();
+  let operations = 0;
+  const BATCH_SIZE = 400;
+
   for (const name of uniqueSupplierNames) {
     if (!existingSupplierNames.has(name)) {
       const docRef = suppliersCol.doc(); 
@@ -171,11 +183,23 @@ async function migrateSuppliers(supData: RawSupData[]) {
         createdAt: FieldValue.serverTimestamp()
       });
       newSuppliersCount++;
+      operations++;
+
+      if (operations >= BATCH_SIZE) {
+        await batch.commit();
+        console.log(`- Committed a batch of ${operations} new suppliers.`);
+        batch = db.batch();
+        operations = 0;
+      }
     }
   }
   
-  if (newSuppliersCount > 0) {
+  if (operations > 0) {
     await batch.commit();
+    console.log(`- Committed the final batch of ${operations} new suppliers.`);
+  }
+
+  if (newSuppliersCount > 0) {
     console.log(`✅ Migrated ${newSuppliersCount} new unique suppliers to Firestore.`);
   } else {
     console.log("All suppliers from 'SUP DATA' sheet already exist in Firestore.");
@@ -189,14 +213,15 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
         console.log("No product data found in 'BAR DATA' sheet to migrate.");
         return;
     }
-    const batch = db.batch();
     const productsCol = db.collection('products');
     let migratedCount = 0;
+    let batch = db.batch();
+    let operations = 0;
+    const BATCH_SIZE = 400;
 
     for (const product of barData) {
         if (!product.barcode || !product.productName) continue;
 
-        // Firestore document IDs cannot contain forward slashes.
         if (product.barcode.includes('/')) {
             console.warn(`- Skipping product with invalid barcode (contains '/'): "${product.barcode}"`);
             continue;
@@ -212,10 +237,22 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
         };
         batch.set(docRef, productData, { merge: true });
         migratedCount++;
+        operations++;
+
+        if (operations >= BATCH_SIZE) {
+            await batch.commit();
+            console.log(`- Committed a batch of ${operations} products.`);
+            batch = db.batch();
+            operations = 0;
+        }
+    }
+
+    if (operations > 0) {
+        await batch.commit();
+        console.log(`- Committed the final batch of ${operations} products.`);
     }
 
     if (migratedCount > 0) {
-        await batch.commit();
         console.log(`✅ Migrated or updated ${migratedCount} products in Firestore from 'BAR DATA'.`);
     } else {
         console.log("No valid products found in 'BAR DATA' to migrate.");
@@ -230,14 +267,16 @@ async function migrateInventory(inventoryData: RawInventoryItem[], productNameMa
     return;
   }
 
-  const batch = db.batch();
   const inventoryCol = db.collection('inventory');
   let migratedCount = 0;
+  let batch = db.batch();
+  let operations = 0;
+  const BATCH_SIZE = 400;
 
   for (const item of inventoryData) {
     if (!item.barcode) continue;
     
-    const productName = productNameMap.get(item.barcode);
+    const productName = productNameMap.get(item.barcode.trim());
 
     if (!productName) {
         console.warn(`-  Skipping inventory item with barcode: ${item.barcode}. Product name not found in 'BAR DATA'.`);
@@ -270,10 +309,22 @@ async function migrateInventory(inventoryData: RawInventoryItem[], productNameMa
       expiryDate: validExpiryDate,
     });
     migratedCount++;
+    operations++;
+
+    if (operations >= BATCH_SIZE) {
+        await batch.commit();
+        console.log(`- Committed a batch of ${operations} inventory items.`);
+        batch = db.batch();
+        operations = 0;
+    }
+  }
+
+  if (operations > 0) {
+      await batch.commit();
+      console.log(`- Committed the final batch of ${operations} inventory items.`);
   }
 
   if (migratedCount > 0) {
-    await batch.commit();
     console.log(`✅ Migrated ${migratedCount} inventory items to Firestore.`);
   } else {
       console.log("No new valid inventory items to migrate from 'Form responses 2'.");
@@ -344,3 +395,4 @@ An error occurred during the migration process:`, error);
 }
 
 main();
+
