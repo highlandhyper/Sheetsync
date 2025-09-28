@@ -53,7 +53,7 @@ interface RawSupplier {
   name: string;
 }
 async function getSuppliersFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupplier[]> {
-  const sheetData = await readSheetData(sheets, "'SUP DATA'!A2:A");
+  const sheetData = await readSheetData(sheets, "'Form_Responses2'!H2:H");
   if (!sheetData) return [];
   return sheetData.map(row => ({ name: row[0] })).filter(s => s.name);
 }
@@ -64,35 +64,39 @@ interface RawProduct {
   supplierName: string;
 }
 async function getProductsFromSheet(sheets: sheets_v4.Sheets): Promise<RawProduct[]> {
-    const sheetData = await readSheetData(sheets, "'BAR DATA'!A2:C");
+    const sheetData = await readSheetData(sheets, "'Form_Responses2'!B2:H");
     if (!sheetData) return [];
+    // Correct mapping based on 'Form_Responses2'
+    // B: BARCODE, G: PRODUCT NAME, H: SUPPLIER
     return sheetData.map(row => ({
-        barcode: row[0],
-        productName: row[1],
-        supplierName: row[2],
+        barcode: row[0],       // Column B
+        productName: row[5],   // Column G
+        supplierName: row[6],  // Column H
     })).filter(p => p.barcode && p.productName);
 }
 
 interface RawInventoryItem {
   timestamp: string;
-  staffName: string;
-  itemType: string;
   barcode: string;
   quantity: string;
   expiryDate: string;
   location: string;
+  staffName: string;
+  itemType: string;
 }
 async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInventoryItem[]> {
-    const sheetData = await readSheetData(sheets, "'INV DATA'!A2:G");
+    const sheetData = await readSheetData(sheets, "'Form_Responses2'!A2:I");
     if (!sheetData) return [];
+    // Correct mapping based on 'Form_Responses2'
+    // A: Timestamp, B: BARCODE, C: QTY, D: DATE OF EX, E: where, F: WHO I, I: EXP OR DMG
     return sheetData.map(row => ({
         timestamp: row[0],
-        staffName: row[1],
-        itemType: row[2],
-        barcode: row[3],
-        quantity: row[4],
-        expiryDate: row[5],
-        location: row[6],
+        barcode: row[1],
+        quantity: row[2],
+        expiryDate: row[3],
+        location: row[4],
+        staffName: row[5],
+        itemType: row[8],
     })).filter(i => i.barcode && i.quantity);
 }
 
