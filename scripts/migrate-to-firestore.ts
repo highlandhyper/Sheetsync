@@ -144,6 +144,39 @@ function parseDateString(dateString: string): Date | null {
     return date;
 }
 
+async function clearCollection(collectionPath: string) {
+    console.log(`--- Clearing collection: ${collectionPath} ---`);
+    const collectionRef = db.collection(collectionPath);
+    const BATCH_SIZE = 400;
+    
+    return new Promise<void>((resolve, reject) => {
+        deleteQueryBatch(collectionRef.limit(BATCH_SIZE), resolve).catch(reject);
+    });
+
+    async function deleteQueryBatch(query: FirebaseFirestore.Query, resolve: () => void) {
+        const snapshot = await query.get();
+
+        if (snapshot.size === 0) {
+            console.log(`- Collection ${collectionPath} is now empty.`);
+            resolve();
+            return;
+        }
+
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        console.log(`- Deleted a batch of ${snapshot.size} documents from ${collectionPath}.`);
+
+        // Recurse on the next process tick, to avoid exploding the stack.
+        process.nextTick(() => {
+            deleteQueryBatch(query, resolve);
+        });
+    }
+}
+
 
 async function migrateSuppliers(supData: RawSupData[]) {
   console.log(`--- Starting Supplier Migration ---`);
@@ -375,6 +408,11 @@ It will NOT modify or delete any data in your Google Sheet.
         console.log(`- Created supplierNameMap with ${supplierNameMap.size} entries.`);
         
         // --- Run Migrations ---
+        // NOTE: Clearing inventory ensures a clean import every time.
+        // This is safer if the script is run multiple times.
+        // You can comment this out if you prefer to only add new records.
+        await clearCollection('inventory');
+        
         await migrateSuppliers(supData);
         await migrateProducts(barData, supplierNameMap);
         await migrateInventory(inventoryData, productNameMap, supplierNameMap);
@@ -396,3 +434,6 @@ An error occurred during the migration process:`, error);
 
 main();
 
+
+
+    
