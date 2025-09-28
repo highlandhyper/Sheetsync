@@ -53,7 +53,7 @@ interface RawSupplier {
   name: string;
 }
 async function getSuppliersFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupplier[]> {
-  const sheetData = await readSheetData(sheets, "'Form responses 2'!H2:H");
+  const sheetData = await readSheetData(sheets, 'Form responses 2!H2:H');
   if (!sheetData) return [];
   return sheetData.map(row => ({ name: row[0] })).filter(s => s && s.name);
 }
@@ -64,7 +64,7 @@ interface RawProduct {
   supplierName: string;
 }
 async function getProductsFromSheet(sheets: sheets_v4.Sheets): Promise<RawProduct[]> {
-    const sheetData = await readSheetData(sheets, "'Form responses 2'!B2:H");
+    const sheetData = await readSheetData(sheets, 'Form responses 2!B2:H');
     if (!sheetData) return [];
     // Correct mapping based on 'Form responses 2'
     // B: BARCODE, G: PRODUCT NAME, H: SUPPLIER
@@ -85,7 +85,7 @@ interface RawInventoryItem {
   itemType: string;
 }
 async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInventoryItem[]> {
-    const sheetData = await readSheetData(sheets, "'Form responses 2'!A2:I");
+    const sheetData = await readSheetData(sheets, 'Form responses 2!A2:I');
     if (!sheetData) return [];
     // Correct mapping based on 'Form responses 2'
     // A: Timestamp, B: BARCODE, C: QTY, D: DATE OF EX, E: where, F: WHO I, I: EXP OR DMG
@@ -101,6 +101,43 @@ async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInven
 }
 
 // --- Migration Functions ---
+
+/**
+ * Parses a date string in DD/MM/YYYY format, optionally with time.
+ * @param dateString The date string from the sheet.
+ * @returns A Date object or null if parsing fails.
+ */
+function parseDateString(dateString: string): Date | null {
+    if (!dateString || !dateString.trim()) {
+        return null;
+    }
+    // Handles "DD/MM/YYYY" or "DD/MM/YYYY HH:mm:ss"
+    const parts = dateString.split(' ')[0].split('/');
+    if (parts.length !== 3) {
+        return null; // Invalid date format
+    }
+    // Reassemble into YYYY-MM-DD which is universally parsable by `new Date()`
+    const [day, month, year] = parts;
+    const isoDateString = `${year}-${month}-${day}`;
+    const date = new Date(isoDateString);
+     if (isNaN(date.getTime())) {
+        return null;
+    }
+
+    // If there is a time part, add it
+    const timePart = dateString.split(' ')[1];
+    if(timePart){
+        const timeParts = timePart.split(':');
+        if(timeParts.length === 3){
+            date.setHours(parseInt(timeParts[0], 10));
+            date.setMinutes(parseInt(timeParts[1], 10));
+            date.setSeconds(parseInt(timeParts[2], 10));
+        }
+    }
+    
+    return date;
+}
+
 
 async function migrateSuppliers(suppliers: RawSupplier[]) {
   console.log(`--- Starting Supplier Migration ---`);
@@ -214,31 +251,16 @@ async function migrateInventory(inventory: RawInventoryItem[], products: RawProd
         continue;
     }
 
-    // --- Date Validation ---
-    let validTimestamp: Date | null = null;
-    if (item.timestamp && item.timestamp.trim()) {
-      const parsedTimestamp = new Date(item.timestamp);
-      if (!isNaN(parsedTimestamp.getTime())) {
-        validTimestamp = parsedTimestamp;
-      } else {
+    const validTimestamp = parseDateString(item.timestamp);
+    if (!validTimestamp) {
         console.warn(`- Skipping inventory item with invalid timestamp: '${item.timestamp}' for barcode ${item.barcode}`);
-        continue; // Skip this record if the main timestamp is invalid
-      }
-    } else {
-        console.warn(`- Skipping inventory item with empty timestamp for barcode ${item.barcode}`);
-        continue; // Skip this record if the main timestamp is empty
+        continue;
     }
 
-    let validExpiryDate: Date | null = null;
-    if (item.expiryDate && item.expiryDate.trim()) {
-      const parsedExpiry = new Date(item.expiryDate);
-      if (!isNaN(parsedExpiry.getTime())) {
-        validExpiryDate = parsedExpiry;
-      } else {
+    const validExpiryDate = parseDateString(item.expiryDate);
+    if (!validExpiryDate && item.expiryDate && item.expiryDate.trim()) {
         console.warn(`- Invalid expiry date format: '${item.expiryDate}' for barcode ${item.barcode}. Setting to null.`);
-      }
     }
-    // --- End Date Validation ---
 
     const docRef = inventoryCol.doc();
     batch.set(docRef, {
@@ -249,8 +271,8 @@ async function migrateInventory(inventory: RawInventoryItem[], products: RawProd
       location: item.location ? item.location.trim() : 'N/A',
       staffName: item.staffName ? item.staffName.trim() : 'N/A',
       itemType: item.itemType === 'Damage' ? 'Damage' : 'Expiry',
-      timestamp: validTimestamp, // Use validated Date object
-      expiryDate: validExpiryDate,   // Use validated Date object or null
+      timestamp: validTimestamp,
+      expiryDate: validExpiryDate,
     });
     migratedCount++;
   }
