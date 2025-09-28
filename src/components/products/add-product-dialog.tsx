@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition } from 'react';
-// Removed useFormStatus as it's not suitable for this manual action invocation
+import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2 } from 'lucide-react';
@@ -20,9 +19,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { addProductAction, type ActionResponse } from '@/app/actions';
+import { addProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface SubmitButtonProps {
@@ -41,18 +39,13 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 export function AddProductDialog() {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [isActionPending, startActionTransition] = useTransition();
-
-  const [state, formAction] = useActionState<ActionResponse<Product> | undefined, FormData>(
-    addProductAction,
-    undefined
-  );
+  const [isPending, startTransition] = useTransition();
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors: formErrors }, // Renamed to avoid conflict with action state.errors
+    formState: { errors: formErrors },
   } = useForm<AddProductFormValues>({
     resolver: zodResolver(addProductSchema),
     defaultValues: {
@@ -61,30 +54,10 @@ export function AddProductDialog() {
       supplierName: '',
     }
   });
-  
-  useEffect(() => {
-    if (!state) return; // Do nothing if state is initial (undefined)
-
-    if (state.success) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-        variant: 'default',
-      });
-      reset();
-      setIsOpen(false); 
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Adding Product',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, reset]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      reset(); // Reset form when dialog is closed
+      reset();
     }
     setIsOpen(open);
   };
@@ -96,8 +69,23 @@ export function AddProductDialog() {
         formData.append(key, String(value));
       }
     });
-    startActionTransition(() => {
-      formAction(formData);
+    startTransition(async () => {
+      const state = await addProductAction(undefined, formData);
+      if (state?.success) {
+        toast({
+          title: 'Success!',
+          description: state.message,
+          variant: 'default',
+        });
+        reset();
+        setIsOpen(false);
+      } else if (state?.message && !state.success) {
+        toast({
+          title: 'Error Adding Product',
+          description: state.message,
+          variant: 'destructive',
+        });
+      }
     });
   };
 
@@ -125,10 +113,9 @@ export function AddProductDialog() {
                 id="barcode"
                 placeholder="e.g., 1234567890123"
                 {...register('barcode')}
-                className={cn(formErrors.barcode || state?.errors?.find(e => e.path.includes('barcode')) ? 'border-destructive' : '')}
+                className={cn(formErrors.barcode && 'border-destructive')}
               />
               {formErrors.barcode && <p className="text-sm text-destructive mt-1">{formErrors.barcode.message}</p>}
-              {state?.errors?.find(e => e.path.includes('barcode')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('barcode'))?.message}</p>}
             </div>
             <div className="grid grid-cols-1 gap-2 items-center">
               <Label htmlFor="productName" className="text-left">
@@ -138,10 +125,9 @@ export function AddProductDialog() {
                 id="productName"
                 placeholder="e.g., Organic Almond Milk"
                 {...register('productName')}
-                className={cn(formErrors.productName || state?.errors?.find(e => e.path.includes('productName')) ? 'border-destructive' : '')}
+                className={cn(formErrors.productName && 'border-destructive')}
               />
               {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
-               {state?.errors?.find(e => e.path.includes('productName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('productName'))?.message}</p>}
             </div>
             <div className="grid grid-cols-1 gap-2 items-center">
               <Label htmlFor="supplierName" className="text-left">
@@ -151,20 +137,21 @@ export function AddProductDialog() {
                 id="supplierName"
                 placeholder="e.g., Green Pastures Ltd."
                 {...register('supplierName')}
-                className={cn(formErrors.supplierName || state?.errors?.find(e => e.path.includes('supplierName')) ? 'border-destructive' : '')}
+                className={cn(formErrors.supplierName && 'border-destructive')}
               />
               {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-              {state?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
-            <SubmitButton isPending={isActionPending} />
+            <SubmitButton isPending={isPending} />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+
+    
