@@ -26,7 +26,7 @@ if (fs.existsSync(envPath)) {
 
 
 import { getAdminApp } from '../src/lib/firebase-admin';
-import { getFirestore, collection, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { getFirestore, collection, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase-admin/firestore';
 
 const db = getFirestore(getAdminApp());
 
@@ -122,15 +122,15 @@ async function migrateSuppliers(suppliers: RawSupplier[]) {
     console.log("No suppliers found in sheet to migrate.");
     return;
   }
-  const batch = writeBatch(db);
-  const suppliersCol = collection(db, 'suppliers');
+  const batch = db.batch();
+  const suppliersCol = db.collection('suppliers');
   
   for (const supplier of suppliers) {
     // Check if supplier already exists to avoid duplicates
     const q = query(suppliersCol, where("name", "==", supplier.name.trim()));
     const existing = await getDocs(q);
     if (existing.empty) {
-      const docRef = db.collection('suppliers').doc(); // Auto-generate ID
+      const docRef = suppliersCol.doc(); // Auto-generate ID
       batch.set(docRef, {
         name: supplier.name.trim(),
         createdAt: serverTimestamp()
@@ -150,8 +150,8 @@ async function migrateProducts(products: RawProduct[], productMap: Map<string, a
         console.log("No products found in sheet to migrate.");
         return;
     }
-    const batch = writeBatch(db);
-    const productsCol = collection(db, 'products');
+    const batch = db.batch();
+    const productsCol = db.collection('products');
 
     for (const product of products) {
         const docRef = productsCol.doc(product.barcode);
@@ -174,8 +174,8 @@ async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<s
     console.log("No inventory items found in sheet to migrate.");
     return;
   }
-  const batch = writeBatch(db);
-  const inventoryCol = collection(db, 'inventory');
+  const batch = db.batch();
+  const inventoryCol = db.collection('inventory');
 
   for (const item of inventory) {
     const productDetails = productMap.get(item.barcode);
