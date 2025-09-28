@@ -1,11 +1,15 @@
 
+'use client';
+
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 import type { App } from 'firebase-admin/app';
 
-const FIREBASE_ADMIN_CLIENT_EMAIL_RAW = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.NEXT_PUBLIC_FIREBASE_ADMIN_CLIENT_EMAIL;
-const FIREBASE_ADMIN_PRIVATE_KEY_RAW = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.NEXT_PUBLIC_FIREBASE_ADMIN_PRIVATE_KEY;
-const FIREBASE_ADMIN_PROJECT_ID_RAW = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+// Prefer NEXT_PUBLIC_ variables first as they are guaranteed to be set by the user for the client app.
+// Fallback to non-public variables for other environments.
+const FIREBASE_ADMIN_PROJECT_ID_RAW = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_ADMIN_PROJECT_ID;
+const FIREBASE_ADMIN_CLIENT_EMAIL_RAW = process.env.NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+const FIREBASE_ADMIN_PRIVATE_KEY_RAW = process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
 let adminApp: App | null = null;
 let adminInitializationError: string | null = null;
@@ -19,13 +23,15 @@ function initializeAdminApp() {
     return;
   }
   
+  // The private key from Firebase Console JSON has literal \n characters.
+  // When stored in a .env file, these need to be escaped (\\n), so we replace them back.
   const FIREBASE_ADMIN_PRIVATE_KEY = FIREBASE_ADMIN_PRIVATE_KEY_RAW?.replace(/\\n/g, '\n');
 
   if (!FIREBASE_ADMIN_PROJECT_ID_RAW || !FIREBASE_ADMIN_CLIENT_EMAIL_RAW || !FIREBASE_ADMIN_PRIVATE_KEY) {
       adminInitializationError = 
-        "Firebase Admin SDK: One or more required environment variables are missing (PROJECT_ID, CLIENT_EMAIL, PRIVATE_KEY). " +
-        "Ensure FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY (or their NEXT_PUBLIC_ variants) are set in .env.local. " +
-        "The Admin SDK will NOT be initialized.";
+        "Firebase Admin SDK: One or more required environment variables are missing. " +
+        "Ensure NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL, and NEXT_PUBLIC_FIREBASE_PRIVATE_KEY are set in your .env file. " +
+        "These values come from your project's service account JSON key file. The Admin SDK will NOT be initialized.";
       console.error(adminInitializationError);
       return;
   }
@@ -42,30 +48,26 @@ function initializeAdminApp() {
       console.log("Firebase Admin SDK initialized successfully.");
     } else {
       adminApp = admin.apps[0];
-      // console.log("Firebase Admin SDK: Using existing instance.");
     }
   } catch (error: any) {
     adminInitializationError = `Firebase Admin SDK: Initialization failed. Error: ${error.message}. ` +
-      "This often means the service account credentials in .env.local are incorrect or malformed. " +
+      "This often means the service account credentials in .env are incorrect or malformed. " +
       "Please verify the project ID, client email, and especially the private key format.";
     console.error(adminInitializationError, error);
     adminApp = null;
   }
 }
 
+// Initialize on module load
 initializeAdminApp();
 
 export function getAdminApp() {
     if (!adminApp) {
-        // This attempts a re-init if the first one failed, e.g., in a serverless function cold start.
+        // This is a fallback attempt if the initial one failed.
         initializeAdminApp(); 
         if (!adminApp) {
-            throw new Error(adminInitializationError || "Firebase Admin SDK could not be initialized.");
+            throw new Error(adminInitializationError || "Firebase Admin SDK could not be initialized. Check server logs for details.");
         }
     }
     return adminApp;
 }
-
-// You can also export specific admin services if needed, e.g.:
-// export const adminAuth = getAdminApp() ? admin.auth(getAdminApp()) : null;
-// export const adminDb = getAdminApp() ? admin.firestore(getAdminApp()) : null;
