@@ -1,249 +1,243 @@
 
-// tsx scripts/migrate-to-firestore.ts
-import * as dotenv from 'dotenv';
+'use client';
+
+import * as fs from 'fs';
 import * as path from 'path';
-// Explicitly load .env.local from the root directory
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-import * as admin from 'firebase-admin';
-import { google } from 'googleapis';
-import type { Product, InventoryItem, Supplier } from '../src/lib/types';
-
-// ////////////////////////////////////////////////////////////////////
-// SETUP: CONFIGURE YOUR FIREBASE ADMIN SDK
-// ////////////////////////////////////////////////////////////////////
-// This script uses Application Default Credentials.
-// 1. Authenticate with Google Cloud CLI: `gcloud auth application-default login`
-// 2. Set the project in your environment: `gcloud config set project YOUR_PROJECT_ID`
-// 3. Your NEXT_PUBLIC_FIREBASE_PROJECT_ID from .env.local should match YOUR_PROJECT_ID.
-
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-if (!projectId) {
-  console.error("Error: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in your .env.local file.");
-  process.exit(1);
-}
-
-try {
-  admin.initializeApp({
-    projectId: projectId,
+// --- Robust .env loader ---
+const envPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+  const envFileContent = fs.readFileSync(envPath, 'utf8');
+  envFileContent.split('\n').forEach(line => {
+    const trimmedLine = line.trim();
+    if (trimmedLine && !trimmedLine.startsWith('#')) {
+      const [key, ...valueParts] = trimmedLine.split('=');
+      const value = valueParts.join('=').replace(/^['"]|['"]$/g, ''); // Remove surrounding quotes
+      if (key && value) {
+        process.env[key] = value;
+      }
+    }
   });
-  console.log(`Firebase Admin SDK initialized for project: ${projectId}`);
-} catch (error: any) {
-  console.error("Error initializing Firebase Admin SDK:", error.message);
-  console.log("Please ensure you have authenticated with Google Cloud CLI (`gcloud auth application-default login`) and set your project (`gcloud config set project YOUR_PROJECT_ID`).");
-  process.exit(1);
+  console.log('.env.local file loaded successfully by migration script.');
+} else {
+    console.warn('Migration Script: .env.local file not found. The script may fail if required variables are not set elsewhere.');
 }
-
-const db = admin.firestore();
-const BATCH_SIZE = 250; // Firestore batch writes can have max 500 operations
+// --- End .env loader ---
 
 
-// ////////////////////////////////////////////////////////////////////
-// GOOGLE SHEETS CLIENT LOGIC (Restored for Migration)
-// ////////////////////////////////////////////////////////////////////
-const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
+import { getAdminApp } from '../src/lib/firebase-admin';
+import { getFirestore, collection, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+
+const db = getFirestore(getAdminApp());
+
+// --- Google Sheets Reading Logic (Self-Contained) ---
+
+const GOOGLE_SHEETS_API_BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
 
-const sheets = google.sheets({
-  version: 'v4',
-  auth: GOOGLE_SHEETS_API_KEY,
-});
+interface SheetData {
+  range: string;
+  majorDimension: string;
+  values: string[][];
+}
 
-async function readSheetData(range: string): Promise<any[][] | undefined> {
-  if (!SPREADSHEET_ID || !GOOGLE_SHEETS_API_KEY) {
-      console.error(`Google Sheets API Error reading range "${range}": Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env.local file.`);
-      throw new Error('Failed to read data from Google Sheet due to missing configuration.');
+async function readSheetData(range: string): Promise<string[][] | null> {
+  if (!GOOGLE_SHEET_ID || !GOOGLE_SHEETS_API_KEY) {
+    console.error("Google Sheets API Error reading range", range + ": Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env.local file.");
+    throw new Error("Failed to read data from Google Sheet due to missing configuration.");
   }
+  
+  const url = `${GOOGLE_SHEETS_API_BASE_URL}/${GOOGLE_SHEET_ID}/values/${range}?key=${GOOGLE_SHEETS_API_KEY}`;
+  
   try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: range,
-    });
-    return response.data.values;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`Google Sheets API Error for range '${range}': ${errorData.error.message}`);
+      throw new Error(`Google Sheets API responded with status ${response.status}.`);
+    }
+    const data: SheetData = await response.json();
+    return data.values || [];
   } catch (error) {
-    console.error(`Google Sheets API Error reading range "${range}":`, error);
-    throw new Error('Failed to read data from Google Sheet.');
+    console.error(`Failed to fetch data from Google Sheets for range '${range}'.`, error);
+    return null;
   }
 }
 
-async function getProductsFromSheet(): Promise<Product[]> {
-    const barData = await readSheetData("'BAR DATA'!A2:C");
-    if (!barData) return [];
+// --- Data Fetching from Sheets ---
 
-    return barData.map((row) => ({
-        id: row[0], // Barcode
+interface RawSupplier {
+  name: string;
+}
+async function getSuppliersFromSheet(): Promise<RawSupplier[]> {
+  const sheetData = await readSheetData("'SUP DATA'!A2:A");
+  if (!sheetData) return [];
+  return sheetData.map(row => ({ name: row[0] })).filter(s => s.name);
+}
+
+interface RawProduct {
+  barcode: string;
+  productName: string;
+  supplierName: string;
+}
+async function getProductsFromSheet(): Promise<RawProduct[]> {
+    const sheetData = await readSheetData("'BAR DATA'!A2:C");
+    if (!sheetData) return [];
+    return sheetData.map(row => ({
         barcode: row[0],
         productName: row[1],
-        supplierName: row[2] || null,
-    }));
+        supplierName: row[2],
+    })).filter(p => p.barcode && p.productName);
 }
 
-async function getSuppliersFromSheet(): Promise<Supplier[]> {
-    const supData = await readSheetData("'SUP DATA'!A2:A");
-    if (!supData) return [];
-    
-    const uniqueSupplierNames = [...new Set(supData.flat())].filter(Boolean);
-
-    return uniqueSupplierNames.map((name, index) => ({
-        id: name.replace(/\s+/g, '-').toLowerCase() + `-${index}`, // Create a stable ID
-        name: name,
-    }));
+interface RawInventoryItem {
+  timestamp: string;
+  staffName: string;
+  itemType: string;
+  barcode: string;
+  quantity: string;
+  expiryDate: string;
+  location: string;
 }
-
-async function getInventoryItemsFromSheet(): Promise<InventoryItem[]> {
-    const inventoryData = await readSheetData("'Form responses 2'!A2:I");
-    if (!inventoryData) return [];
-
-    const products = await getProductsFromSheet();
-    const productMap = new Map(products.map(p => [p.productName, p]));
-
-    return inventoryData.map((row, index) => {
-        const productName = row[1];
-        const productInfo = productMap.get(productName) || { barcode: 'N/A', supplierName: 'N/A' };
-        
-        return {
-            id: `sheet-item-${index + 2}`, // Create a stable ID based on row number
-            timestamp: row[0] ? new Date(row[0]).toISOString() : new Date().toISOString(),
-            productName: productName,
-            barcode: productInfo.barcode,
-            supplierName: productInfo.supplierName,
-            itemType: row[2] as 'Expiry' | 'Damage',
-            quantity: parseInt(row[3], 10) || 0,
-            expiryDate: row[4] ? new Date(row[4]).toISOString().split('T')[0] : undefined,
-            location: row[5] || 'N/A',
-            staffName: row[6] || 'N/A',
-        };
-    }).filter(item => item.quantity > 0); // Only migrate items with quantity > 0
+async function getInventoryFromSheet(): Promise<RawInventoryItem[]> {
+    const sheetData = await readSheetData("'INV DATA'!A2:G");
+    if (!sheetData) return [];
+    return sheetData.map(row => ({
+        timestamp: row[0],
+        staffName: row[1],
+        itemType: row[2],
+        barcode: row[3],
+        quantity: row[4],
+        expiryDate: row[5],
+        location: row[6],
+    })).filter(i => i.barcode && i.quantity);
 }
-
-
-// ////////////////////////////////////////////////////////////////////
-// BATCH COMMIT LOGIC
-// ////////////////////////////////////////////////////////////////////
-async function batchCommit<T>(collectionName: string, data: T[], transform: (item: T) => { id: string, data: any }) {
-  console.log(`Starting batch commit for ${data.length} items to '${collectionName}' collection...`);
-  let batch = db.batch();
-  let operationCount = 0;
-
-  for (let i = 0; i < data.length; i++) {
-    const item = data[i];
-    const { id, data: docData } = transform(item);
-    const docRef = db.collection(collectionName).doc(id);
-    batch.set(docRef, docData);
-    operationCount++;
-
-    if (operationCount >= BATCH_SIZE || i === data.length - 1) {
-      console.log(`  Committing batch of ${operationCount} documents to '${collectionName}'...`);
-      await batch.commit();
-      console.log(`  Batch committed successfully.`);
-      batch = db.batch();
-      operationCount = 0;
-    }
-  }
-  console.log(`Finished batch committing all ${data.length} items to '${collectionName}'.`);
-}
-
 
 // --- Migration Functions ---
 
-async function migrateSuppliers() {
-  console.log("\n--- Starting Supplier Migration ---");
-  const suppliers = await getSuppliersFromSheet();
-  if (!suppliers || suppliers.length === 0) {
-    console.log("No suppliers found in Google Sheet. Skipping migration.");
+async function migrateSuppliers(suppliers: RawSupplier[]) {
+  console.log(`--- Starting Supplier Migration ---`);
+  if (suppliers.length === 0) {
+    console.log("No suppliers found in sheet to migrate.");
     return;
   }
-  console.log(`Found ${suppliers.length} unique suppliers in Google Sheet.`);
+  const batch = writeBatch(db);
+  const suppliersCol = collection(db, 'suppliers');
   
-  await batchCommit<Supplier>(
-    'suppliers',
-    suppliers,
-    (supplier) => ({
-      id: supplier.id,
-      data: { name: supplier.name, createdAt: admin.firestore.FieldValue.serverTimestamp() }
-    })
-  );
-}
-
-async function migrateProducts() {
-  console.log("\n--- Starting Product Migration ---");
-  const products = await getProductsFromSheet();
-   if (!products || products.length === 0) {
-    console.log("No products found in Google Sheet. Skipping migration.");
-    return;
+  for (const supplier of suppliers) {
+    // Check if supplier already exists to avoid duplicates
+    const q = query(suppliersCol, where("name", "==", supplier.name.trim()));
+    const existing = await getDocs(q);
+    if (existing.empty) {
+      const docRef = db.collection('suppliers').doc(); // Auto-generate ID
+      batch.set(docRef, {
+        name: supplier.name.trim(),
+        createdAt: serverTimestamp()
+      });
+    } else {
+        console.log(`Skipping existing supplier: ${supplier.name}`);
+    }
   }
-  console.log(`Found ${products.length} products in Google Sheet.`);
   
-  await batchCommit<Product>(
-    'products',
-    products,
-    (product) => ({
-      id: product.barcode, // Using barcode as the document ID for products
-      data: {
-        productName: product.productName,
-        supplierName: product.supplierName || null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      }
-    })
-  );
+  await batch.commit();
+  console.log(`✅ Migrated ${suppliers.length} unique suppliers to Firestore.`);
 }
 
-async function migrateInventory() {
-  console.log("\n--- Starting Inventory Migration ---");
-  const inventoryItems = await getInventoryItemsFromSheet();
-   if (!inventoryItems || inventoryItems.length === 0) {
-    console.log("No inventory items found in Google Sheet. Skipping migration.");
+async function migrateProducts(products: RawProduct[], productMap: Map<string, any>) {
+    console.log(`--- Starting Product Migration ---`);
+    if (products.length === 0) {
+        console.log("No products found in sheet to migrate.");
+        return;
+    }
+    const batch = writeBatch(db);
+    const productsCol = collection(db, 'products');
+
+    for (const product of products) {
+        const docRef = productsCol.doc(product.barcode);
+        const productData = {
+            productName: product.productName.trim(),
+            supplierName: product.supplierName ? product.supplierName.trim() : null,
+            createdAt: serverTimestamp()
+        };
+        batch.set(docRef, productData);
+        productMap.set(product.barcode, productData);
+    }
+
+    await batch.commit();
+    console.log(`✅ Migrated ${products.length} products to Firestore.`);
+}
+
+async function migrateInventory(inventory: RawInventoryItem[], productMap: Map<string, any>) {
+  console.log(`--- Starting Inventory Migration ---`);
+  if (inventory.length === 0) {
+    console.log("No inventory items found in sheet to migrate.");
     return;
   }
-  console.log(`Found ${inventoryItems.length} active inventory items in Google Sheet.`);
+  const batch = writeBatch(db);
+  const inventoryCol = collection(db, 'inventory');
 
-  await batchCommit<InventoryItem>(
-    'inventory',
-    inventoryItems,
-    (item) => ({
-      id: item.id, // Using the unique ID from the sheet
-      data: {
-        productName: item.productName,
-        barcode: item.barcode,
-        supplierName: item.supplierName || null,
-        quantity: item.quantity,
-        expiryDate: item.expiryDate ? admin.firestore.Timestamp.fromDate(new Date(item.expiryDate)) : null,
-        location: item.location,
-        staffName: item.staffName,
-        itemType: item.itemType,
-        timestamp: item.timestamp ? admin.firestore.Timestamp.fromDate(new Date(item.timestamp)) : admin.firestore.FieldValue.serverTimestamp(),
-      }
-    })
-  );
+  for (const item of inventory) {
+    const productDetails = productMap.get(item.barcode);
+    if (!productDetails) {
+        console.warn(`-  Skipping inventory item with unknown barcode: ${item.barcode}`);
+        continue;
+    }
+    const docRef = inventoryCol.doc();
+    batch.set(docRef, {
+      productName: productDetails.productName,
+      supplierName: productDetails.supplierName,
+      barcode: item.barcode,
+      quantity: parseInt(item.quantity, 10) || 0,
+      location: item.location ? item.location.trim() : 'N/A',
+      staffName: item.staffName ? item.staffName.trim() : 'N/A',
+      itemType: item.itemType === 'Damage' ? 'Damage' : 'Expiry',
+      // Timestamps
+      timestamp: new Date(item.timestamp),
+      expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+    });
+  }
+
+  await batch.commit();
+  console.log(`✅ Migrated ${inventory.length} inventory items to Firestore.`);
 }
 
 
-// --- Main Execution ---
-
+// Main migration function
 async function main() {
-  console.log("=============================================");
-  console.log("  STARTING GOOGLE SHEETS TO FIRESTORE MIGRATION  ");
-  console.log("=============================================");
-  console.log("This script will READ data from your Google Sheet and WRITE it to Firestore.");
-  console.log("It will NOT modify or delete any data in your Google Sheet.");
-  
-  try {
-    await migrateSuppliers();
-    await migrateProducts();
-    await migrateInventory();
-    
-    console.log("\n=============================================");
-    console.log("      ✅ MIGRATION COMPLETED SUCCESSFULLY ✅     ");
-    console.log("=============================================");
-    console.log("All data has been transferred to Firestore. You can now proceed with updating the application code to use Firestore as the database.");
+    console.log(`
+=============================================
+  STARTING GOOGLE SHEETS TO FIRESTORE MIGRATION  
+=============================================
+This script will READ data from your Google Sheet and WRITE it to Firestore.
+It will NOT modify or delete any data in your Google Sheet.
+`);
 
-  } catch (error) {
-    console.error("\n=============================================");
-    console.error("      ❌ MIGRATION FAILED ❌      ");
-    console.error("=============================================");
-    console.error("An error occurred during the migration process:", error);
-    process.exit(1);
-  }
+    try {
+        const suppliers = await getSuppliersFromSheet();
+        const products = await getProductsFromSheet();
+        const inventory = await getInventoryFromSheet();
+        
+        // This map will store product details to enrich inventory items
+        const productMap = new Map<string, any>();
+
+        await migrateSuppliers(suppliers);
+        await migrateProducts(products, productMap);
+        await migrateInventory(inventory, productMap);
+
+        console.log(`
+=============================================
+      ✅ MIGRATION COMPLETED SUCCESSFULLY ✅      
+=============================================
+`);
+
+    } catch(error) {
+        console.error(`
+=============================================
+      ❌ MIGRATION FAILED ❌      
+=============================================
+An error occurred during the migration process:`, error);
+    }
 }
 
 main();
