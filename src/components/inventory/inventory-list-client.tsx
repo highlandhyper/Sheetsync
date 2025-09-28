@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Loader2 } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -25,12 +26,10 @@ import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
+import { getInventoryItems, getSuppliers, getUniqueLocations } from '@/lib/data';
 
 
 interface InventoryListClientProps {
-  initialInventoryItems: InventoryItem[];
-  suppliers: Supplier[];
-  uniqueDbLocations: string[];
 }
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -42,17 +41,21 @@ type DashboardFilterType = {
   customExpiryTo?: string;
 } | null;
 
-export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDbLocations }: InventoryListClientProps) {
+export function InventoryListClient({}: InventoryListClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { role } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  
+  const [initialInventoryItems, setInitialInventoryItems] = useState<InventoryItem[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [uniqueDbLocations, setUniqueDbLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
 
@@ -78,16 +81,37 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
 
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [items, suppliersData, locationsData] = await Promise.all([
+        getInventoryItems(),
+        getSuppliers(),
+        getUniqueLocations()
+      ]);
+      setInitialInventoryItems(items || []);
+      setSuppliers(suppliersData || []);
+      setUniqueDbLocations(locationsData || []);
+    } catch (error) {
+      console.error("Failed to fetch inventory data:", error);
+      toast({
+        title: "Error",
+        description: "Could not load inventory data. Please try again later.",
+        variant: "destructive"
+      });
+      setInitialInventoryItems([]);
+      setSuppliers([]);
+      setUniqueDbLocations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    setIsLoading(true);
-    if (initialInventoryItems) {
-      setInventoryItems([...initialInventoryItems]);
-    } else {
-      setInventoryItems([]);
+    if (!authLoading) {
+      fetchData();
     }
-    setIsLoading(false);
-  }, [initialInventoryItems]);
+  }, [authLoading, fetchData]);
 
   useEffect(() => {
     const filterTypeFromQuery = searchParams.get('filterType');
@@ -145,15 +169,15 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
-    if (!activeDashboardFilter) return inventoryItems;
+    if (!activeDashboardFilter) return initialInventoryItems;
 
     if (activeDashboardFilter.type === 'damaged') {
-      return inventoryItems.filter(item => item.itemType === 'Damage');
+      return initialInventoryItems.filter(item => item.itemType === 'Damage');
     }
     if (activeDashboardFilter.type === 'expiringSoon') {
       const today = startOfDay(new Date());
       const sevenDaysFromNow = startOfDay(addDays(today, 7));
-      return inventoryItems.filter(item => {
+      return initialInventoryItems.filter(item => {
         if (item.itemType === 'Expiry' && item.expiryDate) {
           try {
             const expiry = startOfDay(parseISO(item.expiryDate));
@@ -165,7 +189,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     }
     if (activeDashboardFilter.type === 'otherSuppliers' && activeDashboardFilter.suppliers) {
       const lowerCaseOtherSuppliers = activeDashboardFilter.suppliers.map(s => s.toLowerCase());
-      return inventoryItems.filter(item =>
+      return initialInventoryItems.filter(item =>
         item.supplierName && lowerCaseOtherSuppliers.includes(item.supplierName.toLowerCase())
       );
     }
@@ -173,9 +197,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
       try {
         const from = startOfDay(parseISO(activeDashboardFilter.customExpiryFrom));
         const to = startOfDay(parseISO(activeDashboardFilter.customExpiryTo));
-        if (!isValid(from) || !isValid(to)) return inventoryItems;
+        if (!isValid(from) || !isValid(to)) return initialInventoryItems;
 
-        return inventoryItems.filter(item => {
+        return initialInventoryItems.filter(item => {
           if (item.itemType === 'Expiry' && item.expiryDate) {
             try {
               const expiry = startOfDay(parseISO(item.expiryDate));
@@ -184,10 +208,10 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           }
           return false;
         });
-      } catch { return inventoryItems; }
+      } catch { return initialInventoryItems; }
     }
-    return inventoryItems;
-  }, [inventoryItems, activeDashboardFilter]);
+    return initialInventoryItems;
+  }, [initialInventoryItems, activeDashboardFilter]);
 
 
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
@@ -348,8 +372,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const handleDialogSuccess = useCallback(() => {
     setSelectedItemIds(new Set());
-    // Data is revalidated by server actions, so we just clear selections
-  }, []);
+    fetchData(); // Refetch data on success
+  }, [fetchData]);
 
   const handlePrint = () => {
     window.print();
@@ -503,7 +527,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
       )}
 
       {isLoading ? (
-        <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
+        <div className="text-center py-10"><Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
       ) : itemsToRender.length > 0 ? (
         <Card className="shadow-md">
           <Table>
@@ -667,3 +691,5 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
+
+    
