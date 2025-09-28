@@ -279,9 +279,9 @@ It will NOT modify or delete any data in your Google Sheet.
         const sheets = await getSheetsClient();
         console.log("Authentication successful.");
 
-        // Fetch all data first
-        const allSuppliersFromSheet = await getSuppliersFromSheet(sheets);
+        // Fetch all data first from the single source of truth
         const allProductsFromSheet = await getProductsFromSheet(sheets);
+        const allSuppliersFromSheet = await getSuppliersFromSheet(sheets);
         const allInventoryFromSheet = await getInventoryFromSheet(sheets);
         
         // Now, migrate each collection
