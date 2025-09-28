@@ -44,16 +44,16 @@ const BATCH_SIZE = 250; // Firestore batch writes can have max 500 operations
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
 const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
 
-if (!SPREADSHEET_ID || !GOOGLE_SHEETS_API_KEY) {
-  throw new Error("Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env file.");
-}
-
 const sheets = google.sheets({
   version: 'v4',
   auth: GOOGLE_SHEETS_API_KEY,
 });
 
 async function readSheetData(range: string): Promise<any[][] | undefined> {
+  if (!SPREADSHEET_ID || !GOOGLE_SHEETS_API_KEY) {
+      console.error(`Google Sheets API Error reading range "${range}": Missing GOOGLE_SHEET_ID or GOOGLE_SHEETS_API_KEY from .env.local file.`);
+      throw new Error('Failed to read data from Google Sheet due to missing configuration.');
+  }
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
