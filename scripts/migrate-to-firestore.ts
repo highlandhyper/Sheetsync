@@ -35,6 +35,7 @@ async function readSheetData(sheets: sheets_v4.Sheets, range: string): Promise<a
   }
   
   try {
+    console.log(`Reading from range: ${range}`);
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       range,
