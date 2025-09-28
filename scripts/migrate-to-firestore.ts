@@ -2,6 +2,7 @@
 
 import { initializeAdminApp } from '../src/lib/firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import 'dotenv/config'; // Explicitly load environment variables
 
 // Initialize the admin app *after* .env has been loaded by the runner.
 const adminApp = initializeAdminApp();
