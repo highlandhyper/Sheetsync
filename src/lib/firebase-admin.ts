@@ -14,13 +14,13 @@ const FIREBASE_ADMIN_PRIVATE_KEY_RAW = process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_
 let adminApp: App | null = null;
 let adminInitializationError: string | null = null;
 
-function initializeAdminApp() {
+export function initializeAdminApp() {
   if (adminApp) {
-    return;
+    return adminApp;
   }
   if (adminInitializationError) {
     console.error("Firebase Admin SDK: Aborting due to previous initialization error:", adminInitializationError);
-    return;
+    throw new Error(adminInitializationError);
   }
   
   // The private key from Firebase Console JSON has literal \n characters.
@@ -33,7 +33,7 @@ function initializeAdminApp() {
         "Ensure NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL, and NEXT_PUBLIC_FIREBASE_PRIVATE_KEY are set in your .env file. " +
         "These values come from your project's service account JSON key file. The Admin SDK will NOT be initialized.";
       console.error(adminInitializationError);
-      return;
+      throw new Error(adminInitializationError);
   }
 
   try {
@@ -45,29 +45,26 @@ function initializeAdminApp() {
           privateKey: FIREBASE_ADMIN_PRIVATE_KEY,
         }),
       });
-      console.log("Firebase Admin SDK initialized successfully.");
+      console.log("Firebase Admin SDK initialized successfully for project: " + FIREBASE_ADMIN_PROJECT_ID_RAW);
     } else {
-      adminApp = admin.apps[0];
+      adminApp = admin.apps[0]!;
     }
+    return adminApp;
   } catch (error: any) {
     adminInitializationError = `Firebase Admin SDK: Initialization failed. Error: ${error.message}. ` +
       "This often means the service account credentials in .env are incorrect or malformed. " +
       "Please verify the project ID, client email, and especially the private key format.";
     console.error(adminInitializationError, error);
     adminApp = null;
+    throw new Error(adminInitializationError);
   }
 }
 
-// Initialize on module load
-initializeAdminApp();
-
 export function getAdminApp() {
     if (!adminApp) {
-        // This is a fallback attempt if the initial one failed.
-        initializeAdminApp(); 
-        if (!adminApp) {
-            throw new Error(adminInitializationError || "Firebase Admin SDK could not be initialized. Check server logs for details.");
-        }
+        // This will now throw an error if not initialized, which is what we want.
+        // Initialization should be handled explicitly by the entry point (e.g., the migration script).
+        throw new Error("Firebase Admin SDK has not been initialized. Call initializeAdminApp() first.");
     }
     return adminApp;
 }
