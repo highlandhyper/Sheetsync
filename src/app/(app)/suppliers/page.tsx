@@ -1,5 +1,5 @@
 
-import { getSuppliers } from '@/lib/data';
+
 import { SupplierListClient } from '@/components/suppliers/supplier-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,8 +36,7 @@ function SupplierListSkeleton() {
   );
 }
 
-export default async function SuppliersPage() { 
-  const initialSuppliers = await getSuppliers();
+export default function SuppliersPage() { 
 
   return (
     <div className="container mx-auto py-2">
@@ -46,10 +45,12 @@ export default async function SuppliersPage() {
         Manage Suppliers
       </h1>
       <Suspense fallback={<SupplierListSkeleton />}>
-        <SupplierListClient initialSuppliers={initialSuppliers || []} />
+        <SupplierListClient />
       </Suspense>
     </div>
   );
 }
 
 export const revalidate = 0; // Revalidate on every request
+
+    

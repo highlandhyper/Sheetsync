@@ -1,5 +1,7 @@
 
 
+'use client';
+
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';
 import { 
   getFirestore, 
@@ -401,7 +403,7 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
             });
 
-            const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('barcode', '==', barcode));
+            const returnsQuery = query(collection(db, RETURNS_LOG_COLlection), where('barcode', '==', barcode));
             const returnsSnapshot = await getDocs(returnsQuery);
             returnsSnapshot.forEach(doc => {
                 batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
@@ -577,3 +579,5 @@ export async function savePermissions(permissions: Permissions): Promise<boolean
         return false;
     }
 }
+
+    
