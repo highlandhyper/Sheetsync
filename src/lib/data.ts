@@ -20,7 +20,6 @@ import {
   updateDoc,
   collectionGroup
 } from 'firebase/firestore';
-import { initializeAdminApp } from './firebase-admin';
 import { format, parseISO, isValid, addDays, isBefore, startOfDay, isSameDay } from 'date-fns';
 
 // This is a client-side file. We get the firestore instance from the client-side firebase library.
