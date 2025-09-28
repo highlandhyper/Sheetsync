@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition } from 'react';
-// Removed useFormStatus as it's not suitable for this manual action invocation
+import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Building } from 'lucide-react';
@@ -20,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addSupplierSchema, type AddSupplierFormValues } from '@/lib/schemas';
-import { addSupplierAction, type ActionResponse } from '@/app/actions';
+import { addSupplierAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -39,18 +38,13 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 }
 
 interface AddSupplierDialogProps {
-  onSupplierAdded?: (supplier: Supplier) => void; // Optional callback
+  onSupplierAdded?: (supplier: Supplier) => void;
 }
 
 export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [isActionPending, startActionTransition] = useTransition();
-
-  const [state, formAction] = useActionState<ActionResponse<Supplier> | undefined, FormData>(
-    addSupplierAction,
-    undefined
-  );
+  const [isPending, startTransition] = useTransition();
 
   const {
     register,
@@ -63,26 +57,6 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
       supplierName: '',
     }
   });
-  
-  useEffect(() => {
-    if (!state) return;
-
-    if (state.success && state.data) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      onSupplierAdded?.(state.data);
-      reset();
-      setIsOpen(false); 
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Adding Supplier',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, reset, onSupplierAdded]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -98,8 +72,23 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
           formData.append(key, String(value));
       }
     });
-    startActionTransition(() => {
-      formAction(formData);
+    startTransition(async () => {
+      const state = await addSupplierAction(undefined, formData);
+      if (state?.success && state.data) {
+        toast({
+          title: 'Success!',
+          description: state.message,
+        });
+        onSupplierAdded?.(state.data);
+        reset();
+        setIsOpen(false); 
+      } else if (state?.message && !state.success) {
+        toast({
+          title: 'Error Adding Supplier',
+          description: state.message,
+          variant: 'destructive',
+        });
+      }
     });
   };
 
@@ -127,20 +116,21 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
                 id="supplierName"
                 placeholder="e.g., Global Provisions Inc."
                 {...register('supplierName')}
-                className={cn(formErrors.supplierName || state?.errors?.find(e => e.path.includes('supplierName')) ? 'border-destructive' : '')}
+                className={cn(formErrors.supplierName && 'border-destructive')}
               />
               {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-              {state?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
-            <SubmitButton isPending={isActionPending} />
+            <SubmitButton isPending={isPending} />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+
+    
