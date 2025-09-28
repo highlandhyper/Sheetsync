@@ -20,10 +20,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
 
-  const loading = authLoading || !permissionsInitialized;
+  const isLoading = authLoading || !permissionsInitialized;
 
   useEffect(() => {
-    if (loading) {
+    if (isLoading) {
       return; 
     }
 
@@ -34,21 +34,24 @@ export default function AppLayout({ children }: PropsWithChildren) {
       return;
     }
 
-    if (role === 'viewer') {
-      const canAccessCurrentPath = isAllowed(role, pathname);
-      if (!canAccessCurrentPath) {
-        const defaultPathForViewer = isAllowed(role, VIEWER_DEFAULT_PATH) ? VIEWER_DEFAULT_PATH : '/login';
-        router.replace(defaultPathForViewer);
-      }
-      sessionStorage.removeItem('adminWelcomeShown');
-      setShowAdminWelcomeScreen(false);
+    const canAccessCurrentPath = isAllowed(role!, pathname);
+    if (!canAccessCurrentPath) {
+        if (role === 'viewer') {
+            router.replace(VIEWER_DEFAULT_PATH);
+        } else {
+             // For admin, if they land on a non-existent page, maybe go to dashboard
+             // but for now, we can let Next.js handle 404. If it's a forbidden page (which is unlikely for admin),
+             // they get stuck. A redirect to dashboard is safer.
+            router.replace('/dashboard');
+        }
     }
-  }, [loading, user, role, router, pathname, isAllowed]);
+
+  }, [isLoading, user, role, router, pathname, isAllowed]);
 
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
 
-    if (!loading && role === 'admin') {
+    if (!isLoading && role === 'admin') {
       const welcomeShownSession = sessionStorage.getItem('adminWelcomeShown');
       if (!welcomeShownSession) {
         setShowAdminWelcomeScreen(true);
@@ -68,10 +71,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
         clearTimeout(timerId);
       }
     };
-  }, [loading, role]); 
+  }, [isLoading, role]); 
 
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -80,7 +83,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
     );
   }
 
-  if (!user) {
+  if (!user || !role) {
     return (
         <div className="flex items-center justify-center h-screen bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -88,6 +91,17 @@ export default function AppLayout({ children }: PropsWithChildren) {
         </div>
     );
   }
+
+  // Final check: if user is loaded but tries to access a forbidden page, show loading while redirecting.
+  if (!isAllowed(role, pathname)) {
+      return (
+         <div className="flex flex-col items-center justify-center h-screen bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-lg mt-4">Redirecting to your dashboard...</p>
+        </div>
+      );
+  }
+
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
