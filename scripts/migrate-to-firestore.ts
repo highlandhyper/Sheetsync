@@ -52,7 +52,7 @@ interface RawSupplier {
   name: string;
 }
 async function getSuppliersFromSheet(sheets: sheets_v4.Sheets): Promise<RawSupplier[]> {
-  const sheetData = await readSheetData(sheets, "'SUP DATA'!A2:A");
+  const sheetData = await readSheetData(sheets, "SUP DATA!A2:A");
   if (!sheetData) return [];
   return sheetData.map(row => ({ name: row[0] })).filter(s => s.name);
 }
@@ -63,7 +63,7 @@ interface RawProduct {
   supplierName: string;
 }
 async function getProductsFromSheet(sheets: sheets_v4.Sheets): Promise<RawProduct[]> {
-    const sheetData = await readSheetData(sheets, "'BAR DATA'!A2:C");
+    const sheetData = await readSheetData(sheets, "BAR DATA!A2:C");
     if (!sheetData) return [];
     return sheetData.map(row => ({
         barcode: row[0],
@@ -82,7 +82,7 @@ interface RawInventoryItem {
   location: string;
 }
 async function getInventoryFromSheet(sheets: sheets_v4.Sheets): Promise<RawInventoryItem[]> {
-    const sheetData = await readSheetData(sheets, "'INV DATA'!A2:G");
+    const sheetData = await readSheetData(sheets, "INV DATA!A2:G");
     if (!sheetData) return [];
     return sheetData.map(row => ({
         timestamp: row[0],
