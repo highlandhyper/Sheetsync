@@ -196,6 +196,12 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
     for (const product of barData) {
         if (!product.barcode || !product.productName) continue;
 
+        // Firestore document IDs cannot contain forward slashes.
+        if (product.barcode.includes('/')) {
+            console.warn(`- Skipping product with invalid barcode (contains '/'): "${product.barcode}"`);
+            continue;
+        }
+
         const docRef = productsCol.doc(product.barcode);
         const supplierName = supplierNameMap.get(product.productName.trim());
 
