@@ -1,5 +1,6 @@
 
-import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building } from 'lucide-react';
+
+import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, Package } from 'lucide-react';
 
 export const allNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
@@ -12,6 +13,7 @@ export const allNavItems = [
 ];
 
 export const accountNavItems = [
-   { href: '/products/manage', label: 'Manage Products', icon: ManageProductsIcon, roles: ['admin'] },
+   { href: '/products/list', label: 'Product Catalog', icon: Package, roles: ['admin'] },
+   { href: '/suppliers', label: 'Manage Suppliers', icon: Building, roles: ['admin'] },
    { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'viewer'] },
 ];
