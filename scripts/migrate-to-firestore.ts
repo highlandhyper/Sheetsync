@@ -25,10 +25,13 @@ if (fs.existsSync(envPath)) {
 // --- End .env loader ---
 
 
-import { getAdminApp } from '../src/lib/firebase-admin';
+import { initializeAdminApp } from '../src/lib/firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-const db = getFirestore(getAdminApp());
+// Initialize the admin app *after* .env has been loaded.
+const adminApp = initializeAdminApp();
+const db = getFirestore(adminApp);
+
 
 // --- Google Sheets Reading Logic (Self-Contained) ---
 
