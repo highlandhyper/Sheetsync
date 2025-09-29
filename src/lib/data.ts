@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';

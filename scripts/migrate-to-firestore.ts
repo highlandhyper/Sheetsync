@@ -247,13 +247,24 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
         return;
     }
     const productsCol = db.collection('products');
-    let migratedCount = 0;
+    
+    // Fetch all existing product barcodes from Firestore to avoid re-writing them.
+    const existingProductsSnapshot = await productsCol.get();
+    const existingProductBarcodes = new Set(existingProductsSnapshot.docs.map(doc => doc.id));
+    console.log(`- Found ${existingProductBarcodes.size} existing products in Firestore. Will skip these.`);
+
+    let newProductsCount = 0;
     let batch = db.batch();
     let operations = 0;
     const BATCH_SIZE = 400;
 
     for (const product of barData) {
         if (!product.barcode || !product.productName) continue;
+        
+        // Skip if product already exists in Firestore
+        if (existingProductBarcodes.has(product.barcode)) {
+            continue;
+        }
 
         if (product.barcode.includes('/')) {
             console.warn(`- Skipping product with invalid barcode (contains '/'): "${product.barcode}"`);
@@ -268,13 +279,13 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
             supplierName: supplierName || null,
             createdAt: FieldValue.serverTimestamp()
         };
-        batch.set(docRef, productData, { merge: true });
-        migratedCount++;
+        batch.set(docRef, productData); // Not using merge, since we are only adding new ones.
+        newProductsCount++;
         operations++;
 
         if (operations >= BATCH_SIZE) {
             await batch.commit();
-            console.log(`- Committed a batch of ${operations} products.`);
+            console.log(`- Committed a batch of ${operations} new products.`);
             batch = db.batch();
             operations = 0;
         }
@@ -282,13 +293,13 @@ async function migrateProducts(barData: RawBarData[], supplierNameMap: Map<strin
 
     if (operations > 0) {
         await batch.commit();
-        console.log(`- Committed the final batch of ${operations} products.`);
+        console.log(`- Committed the final batch of ${operations} new products.`);
     }
 
-    if (migratedCount > 0) {
-        console.log(`✅ Migrated or updated ${migratedCount} products in Firestore from 'BAR DATA'.`);
+    if (newProductsCount > 0) {
+        console.log(`✅ Migrated ${newProductsCount} new products to Firestore from 'BAR DATA'.`);
     } else {
-        console.log("No valid products found in 'BAR DATA' to migrate.");
+        console.log("No new products found in 'BAR DATA' to migrate. All existing products in sheet are already in Firestore.");
     }
 }
 
@@ -373,6 +384,8 @@ async function main() {
 =============================================
 This script will READ data from your Google Sheets and WRITE it to Firestore.
 It will NOT modify or delete any data in your Google Sheet.
+If the script is stopped by a quota error, you can safely run it again. It will
+only migrate data that hasn't been saved yet.
 `);
 
     try {
@@ -410,7 +423,6 @@ It will NOT modify or delete any data in your Google Sheet.
         // --- Run Migrations ---
         // NOTE: Clearing inventory ensures a clean import every time.
         // This is safer if the script is run multiple times.
-        // You can comment this out if you prefer to only add new records.
         await clearCollection('inventory');
         
         await migrateSuppliers(supData);
