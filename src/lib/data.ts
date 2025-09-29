@@ -577,5 +577,3 @@ export async function savePermissions(permissions: Permissions): Promise<boolean
         return false;
     }
 }
-
-    
