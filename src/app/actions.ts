@@ -348,6 +348,7 @@ export async function addInventoryItemAction(
         barcode: validatedItemData.barcode,
         quantity: validatedItemData.quantity,
         expiryDate: validatedItemData.expiryDate,
+        location: validatedItemData.location,
     };
 
     const newInventoryItem = await dbAddInventoryItem(
@@ -698,3 +699,5 @@ function revalidateRelevantPaths() {
     revalidatePath('/inventory/lookup');
     revalidatePath('/products');
 }
+
+    
