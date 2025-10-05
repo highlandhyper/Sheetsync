@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -33,15 +32,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
       setShowAdminWelcomeScreen(false); 
       return;
     }
-
+    
+    // This logic is now handled by the main auth context effect
+    // but can serve as a backup check.
     const canAccessCurrentPath = isAllowed(role!, pathname);
     if (!canAccessCurrentPath) {
         if (role === 'viewer') {
             router.replace(VIEWER_DEFAULT_PATH);
         } else {
-             // For admin, if they land on a non-existent page, maybe go to dashboard
-             // but for now, we can let Next.js handle 404. If it's a forbidden page (which is unlikely for admin),
-             // they get stuck. A redirect to dashboard is safer.
             router.replace('/dashboard');
         }
     }
@@ -82,22 +80,13 @@ export default function AppLayout({ children }: PropsWithChildren) {
       </div>
     );
   }
-
-  if (!user || !role) {
-    return (
-        <div className="flex items-center justify-center h-screen bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-lg">Redirecting to login...</p>
-        </div>
-    );
-  }
-
-  // Final check: if user is loaded but tries to access a forbidden page, show loading while redirecting.
-  if (!isAllowed(role, pathname)) {
+  
+  // This check is important to prevent content flashing while redirecting
+  if (!user || (role && !isAllowed(role, pathname))) {
       return (
          <div className="flex flex-col items-center justify-center h-screen bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-lg mt-4">Redirecting to your dashboard...</p>
+            <p className="ml-4 text-lg mt-4">Checking credentials...</p>
         </div>
       );
   }

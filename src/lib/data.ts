@@ -1,579 +1,481 @@
-
-'use client';
+// This file will be responsible for all data fetching and manipulation from Google Sheets.
+'use server';
 
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  getDoc,
-  doc, 
-  addDoc, 
-  writeBatch,
-  query, 
-  where,
-  limit,
-  orderBy,
-  Timestamp,
-  serverTimestamp,
-  runTransaction,
-  deleteDoc,
-  updateDoc,
-  collectionGroup
-} from 'firebase/firestore';
+import { google } from 'googleapis';
 import { format, parseISO, isValid, addDays, isBefore, startOfDay, isSameDay } from 'date-fns';
 
-// This is a client-side file. We get the firestore instance from the client-side firebase library.
-import { firestore as db } from './firebase';
+// --- Google Sheets Client ---
 
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+const GOOGLE_SHEETS_CREDENTIALS = {
+  client_email: process.env.NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL,
+  private_key: process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
 
-// Collection names
-const PRODUCTS_COLLECTION = 'products';
-const SUPPLIERS_COLLECTION = 'suppliers';
-const INVENTORY_COLLECTION = 'inventory';
-const RETURNS_LOG_COLLECTION = 'returns';
-const SETTINGS_COLLECTION = 'settings';
+const sheets = google.sheets('v4');
+const auth = new google.auth.GoogleAuth({
+  credentials: GOOGLE_SHEETS_CREDENTIALS,
+  scopes: [
+    'https://www.googleapis.com/auth/spreadsheets',
+  ],
+});
+const sheetsClientPromise = auth.getClient().then(client => {
+  google.options({ auth: client });
+  return sheets;
+});
 
-function docToProduct(doc: any): Product {
-    const data = doc.data() as any;
-    return {
-        id: doc.id,
-        barcode: doc.id, // Using barcode as document ID
-        productName: data.productName,
-        supplierName: data.supplierName || null,
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
-    };
+async function getSheetsClient() {
+  return sheetsClientPromise;
 }
 
-function docToSupplier(doc: any): Supplier {
-    const data = doc.data() as any;
-    return {
-        id: doc.id,
-        name: data.name,
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
-    };
-}
+// --- Helper Functions ---
 
-function docToInventoryItem(doc: any): InventoryItem {
-    const data = doc.data() as any;
-    return {
-        id: doc.id,
-        productName: data.productName,
-        barcode: data.barcode,
-        supplierName: data.supplierName,
-        quantity: data.quantity,
-        expiryDate: data.expiryDate instanceof Timestamp ? data.expiryDate.toDate().toISOString().split('T')[0] : undefined,
-        location: data.location,
-        staffName: data.staffName,
-        itemType: data.itemType,
-        timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate().toISOString() : new Date().toISOString(),
-    };
-}
-
-function docToReturnedItem(doc: any): ReturnedItem {
-    const data = doc.data() as any;
-    return {
-        id: doc.id,
-        originalInventoryItemId: data.originalInventoryItemId,
-        productName: data.productName,
-        barcode: data.barcode,
-        supplierName: data.supplierName,
-        returnedQuantity: data.returnedQuantity,
-        expiryDate: data.expiryDate instanceof Timestamp ? data.expiryDate.toDate().toISOString().split('T')[0] : undefined,
-        location: data.location,
-        staffName: data.staffName,
-        itemType: data.itemType,
-        processedBy: data.processedBy,
-        returnTimestamp: data.returnTimestamp instanceof Timestamp ? data.returnTimestamp.toDate().toISOString() : new Date().toISOString(),
-    };
-}
-
-
-export async function getProducts(): Promise<Product[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const productsCollection = collection(db, PRODUCTS_COLLECTION);
-    const productsSnapshot = await getDocs(productsCollection);
-    const products = productsSnapshot.docs.map(docToProduct);
-    console.log(`Firestore: getProducts - Fetched ${products.length} products.`);
-    return products;
-}
-
-export async function getSuppliers(): Promise<Supplier[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const suppliersCollection = collection(db, SUPPLIERS_COLLECTION);
-    const suppliersSnapshot = await getDocs(suppliersCollection);
-    const suppliers = suppliersSnapshot.docs.map(docToSupplier);
-    console.log(`Firestore: getSuppliers - Fetched ${suppliers.length} suppliers.`);
-    return suppliers;
-}
-
-export async function getInventoryItems(): Promise<InventoryItem[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const q = query(
-      collection(db, INVENTORY_COLLECTION),
-      where('quantity', '>', 0),
-      orderBy('timestamp', 'desc')
-    );
-    
-    const inventorySnapshot = await getDocs(q);
-    const items = inventorySnapshot.docs.map(docToInventoryItem);
-    console.log(`Firestore: getInventoryItems - Fetched ${items.length} items.`);
-    return items;
-}
-
-
-export async function getUniqueStaffNames(): Promise<string[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('staffName')));
-    const staffNames = new Set<string>();
-    inventorySnapshot.docs.forEach(doc => {
-        const name = doc.data().staffName;
-        if (name) staffNames.add(name);
+// Helper to append a single row to a sheet.
+async function appendRow(range: string, values: any[]) {
+    const sheets = await getSheetsClient();
+    if (!GOOGLE_SHEET_ID) {
+        throw new Error('Google Sheet ID not configured.');
+    }
+    await sheets.spreadsheets.values.append({
+        spreadsheetId: GOOGLE_SHEET_ID,
+        range: range,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+            values: [values],
+        },
     });
-    console.log(`Firestore: getUniqueStaffNames - Found ${staffNames.size} unique staff names.`);
-    return Array.from(staffNames).sort((a,b) => a.localeCompare(b));
 }
 
-export async function getUniqueLocations(): Promise<string[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const inventorySnapshot = await getDocs(query(collection(db, INVENTORY_COLLECTION), orderBy('location')));
+// Helper to update a row in a sheet.
+async function updateRow(range: string, values: any[]) {
+    const sheets = await getSheetsClient();
+    if (!GOOGLE_SHEET_ID) {
+        throw new Error('Google Sheet ID not configured.');
+    }
+    await sheets.spreadsheets.values.update({
+        spreadsheetId: GOOGLE_SHEET_ID,
+        range: range,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+            values: [values],
+        },
+    });
+}
+
+// Helper to find a row index based on a value in a specific column.
+async function findRowIndex(range: string, value: string, columnIndex: number): Promise<number | null> {
+    const sheets = await getSheetsClient();
+    if (!GOOGLE_SHEET_ID) {
+        throw new Error('Google Sheet ID not configured.');
+    }
+    const result = await sheets.spreadsheets.values.get({
+        spreadsheetId: GOOGLE_SHEET_ID,
+        range: range,
+    });
+    const rows = result.data.values;
+    if (rows) {
+        const rowIndex = rows.findIndex(row => row[columnIndex] && row[columnIndex].toLowerCase() === value.toLowerCase());
+        return rowIndex !== -1 ? rowIndex + parseInt(range.match(/\d+$/)?.[0] || '1', 10) : null;
+    }
+    return null;
+}
+
+// Helper to read data from a sheet
+async function readSheetData(range: string): Promise<any[][] | null> {
+    try {
+        const sheets = await getSheetsClient();
+        if (!GOOGLE_SHEET_ID) {
+            throw new Error('Google Sheet ID not configured.');
+        }
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: GOOGLE_SHEET_ID,
+            range: range,
+        });
+        return response.data.values || [];
+    } catch (error) {
+        console.error('Error reading sheet data:', error);
+        return null;
+    }
+}
+
+// --- Data Fetching Functions ---
+
+export async function getProducts(): Promise<Product[] | null> {
+    const data = await readSheetData("'BAR DATA'!A2:C");
+    if (!data) return [];
+    return data.map((row, index) => ({
+        id: row[0] || `product-${index}`, // Use barcode as ID
+        barcode: row[0],
+        productName: row[1],
+        supplierName: row[2] || '', // Assuming supplier name is in column C
+    }));
+}
+
+export async function getSuppliers(): Promise<Supplier[] | null> {
+    const data = await readSheetData("'SUP DATA'!A2:B");
+    if (!data) return [];
+    const uniqueSuppliers: { [key: string]: Supplier } = {};
+    data.forEach((row, index) => {
+        const name = row[1]?.trim();
+        if (name && !uniqueSuppliers[name.toLowerCase()]) {
+            uniqueSuppliers[name.toLowerCase()] = {
+                id: `supplier-${index}`,
+                name: name,
+            };
+        }
+    });
+    return Object.values(uniqueSuppliers);
+}
+
+export async function getInventoryItems(): Promise<InventoryItem[] | null> {
+    // A: Timestamp, B: BARCODE, C: QTY, D: DATE OF EX, E: where, F: WHO I, G: (blank), H: RowID, I: EXP OR DMG
+    const data = await readSheetData("'Form responses 2'!A2:I");
+    if (!data) return [];
+
+    const barData = await readSheetData("'BAR DATA'!A2:B");
+    const supData = await readSheetData("'SUP DATA'!A2:B");
+
+    const productMap = new Map(barData?.map(row => [row[0], row[1]]));
+    const supplierMap = new Map(supData?.map(row => [row[0], row[1]]));
+
+    return data.map((row) => {
+        const barcode = row[1];
+        const productName = productMap.get(barcode) || 'Unknown Product';
+        const supplierName = supplierMap.get(productName) || 'Unknown Supplier';
+
+        return {
+            id: row[7] || `${row[0]}-${row[1]}`, // Use RowID if available, else generate
+            timestamp: row[0],
+            barcode: barcode,
+            productName: productName,
+            supplierName: supplierName,
+            quantity: parseInt(row[2], 10) || 0,
+            expiryDate: row[3],
+            location: row[4],
+            staffName: row[5],
+            itemType: row[8] || 'Expiry',
+        };
+    }).filter(item => item.quantity > 0);
+}
+
+
+export async function getReturnedItems(): Promise<ReturnedItem[] | null> {
+    const data = await readSheetData("'RETURN LOG'!A2:I");
+    if (!data) return [];
+
+    return data.map((row, index) => ({
+        id: `return-${index}`,
+        productName: row[0],
+        barcode: row[1],
+        supplierName: row[2],
+        returnedQuantity: parseInt(row[3], 10) || 0,
+        expiryDate: row[4],
+        location: row[5],
+        staffName: row[6], // Original logger
+        processedBy: row[7], // Who processed the return
+        returnTimestamp: row[8],
+        itemType: row[9] || 'Expiry',
+    }));
+}
+
+export async function getUniqueStaffNames(): Promise<string[] | null> {
+    const data = await readSheetData("'Form responses 2'!F2:F");
+    if (!data) return [];
+    const names = new Set<string>();
+    data.forEach(row => {
+        if (row[0]) names.add(row[0].trim());
+    });
+    return Array.from(names).sort();
+}
+
+export async function getUniqueLocations(): Promise<string[] | null> {
+    const data = await readSheetData("'Form responses 2'!E2:E");
+    if (!data) return [];
     const locations = new Set<string>();
-    inventorySnapshot.docs.forEach(doc => {
-        const loc = doc.data().location;
-        if (loc) locations.add(loc);
+    data.forEach(row => {
+        if (row[0]) locations.add(row[0].trim());
     });
-    console.log(`Firestore: getUniqueLocations - Found ${locations.size} unique locations.`);
-    return Array.from(locations).sort((a,b) => a.localeCompare(b));
+    return Array.from(locations).sort();
 }
 
-export async function getReturnedItems(): Promise<ReturnedItem[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const returnsSnapshot = await getDocs(query(collection(db, RETURNS_LOG_COLLECTION), orderBy('returnTimestamp', 'desc')));
-    const items = returnsSnapshot.docs.map(docToReturnedItem);
-    console.log(`Firestore: getReturnedItems - Fetched ${items.length} returned items.`);
-    return items;
-}
+
+// --- Data Mutation Functions ---
 
 export async function addProduct(productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
-    if (!db) throw new Error("Firestore is not initialized");
     try {
-        const productRef = doc(db, PRODUCTS_COLLECTION, productData.barcode);
-        
-        await runTransaction(db, async (transaction) => {
-            const productDoc = await transaction.get(productRef);
-            if (productDoc.exists()) {
-                transaction.update(productRef, { 
-                    productName: productData.productName,
-                    supplierName: productData.supplierName,
-                });
-            } else {
-                transaction.set(productRef, {
-                    productName: productData.productName,
-                    supplierName: productData.supplierName,
-                    createdAt: serverTimestamp()
-                });
-            }
-        });
-
-        await addSupplier({ name: productData.supplierName });
-        
+        await appendRow("'BAR DATA'!A:C", [productData.barcode, productData.productName, productData.supplierName]);
+        await addSupplier({ name: productData.supplierName }); // Ensure supplier exists
         return {
             id: productData.barcode,
-            ...productData,
-            createdAt: new Date().toISOString()
+            ...productData
         };
     } catch (error) {
-        console.error("Firestore: Error in addProduct:", error);
+        console.error("Error in addProduct (Google Sheets):", error);
         return null;
     }
 }
 
 export async function addSupplier(supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const supplierName = supplierData.name.trim();
-    if (!supplierName) {
-        return { supplier: null, error: "Supplier name cannot be empty." };
-    }
-    const suppliersRef = collection(db, SUPPLIERS_COLLECTION);
-    const q = query(suppliersRef, where('name', '==', supplierName), limit(1));
-    const existing = await getDocs(q);
+    const name = supplierData.name.trim();
+    if (!name) return { supplier: null, error: "Supplier name cannot be empty." };
 
-    if (!existing.empty) {
-        console.log(`Firestore: addSupplier - Supplier "${supplierName}" already exists.`);
-        return { supplier: docToSupplier(existing.docs[0]) };
+    const suppliers = await getSuppliers() || [];
+    const existing = suppliers.find(s => s.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+        return { supplier: existing };
     }
-    
+
     try {
-        const docRef = await addDoc(suppliersRef, {
-            name: supplierName,
-            createdAt: serverTimestamp()
-        });
-        return { supplier: { id: docRef.id, name: supplierName, createdAt: new Date().toISOString() } };
+        // This assumes SUP DATA has Product Name in A and Supplier Name in B
+        // We'll leave Product Name blank as it's a new supplier with no products yet.
+        await appendRow("'SUP DATA'!A:B", ['', name]);
+        return { supplier: { id: `new-supplier-${Date.now()}`, name: name } };
     } catch (error) {
-        console.error("Firestore: Critical error in addSupplier:", error);
-        return { supplier: null, error: `Failed to add supplier: ${error instanceof Error ? error.message : "Unknown error"}` };
+        console.error("Error in addSupplier (Google Sheets):", error);
+        return { supplier: null, error: 'Failed to add supplier to sheet.' };
     }
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
-    const productDoc = await getDoc(productRef);
-    if (!productDoc.exists()) {
-        console.warn(`Firestore: getProductDetailsByBarcode - Barcode ${barcode} not found.`);
-        return null;
-    }
-    return docToProduct(productDoc);
+    const products = await getProducts();
+    if (!products) return null;
+    return products.find(p => p.barcode === barcode) || null;
 }
 
-
-export async function addInventoryItem(
-  itemFormValues: AddInventoryItemFormValues,
-  resolvedProductDetails: { productName: string; supplierName: string; }
-): Promise<InventoryItem | null> {
-    if (!db) throw new Error("Firestore is not initialized");
+export async function addInventoryItem(itemFormValues: AddInventoryItemFormValues): Promise<InventoryItem | null> {
     try {
-        const docRef = await addDoc(collection(db, INVENTORY_COLLECTION), {
-            barcode: itemFormValues.barcode.trim(),
-            productName: resolvedProductDetails.productName,
-            supplierName: resolvedProductDetails.supplierName,
-            quantity: itemFormValues.quantity,
-            expiryDate: itemFormValues.expiryDate ? Timestamp.fromDate(itemFormValues.expiryDate) : null,
-            location: itemFormValues.location.trim(),
-            staffName: itemFormValues.staffName.trim(),
-            itemType: itemFormValues.itemType,
-            timestamp: serverTimestamp(),
-        });
-
+        const timestamp = new Date().toLocaleString("en-GB"); // Format: DD/MM/YYYY, HH:MM:SS
+        const expiryDate = itemFormValues.expiryDate ? format(itemFormValues.expiryDate, 'dd/MM/yyyy') : '';
+        const newRow = [
+            timestamp,
+            itemFormValues.barcode,
+            itemFormValues.quantity,
+            expiryDate,
+            itemFormValues.location,
+            itemFormValues.staffName,
+            '', // Placeholder for G column
+            `ID-${Date.now()}`, // Generate a unique-ish ID
+            itemFormValues.itemType,
+        ];
+        await appendRow("'Form responses 2'!A:I", newRow);
+        
+        // This is a mock return object. The real data is in the sheet.
+        const productDetails = await getProductDetailsByBarcode(itemFormValues.barcode);
         return {
-            id: docRef.id,
-            ...itemFormValues,
-            ...resolvedProductDetails,
-            expiryDate: itemFormValues.expiryDate?.toISOString().split('T')[0],
+            id: newRow[7],
             timestamp: new Date().toISOString(),
+            barcode: itemFormValues.barcode,
+            productName: productDetails?.productName || 'Unknown',
+            supplierName: productDetails?.supplierName || 'Unknown',
+            quantity: itemFormValues.quantity,
+            expiryDate: itemFormValues.expiryDate?.toISOString(),
+            location: itemFormValues.location,
+            staffName: itemFormValues.staffName,
+            itemType: itemFormValues.itemType,
         };
-
     } catch (error) {
-        console.error("Firestore: Critical error in addInventoryItem:", error);
+        console.error("Error in addInventoryItem (Google Sheets):", error);
         return null;
     }
 }
 
 export async function processReturn(itemId: string, quantityToReturn: number, staffNameProcessingReturn: string): Promise<{ success: boolean; message?: string }> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
-
+    const rowIndex = await findRowIndex("'Form responses 2'!H:H", itemId, 0);
+    if (rowIndex === null) {
+        return { success: false, message: `Item with ID ${itemId} not found.` };
+    }
+    
     try {
-        await runTransaction(db, async (transaction) => {
-            const itemDoc = await transaction.get(itemRef);
-            if (!itemDoc.exists()) {
-                throw new Error(`Item with ID ${itemId} not found.`);
-            }
-
-            const currentItem = docToInventoryItem(itemDoc);
-            if (currentItem.quantity <= 0) {
-                throw new Error(`Item ${currentItem.productName} has 0 quantity.`);
-            }
-
-            const actualReturnedQty = Math.min(quantityToReturn, currentItem.quantity);
-            const newQuantity = currentItem.quantity - actualReturnedQty;
-
-            if (newQuantity > 0) {
-                transaction.update(itemRef, { quantity: newQuantity });
-            } else {
-                transaction.delete(itemRef);
-            }
-
-            const returnLogRef = doc(collection(db, RETURNS_LOG_COLLECTION));
-            transaction.set(returnLogRef, {
-                originalInventoryItemId: itemId,
-                productName: currentItem.productName,
-                barcode: currentItem.barcode,
-                supplierName: currentItem.supplierName,
-                returnedQuantity: actualReturnedQty,
-                expiryDate: currentItem.expiryDate ? Timestamp.fromDate(new Date(currentItem.expiryDate)) : null,
-                location: currentItem.location,
-                staffName: currentItem.staffName,
-                itemType: currentItem.itemType,
-                processedBy: staffNameProcessingReturn.trim(),
-                returnTimestamp: serverTimestamp()
-            });
+        const sheets = await getSheetsClient();
+        const rangeToGet = `'Form responses 2'!A${rowIndex}:I${rowIndex}`;
+        const result = await sheets.spreadsheets.values.get({
+            spreadsheetId: GOOGLE_SHEET_ID,
+            range: rangeToGet,
         });
-        return { success: true, message: `Return processed successfully for item ID ${itemId}.`};
-    } catch (error: any) {
-        console.error(`Firestore: Critical error in processReturn for ${itemId}:`, error);
-        return { success: false, message: `Failed to process return: ${error.message}` };
+
+        const row = result.data.values?.[0];
+        if (!row) {
+            return { success: false, message: `Could not read data for item ID ${itemId}.` };
+        }
+
+        const currentQuantity = parseInt(row[2], 10) || 0;
+        const newQuantity = currentQuantity - quantityToReturn;
+
+        if (newQuantity < 0) {
+            return { success: false, message: `Cannot return more than available quantity (${currentQuantity}).` };
+        }
+
+        // Update the quantity in the inventory sheet
+        await updateRow(`'Form responses 2'!C${rowIndex}`, [newQuantity]);
+
+        // Log the return
+        const productName = (await getProductDetailsByBarcode(row[1]))?.productName || 'Unknown Product';
+        const supplierName = (await getProductDetailsByBarcode(row[1]))?.supplierName || 'Unknown Supplier';
+
+        const returnLog = [
+            productName,
+            row[1], // barcode
+            supplierName,
+            quantityToReturn,
+            row[3], // expiry
+            row[4], // location
+            row[5], // staffName
+            staffNameProcessingReturn,
+            new Date().toLocaleString("en-GB"),
+            row[8], // item type
+        ];
+        await appendRow("'RETURN LOG'!A:J", returnLog);
+        return { success: true, message: 'Return processed successfully.' };
+
+    } catch (error) {
+        console.error("Error in processReturn (Google Sheets):", error);
+        return { success: false, message: 'Failed to process return.' };
     }
 }
-
 
 export async function updateSupplierNameAndReferences(currentName: string, newName: string): Promise<boolean> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const batch = writeBatch(db);
+    // This is complex with sheets. For now, we only update the supplier list.
+    // A full implementation would need to iterate over all other sheets.
     try {
-        const suppliersQuery = query(collection(db, SUPPLIERS_COLLECTION), where('name', '==', currentName));
-        const suppliersSnapshot = await getDocs(suppliersQuery);
-
-        if (suppliersSnapshot.empty) {
-            console.warn(`Firestore: updateSupplierName - No supplier found with name "${currentName}".`);
-            return true; 
+        const rowIndex = await findRowIndex("'SUP DATA'!B:B", currentName, 0);
+        if (rowIndex !== null) {
+            await updateRow(`'SUP DATA'!B${rowIndex}`, [newName]);
         }
-        
-        suppliersSnapshot.forEach(doc => {
-            batch.update(doc.ref, { name: newName });
-        });
-
-        const productsQuery = query(collection(db, PRODUCTS_COLLECTION), where('supplierName', '==', currentName));
-        const productsSnapshot = await getDocs(productsQuery);
-        productsSnapshot.forEach(doc => {
-            batch.update(doc.ref, { supplierName: newName });
-        });
-
-        const inventoryQuery = query(collection(db, INVENTORY_COLLECTION), where('supplierName', '==', currentName));
-        const inventorySnapshot = await getDocs(inventoryQuery);
-        inventorySnapshot.forEach(doc => {
-            batch.update(doc.ref, { supplierName: newName });
-        });
-
-        const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('supplierName', '==', currentName));
-        const returnsSnapshot = await getDocs(returnsQuery);
-        returnsSnapshot.forEach(doc => {
-            batch.update(doc.ref, { supplierName: newName });
-        });
-
-        await batch.commit();
-        console.log(`Firestore: Successfully updated supplier name from "${currentName}" to "${newName}" across all collections.`);
+        // NOTE: This does not update the denormalized supplier name in 'BAR DATA'.
+        // This is a limitation of the Sheets-based approach without more complex scripting.
         return true;
     } catch (error) {
-        console.error("Firestore: Critical error in updateSupplierNameAndReferences:", error);
+        console.error("Error in updateSupplierNameAndReferences (Google Sheets):", error);
         return false;
     }
 }
 
-export async function updateInventoryItemDetails(
-  itemId: string,
-  updates: { location?: string; expiryDate?: Date | null; itemType?: 'Expiry' | 'Damage', quantity?: number }
-): Promise<boolean> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
+export async function updateInventoryItemDetails(itemId: string, updates: { location?: string; expiryDate?: Date | null; itemType?: 'Expiry' | 'Damage', quantity?: number }): Promise<boolean> {
+    const rowIndex = await findRowIndex("'Form responses 2'!H:H", itemId, 0);
+    if (rowIndex === null) {
+        console.error(`updateInventoryItemDetails: Item with ID ${itemId} not found.`);
+        return false;
+    }
     
-    const updateData: {[key: string]: any} = {};
-    if (updates.location !== undefined) updateData.location = updates.location;
-    if (updates.itemType !== undefined) updateData.itemType = updates.itemType;
-    if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
-
-    if (updates.expiryDate !== undefined) {
-        updateData.expiryDate = updates.expiryDate ? Timestamp.fromDate(updates.expiryDate) : null;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-        console.log(`Firestore: updateInventoryItemDetails - No changes to update for item ${itemId}.`);
-        return true;
-    }
-
     try {
-        await updateDoc(itemRef, updateData);
-        console.log(`Firestore: Successfully updated details for item ${itemId}.`);
+        const rangeToGet = `'Form responses 2'!A${rowIndex}:I${rowIndex}`;
+        const sheets = await getSheetsClient();
+        const result = await sheets.spreadsheets.values.get({
+            spreadsheetId: GOOGLE_SHEET_ID,
+            range: rangeToGet,
+        });
+        const row = result.data.values?.[0];
+        if (!row) return false;
+
+        const newRow = [...row];
+        if (updates.quantity !== undefined) newRow[2] = updates.quantity;
+        if (updates.expiryDate !== undefined) newRow[3] = updates.expiryDate ? format(updates.expiryDate, 'dd/MM/yyyy') : '';
+        if (updates.location !== undefined) newRow[4] = updates.location;
+        if (updates.itemType !== undefined) newRow[8] = updates.itemType;
+
+        await updateRow(rangeToGet, newRow);
         return true;
     } catch (error) {
-        console.error(`Firestore: Critical error in updateInventoryItemDetails for ${itemId}:`, error);
+        console.error("Error updating inventory item details in Sheets:", error);
         return false;
     }
 }
-
 
 export async function updateProductAndSupplierLinks(barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const batch = writeBatch(db);
+    const rowIndex = await findRowIndex("'BAR DATA'!A:A", barcode, 0);
+    if (rowIndex === null) {
+        return false; // Product not found
+    }
     try {
-        const productRef = doc(db, PRODUCTS_COLLECTION, barcode);
-        const productDoc = await getDoc(productRef);
-
-        if (!productDoc.exists()) {
-            console.error(`Firestore: updateProductAndSupplierLinks - Product with barcode ${barcode} not found.`);
-            return false;
-        }
-
-        const oldProductName = productDoc.data()!.productName;
-        const productNameChanged = oldProductName !== newProductName;
-
-        batch.update(productRef, {
-            productName: newProductName,
-            supplierName: newSupplierName
-        });
-
-        if (productNameChanged) {
-            const inventoryQuery = query(collection(db, INVENTORY_COLLECTION), where('barcode', '==', barcode));
-            const inventorySnapshot = await getDocs(inventoryQuery);
-            inventorySnapshot.forEach(doc => {
-                batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
-            });
-
-            const returnsQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('barcode', '==', barcode));
-            const returnsSnapshot = await getDocs(returnsQuery);
-            returnsSnapshot.forEach(doc => {
-                batch.update(doc.ref, { productName: newProductName, supplierName: newSupplierName });
-            });
-        }
-        
-        await batch.commit();
-        console.log(`Firestore: Successfully updated product and links for barcode ${barcode}.`);
+        await updateRow(`'BAR DATA'!B${rowIndex}:C${rowIndex}`, [newProductName, newSupplierName]);
         return true;
     } catch (error) {
-        console.error(`Firestore: Critical error in updateProductAndSupplierLinks for barcode ${barcode}:`, error);
+        console.error("Error updating product details in Sheets:", error);
         return false;
     }
 }
 
-
 export async function getInventoryLogEntriesByBarcode(barcode: string): Promise<InventoryItem[]> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const q = query(collection(db, INVENTORY_COLLECTION), where('barcode', '==', barcode), orderBy('timestamp', 'desc'));
-    
-    const snapshot = await getDocs(q);
-    const items = snapshot.docs.map(docToInventoryItem);
-    console.log(`Firestore: getInventoryLogEntriesByBarcode - Found ${items.length} log entries for barcode ${barcode}.`);
-    return items;
+    const allItems = await getInventoryItems();
+    if (!allItems) return [];
+    return allItems.filter(item => item.barcode === barcode);
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-    try {
-        if (!db) throw new Error("Firestore is not initialized");
-        const [productsSnapshot, inventorySnapshot, suppliersSnapshot] = await Promise.all([
-            getDocs(collection(db, PRODUCTS_COLLECTION)),
-            getDocs(query(collection(db, INVENTORY_COLLECTION), where('quantity', '>', 0))),
-            getDocs(collection(db, SUPPLIERS_COLLECTION)),
-        ]);
-        
-        const inventoryItems = inventorySnapshot.docs.map(docToInventoryItem);
+    const [products, inventory, suppliers, returns] = await Promise.all([
+        getProducts(),
+        getInventoryItems(),
+        getSuppliers(),
+        getReturnedItems(),
+    ]);
 
-        const totalProducts = productsSnapshot.size;
-        const totalStockQuantity = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
-        const totalSuppliers = suppliersSnapshot.size;
-        
-        let itemsExpiringSoon = 0;
-        const today = startOfDay(new Date());
-        const sevenDaysFromNow = addDays(today, 7);
-        inventoryItems.forEach(item => {
-            if (item.itemType === 'Expiry' && item.expiryDate) {
-                try {
-                    const expiry = startOfDay(parseISO(item.expiryDate));
-                    if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today)) {
-                        itemsExpiringSoon++;
-                    }
-                } catch (e) {
-                    console.warn(`Firestore: getDashboardMetrics - Could not parse expiry date '${item.expiryDate}' for item ID ${item.id}`);
-                }
-            }
-        });
-        
-        const damagedItemsCount = inventoryItems.filter(item => item.itemType === 'Damage').length;
-        
-        const stockBySupplierMap = new Map<string, number>();
-        inventoryItems.forEach(item => {
-            const supplier = item.supplierName || "Unknown Supplier";
-            stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
-        });
+    const totalProducts = products?.length || 0;
+    const totalStockQuantity = inventory?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const totalSuppliers = suppliers?.length || 0;
 
-        const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
-          .map(([name, totalStock]) => ({ name, totalStock }))
-          .sort((a, b) => b.totalStock - a.totalStock);
-
-        const startOfToday = Timestamp.fromDate(startOfDay(new Date()));
-
-        const addedTodayQuery = query(collection(db, INVENTORY_COLLECTION), where('timestamp', '>=', startOfToday));
-        const returnedTodayQuery = query(collection(db, RETURNS_LOG_COLLECTION), where('returnTimestamp', '>=', startOfToday));
-
-        const [addedSnapshot, returnedSnapshot] = await Promise.all([getDocs(addedTodayQuery), getDocs(returnedTodayQuery)]);
-
-        const quantityAddedToday = addedSnapshot.docs.reduce((sum, doc) => sum + (doc.data().quantity || 0), 0);
-        const quantityReturnedToday = returnedSnapshot.docs.reduce((sum, doc) => sum + (doc.data().returnedQuantity || 0), 0);
-
-        const netChangeToday = quantityAddedToday - quantityReturnedToday;
-        const stockAtStartOfDay = totalStockQuantity - netChangeToday;
-    
-        let dailyStockChangePercent: number | undefined = undefined;
-        let dailyStockChangeDirection: 'increase' | 'decrease' | 'none' = 'none';
-    
-        if (stockAtStartOfDay > 0) {
-            dailyStockChangePercent = (netChangeToday / stockAtStartOfDay) * 100;
-        } else if (netChangeToday > 0) {
-            dailyStockChangePercent = undefined;
+    const today = startOfDay(new Date());
+    const sevenDaysFromNow = addDays(today, 7);
+    const itemsExpiringSoon = inventory?.filter(item => {
+        if (!item.expiryDate) return false;
+        try {
+            const [day, month, year] = item.expiryDate.split('/');
+            const expiry = startOfDay(new Date(`${year}-${month}-${day}`));
+            return isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today);
+        } catch {
+            return false;
         }
-        
-        if (netChangeToday > 0) {
-          dailyStockChangeDirection = 'increase';
-        } else if (netChangeToday < 0) {
-          dailyStockChangeDirection = 'decrease';
-        }
+    }).length || 0;
 
-        return {
-          totalProducts,
-          totalStockQuantity,
-          itemsExpiringSoon,
-          damagedItemsCount,
-          stockBySupplier,
-          totalSuppliers,
-          dailyStockChangePercent,
-          dailyStockChangeDirection,
-          netItemsAddedToday: dailyStockChangeDirection === 'increase' ? netChangeToday : undefined,
-        };
-    } catch (error) {
-        console.error("Firestore: Critical error in getDashboardMetrics:", error);
-        throw new Error(`Failed to fetch dashboard metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    const damagedItemsCount = inventory?.filter(item => item.itemType === 'Damage').length || 0;
+
+    const stockBySupplierMap = new Map<string, number>();
+    inventory?.forEach(item => {
+        const supplier = item.supplierName || "Unknown Supplier";
+        stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
+    });
+
+    const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
+        .map(([name, totalStock]) => ({ name, totalStock }))
+        .sort((a, b) => b.totalStock - a.totalStock);
+
+    return {
+        totalProducts,
+        totalStockQuantity,
+        itemsExpiringSoon,
+        damagedItemsCount,
+        stockBySupplier,
+        totalSuppliers,
+        dailyStockChangePercent: 0, // Not implemented for Sheets
+        dailyStockChangeDirection: 'none',
+    };
 }
 
+
 export async function deleteInventoryItemById(itemId: string): Promise<boolean> {
-    if (!db) throw new Error("Firestore is not initialized");
-    const itemRef = doc(db, INVENTORY_COLLECTION, itemId);
+    const rowIndex = await findRowIndex("'Form responses 2'!H:H", itemId, 0);
+    if (rowIndex === null) {
+        return false;
+    }
+    // Deleting a row is a more complex operation involving batchUpdate.
+    // For simplicity, we will just clear the row content.
     try {
-        await deleteDoc(itemRef);
-        console.log(`Firestore: Successfully deleted inventory item ${itemId}.`);
+        await updateRow(`'Form responses 2'!A${rowIndex}:I${rowIndex}`, Array(9).fill(''));
         return true;
     } catch (error) {
-        console.error(`Firestore: Critical error deleting inventory item ${itemId}:`, error);
+        console.error("Error 'deleting' (clearing) row in Sheets:", error);
         return false;
     }
 }
 
-
-const PERMISSIONS_DOC_ID = 'accessControl';
-
+// Permissions are not stored in Google Sheets in this version, so we return defaults.
 export async function loadPermissions(): Promise<Permissions | null> {
-    if (!db) {
-        console.error("Firestore: loadPermissions - db instance is not available.");
-        return null;
-    }
-    const permissionsRef = doc(db, SETTINGS_COLLECTION, PERMISSIONS_DOC_ID);
-    try {
-        const docSnap = await getDoc(permissionsRef);
-        if (docSnap.exists()) {
-            console.log("Firestore: Successfully loaded permissions.");
-            return docSnap.data()! as Permissions;
-        }
-        console.log("Firestore: Permissions document does not exist, will use defaults.");
-        return null;
-    } catch (error) {
-        console.error("Firestore: Error loading permissions:", error);
-        return null;
-    }
+    // This is a mock implementation.
+    return null;
 }
 
 export async function savePermissions(permissions: Permissions): Promise<boolean> {
-     if (!db) {
-        console.error("Firestore: savePermissions - db instance is not available.");
-        return false;
-    }
-    const permissionsRef = doc(db, SETTINGS_COLLECTION, PERMISSIONS_DOC_ID);
-    try {
-        await runTransaction(db, async (transaction) => {
-            transaction.set(permissionsRef, permissions);
-        });
-        console.log("Firestore: Successfully saved permissions.");
-        return true;
-    } catch (error) {
-        console.error("Firestore: Error saving permissions:", error);
-        return false;
-    }
+    // This is a mock implementation.
+    console.log("Permissions saved (mock):", permissions);
+    return true;
 }

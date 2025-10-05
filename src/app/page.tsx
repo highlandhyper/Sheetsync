@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -11,16 +10,20 @@ export default function HomePage() {
   const { user, loading, role } = useAuth(); 
 
   useEffect(() => {
+    // This effect will run when loading status or user changes
     if (!loading) {
       if (user) {
+        // User is logged in, redirect based on role
         if (role === 'admin') {
-          router.replace('/dashboard'); // Admin users go to dashboard
+          router.replace('/dashboard');
         } else if (role === 'viewer') {
-          router.replace('/products'); // Viewer users go to return by staff page
+          router.replace('/products'); // Default for viewers
         } else {
-          router.replace('/login'); // Fallback if role is somehow null for an authenticated user
+          // Fallback if role is not set but user exists
+          router.replace('/login');
         }
       } else {
+        // No user, redirect to login
         router.replace('/login');
       }
     }
@@ -33,4 +36,3 @@ export default function HomePage() {
     </div>
   );
 }
-
