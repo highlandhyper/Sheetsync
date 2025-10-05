@@ -1,19 +1,32 @@
-
 'use client';
 
 import type { PropsWithChildren} from 'react';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase'; // auth might be undefined if Firebase init fails
-import type { User } from 'firebase/auth';
-import {
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  type UserCredential
-} from 'firebase/auth';
-import type { LoginFormValues, SignupFormValues } from '@/lib/schemas';
+import { useRouter, usePathname } from 'next/navigation';
+import type { LoginFormValues } from '@/lib/schemas';
+import bcrypt from 'bcryptjs';
+
+// --- MOCK USER DATA ---
+// In a real app, this would come from a database or a secure source.
+// For this app, we'll simulate two roles: 'admin' and 'viewer'.
+const MOCK_USERS = {
+  'admin@example.com': {
+    email: 'admin@example.com',
+    // It's crucial to store hashed passwords, not plain text.
+    // This hash is for the password "admin". You can generate new ones.
+    passwordHash: '$2a$10$wN.9.sA/AA4f9a5/F.aV.OLTzF.nL3v6/jA.qRz4sC1lR7.Gde/vG',
+    role: 'admin',
+    name: 'Admin User'
+  },
+  'viewer@example.com': {
+    email: 'viewer@example.com',
+    // This hash is for the password "viewer".
+    passwordHash: '$2a$10$f.4bO9nBvHjE6pB3v.3fA.U5f5ZgXh3x2z1r8B1cE3xG7t3h6D/pW',
+    role: 'viewer',
+    name: 'Viewer User'
+  }
+};
+type MockUser = { email: string; role: 'admin' | 'viewer'; name: string; };
 
 type UserRole = 'admin' | 'viewer' | null;
 
@@ -24,126 +37,94 @@ interface AuthContextLoginResponse {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: MockUser | null;
   role: UserRole;
   loading: boolean;
   login: (values: LoginFormValues) => Promise<AuthContextLoginResponse>;
-  signup: (values: SignupFormValues) => Promise<{ success: boolean; error?: string }>;
+  signup: (values: any) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const VIEWER_EMAIL = 'viewer@example.com'; // Simulated viewer email
+const USER_SESSION_KEY = 'sheet_sync_user_session';
+
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MockUser | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    setLoading(true);
-    if (!auth) {
-      console.error(
-        "AuthContext: Firebase Auth object is NOT available from '@/lib/firebase'. " +
-        "This likely means Firebase failed to initialize due to missing or incorrect configuration in .env.local. " +
-        "Please check server console logs from 'src/lib/firebase.ts' for specific errors. " +
-        "User authentication will not function."
-      );
-      setUser(null);
-      setRole(null);
-      setLoading(false); // Ensure loading is false if auth is not available
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // SIMULATION: Assign role based on email
-        // In a real app, this would come from custom claims in the ID token
-        if (currentUser.email === VIEWER_EMAIL) {
-          setRole('viewer');
-        } else {
-          setRole('admin'); // Default to admin for other authenticated users
+    try {
+        const storedSession = sessionStorage.getItem(USER_SESSION_KEY);
+        if (storedSession) {
+            const sessionUser = JSON.parse(storedSession);
+            setUser(sessionUser);
+            setRole(sessionUser.role);
         }
-      } else {
-        setRole(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error("AuthContext: Error in onAuthStateChanged listener:", error);
-      setUser(null);
-      setRole(null);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    } catch (e) {
+        console.error("Could not parse user session from storage:", e);
+        sessionStorage.removeItem(USER_SESSION_KEY);
+    }
+    setLoading(false);
   }, []);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
-    if (loading || !auth) {
-      const errorMessage = "Authentication service is not ready. Please try again in a moment.";
-      console.error(`Login failed: ${errorMessage} (loading: ${loading}, auth: ${!!auth})`);
-      return { success: false, error: errorMessage };
-    }
-
-    try {
-      const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      // Role and user state will be set by onAuthStateChanged, but we determine it here for immediate use.
-      let determinedRole: UserRole = null;
-      if (userCredential.user) {
-        if (userCredential.user.email === VIEWER_EMAIL) {
-          determinedRole = 'viewer';
-        } else {
-          determinedRole = 'admin';
-        }
-      }
-      // setLoading will be set to false by onAuthStateChanged
-      return { success: true, role: determinedRole };
-    } catch (error: any) {
-      // onAuthStateChanged will keep loading as false. We don't need to set it here.
-      setRole(null); // Clear role on login failure
-      return { success: false, error: error.message };
-    }
-  }, [loading, auth]);
-
-  const signup = useCallback(async (values: SignupFormValues) => {
-    if (!auth) {
-      console.error("Signup: Firebase Auth is not initialized. Cannot sign up.");
-      return { success: false, error: "Authentication service is not available. Please try again later." };
-    }
     setLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
-      // Role and user state will be set by onAuthStateChanged (likely to 'admin' by default after signup here)
-      return { success: true };
-    } catch (error: any) {
-      setLoading(false);
-      setRole(null);
-      return { success: false, error: error.message };
+    const potentialUser = MOCK_USERS[values.email as keyof typeof MOCK_USERS];
+    
+    if (potentialUser) {
+      const passwordMatch = await bcrypt.compare(values.password, potentialUser.passwordHash);
+      if (passwordMatch) {
+        const userToStore = {
+          email: potentialUser.email,
+          role: potentialUser.role,
+          name: potentialUser.name
+        };
+        setUser(userToStore);
+        setRole(potentialUser.role);
+        sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(userToStore));
+        setLoading(false);
+        return { success: true, role: potentialUser.role };
+      }
     }
+
+    setLoading(false);
+    return { success: false, error: 'Invalid email or password.' };
   }, []);
 
+  const signup = async (values: any) => {
+    // Signup is disabled in this mock auth system.
+    return { success: false, error: 'Signup is not available. Please use one of the provided mock accounts.' };
+  };
+
   const logout = useCallback(async () => {
-    if (!auth) {
-      console.warn("Logout: Firebase Auth not initialized. Performing local logout and redirect.");
-      setUser(null);
-      setRole(null);
-      setLoading(false);
-      router.push('/login');
-      return;
-    }
     setLoading(true);
-    try {
-      await firebaseSignOut(auth);
-      // User and role state change and loading=false will be handled by onAuthStateChanged
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      setLoading(false); // Explicitly set loading false on error
-    }
+    setUser(null);
+    setRole(null);
+    sessionStorage.removeItem(USER_SESSION_KEY);
+    router.push('/login');
+    // A small delay to ensure state is updated before other effects run
+    await new Promise(resolve => setTimeout(resolve, 50));
+    setLoading(false);
   }, [router]);
+
+  // This effect handles redirection based on auth state
+  useEffect(() => {
+    if (loading) return;
+    
+    const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+    if (!user && !isAuthPage) {
+      router.replace('/login');
+    } else if (user && isAuthPage) {
+      router.replace(role === 'admin' ? '/dashboard' : '/products');
+    }
+
+  }, [user, role, loading, pathname, router]);
 
   return (
     <AuthContext.Provider value={{ user, role, loading, login, signup, logout }}>

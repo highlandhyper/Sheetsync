@@ -1,5 +1,4 @@
 
-
 import { ProductListClient } from '@/components/products/product-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';

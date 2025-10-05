@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Info } from 'lucide-react';
 
 export function LoginForm() {
   const router = useRouter();
@@ -35,16 +35,16 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setFormIsSubmitting(true);
-    const { success, error, role: determinedRole } = await login(data); // Get role from login response
+    const { success, error, role: determinedRole } = await login(data);
     if (success) {
       let description = 'Welcome back!';
       if (determinedRole === 'admin') {
         description = 'Welcome back, Chief!';
-        router.push('/dashboard'); // Admin redirect to dashboard
+        router.push('/dashboard');
       } else if (determinedRole === 'viewer') {
-        router.push('/products'); // Viewer redirect
+        router.push('/products');
       } else {
-        router.push('/dashboard'); // Fallback, though role should be determined
+        router.push('/dashboard');
       }
       toast({ title: 'Login Successful', description: description });
     } else {
@@ -67,6 +67,14 @@ export function LoginForm() {
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Demo Accounts</AlertTitle>
+              <AlertDescription className="text-xs">
+                  <p><b>Admin:</b> admin@example.com / admin</p>
+                  <p><b>Viewer:</b> viewer@example.com / viewer</p>
+              </AlertDescription>
+          </Alert>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

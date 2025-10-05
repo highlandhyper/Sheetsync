@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -7,23 +5,22 @@ import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
 import type { Product } from '@/lib/types';
 import { Search, ListFilter, PackageOpen, Loader2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { getProducts } from '@/lib/data';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { AddProductDialog } from './add-product-dialog';
 
-const MAX_ITEMS_TO_DISPLAY = 100; // Max items to render to prevent freezing
+const MAX_ITEMS_TO_DISPLAY = 100;
 
 export function ProductListClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'>('name-asc');
-  const { loading: authLoading } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const fetchData = useCallback(async () => {
@@ -112,9 +109,7 @@ export function ProductListClient() {
               <SelectItem value="barcode-desc">Barcode (Desc)</SelectItem>
             </SelectContent>
           </Select>
-          <Button asChild>
-            <Link href="/products/manage">Manage Products</Link>
-          </Button>
+          {role === 'admin' && <AddProductDialog />}
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -43,7 +42,7 @@ export function AppSidebar({ className }: { className?: string }) {
       return true;
     }
     if (itemHref !== '/' && currentPathname.startsWith(itemHref)) {
-        if (itemHref === '/products' && (currentPathname.startsWith('/products/by-supplier') || currentPathname.startsWith('/products/manage'))) {
+        if (itemHref === '/products' && (currentPathname.startsWith('/products/by-supplier') || currentPathname.startsWith('/products/list') || currentPathname.startsWith('/products/manage'))) {
             return false;
         }
         if (itemHref === '/inventory' && (currentPathname.startsWith('/inventory/add') || currentPathname.startsWith('/inventory/lookup') || currentPathname.startsWith('/inventory/returns'))) {
@@ -58,7 +57,7 @@ export function AppSidebar({ className }: { className?: string }) {
     if (itemHref === '/products/manage' && currentPathname.startsWith('/products/manage')) {
         return true;
     }
-    return currentPathname === itemHref;
+    return currentPathname.startsWith(itemHref);
   };
 
   const getDefaultHomePage = () => {
@@ -124,7 +123,7 @@ export function AppSidebar({ className }: { className?: string }) {
                  <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
                </Avatar>
                <div className="flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
-                 <p className="truncate text-sm font-medium text-sidebar-foreground">{user.displayName || user.email?.split('@')[0] || "User"}</p>
+                 <p className="truncate text-sm font-medium text-sidebar-foreground">{user.name || "User"}</p>
                  {user.email && <p className="truncate text-xs text-sidebar-foreground/70">{user.email}</p>}
                </div>
            </div>
