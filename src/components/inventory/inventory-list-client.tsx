@@ -34,6 +34,7 @@ interface InventoryListClientProps {
   initialInventoryItems: InventoryItem[];
   suppliers: Supplier[];
   uniqueDbLocations: string[];
+  onDataNeeded: () => void;
 }
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -45,7 +46,7 @@ type DashboardFilterType = {
   customExpiryTo?: string;
 } | null;
 
-export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDbLocations }: InventoryListClientProps) {
+export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDbLocations, onDataNeeded }: InventoryListClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -360,8 +361,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const handleDialogSuccess = useCallback(() => {
     setSelectedItemIds(new Set());
-    // Data is revalidated by server actions, so we just clear selections
-  }, []);
+    onDataNeeded(); // Trigger data refresh in parent
+  }, [onDataNeeded]);
 
   const handlePrint = () => {
     window.print();
@@ -555,7 +556,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     formattedExpiryDate = "Invalid Date";
                   }
                 }
-                const isProductFound = item.productName.trim().toLowerCase() !== 'not found';
+                const isProductFound = item.productName !== '[Not Found]';
                 return (
                   <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
                      {role === 'admin' && isMultiSelectEnabled && (
@@ -679,9 +680,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
           onOpenChange={setIsCreateProductDialogOpen}
-          onSuccess={() => {
-            // No need to call handleDialogSuccess as data cache provider will update
-          }}
+          onSuccess={handleDialogSuccess}
         />
       )}
       
