@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 import path from 'path';
+import type { NextConfig } from 'next';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   reactStrictMode: false,
   compiler: {
     // Remove React strict mode to prevent double rendering in development

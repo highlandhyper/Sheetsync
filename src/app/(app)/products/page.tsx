@@ -1,16 +1,10 @@
 
-'use client';
-
 import { getInventoryItems, getUniqueStaffNames } from '@/lib/data'; 
 import { ReturnableInventoryByStaffClient } from '@/components/inventory/returnable-inventory-by-staff-client'; 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'; 
 import { Card } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import type { InventoryItem } from '@/lib/types';
-
 
 // Skeleton for the Return by Staff page
 function ReturnableInventoryByStaffSkeleton() {
@@ -63,57 +57,25 @@ function ReturnableInventoryByStaffSkeleton() {
   );
 }
 
-export default function ReturnByStaffPage() { 
-  const [initialInventoryItems, setInitialInventoryItems] = useState<InventoryItem[]>([]);
-  const [staffNames, setStaffNames] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      try {
-        const [items, names] = await Promise.all([
-          getInventoryItems(),
-          getUniqueStaffNames()
-        ]);
-        setInitialInventoryItems(items || []);
-        setStaffNames(names || []);
-      } catch (error) {
-        console.error("Failed to fetch data for return by staff page:", error);
-        toast({
-          title: "Error",
-          description: "Could not load inventory items and staff names.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-  }, [toast]);
-  
-  if (isLoading) {
-    return (
-       <div className="container mx-auto py-2">
-         <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Staff</h1>
-         <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-4 text-muted-foreground">Loading inventory and staff data...</p>
-          </div>
-       </div>
-    );
-  }
+export default async function ReturnByStaffPage() { 
+  // Fetch initial inventory items and unique staff names in parallel
+  const [initialInventoryItems, staffNames] = await Promise.all([
+    getInventoryItems(), // Fetch all inventory items initially
+    getUniqueStaffNames()
+  ]);
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Staff</h1>
       <Suspense fallback={<ReturnableInventoryByStaffSkeleton />}>
         <ReturnableInventoryByStaffClient 
-          initialInventoryItems={initialInventoryItems} 
-          allStaffNames={staffNames} 
+          initialInventoryItems={initialInventoryItems || []} 
+          allStaffNames={staffNames || []} 
         />
       </Suspense>
     </div>
   );
 }
+
+export const revalidate = 0;
+

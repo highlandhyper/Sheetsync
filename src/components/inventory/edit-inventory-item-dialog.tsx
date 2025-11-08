@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useTransition, useMemo, useState, useCallback } from 'react';
+import { useEffect, useActionState, useTransition, useMemo, useState, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, KeyRound, User } from 'lucide-react';
@@ -61,8 +61,13 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
+  
+  const [state, formAction] = useActionState<ActionResponse<InventoryItem> | undefined, FormData>(
+    editInventoryItemAction,
+    undefined
+  );
 
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
   const [quantityChanged, setQuantityChanged] = useState(false);
@@ -130,6 +135,34 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     [item, reset, isOpen] 
   );
 
+  const handleSuccess = useCallback(() => {
+    if (state?.success) {
+        toast({
+            title: 'Success!',
+            description: state.message || 'Item updated successfully.',
+        });
+        onSuccess?.();
+        onOpenChange(false);
+    }
+  }, [state, toast, onOpenChange, onSuccess]);
+
+
+  useEffect(
+    function handleActionState() {
+      if (!state) return;
+      if (state.success) {
+        handleSuccess();
+      } else {
+        toast({
+          title: 'Error Updating Item',
+          description: state.message || 'Could not update the item.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [state, toast, onOpenChange, onSuccess, handleSuccess]
+  );
+
   const processFormSubmit = (data: EditInventoryItemFormValues) => {
     if (!item) return;
 
@@ -154,6 +187,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('location', data.location);
     formData.append('itemType', data.itemType);
     
+    // The schema requires quantity, so we must always send it.
+    // The check for `actualQuantityChanged` above is only to trigger the auth UI.
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
@@ -163,22 +198,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         return;
     }
     
-    startTransition(async () => {
-      const result = await editInventoryItemAction(undefined, formData);
-      if (result?.success) {
-        toast({
-            title: 'Success!',
-            description: result.message || 'Item updated successfully.',
-        });
-        onSuccess?.();
-        onOpenChange(false);
-      } else {
-         toast({
-          title: 'Error Updating Item',
-          description: result?.message || 'Could not update the item.',
-          variant: 'destructive',
-        });
-      }
+    startActionTransition(() => {
+      formAction(formData);
     });
   };
   
@@ -336,12 +357,10 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                 Cancel
               </Button>
             </DialogClose>
-            <SubmitButton isPending={isPending} />
+            <SubmitButton isPending={isActionPending} />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
