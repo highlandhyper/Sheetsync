@@ -72,28 +72,27 @@ export default function InventoryPage() {
   const [data, setData] = useState<InventoryPageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [key, setKey] = useState(Date.now()); // Add a key to force re-render
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const response = await fetchInventoryListDataAction();
-    if (response.success && response.data) {
-        setData(response.data);
-    } else {
-        setError(response.message || "An unknown error occurred while fetching inventory data.");
+    try {
+      const response = await fetchInventoryListDataAction();
+      if (response.success && response.data) {
+          setData(response.data);
+      } else {
+          setError(response.message || "An unknown error occurred while fetching inventory data.");
+      }
+    } catch (e: any) {
+        setError(e.message || "A network error occurred.");
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
-
-  const handleDataRefresh = useCallback(() => {
-    setKey(Date.now());
-  }, []);
-
 
   useEffect(() => {
     loadData();
-  }, [loadData, key]);
+  }, [loadData]);
 
   return (
     <div className="container mx-auto py-2">
@@ -109,16 +108,15 @@ export default function InventoryPage() {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Error Loading Inventory</AlertTitle>
                 <AlertDescription>
-                    There was a problem fetching the inventory data: {error}
+                    {error} <Button variant="link" onClick={loadData}>Try again</Button>
                 </AlertDescription>
             </Alert>
         ) : data ? (
           <InventoryListClient 
-            key={key} // Use the key here
             initialInventoryItems={data.inventoryItems} 
             suppliers={data.suppliers} 
             uniqueDbLocations={data.uniqueLocations}
-            onDataNeeded={handleDataRefresh}
+            onDataNeeded={loadData} // Pass the loadData function directly
           />
         ) : (
              <InventoryListSkeleton /> // Fallback skeleton
