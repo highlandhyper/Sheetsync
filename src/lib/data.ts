@@ -143,11 +143,11 @@ function transformToInventoryItem(row: any[], rowIndex: number): InventoryItem |
     }
 
     const barcode = String(row[INV_COL_BARCODE] || '').trim();
-    const productName = String(row[INV_COL_PRODUCT_NAME] || '').trim();
+    const productName = String(row[INV_COL_PRODUCT_NAME] || '[Not Found]').trim();
     const quantityStr = String(row[INV_COL_QTY] || '0').trim();
     const quantity = parseInt(quantityStr, 10);
 
-    if (!barcode || !productName || isNaN(quantity)) {
+    if (!barcode || isNaN(quantity)) {
       return null;
     }
 
