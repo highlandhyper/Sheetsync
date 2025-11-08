@@ -1,12 +1,15 @@
 
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import { ClipboardList } from 'lucide-react';
-import { useDataCache } from '@/context/data-cache-context';
+import { ClipboardList, AlertTriangle } from 'lucide-react';
+import { fetchInventoryListDataAction } from '@/app/actions';
+import type { InventoryItem, Supplier } from '@/lib/types';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 function InventoryListSkeleton() {
   return (
@@ -59,8 +62,31 @@ function InventoryListSkeleton() {
   );
 }
 
+interface InventoryPageData {
+    inventoryItems: InventoryItem[];
+    suppliers: Supplier[];
+    uniqueLocations: string[];
+}
+
 export default function InventoryPage() {
-  const { inventoryItems, suppliers, uniqueLocations, products, isCacheReady } = useDataCache();
+  const [data, setData] = useState<InventoryPageData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+        setIsLoading(true);
+        setError(null);
+        const response = await fetchInventoryListDataAction();
+        if (response.success && response.data) {
+            setData(response.data);
+        } else {
+            setError(response.message || "An unknown error occurred while fetching inventory data.");
+        }
+        setIsLoading(false);
+    }
+    loadData();
+  }, []);
 
   return (
     <div className="container mx-auto py-2">
@@ -69,14 +95,24 @@ export default function InventoryPage() {
         Inventory Overview
       </h1>
       <Suspense fallback={<InventoryListSkeleton />}>
-        {isCacheReady ? (
+        {isLoading ? (
+          <InventoryListSkeleton />
+        ) : error ? (
+           <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error Loading Inventory</AlertTitle>
+                <AlertDescription>
+                    There was a problem fetching the inventory data: {error}
+                </AlertDescription>
+            </Alert>
+        ) : data ? (
           <InventoryListClient 
-            initialInventoryItems={inventoryItems} 
-            suppliers={suppliers} 
-            uniqueDbLocations={uniqueLocations}
+            initialInventoryItems={data.inventoryItems} 
+            suppliers={data.suppliers} 
+            uniqueDbLocations={data.uniqueLocations}
           />
         ) : (
-          <InventoryListSkeleton />
+             <InventoryListSkeleton />
         )}
       </Suspense>
     </div>
