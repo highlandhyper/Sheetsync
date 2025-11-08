@@ -27,6 +27,7 @@ import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
+import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
 
 
 interface InventoryListClientProps {
@@ -80,6 +81,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
+  const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
+  const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -339,6 +342,12 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     setCurrentItemToEdit(item);
     setIsEditDialogOpen(true);
   };
+  
+  const handleOpenCreateProductDialog = (barcode: string) => {
+    if (role !== 'admin') return;
+    setBarcodeToCreate(barcode);
+    setIsCreateProductDialogOpen(true);
+  };
 
   const handleOpenDeleteDialog = (item: InventoryItem) => {
     if (role !== 'admin') {
@@ -595,10 +604,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                             </>
                         ) : (
                              role === 'admin' && (
-                                <Button asChild variant="default" size="sm">
-                                    <Link href={`/products/manage?barcode=${item.barcode}`}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Create
-                                    </Link>
+                                <Button onClick={() => handleOpenCreateProductDialog(item.barcode)} variant="default" size="sm">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Create
                                 </Button>
                             )
                         )}
@@ -664,6 +671,19 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         onOpenChange={setIsDeleteDialogOpen}
         onSuccess={handleDialogSuccess}
       />
+      
+       {/* Create Product Dialog */}
+      {barcodeToCreate && (
+        <CreateProductFromInventoryDialog
+          barcode={barcodeToCreate}
+          allSuppliers={suppliers}
+          isOpen={isCreateProductDialogOpen}
+          onOpenChange={setIsCreateProductDialogOpen}
+          onSuccess={() => {
+            // No need to call handleDialogSuccess as data cache provider will update
+          }}
+        />
+      )}
       
       {/* Bulk Action Dialogs */}
       <BulkReturnDialog 
