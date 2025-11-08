@@ -110,6 +110,7 @@ function transformToProduct(row: any[], rowIndex: number): Product | null {
   const sheetRowNumber = rowIndex + 2;
   try {
     if (!row || row.length < 1) { return null; }
+    // As per user, check column A, then B for barcode. But let's stick to A as primary.
     const barcode = String(row[DB_COL_BARCODE] || '').trim();
     const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
     const supplierName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
@@ -1010,7 +1011,7 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
       console.warn(`GS_Data: deleteInventoryItemById - Item ID ${itemId} not found in sheet (Col J).`);
       return false; // Or throw an error to be caught by the action
     }
-    const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
+    const success = await deleteSheetRow(FORM_RESPONSES_SHEET_name, rowNumber);
     if (success) {
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
     } else {
@@ -1099,4 +1100,6 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
         console.timeEnd(timeLabel);
     }
 }
+    
+
     
