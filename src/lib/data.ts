@@ -28,7 +28,8 @@ const INVENTORY_TOTAL_COLUMNS_FOR_WRITE = 10;
 
 
 // "DB" - Product and Supplier Catalog
-const DB_COL_BARCODE = 0;           // A - Barcode
+const DB_COL_BARCODE_A = 0;           // A - Barcode
+const DB_COL_BARCODE_B = 1;           // B - Barcode
 const DB_COL_PRODUCT_NAME = 2;      // C - Product Name
 const DB_COL_SUPPLIER_NAME = 3;     // D - Supplier Name
 
@@ -52,7 +53,7 @@ const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
 
 // --- Read Ranges ---
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:D`;
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:D`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
@@ -107,11 +108,11 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
 
 
 function transformToProduct(row: any[], rowIndex: number): Product | null {
-  const sheetRowNumber = rowIndex + 2;
+  const sheetRowNumber = rowIndex + 1; // Data starts at row 1
   try {
     if (!row || row.length < 1) { return null; }
-    // As per user, check column A, then B for barcode. But let's stick to A as primary.
-    const barcode = String(row[DB_COL_BARCODE] || '').trim();
+    // As per user, check column A, then B for barcode.
+    const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
     const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
     const supplierName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
     if (!barcode || !productName) { return null; }
@@ -427,7 +428,7 @@ export async function addProduct(productData: { barcode: string; productName: st
     const dbSheet = await readSheetData(DB_READ_RANGE);
     let productExists = false;
     if (dbSheet) {
-      productExists = dbSheet.some(row => String(row[DB_COL_BARCODE] || '').trim() === productData.barcode.trim());
+      productExists = dbSheet.some(row => (String(row[DB_COL_BARCODE_A] || '').trim() === productData.barcode.trim()) || (String(row[DB_COL_BARCODE_B] || '').trim() === productData.barcode.trim()));
     }
 
     if (productExists) {
@@ -498,7 +499,10 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
       console.warn(`GS_Data: getProductDetailsByBarcode - No products data from DB sheet for barcode ${barcode}.`);
       return null;
     }
-    const productRow = productsData.find(row => String(row[DB_COL_BARCODE] || '').trim() === barcode.trim());
+    const productRow = productsData.find(row => 
+        String(row[DB_COL_BARCODE_A] || '').trim() === barcode.trim() || 
+        String(row[DB_COL_BARCODE_B] || '').trim() === barcode.trim()
+    );
     if (!productRow) {
       console.warn(`GS_Data: getProductDetailsByBarcode - Barcode ${barcode} not found in DB sheet.`);
       return null;
@@ -651,7 +655,7 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
       if (row.length > DB_COL_SUPPLIER_NAME) {
         const existingName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
         if (existingName.toLowerCase() === currentName.toLowerCase()) {
-          const cell = `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${index + 2}`;
+          const cell = `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${index + 1}`; // +1 because no header
           batchUpdates.push({ range: cell, values: [[newName.trim()]] });
           dbRowsUpdated++;
         }
@@ -768,7 +772,7 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
   const timeLabel = `GS_Data: updateProductAndSupplierLinks for barcode ${barcode}`;
   console.time(timeLabel);
   try {
-      const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE);
+      const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
       if (!rowNumber) {
           console.error(`GS_Data: updateProductAndSupplierLinks - Barcode ${barcode} not found in DB sheet. Cannot update.`);
           return false;
@@ -1011,7 +1015,7 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
       console.warn(`GS_Data: deleteInventoryItemById - Item ID ${itemId} not found in sheet (Col J).`);
       return false; // Or throw an error to be caught by the action
     }
-    const success = await deleteSheetRow(FORM_RESPONSES_SHEET_name, rowNumber);
+    const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
     } else {
