@@ -60,7 +60,7 @@ function InventoryListSkeleton() {
 }
 
 export default function InventoryPage() {
-  const { inventoryItems, suppliers, uniqueLocations, isCacheReady } = useDataCache();
+  const { inventoryItems, suppliers, uniqueLocations, products, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -82,5 +82,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
-    

@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useActionState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown } from 'lucide-react';
 
@@ -51,6 +52,7 @@ interface EditOrCreateProductFormProps {
 }
 
 export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFormProps) {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { products: cachedProducts } = useDataCache();
   const [isSavePending, startSaveTransition] = useTransition();
@@ -87,6 +89,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   });
   
   const supplierNameValue = watch('supplierName');
+  
+    useEffect(() => {
+    const barcodeFromUrl = searchParams.get('barcode');
+    if (barcodeFromUrl) {
+      setBarcodeToSearch(barcodeFromUrl);
+      // Automatically trigger search
+      handleSearchBarcode(barcodeFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     if (!saveState) return;
@@ -125,14 +137,15 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     }
   }, [saveState, toast, reset, editMode, setValue]);
 
-  const handleSearchBarcode = async () => {
-    if (!barcodeToSearch.trim()) {
+  const handleSearchBarcode = async (barcode?: string) => {
+    const barcodeToUse = barcode || barcodeToSearch;
+    if (!barcodeToUse.trim()) {
       toast({ title: 'Barcode Required', description: 'Please enter a barcode to search.', variant: 'destructive' });
       return;
     }
 
     startFetchTransition(async () => {
-      const currentSearchTerm = barcodeToSearch.trim();
+      const currentSearchTerm = barcodeToUse.trim();
       setSearchedBarcode(currentSearchTerm);
 
       // 1. Check local cache first
@@ -209,7 +222,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 }
               }}
             />
-            <Button onClick={handleSearchBarcode} disabled={isFetchPending || !barcodeToSearch.trim()}>
+            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()}>
               {isFetchPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               Search
             </Button>
