@@ -1,10 +1,11 @@
 
-import { getInventoryItems, getSuppliers } from '@/lib/data';
+'use client';
 import { ReturnableInventoryBySupplierClient } from '@/components/inventory/returnable-inventory-by-supplier-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 function ReturnableInventorySkeleton() {
@@ -55,23 +56,24 @@ function ReturnableInventorySkeleton() {
 }
 
 
-export default async function ReturnInventoryBySupplierPage() {
-  const [initialInventoryItems, suppliers] = await Promise.all([
-    getInventoryItems(),
-    getSuppliers()
-  ]);
+export default function ReturnInventoryBySupplierPage() {
+  const { inventoryItems, suppliers, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Supplier</h1>
       <Suspense fallback={<ReturnableInventorySkeleton />}>
-        <ReturnableInventoryBySupplierClient
-          initialInventoryItems={initialInventoryItems || []}
-          allSuppliers={suppliers || []}
-        />
+        {isCacheReady ? (
+          <ReturnableInventoryBySupplierClient
+            initialInventoryItems={inventoryItems}
+            allSuppliers={suppliers}
+          />
+        ) : (
+          <ReturnableInventorySkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0;
+    

@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useEffect, useState, useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Save, Building } from 'lucide-react';
@@ -23,12 +22,12 @@ import { editSupplierAction, type ActionResponse } from '@/app/actions'; // Ensu
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useDataCache } from '@/context/data-cache-context';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
       Save Changes
     </Button>
   );
@@ -38,12 +37,13 @@ interface EditSupplierDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   supplier: Supplier | null;
-  onSupplierUpdated?: () => void; // Callback for after successful update
 }
 
-export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierUpdated }: EditSupplierDialogProps) {
+export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSupplierDialogProps) {
   const { toast } = useToast();
-  
+  const { refreshData } = useDataCache();
+  const [isActionPending, startActionTransition] = useTransition();
+
   const [state, formAction] = useActionState<ActionResponse<Supplier> | undefined, FormData>(
     editSupplierAction,
     undefined
@@ -53,7 +53,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
     register,
     handleSubmit,
     reset,
-    formState: { errors: formErrors, isDirty }, // formErrors to avoid conflict with state.errors
+    formState: { errors: formErrors, isDirty },
   } = useForm<EditSupplierFormValues>({
     resolver: zodResolver(editSupplierSchema),
     defaultValues: {
@@ -71,7 +71,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
         newSupplierName: supplier.name,
       });
     }
-  }, [supplier, reset, isOpen]); // Reset form when supplier changes or dialog opens/closes
+  }, [supplier, reset, isOpen]);
 
   useEffect(() => {
     if (!state) return;
@@ -81,7 +81,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
         title: 'Success!',
         description: state.message,
       });
-      onSupplierUpdated?.();
+      refreshData();
       onOpenChange(false); 
     } else if (state.message && !state.success) {
       toast({
@@ -90,7 +90,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
         variant: 'destructive',
       });
     }
-  }, [state, toast, reset, onOpenChange, onSupplierUpdated]);
+  }, [state, toast, onOpenChange, refreshData]);
 
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!isDirty) {
@@ -99,10 +99,10 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
         return;
     }
     const formData = new FormData();
-    formData.append('supplierId', supplier?.id || data.supplierId); // Ensure supplierId is passed from the prop
-    formData.append('currentSupplierName', supplier?.name || data.currentSupplierName); // Ensure currentName is from prop
+    formData.append('supplierId', supplier?.id || data.supplierId);
+    formData.append('currentSupplierName', supplier?.name || data.currentSupplierName);
     formData.append('newSupplierName', data.newSupplierName);
-    formAction(formData);
+    startActionTransition(() => formAction(formData));
   };
   
   if (!supplier) return null;
@@ -116,7 +116,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
             Update the name for this supplier. This will update the name in the supplier list and all associated inventory and return log records. This can be a slow operation.
           </DialogDescription>
         </DialogHeader>
-        <form action={formAction} onSubmit={handleSubmit(handleFormSubmit)}>
+        <form onSubmit={handleSubmit(handleFormSubmit)}>
           <input type="hidden" {...register('supplierId')} value={supplier.id} />
           <input type="hidden" {...register('currentSupplierName')} value={supplier.name} />
           <div className="grid gap-4 py-4">
@@ -138,10 +138,12 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier, onSupplierU
             <DialogClose asChild>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             </DialogClose>
-            <SubmitButton />
+            <SubmitButton isPending={isActionPending} />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+
+    

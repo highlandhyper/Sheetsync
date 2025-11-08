@@ -1,10 +1,11 @@
 
-import { getInventoryItems, getUniqueStaffNames } from '@/lib/data'; 
+'use client';
 import { ReturnableInventoryByStaffClient } from '@/components/inventory/returnable-inventory-by-staff-client'; 
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'; 
 import { Card } from '@/components/ui/card';
+import { useDataCache } from '@/context/data-cache-context';
 
 // Skeleton for the Return by Staff page
 function ReturnableInventoryByStaffSkeleton() {
@@ -57,25 +58,24 @@ function ReturnableInventoryByStaffSkeleton() {
   );
 }
 
-export default async function ReturnByStaffPage() { 
-  // Fetch initial inventory items and unique staff names in parallel
-  const [initialInventoryItems, staffNames] = await Promise.all([
-    getInventoryItems(), // Fetch all inventory items initially
-    getUniqueStaffNames()
-  ]);
+export default function ReturnByStaffPage() { 
+  const { inventoryItems, uniqueStaffNames, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Staff</h1>
       <Suspense fallback={<ReturnableInventoryByStaffSkeleton />}>
-        <ReturnableInventoryByStaffClient 
-          initialInventoryItems={initialInventoryItems || []} 
-          allStaffNames={staffNames || []} 
-        />
+        {isCacheReady ? (
+          <ReturnableInventoryByStaffClient 
+            initialInventoryItems={inventoryItems} 
+            allStaffNames={uniqueStaffNames} 
+          />
+        ) : (
+          <ReturnableInventoryByStaffSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0;
-
+    

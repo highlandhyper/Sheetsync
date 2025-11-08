@@ -1,9 +1,9 @@
 
+'use client';
 import { EditOrCreateProductForm } from '@/components/products/create-product-form';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getSuppliers } from '@/lib/data';
-import type { Supplier } from '@/lib/types';
+import { useDataCache } from '@/context/data-cache-context';
 
 function ManageProductFormSkeleton() {
   return (
@@ -42,15 +42,19 @@ function ManageProductFormSkeleton() {
 }
 
 
-export default async function ManageProductPage() { 
-  const allSuppliers: Supplier[] = await getSuppliers() || [];
+export default function ManageProductPage() { 
+  const { suppliers, isCacheReady } = useDataCache();
   return (
     <div className="container mx-auto py-2">
       <Suspense fallback={<ManageProductFormSkeleton />}>
-        <EditOrCreateProductForm allSuppliers={allSuppliers} />
+        {isCacheReady ? (
+          <EditOrCreateProductForm allSuppliers={suppliers} />
+        ) : (
+          <ManageProductFormSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0;
+    

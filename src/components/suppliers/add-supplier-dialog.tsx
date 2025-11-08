@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useState, useActionState, useTransition } from 'react';
-// Removed useFormStatus as it's not suitable for this manual action invocation
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Building } from 'lucide-react';
@@ -24,6 +23,7 @@ import { addSupplierAction, type ActionResponse } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface SubmitButtonProps {
   isPending: boolean;
@@ -38,12 +38,9 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
   );
 }
 
-interface AddSupplierDialogProps {
-  onSupplierAdded?: (supplier: Supplier) => void; // Optional callback
-}
-
-export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
+export function AddSupplierDialog() {
   const { toast } = useToast();
+  const { refreshData } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
 
@@ -72,7 +69,7 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
         title: 'Success!',
         description: state.message,
       });
-      onSupplierAdded?.(state.data);
+      refreshData(); // Refresh the cache
       reset();
       setIsOpen(false); 
     } else if (state.message && !state.success) {
@@ -82,7 +79,7 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
         variant: 'destructive',
       });
     }
-  }, [state, toast, reset, onSupplierAdded]);
+  }, [state, toast, reset, refreshData]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -144,3 +141,5 @@ export function AddSupplierDialog({ onSupplierAdded }: AddSupplierDialogProps) {
     </Dialog>
   );
 }
+
+    

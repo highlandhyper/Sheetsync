@@ -1,8 +1,9 @@
 
+'use client';
 import { AddInventoryItemStepperForm } from '@/components/inventory/add-inventory-item-stepper-form';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUniqueLocations, getUniqueStaffNames } from '@/lib/data';
+import { useDataCache } from '@/context/data-cache-context';
 
 function AddInventoryFormSkeleton() {
   return (
@@ -22,20 +23,23 @@ function AddInventoryFormSkeleton() {
 }
 
 
-export default async function AddInventoryItemPage() { 
-  const [uniqueLocations, uniqueStaffNames] = await Promise.all([
-    getUniqueLocations(),
-    getUniqueStaffNames()
-  ]);
+export default function AddInventoryItemPage() { 
+  const { uniqueLocations, uniqueStaffNames, isCacheReady } = useDataCache();
   
   return (
     <div className="container mx-auto py-2">
       <Suspense fallback={<AddInventoryFormSkeleton />}>
-        <AddInventoryItemStepperForm
-          uniqueLocations={uniqueLocations || []} 
-          uniqueStaffNames={uniqueStaffNames || []}
-        />
+        {isCacheReady ? (
+          <AddInventoryItemStepperForm
+            uniqueLocations={uniqueLocations} 
+            uniqueStaffNames={uniqueStaffNames}
+          />
+        ) : (
+          <AddInventoryFormSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
+
+    

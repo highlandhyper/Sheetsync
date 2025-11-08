@@ -1,10 +1,11 @@
 
-import { getReturnedItems } from '@/lib/data';
+'use client';
 import { ReturnLogListClient } from '@/components/inventory/return-log-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 function ReturnLogSkeleton() {
@@ -48,17 +49,21 @@ function ReturnLogSkeleton() {
 }
 
 
-export default async function ReturnLogPage() {
-  const initialReturnedItems = await getReturnedItems();
+export default function ReturnLogPage() {
+  const { returnedItems, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Log</h1>
       <Suspense fallback={<ReturnLogSkeleton />}>
-        <ReturnLogListClient initialReturnedItems={initialReturnedItems || []} />
+        {isCacheReady ? (
+          <ReturnLogListClient initialReturnedItems={returnedItems} />
+        ) : (
+          <ReturnLogSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0;
+    

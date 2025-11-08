@@ -8,10 +8,10 @@ import { Search, Building, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddSupplierDialog } from './add-supplier-dialog';
 import { EditSupplierDialog } from './edit-supplier-dialog';
 import { SupplierCard } from './supplier-card';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface SupplierListClientProps {
   initialSuppliers: Supplier[];
@@ -20,69 +20,38 @@ interface SupplierListClientProps {
 const MAX_SUPPLIERS_TO_DISPLAY = 250; 
 
 export function SupplierListClient({ initialSuppliers }: SupplierListClientProps) {
+  const { suppliers, isCacheReady } = useDataCache();
   const [searchTerm, setSearchTerm] = useState('');
-  const [suppliersToDisplay, setSuppliersToDisplay] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [totalUniqueSuppliers, setTotalUniqueSuppliers] = useState(0);
-
-  useEffect(() => {
-    if (initialSuppliers) {
-      const sortedSuppliers = [...initialSuppliers].sort((a, b) => a.name.localeCompare(b.name));
-      setTotalUniqueSuppliers(sortedSuppliers.length);
-
-      if (sortedSuppliers.length > MAX_SUPPLIERS_TO_DISPLAY && !searchTerm) {
-        console.warn(`SupplierListClient: Displaying only the first ${MAX_SUPPLIERS_TO_DISPLAY} of ${sortedSuppliers.length} suppliers. Consider implementing pagination or a server-side search for better performance with large supplier lists.`);
-        setSuppliersToDisplay(sortedSuppliers.slice(0, MAX_SUPPLIERS_TO_DISPLAY));
-      } else {
-        setSuppliersToDisplay(sortedSuppliers);
-      }
-    } else {
-      setSuppliersToDisplay([]);
-      setTotalUniqueSuppliers(0);
-    }
-    setIsLoading(false);
-  }, [initialSuppliers, searchTerm]); // Re-evaluate when searchTerm changes to apply filtering to full list if needed
+  
+  const sortedSuppliers = useMemo(() => {
+    return [...suppliers].sort((a,b) => a.name.localeCompare(b.name));
+  }, [suppliers]);
 
   const filteredSuppliersToRender = useMemo(() => {
-    let itemsToFilter = initialSuppliers || []; // Start with the full initial list for filtering
+    let itemsToFilter = sortedSuppliers;
     if (searchTerm) {
       itemsToFilter = itemsToFilter.filter((supplier) =>
         supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    // Slice *after* filtering if still over the display limit,
-    // or if no search term and initial list was over limit (already handled by useEffect)
-    if (!searchTerm && itemsToFilter.length > MAX_SUPPLIERS_TO_DISPLAY) {
-        return itemsToFilter.slice(0, MAX_SUPPLIERS_TO_DISPLAY);
-    }
-    if (searchTerm && itemsToFilter.length > MAX_SUPPLIERS_TO_DISPLAY) {
-        // If searching and results are still too many, we might still want to slice.
-        // Or, for search, you might want to show all results if it's a specific search.
-        // For now, let's keep the slice to prevent freezing on broad searches.
-        console.log(`SupplierListClient: Search for "${searchTerm}" found ${itemsToFilter.length} suppliers, displaying first ${MAX_SUPPLIERS_TO_DISPLAY}.`);
-        return itemsToFilter.slice(0, MAX_SUPPLIERS_TO_DISPLAY);
-    }
     return itemsToFilter;
-  }, [initialSuppliers, searchTerm]);
+  }, [sortedSuppliers, searchTerm]);
   
-  const itemsToRender = searchTerm ? filteredSuppliersToRender : suppliersToDisplay;
+  const itemsToRender = useMemo(() => {
+    if (filteredSuppliersToRender.length > MAX_SUPPLIERS_TO_DISPLAY) {
+        console.warn(`SupplierListClient: Search for "${searchTerm}" found ${filteredSuppliersToRender.length} suppliers, displaying first ${MAX_SUPPLIERS_TO_DISPLAY}.`);
+        return filteredSuppliersToRender.slice(0, MAX_SUPPLIERS_TO_DISPLAY);
+    }
+    return filteredSuppliersToRender;
+  }, [filteredSuppliersToRender, searchTerm]);
+
 
   const handleEditSupplier = (supplier: Supplier) => {
     setEditingSupplier(supplier);
     setIsEditDialogOpen(true);
   };
-
-  const handleSupplierUpdated = () => {
-    setEditingSupplier(null);
-    // Data revalidation happens via server action, list should update.
-  };
-
-  const handleSupplierAdded = (newSupplier: Supplier) => {
-    // Optimistically add to the list or rely on revalidation.
-    // For simplicity, relying on revalidation from server action.
-  }
 
   return (
     <div className="space-y-6">
@@ -95,27 +64,23 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full"
+            disabled={!isCacheReady}
           />
         </div>
-        <AddSupplierDialog onSupplierAdded={handleSupplierAdded} />
+        <AddSupplierDialog />
       </div>
 
-      {isLoading ? (
+      {!isCacheReady ? (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, index) => (
-                <Card key={index} className="w-full">
-                    <CardHeader>
-                        <div className="flex items-center gap-4">
-                            <Skeleton className="h-12 w-12 rounded-full" />
-                            <div className="flex-1 space-y-2">
-                                <Skeleton className="h-5 w-3/4" />
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Skeleton className="h-4 w-1/2" />
-                    </CardContent>
-                </Card>
+              <Card key={index} className="w-full">
+                <Skeleton className="aspect-[2/1] w-full rounded-t-lg" />
+                <div className="p-4 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-9 w-full mt-2" />
+                </div>
+              </Card>
             ))}
         </div>
       ) : itemsToRender.length > 0 ? (
@@ -130,9 +95,9 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
             ))}
           </div>
 
-          {totalUniqueSuppliers > MAX_SUPPLIERS_TO_DISPLAY && !searchTerm && (
+          {sortedSuppliers.length > MAX_SUPPLIERS_TO_DISPLAY && !searchTerm && (
             <p className="text-sm text-muted-foreground text-center mt-4">
-              Displaying first {MAX_SUPPLIERS_TO_DISPLAY} of {totalUniqueSuppliers} suppliers. Use search to find others.
+              Displaying first {MAX_SUPPLIERS_TO_DISPLAY} of {sortedSuppliers.length} suppliers. Use search to find others.
             </p>
           )}
            {searchTerm && filteredSuppliersToRender.length === 0 && (
@@ -162,9 +127,10 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
           isOpen={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           supplier={editingSupplier}
-          onSupplierUpdated={handleSupplierUpdated}
         />
       )}
     </div>
   );
 }
+
+    
