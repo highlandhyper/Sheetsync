@@ -143,7 +143,7 @@ function transformToInventoryItem(row: any[], rowIndex: number): InventoryItem |
     }
 
     const barcode = String(row[INV_COL_BARCODE] || '').trim();
-    const productName = String(row[INV_COL_PRODUCT_NAME] || '[Not Found]').trim();
+    const productName = String(row[INV_COL_PRODUCT_NAME] || 'Not Found').trim();
     const quantityStr = String(row[INV_COL_QTY] || '0').trim();
     const quantity = parseInt(quantityStr, 10);
 
@@ -1129,6 +1129,8 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
         console.timeEnd(timeLabel);
     }
 }
+    
+
     
 
     
