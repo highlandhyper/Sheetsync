@@ -28,8 +28,6 @@ import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
-import { fetchInventoryListDataAction } from '@/app/actions';
-import { Skeleton } from '../ui/skeleton';
 
 
 interface InventoryListClientProps {
@@ -694,4 +692,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
-

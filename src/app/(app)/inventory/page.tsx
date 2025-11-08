@@ -72,6 +72,7 @@ export default function InventoryPage() {
   const [data, setData] = useState<InventoryPageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [key, setKey] = useState(Date.now()); // Add a key to force re-render
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -85,9 +86,14 @@ export default function InventoryPage() {
     setIsLoading(false);
   }, []);
 
+  const handleDataRefresh = useCallback(() => {
+    setKey(Date.now());
+  }, []);
+
+
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, key]);
 
   return (
     <div className="container mx-auto py-2">
@@ -108,10 +114,11 @@ export default function InventoryPage() {
             </Alert>
         ) : data ? (
           <InventoryListClient 
+            key={key} // Use the key here
             initialInventoryItems={data.inventoryItems} 
             suppliers={data.suppliers} 
             uniqueDbLocations={data.uniqueLocations}
-            onDataNeeded={loadData}
+            onDataNeeded={handleDataRefresh}
           />
         ) : (
              <InventoryListSkeleton /> // Fallback skeleton
