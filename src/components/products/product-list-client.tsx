@@ -1,53 +1,45 @@
+
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
+import { AddProductDialog } from './add-product-dialog';
 import type { Product } from '@/lib/types';
-import { Search, ListFilter, PackageOpen, Loader2 } from 'lucide-react';
+import { Search, ListFilter, PackageOpen } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getProducts } from '@/lib/data';
-import { useAuth } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
-import { AddProductDialog } from './add-product-dialog';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
-const MAX_ITEMS_TO_DISPLAY = 100;
+interface ProductListClientProps {
+  initialProducts: Product[];
+}
 
-export function ProductListClient() {
+const MAX_ITEMS_TO_DISPLAY = 100; // Max items to render to prevent freezing
+
+export function ProductListClient({ initialProducts }: ProductListClientProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'>('name-asc');
-  const { role, loading: authLoading } = useAuth();
-  const { toast } = useToast();
-  
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const products = await getProducts();
-      setAllProducts(products || []);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-      toast({
-        title: "Error",
-        description: "Could not load products. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-  
+
   useEffect(() => {
-    if (!authLoading) {
-      fetchData();
+    if (initialProducts) {
+        if (initialProducts.length > MAX_ITEMS_TO_DISPLAY) {
+            console.warn(`ProductListClient: Displaying only the first ${MAX_ITEMS_TO_DISPLAY} of ${initialProducts.length} products to prevent freezing. Consider implementing pagination.`);
+            setProducts(initialProducts.slice(0, MAX_ITEMS_TO_DISPLAY));
+        } else {
+            setProducts(initialProducts);
+        }
+    } else {
+        setProducts([]);
     }
-  }, [authLoading, fetchData]);
+    setIsLoading(false);
+  }, [initialProducts]);
   
   const filteredAndSortedProducts = useMemo(() => {
-    let items = [...allProducts];
+    let items = [...products];
 
     if (searchTerm) {
       items = items.filter(
@@ -73,15 +65,9 @@ export function ProductListClient() {
       }
     });
     return items;
-  }, [allProducts, searchTerm, sortOrder]);
+  }, [products, searchTerm, sortOrder]);
 
-  const itemsToRender = useMemo(() => {
-    if (filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY) {
-        console.warn(`ProductListClient: Displaying only the first ${MAX_ITEMS_TO_DISPLAY} of ${filteredAndSortedProducts.length} products to prevent freezing.`);
-        return filteredAndSortedProducts.slice(0, MAX_ITEMS_TO_DISPLAY);
-    }
-    return filteredAndSortedProducts;
-  }, [filteredAndSortedProducts]);
+  const itemsToRender = filteredAndSortedProducts; // Already sliced in useEffect
 
   return (
     <div className="space-y-6">
@@ -109,31 +95,41 @@ export function ProductListClient() {
               <SelectItem value="barcode-desc">Barcode (Desc)</SelectItem>
             </SelectContent>
           </Select>
-          {role === 'admin' && <AddProductDialog />}
+          <AddProductDialog />
         </div>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-10"><Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <Card className="w-full" key={index}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="h-16 w-16 rounded-md mr-4" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-2">
+                <Skeleton className="h-4 w-full mt-2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : itemsToRender.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {itemsToRender.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          {allProducts.length > MAX_ITEMS_TO_DISPLAY && !searchTerm && (
-            <p className="text-sm text-muted-foreground text-center mt-4">
-              Displaying first {MAX_ITEMS_TO_DISPLAY} of {allProducts.length} products. Use search to find others.
-            </p>
-          )}
-        </>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {itemsToRender.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">No products found</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchTerm ? "Try adjusting your search." : "Your product catalog is empty."}
+            Try adjusting your search or add a new product.
           </p>
           {searchTerm && (
              <Button variant="outline" onClick={() => setSearchTerm('')} className="mt-4">

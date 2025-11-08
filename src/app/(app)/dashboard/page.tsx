@@ -1,7 +1,7 @@
 
 'use client'; 
 
-import type { ActionResponse } from '@/app/actions';
+import { fetchDashboardMetricsAction, type ActionResponse } from '@/app/actions';
 import type { DashboardMetrics, StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
@@ -13,8 +13,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { getDashboardMetrics } from '@/lib/data';
-import { useAuth } from '@/context/auth-context';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -193,29 +191,26 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { loading: authLoading } = useAuth();
   const router = useRouter(); 
 
   useEffect(() => {
     async function fetchData() {
-      if(authLoading) return;
       setIsLoading(true);
-      try {
-        const data = await getDashboardMetrics();
-        setMetrics(data);
-      } catch(error) {
-        console.error("Failed to fetch dashboard metrics:", error);
+      const response: ActionResponse<DashboardMetrics> = await fetchDashboardMetricsAction();
+      if (response.success && response.data) {
+        setMetrics(response.data);
+      } else {
+        console.error("Failed to fetch dashboard metrics:", response.message);
         toast({
             title: "Error Fetching Dashboard Data",
-            description: error instanceof Error ? error.message : "Could not load dashboard metrics. Please try again later.",
+            description: response.message || "Could not load dashboard metrics. Please try again later.",
             variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
+      setIsLoading(false);
     }
     fetchData();
-  }, [authLoading, toast]);
+  }, [toast]);
 
 
   if (isLoading || !metrics) {

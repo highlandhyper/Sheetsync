@@ -4,21 +4,27 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
-import { loginSchema, type LoginFormValues } from '@/lib/schemas';
+import { useSimpleAuth } from '@/context/simple-auth-context'; // Use simple auth
 
-export function LoginForm() {
+const loginSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+export function SimpleLoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { login, loading: authIsLoading } = useAuth();
+  const { login, isLoading: authIsLoading } = useSimpleAuth();
   const [formIsSubmitting, setFormIsSubmitting] = useState(false);
 
   const {
@@ -28,29 +34,21 @@ export function LoginForm() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
-    },
+        username: '',
+        password: '',
+    }
   });
 
   const onSubmit = async (data: LoginFormValues) => {
     setFormIsSubmitting(true);
-    const { success, error, role: determinedRole } = await login(data); // Get role from login response
+    const success = await login(data.username, data.password);
     if (success) {
-      let description = 'Welcome back!';
-      if (determinedRole === 'admin') {
-        description = 'Welcome back, Chief!';
-        router.push('/dashboard'); // Admin redirect to dashboard
-      } else if (determinedRole === 'viewer') {
-        router.push('/products'); // Viewer redirect
-      } else {
-        router.push('/dashboard'); // Fallback, though role should be determined
-      }
-      toast({ title: 'Login Successful', description: description });
+      toast({ title: 'Login Successful', description: 'Welcome back, admin!' });
+      router.push('/products'); // Redirect to a protected page
     } else {
       toast({
         title: 'Login Failed',
-        description: error || 'An unknown error occurred. Please try again.',
+        description: 'Invalid username or password.',
         variant: 'destructive',
       });
     }
@@ -60,30 +58,29 @@ export function LoginForm() {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <Card className="w-full max-w-sm shadow-xl">
+    <Card className="w-full max-w-md shadow-xl">
       <CardHeader>
-        <CardTitle className="text-2xl">Account Login</CardTitle>
-        <CardDescription>Enter your credentials to access the application.</CardDescription>
+        <CardTitle className="text-2xl">Admin Login</CardTitle>
+        <CardDescription>Enter admin credentials to access the application.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
+              id="username"
+              placeholder="admin"
+              {...register('username')}
+              className={errors.username ? 'border-destructive' : ''}
             />
-            {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+            {errors.username && <p className="text-sm text-destructive mt-1">{errors.username.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="admin"
               {...register('password')}
               className={errors.password ? 'border-destructive' : ''}
             />

@@ -1,0 +1,149 @@
+2025-09-08 15:57:57: > Ready on https://localhost:3000
+2025-09-08 15:57:57: > Network: https://192.168.100.7:3000
+2025-09-08 15:57:57: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 15:57:57: Firebase: App initialized successfully.
+2025-09-08 15:58:13: > Ready on https://localhost:3000
+2025-09-08 15:58:13: > Network: https://192.168.100.7:3000
+2025-09-08 15:58:13: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 15:58:13: Firebase: App initialized successfully.
+2025-09-08 15:58:22: Google Sheets API client initialized successfully.
+2025-09-08 15:58:24: Successfully read 1 rows from range: APP_SETTINGS!A2:B in 1457ms.
+2025-09-08 15:58:24: GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.
+2025-09-08 15:58:24: Successfully read 433 rows from range: Form responses 2!A2:J in 682ms.
+2025-09-08 15:58:25: Successfully read 433 rows from range: Form responses 2!A2:J in 701ms.
+2025-09-08 15:58:25: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 15:58:25: Successfully read 520 rows from range: Returns Log!A2:K in 800ms.
+2025-09-08 15:58:26: Successfully read 89466 rows from range: SUP DATA!A2:B in 2398ms.
+2025-09-08 15:58:27: Successfully read 89466 rows from range: SUP DATA!A2:B in 2902ms.
+2025-09-08 15:58:27: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 15:58:27: GS_Data: getSuppliers total duration: 2.919s
+2025-09-08 15:58:27: Successfully read 78264 rows from range: BAR DATA!A2:B in 3011ms.
+2025-09-08 15:58:27: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 15:58:27: GS_Data: getProducts total duration: 3.103s
+2025-09-08 15:58:27: GS_Data: getDashboardMetrics total duration: 3.118s
+2025-09-08 15:58:27: Action: fetchDashboardMetricsAction: 3.118s
+2025-09-08 15:58:42: Successfully read 1 rows from range: APP_SETTINGS!A2:B in 647ms.
+2025-09-08 15:58:42: GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.
+2025-09-08 15:58:42: Successfully read 520 rows from range: Returns Log!A2:K in 813ms.
+2025-09-08 15:58:42: Successfully read 433 rows from range: Form responses 2!A2:J in 814ms.
+2025-09-08 15:58:43: Successfully read 433 rows from range: Form responses 2!A2:J in 1321ms.
+2025-09-08 15:58:43: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 15:58:44: Successfully read 78264 rows from range: BAR DATA!A2:B in 2338ms.
+2025-09-08 15:58:44: Successfully read 89466 rows from range: SUP DATA!A2:B in 2448ms.
+2025-09-08 15:58:44: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 15:58:44: GS_Data: getProducts total duration: 2.540s
+2025-09-08 15:58:44: Successfully read 89466 rows from range: SUP DATA!A2:B in 2915ms.
+2025-09-08 15:58:44: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 15:58:44: GS_Data: getSuppliers total duration: 2.934s
+2025-09-08 15:58:44: GS_Data: getDashboardMetrics total duration: 2.950s
+2025-09-08 15:58:44: Action: fetchDashboardMetricsAction: 2.950s
+2025-09-08 15:58:47: Google Sheets API client initialized successfully.
+2025-09-08 15:58:48: Successfully read 433 rows from range: Form responses 2!A2:J in 1676ms.
+2025-09-08 15:58:48: GS_Data: getUniqueLocations - Found 3 unique locations.
+2025-09-08 15:58:48: GS_Data: getUniqueLocations total duration: 1.689s
+2025-09-08 15:58:48: Successfully read 433 rows from range: Form responses 2!A2:J in 1713ms.
+2025-09-08 15:58:48: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 15:58:50: Successfully read 89466 rows from range: SUP DATA!A2:B in 2999ms.
+2025-09-08 15:58:50: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 15:58:50: GS_Data: getSuppliers total duration: 3.013s
+2025-09-08 16:01:56: > Ready on https://localhost:3000
+2025-09-08 16:01:56: > Network: https://192.168.100.7:3000
+2025-09-08 16:01:57: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:01:57: Firebase: App initialized successfully.
+2025-09-08 16:02:29: > Ready on https://localhost:3000
+2025-09-08 16:02:29: > Network: https://192.168.100.7:3000
+2025-09-08 16:02:30: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:02:30: Firebase: App initialized successfully.
+2025-09-08 16:02:32: Google Sheets API client initialized successfully.
+2025-09-08 16:02:32: Google Sheets API client initialized successfully.
+2025-09-08 16:02:35: Successfully read 1 rows from range: APP_SETTINGS!A2:B in 2777ms.
+2025-09-08 16:02:35: GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.
+2025-09-08 16:02:35: Successfully read 433 rows from range: Form responses 2!A2:J in 2989ms.
+2025-09-08 16:02:35: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 16:02:35: Successfully read 433 rows from range: Form responses 2!A2:J in 3051ms.
+2025-09-08 16:02:35: GS_Data: getUniqueLocations - Found 3 unique locations.
+2025-09-08 16:02:35: GS_Data: getUniqueLocations total duration: 3.066s
+2025-09-08 16:02:36: Successfully read 89466 rows from range: SUP DATA!A2:B in 4493ms.
+2025-09-08 16:02:36: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 16:02:36: GS_Data: getSuppliers total duration: 4.511s
+2025-09-08 16:02:52: Successfully read 1 rows from range: APP_SETTINGS!A2:B in 2089ms.
+2025-09-08 16:02:52: GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.
+2025-09-08 16:02:53: Successfully read 520 rows from range: Returns Log!A2:K in 1676ms.
+2025-09-08 16:02:53: Successfully read 433 rows from range: Form responses 2!A2:J in 1693ms.
+2025-09-08 16:02:53: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 16:02:54: Successfully read 433 rows from range: Form responses 2!A2:J in 2010ms.
+2025-09-08 16:02:54: Successfully read 78264 rows from range: BAR DATA!A2:B in 2703ms.
+2025-09-08 16:02:55: Successfully read 89466 rows from range: SUP DATA!A2:B in 3535ms.
+2025-09-08 16:02:55: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 16:02:55: GS_Data: getSuppliers total duration: 3.546s
+2025-09-08 16:02:56: Successfully read 89466 rows from range: SUP DATA!A2:B in 4662ms.
+2025-09-08 16:02:56: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 16:02:56: GS_Data: getProducts total duration: 4.716s
+2025-09-08 16:02:56: GS_Data: getDashboardMetrics total duration: 4.734s
+2025-09-08 16:02:56: Action: fetchDashboardMetricsAction: 4.734s
+2025-09-08 16:02:57: Successfully read 433 rows from range: Form responses 2!A2:J in 629ms.
+2025-09-08 16:02:57: Successfully read 433 rows from range: Form responses 2!A2:J in 719ms.
+2025-09-08 16:02:57: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 16:02:57: Successfully read 520 rows from range: Returns Log!A2:K in 854ms.
+2025-09-08 16:02:59: Successfully read 89466 rows from range: SUP DATA!A2:B in 2428ms.
+2025-09-08 16:02:59: Successfully read 78264 rows from range: BAR DATA!A2:B in 2470ms.
+2025-09-08 16:02:59: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 16:02:59: GS_Data: getProducts total duration: 2.529s
+2025-09-08 16:02:59: Successfully read 89466 rows from range: SUP DATA!A2:B in 2992ms.
+2025-09-08 16:02:59: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 16:02:59: GS_Data: getSuppliers total duration: 3.000s
+2025-09-08 16:02:59: GS_Data: getDashboardMetrics total duration: 3.031s
+2025-09-08 16:02:59: Action: fetchDashboardMetricsAction: 3.031s
+2025-09-08 16:04:43: > Ready on https://localhost:3000
+2025-09-08 16:04:43: > Network: https://192.168.100.7:3000
+2025-09-08 16:04:44: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:04:44: Firebase: App initialized successfully.
+2025-09-08 16:07:56: > Ready on https://localhost:3000
+2025-09-08 16:07:56: > Network: https://192.168.100.7:3000
+2025-09-08 16:07:57: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:07:57: Firebase: App initialized successfully.
+2025-09-08 16:08:26: Google Sheets API client initialized successfully.
+2025-09-08 16:08:29: Successfully read 1 rows from range: APP_SETTINGS!A2:B in 2974ms.
+2025-09-08 16:08:29: GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.
+2025-09-08 16:08:30: Successfully read 433 rows from range: Form responses 2!A2:J in 730ms.
+2025-09-08 16:08:30: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 16:08:30: Successfully read 520 rows from range: Returns Log!A2:K in 814ms.
+2025-09-08 16:08:30: Successfully read 433 rows from range: Form responses 2!A2:J in 1048ms.
+2025-09-08 16:08:31: Successfully read 78264 rows from range: BAR DATA!A2:B in 2288ms.
+2025-09-08 16:08:31: Successfully read 89466 rows from range: SUP DATA!A2:B in 2459ms.
+2025-09-08 16:08:31: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 16:08:31: GS_Data: getSuppliers total duration: 2.469s
+2025-09-08 16:08:31: Successfully read 89466 rows from range: SUP DATA!A2:B in 2544ms.
+2025-09-08 16:08:31: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 16:08:31: GS_Data: getProducts total duration: 2.629s
+2025-09-08 16:08:31: GS_Data: getDashboardMetrics total duration: 2.646s
+2025-09-08 16:08:31: Action: fetchDashboardMetricsAction: 2.646s
+2025-09-08 16:08:33: Successfully read 433 rows from range: Form responses 2!A2:J in 416ms.
+2025-09-08 16:08:33: Successfully read 433 rows from range: Form responses 2!A2:J in 418ms.
+2025-09-08 16:08:33: GS_Data: getInventoryItems - Transformed 433 items total. Filtering from 432 items with quantity > 0.
+2025-09-08 16:08:33: Successfully read 520 rows from range: Returns Log!A2:K in 481ms.
+2025-09-08 16:08:35: Successfully read 89466 rows from range: SUP DATA!A2:B in 2287ms.
+2025-09-08 16:08:35: Successfully read 78264 rows from range: BAR DATA!A2:B in 2437ms.
+2025-09-08 16:08:35: GS_Data: getProducts - Transformed 77369 products and enriched with supplier data.
+2025-09-08 16:08:35: GS_Data: getProducts total duration: 2.489s
+2025-09-08 16:08:35: Successfully read 89466 rows from range: SUP DATA!A2:B in 2734ms.
+2025-09-08 16:08:35: GS_Data: getSuppliers - Found 765 unique suppliers.
+2025-09-08 16:08:35: GS_Data: getSuppliers total duration: 2.742s
+2025-09-08 16:08:35: GS_Data: getDashboardMetrics total duration: 2.764s
+2025-09-08 16:08:35: Action: fetchDashboardMetricsAction: 2.764s
+2025-09-08 16:10:09: > Ready on https://localhost:3000
+2025-09-08 16:10:09: > Network: https://192.168.100.7:3000
+2025-09-08 16:10:10: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:10:10: Firebase: App initialized successfully.
+2025-09-08 16:11:28: > Ready on https://localhost:3000
+2025-09-08 16:11:28: > Network: https://192.168.100.7:3000
+2025-09-08 16:11:28: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:11:28: Firebase: App initialized successfully.
+2025-09-08 16:12:27: > Ready on https://localhost:3000
+2025-09-08 16:12:27: > Network: https://192.168.100.7:3000
+2025-09-08 16:12:27: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:12:27: Firebase: App initialized successfully.
+2025-09-08 16:13:27: > Ready on https://localhost:3000
+2025-09-08 16:13:27: > Network: https://192.168.100.7:3000
+2025-09-08 16:13:27: Firebase: Attempting to initialize Firebase app with web app config...
+2025-09-08 16:13:27: Firebase: App initialized successfully.

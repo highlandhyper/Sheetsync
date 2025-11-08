@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -19,10 +20,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
 
-  const isLoading = authLoading || !permissionsInitialized;
+  const loading = authLoading || !permissionsInitialized;
 
   useEffect(() => {
-    if (isLoading) {
+    if (loading) {
       return; 
     }
 
@@ -32,24 +33,22 @@ export default function AppLayout({ children }: PropsWithChildren) {
       setShowAdminWelcomeScreen(false); 
       return;
     }
-    
-    // This logic is now handled by the main auth context effect
-    // but can serve as a backup check.
-    const canAccessCurrentPath = isAllowed(role!, pathname);
-    if (!canAccessCurrentPath) {
-        if (role === 'viewer') {
-            router.replace(VIEWER_DEFAULT_PATH);
-        } else {
-            router.replace('/dashboard');
-        }
-    }
 
-  }, [isLoading, user, role, router, pathname, isAllowed]);
+    if (role === 'viewer') {
+      const canAccessCurrentPath = isAllowed(role, pathname);
+      if (!canAccessCurrentPath) {
+        const defaultPathForViewer = isAllowed(role, VIEWER_DEFAULT_PATH) ? VIEWER_DEFAULT_PATH : '/login';
+        router.replace(defaultPathForViewer);
+      }
+      sessionStorage.removeItem('adminWelcomeShown');
+      setShowAdminWelcomeScreen(false);
+    }
+  }, [loading, user, role, router, pathname, isAllowed]);
 
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
 
-    if (!isLoading && role === 'admin') {
+    if (!loading && role === 'admin') {
       const welcomeShownSession = sessionStorage.getItem('adminWelcomeShown');
       if (!welcomeShownSession) {
         setShowAdminWelcomeScreen(true);
@@ -69,10 +68,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
         clearTimeout(timerId);
       }
     };
-  }, [isLoading, role]); 
+  }, [loading, role]); 
 
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -80,17 +79,15 @@ export default function AppLayout({ children }: PropsWithChildren) {
       </div>
     );
   }
-  
-  // This check is important to prevent content flashing while redirecting
-  if (!user || (role && !isAllowed(role, pathname))) {
-      return (
-         <div className="flex flex-col items-center justify-center h-screen bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-lg mt-4">Checking credentials...</p>
-        </div>
-      );
-  }
 
+  if (!user) {
+    return (
+        <div className="flex items-center justify-center h-screen bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-lg">Redirecting to login...</p>
+        </div>
+    );
+  }
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (

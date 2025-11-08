@@ -1,8 +1,9 @@
 
-
+import { getInventoryItems, getSuppliers, getUniqueLocations } from '@/lib/data';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Supplier, InventoryItem } from '@/lib/types';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { ClipboardList } from 'lucide-react';
@@ -58,7 +59,14 @@ function InventoryListSkeleton() {
   );
 }
 
-export default function InventoryPage() {
+export default async function InventoryPage() {
+  // Fetch inventory items, suppliers, and unique locations in parallel
+  const [initialInventoryItems, suppliers, uniqueLocations] = await Promise.all([
+    getInventoryItems(),
+    getSuppliers(),
+    getUniqueLocations()
+  ]);
+
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
@@ -66,12 +74,14 @@ export default function InventoryPage() {
         Inventory Overview
       </h1>
       <Suspense fallback={<InventoryListSkeleton />}>
-        <InventoryListClient />
+        <InventoryListClient 
+          initialInventoryItems={initialInventoryItems || []} 
+          suppliers={suppliers || []} 
+          uniqueDbLocations={uniqueLocations || []}
+        />
       </Suspense>
     </div>
   );
 }
 
 export const revalidate = 0;
-
-    
