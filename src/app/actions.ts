@@ -86,6 +86,33 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   }
 }
 
+// Action specifically for the real-time inventory list page
+export async function fetchInventoryListDataAction(): Promise<ActionResponse<{
+    inventoryItems: InventoryItem[];
+    suppliers: Supplier[];
+    uniqueLocations: string[];
+}>> {
+    try {
+        const [inventoryItems, suppliers, uniqueLocations] = await Promise.all([
+            getInventoryItems(),
+            getSuppliers(),
+            getUniqueLocations()
+        ]);
+        return {
+            success: true,
+            data: {
+                inventoryItems: inventoryItems || [],
+                suppliers: suppliers || [],
+                uniqueLocations: uniqueLocations || [],
+            }
+        };
+    } catch (error) {
+        console.error("Error in fetchInventoryListDataAction:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching inventory list data.";
+        return { success: false, message: errorMessage };
+    }
+}
+
 
 // This action might be deprecated or merged into saveProductAction
 export async function addProductAction(
@@ -707,3 +734,4 @@ function revalidateRelevantPaths() {
     
 
     
+
