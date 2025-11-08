@@ -1,19 +1,18 @@
 
 'use client'; 
 
-import { fetchDashboardMetricsAction, type ActionResponse } from '@/app/actions';
-import type { DashboardMetrics, StockBySupplier } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier, type InventoryItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useDataCache } from '@/context/data-cache-context';
+import { addDays, isBefore, startOfDay, parseISO, isValid, isSameDay } from 'date-fns';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -86,19 +85,14 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 
   const handleBarClick = (barPayload: any) => {
     if (barPayload && barPayload.name === "Other Suppliers") {
-      // The "Other Suppliers" bar is formed if data.length > MAX_SUPPLIERS_IN_CHART - 1 and otherStock > 0.
-      // So, we can directly proceed to find the names.
       const otherActualSupplierNames = data.slice(MAX_SUPPLIERS_IN_CHART - 1).map(s => s.name);
       if (otherActualSupplierNames.length > 0) {
         const suppliersQueryParam = encodeURIComponent(otherActualSupplierNames.join(','));
         router.push(`/inventory?filterType=otherSuppliers&suppliers=${suppliersQueryParam}`);
       } else {
-        // Fallback if for some reason otherActualSupplierNames is empty, though unlikely
-        // if "Other Suppliers" bar was rendered due to otherStock > 0.
         router.push('/inventory');
       }
     } else if (barPayload && barPayload.name) {
-      // Navigate to inventory page filtered by this specific supplier
       router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.name)}`);
     }
   };
@@ -188,37 +182,59 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
-  const { isCacheReady } = useDataCache();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  
-  useEffect(() => {
-    async function fetchData() {
-      // Don't fetch if cache isn't ready
-      if (!isCacheReady) return;
-      
-      setIsLoading(true);
-      // This action now fetches data from the sheets on demand for the dashboard
-      const response: ActionResponse<DashboardMetrics> = await fetchDashboardMetricsAction();
-      if (response.success && response.data) {
-        setMetrics(response.data);
-      } else {
-        console.error("Failed to fetch dashboard metrics:", response.message);
-        toast({
-            title: "Error Fetching Dashboard Data",
-            description: response.message || "Could not load dashboard metrics. Please try again later.",
-            variant: "destructive",
-        });
+
+function calculateDashboardMetrics(inventoryItems: InventoryItem[], returnedItems: ReturnedItem[], suppliers: { name: string }[]): DashboardMetrics {
+  const totalStockQuantity = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  let itemsExpiringSoon = 0;
+  const todayDate = startOfDay(new Date());
+  const sevenDaysFromNow = startOfDay(addDays(todayDate, 7));
+  inventoryItems.forEach(item => {
+    if (item.itemType === 'Expiry' && item.expiryDate) {
+      try {
+        const expiry = startOfDay(parseISO(item.expiryDate));
+        if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, todayDate)) {
+          itemsExpiringSoon++;
+        }
+      } catch (e) {
+        // Ignore invalid dates
       }
-      setIsLoading(false);
     }
-    fetchData();
-  }, [isCacheReady, toast]); // Depend on cache readiness
+  });
+
+  const damagedItemsCount = inventoryItems.filter(item => item.itemType === 'Damage').length;
+
+  const stockBySupplierMap = new Map<string, number>();
+  inventoryItems.forEach(item => {
+    const supplier = item.supplierName || "Unknown Supplier";
+    stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
+  });
+
+  const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
+    .map(([name, totalStock]) => ({ name, totalStock }))
+    .sort((a, b) => b.totalStock - a.totalStock);
+    
+  return {
+    totalStockQuantity,
+    itemsExpiringSoon,
+    damagedItemsCount,
+    stockBySupplier,
+    totalSuppliers: suppliers.length,
+    totalProducts: 0, // Not available directly in this context, can be added if needed
+  };
+}
 
 
-  if (isLoading || !metrics) {
+export default function DashboardPage() {
+  const { inventoryItems, returnedItems, suppliers, isCacheReady } = useDataCache();
+
+  const metrics = useMemo(() => {
+    if (!isCacheReady) return null;
+    return calculateDashboardMetrics(inventoryItems, returnedItems, suppliers);
+  }, [inventoryItems, returnedItems, suppliers, isCacheReady]);
+
+
+  if (!isCacheReady || !metrics) {
     return (
       <div className="container mx-auto py-2">
          <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
@@ -233,7 +249,6 @@ export default function DashboardPage() {
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
   if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    // User requested increase=red, decrease=green
     const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
@@ -316,5 +331,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
