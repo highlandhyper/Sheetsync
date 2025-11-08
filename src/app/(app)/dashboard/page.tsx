@@ -1,18 +1,17 @@
 
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type InventoryItem } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { fetchDashboardMetricsAction } from '@/app/actions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
-import { useDataCache } from '@/context/data-cache-context';
-import { addDays, isBefore, startOfDay, parseISO, isValid, isSameDay } from 'date-fns';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -182,59 +181,26 @@ function DashboardSkeleton() {
   );
 }
 
-
-function calculateDashboardMetrics(inventoryItems: InventoryItem[], returnedItems: ReturnedItem[], suppliers: { name: string }[]): DashboardMetrics {
-  const totalStockQuantity = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  let itemsExpiringSoon = 0;
-  const todayDate = startOfDay(new Date());
-  const sevenDaysFromNow = startOfDay(addDays(todayDate, 7));
-  inventoryItems.forEach(item => {
-    if (item.itemType === 'Expiry' && item.expiryDate) {
-      try {
-        const expiry = startOfDay(parseISO(item.expiryDate));
-        if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, todayDate)) {
-          itemsExpiringSoon++;
-        }
-      } catch (e) {
-        // Ignore invalid dates
-      }
-    }
-  });
-
-  const damagedItemsCount = inventoryItems.filter(item => item.itemType === 'Damage').length;
-
-  const stockBySupplierMap = new Map<string, number>();
-  inventoryItems.forEach(item => {
-    const supplier = item.supplierName || "Unknown Supplier";
-    stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
-  });
-
-  const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
-    .map(([name, totalStock]) => ({ name, totalStock }))
-    .sort((a, b) => b.totalStock - a.totalStock);
-    
-  return {
-    totalStockQuantity,
-    itemsExpiringSoon,
-    damagedItemsCount,
-    stockBySupplier,
-    totalSuppliers: suppliers.length,
-    totalProducts: 0, // Not available directly in this context, can be added if needed
-  };
-}
-
-
 export default function DashboardPage() {
-  const { inventoryItems, returnedItems, suppliers, isCacheReady } = useDataCache();
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const metrics = useMemo(() => {
-    if (!isCacheReady) return null;
-    return calculateDashboardMetrics(inventoryItems, returnedItems, suppliers);
-  }, [inventoryItems, returnedItems, suppliers, isCacheReady]);
+  useEffect(() => {
+    async function getMetrics() {
+      setIsLoading(true);
+      const response = await fetchDashboardMetricsAction();
+      if (response.success && response.data) {
+        setMetrics(response.data);
+      } else {
+        // Handle error, maybe show a toast
+        console.error("Failed to fetch dashboard metrics:", response.message);
+      }
+      setIsLoading(false);
+    }
+    getMetrics();
+  }, []);
 
-
-  if (!isCacheReady || !metrics) {
+  if (isLoading || !metrics) {
     return (
       <div className="container mx-auto py-2">
          <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
@@ -249,7 +215,7 @@ export default function DashboardPage() {
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
   if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
+    const colorClass = isIncrease ? 'text-green-600' : 'text-destructive';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
     let trendText: string;
@@ -288,12 +254,14 @@ export default function DashboardPage() {
           iconNode={<Warehouse className="h-5 w-5" />}
           description={totalStockDescription}
           href="/inventory"
+          isLoading={isLoading}
         />
          <MetricCard 
           title="Total Suppliers" 
           value={metrics.totalSuppliers} 
           iconNode={<Users className="h-5 w-5" />}
           description="Unique suppliers registered"
+          isLoading={isLoading}
         />
         <MetricCard 
           title="Items Expiring Soon" 
@@ -302,8 +270,9 @@ export default function DashboardPage() {
           description="Next 7 days"
           href="/inventory?filterType=expiringSoon"
           className={cn(
-            metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
+            !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
           )}
+          isLoading={isLoading}
         />
         <MetricCard 
             title="Damaged Items" 
@@ -311,7 +280,8 @@ export default function DashboardPage() {
             iconNode={<AlertTriangle className="h-5 w-5" />}
             description="Items marked as damage"
             href="/inventory?filterType=damaged"
-            className={metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : ""} 
+            className={!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : ""} 
+            isLoading={isLoading}
         />
       </div>
        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 mt-8"> 
@@ -324,10 +294,12 @@ export default function DashboardPage() {
             <CardDescription>Total stock quantity held per supplier.</CardDescription>
           </CardHeader>
           <CardContent className="pl-0 pr-4 pb-6">
-            <StockBySupplierChart data={metrics.stockBySupplier} />
+            {isLoading ? <Skeleton className="h-[350px] w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+
+    
