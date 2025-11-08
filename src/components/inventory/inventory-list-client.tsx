@@ -1,14 +1,16 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
-import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks } from 'lucide-react';
+import type { InventoryItem, Supplier, Product } from '@/lib/types';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -46,12 +48,13 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -543,6 +546,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     formattedExpiryDate = "Invalid Date";
                   }
                 }
+                const isProductFound = item.productName !== '[PRODUCT NOT FOUND]';
                 return (
                   <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
                      {role === 'admin' && isMultiSelectEnabled && (
@@ -557,38 +561,50 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                     <TableCell className="text-center noprint">
                       <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {role === 'admin' && (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenReturnDialog(item)}
-                              disabled={item.quantity === 0}
-                              className="h-8 w-8"
-                              aria-label="Return Item"
-                            >
-                              <Undo2 className="h-4 w-4" />
-                            </Button>
-                             <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDeleteDialog(item)}
-                              className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                              aria-label="Delete Item"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                        {isProductFound ? (
+                            <>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                                <Eye className="h-4 w-4" />
+                                </Button>
+                                {role === 'admin' && (
+                                <>
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
+                                    <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenReturnDialog(item)}
+                                    disabled={item.quantity === 0}
+                                    className="h-8 w-8"
+                                    aria-label="Return Item"
+                                    >
+                                    <Undo2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenDeleteDialog(item)}
+                                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                    aria-label="Delete Item"
+                                    >
+                                    <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </>
+                                )}
+                            </>
+                        ) : (
+                             role === 'admin' && (
+                                <Button asChild variant="default" size="sm">
+                                    <Link href={`/products/manage?barcode=${item.barcode}`}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Create
+                                    </Link>
+                                </Button>
+                            )
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
                     <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
                     <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
