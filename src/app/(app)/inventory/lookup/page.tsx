@@ -1,10 +1,12 @@
 
+'use client';
 import { InventoryBarcodeLookupClient } from '@/components/inventory/inventory-barcode-lookup-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { getUniqueLocations } from '@/lib/data';
+import { useDataCache } from '@/context/data-cache-context';
+
 
 function BarcodeLookupSkeleton() {
   return (
@@ -47,15 +49,21 @@ function BarcodeLookupSkeleton() {
   );
 }
 
-export default async function InventoryLogLookupPage() {
-  const uniqueLocations = await getUniqueLocations();
+export default function InventoryLogLookupPage() {
+  const { uniqueLocations, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Log Lookup</h1>
       <Suspense fallback={<BarcodeLookupSkeleton />}>
-        <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations || []} />
+        {isCacheReady ? (
+          <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations} />
+        ) : (
+          <BarcodeLookupSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
+
+    

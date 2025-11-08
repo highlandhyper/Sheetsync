@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -188,14 +189,18 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
+  const { isCacheReady } = useDataCache();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const router = useRouter(); 
-
+  
   useEffect(() => {
     async function fetchData() {
+      // Don't fetch if cache isn't ready
+      if (!isCacheReady) return;
+      
       setIsLoading(true);
+      // This action now fetches data from the sheets on demand for the dashboard
       const response: ActionResponse<DashboardMetrics> = await fetchDashboardMetricsAction();
       if (response.success && response.data) {
         setMetrics(response.data);
@@ -210,7 +215,7 @@ export default function DashboardPage() {
       setIsLoading(false);
     }
     fetchData();
-  }, [toast]);
+  }, [isCacheReady, toast]); // Depend on cache readiness
 
 
   if (isLoading || !metrics) {
@@ -311,3 +316,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

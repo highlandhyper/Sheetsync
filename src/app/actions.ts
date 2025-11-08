@@ -19,14 +19,17 @@ import {
   updateSupplierNameAndReferences as dbUpdateSupplierName,
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
-  getInventoryLogEntriesByBarcode, 
+  getInventoryLogEntriesByBarcode,
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
   loadPermissionsFromSheet,
   savePermissionsToSheet,
-  getInventoryItems
+  getInventoryItems,
+  getProducts,
+  getSuppliers,
+  getReturnedItems
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem } from '@/lib/types';
 import { format } from 'date-fns';
 
 
@@ -36,6 +39,51 @@ export interface ActionResponse<T = any> {
   data?: T;
   errors?: z.ZodIssue[];
 }
+
+// --- New Action for fetching all cached data ---
+export async function fetchAllDataAction(): Promise<ActionResponse<{
+  inventoryItems: InventoryItem[];
+  products: Product[];
+  suppliers: Supplier[];
+  returnedItems: ReturnedItem[];
+  uniqueLocations: string[];
+  uniqueStaffNames: string[];
+}>> {
+  try {
+    const [
+      inventoryItems,
+      products,
+      suppliers,
+      returnedItems,
+      uniqueLocations,
+      uniqueStaffNames
+    ] = await Promise.all([
+      getInventoryItems(),
+      getProducts(),
+      getSuppliers(),
+      getReturnedItems(),
+      getUniqueLocations(),
+      getUniqueStaffNames()
+    ]);
+
+    return {
+      success: true,
+      data: {
+        inventoryItems: inventoryItems || [],
+        products: products || [],
+        suppliers: suppliers || [],
+        returnedItems: returnedItems || [],
+        uniqueLocations: uniqueLocations || [],
+        uniqueStaffNames: uniqueStaffNames || []
+      }
+    };
+  } catch (error) {
+    console.error("Error in fetchAllDataAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching all app data.";
+    return { success: false, message: errorMessage };
+  }
+}
+
 
 // This action might be deprecated or merged into saveProductAction
 export async function addProductAction(
@@ -69,13 +117,7 @@ export async function addProductAction(
         throw new Error("Failed to create product. Check server logs (Google Sheets API or other data source).");
     }
 
-    revalidatePath('/products/manage');
-    revalidatePath('/products');
-    revalidatePath('/products/by-supplier');
-    revalidatePath('/inventory');
-    revalidatePath('/inventory/lookup'); 
-    revalidatePath('/dashboard'); 
-    revalidatePath('/suppliers'); // Revalidate new supplier list page
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -162,15 +204,7 @@ export async function saveProductAction(
       throw new Error("Invalid edit mode specified.");
     }
 
-    // Revalidate paths that display product or supplier information
-    revalidatePath('/products/manage'); 
-    revalidatePath('/products'); 
-    revalidatePath('/products/by-supplier'); 
-    revalidatePath('/inventory'); 
-    revalidatePath('/inventory/returns'); 
-    revalidatePath('/inventory/lookup'); 
-    revalidatePath('/dashboard'); 
-    revalidatePath('/suppliers'); // Revalidate new supplier list page
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -220,12 +254,7 @@ export async function addSupplierAction(
       };
     }
 
-    revalidatePath('/products/manage'); 
-    revalidatePath('/suppliers'); 
-    revalidatePath('/products/by-supplier');
-    revalidatePath('/inventory');
-    revalidatePath('/inventory/lookup'); 
-    revalidatePath('/dashboard'); 
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -279,14 +308,7 @@ export async function editSupplierAction(
       throw new Error(`Failed to update supplier name in the data source. Check server logs. It's possible no supplier named "${currentSupplierName}" was found or an API error occurred.`);
     }
     
-    // Revalidate paths where supplier names might appear
-    revalidatePath('/suppliers'); // The supplier list page itself
-    revalidatePath('/products/manage'); // Products might be linked to this supplier
-    revalidatePath('/products/by-supplier'); // Filtering by supplier
-    revalidatePath('/inventory'); // Inventory items show supplier names
-    revalidatePath('/inventory/returns'); // Return log shows supplier names
-    revalidatePath('/inventory/lookup');
-    revalidatePath('/dashboard'); // Dashboard might use supplier counts or names
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -360,14 +382,7 @@ export async function addInventoryItemAction(
         throw new Error("Failed to log inventory item. Check server logs.");
     }
 
-    revalidatePath('/inventory');
-    revalidatePath('/inventory/add');
-    revalidatePath('/products/by-supplier');
-    revalidatePath('/products');
-    revalidatePath('/inventory/returns');
-    revalidatePath('/inventory/lookup'); 
-    revalidatePath('/dashboard'); 
-    revalidatePath('/suppliers');
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -402,13 +417,7 @@ export async function returnInventoryItemAction(itemId: string, quantityToReturn
 
     const result = await dbProcessReturn(itemId, quantityToReturn, staffName);
     if (result.success) {
-      revalidatePath('/products/by-supplier');
-      revalidatePath('/products');
-      revalidatePath('/inventory');
-      revalidatePath('/inventory/returns');
-      revalidatePath('/inventory/lookup'); 
-      revalidatePath('/dashboard'); 
-      revalidatePath('/suppliers');
+      revalidateRelevantPaths();
       return { success: true, message: result.message || 'Item processed for return.' };
     } else {
       return { success: false, message: result.message || 'Failed to process return. Check server logs.' };
@@ -468,12 +477,7 @@ export async function editInventoryItemAction(
       throw new Error("Failed to update inventory item details. Check server logs.");
     }
 
-    revalidatePath('/products');
-    revalidatePath('/inventory');
-    revalidatePath('/products/by-supplier');
-    revalidatePath('/inventory/lookup'); 
-    revalidatePath('/dashboard'); 
-    revalidatePath('/suppliers');
+    revalidateRelevantPaths();
 
     return {
       success: true,
@@ -539,11 +543,7 @@ export async function deleteInventoryItemAction(itemId: string): Promise<ActionR
     const success = await dbDeleteInventoryItemById(itemId);
 
     if (success) {
-      revalidatePath('/inventory/lookup');
-      revalidatePath('/inventory');
-      revalidatePath('/dashboard');
-      revalidatePath('/products/by-supplier');
-      revalidatePath('/products');
+      revalidateRelevantPaths();
       return { success: true, message: 'Inventory log entry permanently deleted.' };
     } else {
       return { success: false, message: 'Failed to delete inventory log entry from the data source.' };
@@ -698,4 +698,9 @@ function revalidateRelevantPaths() {
     revalidatePath('/dashboard');
     revalidatePath('/inventory/lookup');
     revalidatePath('/products');
+    revalidatePath('/products/list');
+    revalidatePath('/products/manage');
+    revalidatePath('/suppliers');
 }
+
+    

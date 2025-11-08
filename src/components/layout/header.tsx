@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { Command, LogOut, UserCircle } from 'lucide-react';
+import { Command, LogOut, UserCircle, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,13 @@ import {
 import { cn } from '@/lib/utils';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
+import { useDataCache } from '@/context/data-cache-context';
 
 export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const { refreshData, isSyncing } = useDataCache();
+
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -48,6 +52,17 @@ export function Header({ className }: { className?: string }) {
             <kbd className="pointer-events-none ml-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
               <span className="text-xs">⌘</span>K
             </kbd>
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refreshData}
+          disabled={isSyncing}
+          className="text-muted-foreground"
+        >
+            <RotateCw className={cn("h-4 w-4 mr-2", isSyncing && "animate-spin")} />
+            <span>{isSyncing ? "Syncing..." : "Sync Data"}</span>
         </Button>
 
         {loading ? (
@@ -94,3 +109,5 @@ export function Header({ className }: { className?: string }) {
     </>
   );
 }
+
+    

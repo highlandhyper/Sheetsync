@@ -8,6 +8,7 @@ import { LocalSettingsAuthProvider } from '@/context/local-settings-auth-context
 import { ThemeProvider } from 'next-themes';
 import { AccessControlProvider } from '@/context/access-control-context';
 import { MultiSelectProvider } from '@/context/multi-select-context';
+import { DataCacheProvider } from '@/context/data-cache-context';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -55,7 +56,9 @@ export default function RootLayout({
             <AuthProvider>
               <AccessControlProvider>
                 <MultiSelectProvider>
-                  {children}
+                  <DataCacheProvider>
+                    {children}
+                  </DataCacheProvider>
                   <Toaster />
                 </MultiSelectProvider>
               </AccessControlProvider>
@@ -66,3 +69,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

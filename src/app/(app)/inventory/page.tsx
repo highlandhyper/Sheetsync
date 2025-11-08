@@ -1,12 +1,12 @@
 
-import { getInventoryItems, getSuppliers, getUniqueLocations } from '@/lib/data';
+'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Supplier, InventoryItem } from '@/lib/types';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { ClipboardList } from 'lucide-react';
+import { useDataCache } from '@/context/data-cache-context';
 
 function InventoryListSkeleton() {
   return (
@@ -59,13 +59,8 @@ function InventoryListSkeleton() {
   );
 }
 
-export default async function InventoryPage() {
-  // Fetch inventory items, suppliers, and unique locations in parallel
-  const [initialInventoryItems, suppliers, uniqueLocations] = await Promise.all([
-    getInventoryItems(),
-    getSuppliers(),
-    getUniqueLocations()
-  ]);
+export default function InventoryPage() {
+  const { inventoryItems, suppliers, uniqueLocations, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -74,14 +69,18 @@ export default async function InventoryPage() {
         Inventory Overview
       </h1>
       <Suspense fallback={<InventoryListSkeleton />}>
-        <InventoryListClient 
-          initialInventoryItems={initialInventoryItems || []} 
-          suppliers={suppliers || []} 
-          uniqueDbLocations={uniqueLocations || []}
-        />
+        {isCacheReady ? (
+          <InventoryListClient 
+            initialInventoryItems={inventoryItems} 
+            suppliers={suppliers} 
+            uniqueDbLocations={uniqueLocations}
+          />
+        ) : (
+          <InventoryListSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0;
+    

@@ -1,10 +1,11 @@
 
-import { getSuppliers } from '@/lib/data';
+'use client';
 import { SupplierListClient } from '@/components/suppliers/supplier-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Building } from 'lucide-react';
+import { useDataCache } from '@/context/data-cache-context';
 
 function SupplierListSkeleton() {
   return (
@@ -36,8 +37,8 @@ function SupplierListSkeleton() {
   );
 }
 
-export default async function SuppliersPage() { 
-  const initialSuppliers = await getSuppliers();
+export default function SuppliersPage() { 
+  const { suppliers, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -46,10 +47,14 @@ export default async function SuppliersPage() {
         Manage Suppliers
       </h1>
       <Suspense fallback={<SupplierListSkeleton />}>
-        <SupplierListClient initialSuppliers={initialSuppliers || []} />
+        {isCacheReady ? (
+          <SupplierListClient initialSuppliers={suppliers} />
+        ) : (
+          <SupplierListSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0; // Revalidate on every request
+    

@@ -1,10 +1,11 @@
 
-import { getProducts } from '@/lib/data';
+'use client';
 import { ProductListClient } from '@/components/products/product-list-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Package } from 'lucide-react';
+import { useDataCache } from '@/context/data-cache-context';
 
 function ProductListSkeleton() {
   return (
@@ -37,9 +38,8 @@ function ProductListSkeleton() {
 }
 
 
-export default async function ProductsListPage() { 
-  // This fetches all products from 'BAR DATA' and enriches them with supplier info
-  const initialProducts = await getProducts();
+export default function ProductsListPage() { 
+  const { products, isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -48,10 +48,14 @@ export default async function ProductsListPage() {
         Product Catalog
       </h1>
       <Suspense fallback={<ProductListSkeleton />}>
-        <ProductListClient initialProducts={initialProducts || []} />
+        {isCacheReady ? (
+          <ProductListClient initialProducts={products} />
+        ) : (
+          <ProductListSkeleton />
+        )}
       </Suspense>
     </div>
   );
 }
 
-export const revalidate = 0; // Revalidate on every request
+    
