@@ -768,11 +768,36 @@ export async function updateInventoryItemDetails(
   }
 }
 
+/**
+ * Finds the 1-based row number for a product by searching both barcode columns.
+ * @param barcode The barcode to find.
+ * @returns The 1-based row number or null if not found.
+ */
+async function findProductRowByBarcode(barcode: string): Promise<number | null> {
+    const searchRange = `${DB_SHEET_NAME}!A1:B`; // Read first two columns
+    const barcodeData = await readSheetData(searchRange);
+
+    if (!barcodeData) {
+        console.warn(`findProductRowByBarcode: Could not read barcode columns from ${DB_SHEET_NAME}.`);
+        return null;
+    }
+    const trimmedBarcode = barcode.trim();
+    for (let i = 0; i < barcodeData.length; i++) {
+        const row = barcodeData[i];
+        const barcodeA = String(row[DB_COL_BARCODE_A] || '').trim();
+        const barcodeB = String(row[DB_COL_BARCODE_B] || '').trim();
+        if (barcodeA === trimmedBarcode || barcodeB === trimmedBarcode) {
+            return i + 1; // Return 1-based row number
+        }
+    }
+    return null;
+}
+
 export async function updateProductAndSupplierLinks(barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
   const timeLabel = `GS_Data: updateProductAndSupplierLinks for barcode ${barcode}`;
   console.time(timeLabel);
   try {
-      const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
+      const rowNumber = await findProductRowByBarcode(barcode);
       if (!rowNumber) {
           console.error(`GS_Data: updateProductAndSupplierLinks - Barcode ${barcode} not found in DB sheet. Cannot update.`);
           return false;
