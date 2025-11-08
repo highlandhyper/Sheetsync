@@ -61,6 +61,7 @@ import { addInventoryItemAction, fetchProductAction, type ActionResponse } from 
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { InventoryItem } from '@/lib/types';
+import { useDataCache } from '@/context/data-cache-context';
 
 const steps = [
   { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
@@ -76,6 +77,7 @@ interface AddInventoryItemStepperFormProps {
 
 export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames }: AddInventoryItemStepperFormProps) {
   const { toast } = useToast();
+  const { products: cachedProducts } = useDataCache();
   const [currentStep, setCurrentStep] = useState(0);
   
   const [isPending, startTransition] = useTransition();
@@ -160,10 +162,22 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
 
   const handleBarcodeLookup = useCallback(async (barcode: string) => {
       if (!barcode || !barcode.trim()) return false;
+      
       setIsFetchingProduct(true);
       setProductLookupError('');
       setProductName('');
       setProductSupplier('');
+      
+      // 1. Check local cache first
+      const cachedProduct = cachedProducts.find(p => p.barcode === barcode);
+      if (cachedProduct) {
+        setProductName(cachedProduct.productName);
+        setProductSupplier(cachedProduct.supplierName || 'N/A');
+        setIsFetchingProduct(false);
+        return true;
+      }
+
+      // 2. If not in cache, fallback to server action
       const response = await fetchProductAction(barcode);
       setIsFetchingProduct(false);
       if (response.success && response.data) {
@@ -174,7 +188,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
           setProductLookupError(response.message || 'Product not found. It must be created first via Manage Products.');
           return false;
       }
-  }, []);
+  }, [cachedProducts]);
 
   type FieldName = keyof AddInventoryItemFormValues;
 
@@ -456,7 +470,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
                              <div className="flex items-start gap-3">
                                 <Warehouse className="h-5 w-5 text-primary mt-0.5" />
                                 <div><span className="font-medium text-muted-foreground block">Supplier</span>{productSupplier}</div>
-                            </div>
+                             </div>
                              <div className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-primary mt-0.5" />
                                 <div><span className="font-medium text-muted-foreground block">Location</span>{allFormValues.location}</div>

@@ -27,6 +27,7 @@ import { fetchProductAction, saveProductAction, type ActionResponse } from '@/ap
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 interface SubmitButtonProps {
@@ -51,6 +52,7 @@ interface EditOrCreateProductFormProps {
 
 export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFormProps) {
   const { toast } = useToast();
+  const { products: cachedProducts } = useDataCache();
   const [isSavePending, startSaveTransition] = useTransition();
   const [isFetchPending, startFetchTransition] = useTransition();
   
@@ -128,10 +130,26 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       toast({ title: 'Barcode Required', description: 'Please enter a barcode to search.', variant: 'destructive' });
       return;
     }
+
     startFetchTransition(async () => {
       const currentSearchTerm = barcodeToSearch.trim();
+      setSearchedBarcode(currentSearchTerm);
+
+      // 1. Check local cache first
+      const cachedProduct = cachedProducts.find(p => p.barcode === currentSearchTerm);
+      if (cachedProduct) {
+        setValue('barcode', cachedProduct.barcode);
+        setValue('productName', cachedProduct.productName);
+        setValue('supplierName', cachedProduct.supplierName || '');
+        setCurrentProductName(cachedProduct.productName);
+        setEditMode('edit');
+        setProductNotFound(false);
+        setShowForm(true);
+        return; // Found in cache, no need to fetch
+      }
+      
+      // 2. If not in cache, fallback to server action
       const result = await fetchProductAction(currentSearchTerm);
-      setSearchedBarcode(currentSearchTerm); 
       if (result.success && result.data) {
         setValue('barcode', result.data.barcode);
         setValue('productName', result.data.productName);
