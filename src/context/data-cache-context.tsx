@@ -73,9 +73,21 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
         toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
-      } catch (error) {
-        console.error("Failed to save to localStorage:", error);
-        toast({ title: 'Cache Warning', description: 'Could not save data to local cache.', variant: 'destructive' });
+      } catch (error: any) {
+        if (error.name === 'QuotaExceededError') {
+            console.warn("LocalStorage quota exceeded. Cache will not be persisted for next session.");
+            toast({
+                title: 'Cache Warning: Storage Full',
+                description: 'Your dataset is too large to save in the browser cache. The app will be fast this session, but will need to sync again on next visit.',
+                variant: 'destructive',
+                duration: 10000,
+            });
+            // Clear the potentially partially-written item to be safe
+            localStorage.removeItem(CACHE_KEY);
+        } else {
+            console.error("Failed to save to localStorage:", error);
+            toast({ title: 'Cache Warning', description: 'Could not save data to local cache.', variant: 'destructive' });
+        }
       }
     } else {
       toast({ title: 'Sync Failed', description: response.message || 'Could not fetch data from the server.', variant: 'destructive' });
@@ -197,5 +209,3 @@ export function useDataCache() {
   }
   return context;
 }
-
-    
