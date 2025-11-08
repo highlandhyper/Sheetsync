@@ -6,8 +6,7 @@ import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, start
 
 // --- Sheet Names (MUST MATCH YOUR ACTUAL SHEET NAMES) ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
-const BAR_DATA_SHEET_NAME = "BAR DATA";
-const SUP_DATA_SHEET_NAME = "SUP DATA";
+const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
 
@@ -28,13 +27,11 @@ const INVENTORY_EXPECTED_COLUMNS_FROM_SHEET = 9;
 const INVENTORY_TOTAL_COLUMNS_FOR_WRITE = 10;
 
 
-// "BAR DATA" - Product Catalog
-const BAR_COL_BARCODE_PROD = 0;      // A - Barcode
-const BAR_COL_PRODUCT_NAME_PROD = 1; // B - Product Name
+// "DB" - Product and Supplier Catalog
+const DB_COL_BARCODE = 0;           // A - Barcode
+const DB_COL_PRODUCT_NAME = 2;      // C - Product Name
+const DB_COL_SUPPLIER_NAME = 3;     // D - Supplier Name
 
-// "SUP DATA" - Supplier Information (Links Product Name to Supplier Name)
-const SUP_COL_PRODUCT_NAME_LINK = 0; // A - Product Name used to link to supplier
-const SUP_COL_SUPPLIER_NAME_LINK = 1;  // B - Actual Supplier Name
 
 // "Returns Log"
 const RL_COL_ORIGINAL_INV_ID = 0;   // A - Original Inventory Item ID from "Form responses 2" Column J
@@ -55,15 +52,13 @@ const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
 
 // --- Read Ranges ---
-const PRODUCTS_READ_RANGE = `${BAR_DATA_SHEET_NAME}!A2:B`;
-const SUPPLIERS_READ_RANGE = `${SUP_DATA_SHEET_NAME}!A2:B`;
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:D`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 
 // --- Append Ranges (for adding new rows) ---
-const PRODUCTS_APPEND_RANGE = `${BAR_DATA_SHEET_NAME}!A:B`;
-const SUPPLIERS_APPEND_RANGE = `${SUP_DATA_SHEET_NAME}!A:B`;
+const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:D`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
 const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
@@ -114,13 +109,19 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
 function transformToProduct(row: any[], rowIndex: number): Product | null {
   const sheetRowNumber = rowIndex + 2;
   try {
-    if (!row || row.length < 2) { return null; }
-    const barcode = String(row[BAR_COL_BARCODE_PROD] || '').trim();
-    const productName = String(row[BAR_COL_PRODUCT_NAME_PROD] || '').trim();
+    if (!row || row.length < 1) { return null; }
+    const barcode = String(row[DB_COL_BARCODE] || '').trim();
+    const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
+    const supplierName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
     if (!barcode || !productName) { return null; }
-    return { id: barcode, barcode: barcode, productName: productName };
+    return { 
+        id: barcode, 
+        barcode: barcode, 
+        productName: productName,
+        supplierName: supplierName || undefined
+    };
   } catch (error) {
-    console.error(`GS_Data: Error transforming product row ${sheetRowNumber} from "${BAR_DATA_SHEET_NAME}":`, error, "Row data:", row);
+    console.error(`GS_Data: Error transforming product row ${sheetRowNumber} from "${DB_SHEET_NAME}":`, error, "Row data:", row);
     return null;
   }
 }
@@ -246,41 +247,17 @@ export async function getProducts(): Promise<Product[]> {
   const timeLabel = "GS_Data: getProducts total duration";
   console.time(timeLabel);
   try {
-    const [productSheetData, supSheetData] = await Promise.all([
-      readSheetData(PRODUCTS_READ_RANGE),
-      readSheetData(SUPPLIERS_READ_RANGE)
-    ]);
+    const productSheetData = await readSheetData(DB_READ_RANGE);
 
     if (!productSheetData) {
-      console.log("GS_Data: getProducts - No product data returned from BAR DATA sheet.");
+      console.log("GS_Data: getProducts - No product data returned from DB sheet.");
       return [];
     }
 
-    const supplierMap = new Map<string, string>();
-    if (supSheetData) {
-      supSheetData.forEach(row => {
-        if (row && row.length > SUP_COL_SUPPLIER_NAME_LINK && row[SUP_COL_PRODUCT_NAME_LINK] && row[SUP_COL_SUPPLIER_NAME_LINK]) {
-          const productName = String(row[SUP_COL_PRODUCT_NAME_LINK]).trim().toLowerCase();
-          const supplierName = String(row[SUP_COL_SUPPLIER_NAME_LINK]).trim();
-          if (productName && supplierName && !supplierMap.has(productName)) { // Avoid overwriting with older entries if duplicates exist
-            supplierMap.set(productName, supplierName);
-          }
-        }
-      });
-    }
-
-    const products = productSheetData.map((row, index) => {
-        const product = transformToProduct(row, index);
-        if (product) {
-          const supplierName = supplierMap.get(product.productName.toLowerCase());
-          if (supplierName) {
-            product.supplierName = supplierName;
-          }
-        }
-        return product;
-    }).filter(p => p !== null) as Product[];
+    const products = productSheetData.map((row, index) => transformToProduct(row, index))
+      .filter(p => p !== null) as Product[];
     
-    console.log(`GS_Data: getProducts - Transformed ${products.length} products and enriched with supplier data.`);
+    console.log(`GS_Data: getProducts - Transformed ${products.length} products from DB sheet.`);
     return products;
   } catch (error) {
     console.error("GS_Data: Critical error in getProducts:", error);
@@ -294,20 +271,20 @@ export async function getSuppliers(): Promise<Supplier[]> {
   const timeLabel = "GS_Data: getSuppliers total duration";
   console.time(timeLabel);
   try {
-    const sheetData = await readSheetData(SUPPLIERS_READ_RANGE);
+    const sheetData = await readSheetData(DB_READ_RANGE);
     if (!sheetData) {
       console.log("GS_Data: getSuppliers - No sheet data returned from readSheetData.");
       return [];
     }
     const supplierNames = new Set<string>();
     sheetData.forEach(row => {
-      if (row && row.length > SUP_COL_SUPPLIER_NAME_LINK && row[SUP_COL_SUPPLIER_NAME_LINK]) {
-        const name = String(row[SUP_COL_SUPPLIER_NAME_LINK]).trim();
+      if (row && row.length > DB_COL_SUPPLIER_NAME && row[DB_COL_SUPPLIER_NAME]) {
+        const name = String(row[DB_COL_SUPPLIER_NAME]).trim();
         if (name) supplierNames.add(name);
       }
     });
     const suppliers = Array.from(supplierNames).map((name, index) => transformToSupplier(name, index));
-    console.log(`GS_Data: getSuppliers - Found ${suppliers.length} unique suppliers.`);
+    console.log(`GS_Data: getSuppliers - Found ${suppliers.length} unique suppliers from DB sheet.`);
     return suppliers;
   } catch (error) {
     console.error("GS_Data: Critical error in getSuppliers:", error);
@@ -446,39 +423,27 @@ export async function addProduct(productData: { barcode: string; productName: st
   const timeLabel = "GS_Data: addProduct total duration";
   console.time(timeLabel);
   try {
-    const barDataSheet = await readSheetData(PRODUCTS_READ_RANGE);
-    let productExistsInBarData = false;
-    if (barDataSheet) {
-      productExistsInBarData = barDataSheet.some(row => String(row[BAR_COL_BARCODE_PROD] || '').trim() === productData.barcode.trim());
+    const dbSheet = await readSheetData(DB_READ_RANGE);
+    let productExists = false;
+    if (dbSheet) {
+      productExists = dbSheet.some(row => String(row[DB_COL_BARCODE] || '').trim() === productData.barcode.trim());
     }
-    if (!productExistsInBarData) {
-      const barDataRow = [productData.barcode.trim(), productData.productName.trim()];
-      if (!await appendSheetData(PRODUCTS_APPEND_RANGE, [barDataRow])) {
-        console.error("GS_Data: addProduct - Failed to append to BAR DATA sheet.");
-        return null;
-      }
-      console.log("GS_Data: addProduct - Added to BAR DATA sheet.");
-    } else {
-       console.log("GS_Data: addProduct - Product already exists in BAR DATA sheet.");
+
+    if (productExists) {
+        console.warn(`GS_Data: addProduct - Product with barcode ${productData.barcode} already exists.`);
+        return null; // Or handle as an update
     }
-    const supDataSheet = await readSheetData(SUPPLIERS_READ_RANGE);
-    let linkExistsInSupData = false;
-    if (supDataSheet) {
-      linkExistsInSupData = supDataSheet.some(row =>
-        String(row[SUP_COL_PRODUCT_NAME_LINK] || '').trim().toLowerCase() === productData.productName.trim().toLowerCase() &&
-        String(row[SUP_COL_SUPPLIER_NAME_LINK] || '').trim().toLowerCase() === productData.supplierName.trim().toLowerCase()
-      );
+
+    // New row will have barcode in A, empty B, product name in C, supplier name in D
+    const newRow = [productData.barcode.trim(), '', productData.productName.trim(), productData.supplierName.trim()];
+    
+    if (!await appendSheetData(DB_APPEND_RANGE, [newRow])) {
+      console.error("GS_Data: addProduct - Failed to append to DB sheet.");
+      return null;
     }
-    if (!linkExistsInSupData) {
-      const supDataRow = [productData.productName.trim(), productData.supplierName.trim()];
-      if(!await appendSheetData(SUPPLIERS_APPEND_RANGE, [supDataRow])) {
-         console.warn("GS_Data: addProduct - Failed to append to SUP DATA sheet, but product might have been added to BAR DATA.");
-      } else {
-        console.log("GS_Data: addProduct - Added to SUP DATA sheet.");
-      }
-    } else {
-       console.log("GS_Data: addProduct - Product-Supplier link already exists in SUP DATA sheet.");
-    }
+
+    console.log("GS_Data: addProduct - Added to DB sheet.");
+    
     return {
       id: productData.barcode, barcode: productData.barcode.trim(), productName: productData.productName.trim(),
       supplierName: productData.supplierName.trim(), createdAt: new Date().toISOString(),
@@ -495,17 +460,22 @@ export async function addSupplier(supplierData: { name: string }): Promise<{ sup
   const timeLabel = "GS_Data: addSupplier total duration";
   console.time(timeLabel);
   try {
-    const supDataSheet = await readSheetData(SUPPLIERS_READ_RANGE);
+    const dbSheet = await readSheetData(DB_READ_RANGE);
     const supplierNameLower = supplierData.name.trim().toLowerCase();
-    if (supDataSheet?.some(row => String(row[SUP_COL_SUPPLIER_NAME_LINK] || '').trim().toLowerCase() === supplierNameLower)) {
+    if (dbSheet?.some(row => String(row[DB_COL_SUPPLIER_NAME] || '').trim().toLowerCase() === supplierNameLower)) {
       console.warn(`GS_Data: addSupplier - Attempted to add existing supplier: "${supplierData.name.trim()}"`);
       return { supplier: transformToSupplier(supplierData.name.trim(), 0), error: `Supplier "${supplierData.name.trim()}" already exists.` };
     }
-    const placeholderProduct = `[System_Placeholder_For_Supplier_${supplierData.name.trim().replace(/\s+/g, '_')}]`;
-    const supDataRow = [placeholderProduct, supplierData.name.trim()];
-    if (await appendSheetData(SUPPLIERS_APPEND_RANGE, [supDataRow])) {
-      console.log(`GS_Data: addSupplier - Successfully added supplier: "${supplierData.name.trim()}"`);
-      return { supplier: transformToSupplier(supplierData.name.trim(), supDataSheet?.length || 0) };
+    
+    // To add a supplier, we add a new row to DB with a placeholder barcode/product name
+    const placeholderBarcode = `SUPPLIER_ONLY_${Date.now()}`;
+    const placeholderProduct = `[System Placeholder for Supplier: ${supplierData.name.trim()}]`;
+
+    const newRow = [placeholderBarcode, '', placeholderProduct, supplierData.name.trim()];
+
+    if (await appendSheetData(DB_APPEND_RANGE, [newRow])) {
+      console.log(`GS_Data: addSupplier - Successfully added supplier: "${supplierData.name.trim()}" by creating a placeholder product row.`);
+      return { supplier: transformToSupplier(supplierData.name.trim(), dbSheet?.length || 0) };
     } else {
       console.error(`GS_Data: addSupplier - Failed to append new supplier "${supplierData.name.trim()}" to sheet.`);
       return { supplier: null, error: "Failed to add supplier to sheet." };
@@ -522,27 +492,21 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
   const timeLabel = `GS_Data: getProductDetailsByBarcode for ${barcode} total duration`;
   console.time(timeLabel);
   try {
-    const productsData = await readSheetData(PRODUCTS_READ_RANGE);
+    const productsData = await readSheetData(DB_READ_RANGE);
     if (!productsData) {
-      console.warn(`GS_Data: getProductDetailsByBarcode - No products data from BAR DATA sheet for barcode ${barcode}.`);
+      console.warn(`GS_Data: getProductDetailsByBarcode - No products data from DB sheet for barcode ${barcode}.`);
       return null;
     }
-    const productRow = productsData.find(row => String(row[BAR_COL_BARCODE_PROD] || '').trim() === barcode.trim());
+    const productRow = productsData.find(row => String(row[DB_COL_BARCODE] || '').trim() === barcode.trim());
     if (!productRow) {
-      console.warn(`GS_Data: getProductDetailsByBarcode - Barcode ${barcode} not found in BAR DATA sheet.`);
+      console.warn(`GS_Data: getProductDetailsByBarcode - Barcode ${barcode} not found in DB sheet.`);
       return null;
     }
-    const productName = String(productRow[BAR_COL_PRODUCT_NAME_PROD] || '').trim();
-    const supData = await readSheetData(SUPPLIERS_READ_RANGE);
-    let supplierName = 'Unknown Supplier';
-    if (supData) {
-      const supRow = supData.find(row => String(row[SUP_COL_PRODUCT_NAME_LINK] || '').trim().toLowerCase() === productName.toLowerCase());
-      if (supRow && supRow.length > SUP_COL_SUPPLIER_NAME_LINK && supRow[SUP_COL_SUPPLIER_NAME_LINK]) {
-        supplierName = String(supRow[SUP_COL_SUPPLIER_NAME_LINK]).trim();
-      }
-    }
+    const productName = String(productRow[DB_COL_PRODUCT_NAME] || '').trim();
+    const supplierName = String(productRow[DB_COL_SUPPLIER_NAME] || '').trim();
+    
     return {
-      id: barcode, productName: productName, barcode: barcode.trim(), supplierName: supplierName,
+      id: barcode, productName: productName, barcode: barcode.trim(), supplierName: supplierName || undefined,
     };
   } catch (error) {
     console.error(`GS_Data: Critical error in getProductDetailsByBarcode for ${barcode}:`, error);
@@ -674,27 +638,27 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
   try {
     const batchUpdates: { range: string; values: any[][] }[] = [];
 
-    // Part 1: Update SUP DATA sheet
-    const supDataSheet = await readSheetData(SUPPLIERS_READ_RANGE);
-    if (!supDataSheet) {
-      console.error("GS_Data: updateSupplierName - Failed to read SUP DATA sheet.");
+    // Part 1: Update DB sheet
+    const dbSheetData = await readSheetData(DB_READ_RANGE);
+    if (!dbSheetData) {
+      console.error("GS_Data: updateSupplierName - Failed to read DB sheet.");
       return false;
     }
     
-    let supDataRowsUpdated = 0;
-    supDataSheet.forEach((row, index) => {
-      if (row.length > SUP_COL_SUPPLIER_NAME_LINK) {
-        const existingName = String(row[SUP_COL_SUPPLIER_NAME_LINK] || '').trim();
+    let dbRowsUpdated = 0;
+    dbSheetData.forEach((row, index) => {
+      if (row.length > DB_COL_SUPPLIER_NAME) {
+        const existingName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
         if (existingName.toLowerCase() === currentName.toLowerCase()) {
-          const cell = `${SUP_DATA_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + SUP_COL_SUPPLIER_NAME_LINK)}${index + 2}`;
+          const cell = `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${index + 2}`;
           batchUpdates.push({ range: cell, values: [[newName.trim()]] });
-          supDataRowsUpdated++;
+          dbRowsUpdated++;
         }
       }
     });
 
-    if (supDataRowsUpdated === 0) {
-      console.warn(`GS_Data: updateSupplierName - No supplier found with name "${currentName}" in SUP DATA to update.`);
+    if (dbRowsUpdated === 0) {
+      console.warn(`GS_Data: updateSupplierName - No supplier found with name "${currentName}" in DB sheet to update.`);
     }
     
     // Part 2: Update denormalized names in Form Responses sheet
@@ -740,7 +704,7 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
     }
 
     const success = await batchUpdateSheetCells(batchUpdates);
-    console.log(`GS_Data: updateSupplierName - Batch update for "${currentName}" to "${newName}" ${success ? 'succeeded' : 'failed'}. Updates: ${supDataRowsUpdated} in SUP DATA, ${invDataRowsUpdated} in Inventory Log, ${returnsLogRowsUpdated} in Returns Log.`);
+    console.log(`GS_Data: updateSupplierName - Batch update for "${currentName}" to "${newName}" ${success ? 'succeeded' : 'failed'}. Updates: ${dbRowsUpdated} in DB, ${invDataRowsUpdated} in Inventory Log, ${returnsLogRowsUpdated} in Returns Log.`);
     return success;
   } catch (error) {
     console.error("GS_Data: Critical error in updateSupplierNameAndReferences:", error);
@@ -803,125 +767,71 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
   const timeLabel = `GS_Data: updateProductAndSupplierLinks for barcode ${barcode}`;
   console.time(timeLabel);
   try {
-    const batchUpdates: { range: string; values: any[][] }[] = [];
-    const supDataAppends: any[][] = [];
+      const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE);
+      if (!rowNumber) {
+          console.error(`GS_Data: updateProductAndSupplierLinks - Barcode ${barcode} not found in DB sheet. Cannot update.`);
+          return false;
+      }
 
-    // --- Part 1: Update BAR DATA (Product Catalog) ---
-    const barDataRowNumber = await findRowByUniqueValue(BAR_DATA_SHEET_NAME, barcode, BAR_COL_BARCODE_PROD);
-    if (!barDataRowNumber) {
-      console.error(`GS_Data: updateProductAndSupplierLinks - Barcode ${barcode} not found in BAR DATA. Cannot update.`);
-      return false;
-    }
-    const existingProductRow = await readSheetData(`${BAR_DATA_SHEET_NAME}!A${barDataRowNumber}:B${barDataRowNumber}`);
-    const oldProductName = (existingProductRow && existingProductRow[0]) ? String(existingProductRow[0][BAR_COL_PRODUCT_NAME_PROD] || '').trim() : '';
+      const existingProductRow = await readSheetData(`${DB_SHEET_NAME}!A${rowNumber}:D${rowNumber}`);
+      const oldProductName = (existingProductRow && existingProductRow[0]) ? String(existingProductRow[0][DB_COL_PRODUCT_NAME] || '').trim() : '';
 
-    if (!oldProductName) {
-      console.error(`GS_Data: updateProductAndSupplierLinks - Could not read existing product name for barcode ${barcode}.`);
-      return false;
-    }
+      const batchUpdates: { range: string; values: any[][] }[] = [];
 
-    const productNameChanged = oldProductName.toLowerCase() !== newProductName.trim().toLowerCase();
-    if (productNameChanged) {
+      // Update product name and supplier name in the DB sheet for the found row
       batchUpdates.push({
-        range: `${BAR_DATA_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + BAR_COL_PRODUCT_NAME_PROD)}${barDataRowNumber}`,
-        values: [[newProductName.trim()]]
+          range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_PRODUCT_NAME)}${rowNumber}`,
+          values: [[newProductName.trim()]]
       });
-    }
-
-    // --- Part 2: Update SUP DATA (Product-Supplier Link) ---
-    const supDataSheet = await readSheetData(SUPPLIERS_READ_RANGE);
-    if (!supDataSheet) {
-      console.warn("GS_Data: updateProductAndSupplierLinks - Could not read SUP DATA sheet. Will attempt to create new link.");
-    }
-    
-    let oldLinkRowNumber: number | null = null;
-    let newLinkExists = false;
-
-    if (supDataSheet) {
-      for (let i = 0; i < supDataSheet.length; i++) {
-        const row = supDataSheet[i];
-        const pName = String(row[SUP_COL_PRODUCT_NAME_LINK] || '').trim();
-        const sName = String(row[SUP_COL_SUPPLIER_NAME_LINK] || '').trim();
-        
-        if (pName.toLowerCase() === oldProductName.toLowerCase()) {
-          oldLinkRowNumber = i + 2; // 1-based row number
-        }
-        if (pName.toLowerCase() === newProductName.trim().toLowerCase() && sName.toLowerCase() === newSupplierName.trim().toLowerCase()) {
-          newLinkExists = true;
-        }
-      }
-    }
-    
-    if (oldLinkRowNumber) {
       batchUpdates.push({
-        range: `${SUP_DATA_SHEET_NAME}!A${oldLinkRowNumber}:B${oldLinkRowNumber}`,
-        values: [[newProductName.trim(), newSupplierName.trim()]]
+          range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${rowNumber}`,
+          values: [[newSupplierName.trim()]]
       });
-    } else if (!newLinkExists) {
-      supDataAppends.push([newProductName.trim(), newSupplierName.trim()]);
-    }
 
-    // --- Part 3: Execute Core Updates ---
-    let allSuccessful = true;
-    if (batchUpdates.length > 0) {
-      if (!await batchUpdateSheetCells(batchUpdates)) {
-        console.error("GS_Data: updateProductAndSupplierLinks - Failed during core batch cell updates (BAR DATA, SUP DATA).");
-        allSuccessful = false;
-      }
-    }
+      const productNameChanged = oldProductName.toLowerCase() !== newProductName.trim().toLowerCase();
 
-    if (supDataAppends.length > 0) {
-      if (!await appendSheetData(SUPPLIERS_APPEND_RANGE, supDataAppends)) {
-        console.error("GS_Data: updateProductAndSupplierLinks - Failed to append new supplier links.");
-        allSuccessful = false;
-      }
-    }
-    
-    // --- Part 4: Cascade product name update to denormalized logs ---
-    if (productNameChanged) {
-      console.log(`GS_Data: Product name changed from "${oldProductName}" to "${newProductName}". Searching for inventory and return log entries to update.`);
-      const [inventorySheetData, returnLogSheetData] = await Promise.all([
-        readSheetData(INVENTORY_READ_RANGE),
-        readSheetData(RETURN_LOG_READ_RANGE)
-      ]);
-      
-      const logUpdates: { range: string; values: any[][] }[] = [];
-      
-      if (inventorySheetData) {
-        inventorySheetData.forEach((row, index) => {
-          if (String(row[INV_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
-            const cell = `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_PRODUCT_NAME)}${index + 2}`;
-            logUpdates.push({ range: cell, values: [[newProductName.trim()]] });
+      // If product name changed, cascade the update to other sheets
+      if (productNameChanged && oldProductName) {
+          console.log(`GS_Data: Product name changed from "${oldProductName}" to "${newProductName}". Searching for inventory and return log entries to update.`);
+          
+          const [inventorySheetData, returnLogSheetData] = await Promise.all([
+              readSheetData(INVENTORY_READ_RANGE),
+              readSheetData(RETURN_LOG_READ_RANGE)
+          ]);
+          
+          if (inventorySheetData) {
+              inventorySheetData.forEach((row, index) => {
+                  if (String(row[INV_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
+                      const cell = `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_PRODUCT_NAME)}${index + 2}`;
+                      batchUpdates.push({ range: cell, values: [[newProductName.trim()]] });
+                  }
+              });
           }
-        });
-      }
-      
-      if (returnLogSheetData) {
-        returnLogSheetData.forEach((row, index) => {
-          if(String(row[RL_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
-            const cell = `${RETURNS_LOG_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + RL_COL_PRODUCT_NAME)}${index + 2}`;
-            logUpdates.push({range: cell, values: [[newProductName.trim()]]});
+          
+          if (returnLogSheetData) {
+              returnLogSheetData.forEach((row, index) => {
+                  if(String(row[RL_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
+                      const cell = `${RETURNS_LOG_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + RL_COL_PRODUCT_NAME)}${index + 2}`;
+                      batchUpdates.push({range: cell, values: [[newProductName.trim()]]});
+                  }
+              });
           }
-        });
       }
 
-      if (logUpdates.length > 0) {
-        console.log(`GS_Data: Found ${logUpdates.length} total log entries to update with new product name.`);
-        if (!await batchUpdateSheetCells(logUpdates)) {
-          console.error("GS_Data: updateProductAndSupplierLinks - Failed during batch update of inventory/return product names.");
-          allSuccessful = false;
-        }
+      if (batchUpdates.length === 0) {
+          console.log("GS_Data: updateProductAndSupplierLinks - No changes to apply.");
+          return true;
       }
-    }
 
-    console.log(`GS_Data: updateProductAndSupplierLinks - Processed updates for barcode ${barcode}. Success: ${allSuccessful}`);
-    return allSuccessful;
+      const allSuccessful = await batchUpdateSheetCells(batchUpdates);
+      console.log(`GS_Data: updateProductAndSupplierLinks - Processed updates for barcode ${barcode}. Success: ${allSuccessful}`);
+      return allSuccessful;
 
   } catch (error) {
-    console.error(`GS_Data: Critical error in updateProductAndSupplierLinks for barcode ${barcode}:`, error);
-    return false;
+      console.error(`GS_Data: Critical error in updateProductAndSupplierLinks for barcode ${barcode}:`, error);
+      return false;
   } finally {
-    console.timeEnd(timeLabel);
+      console.timeEnd(timeLabel);
   }
 }
 
