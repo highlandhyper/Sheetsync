@@ -546,7 +546,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     formattedExpiryDate = "Invalid Date";
                   }
                 }
-                const isProductFound = item.productName !== '[Not Found]';
+                const isProductFound = item.productName.trim().toLowerCase() !== 'not found';
                 return (
                   <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
                      {role === 'admin' && isMultiSelectEnabled && (
