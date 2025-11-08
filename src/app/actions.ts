@@ -27,7 +27,9 @@ import {
   getInventoryItems,
   getProducts,
   getSuppliers,
-  getReturnedItems
+  getReturnedItems,
+  getUniqueLocations,
+  getUniqueStaffNames
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem } from '@/lib/types';
 import { format } from 'date-fns';
@@ -702,5 +704,6 @@ function revalidateRelevantPaths() {
     revalidatePath('/products/manage');
     revalidatePath('/suppliers');
 }
+    
 
     
