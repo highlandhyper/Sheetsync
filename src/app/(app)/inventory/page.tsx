@@ -1,7 +1,7 @@
 
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
@@ -73,20 +73,21 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadData() {
-        setIsLoading(true);
-        setError(null);
-        const response = await fetchInventoryListDataAction();
-        if (response.success && response.data) {
-            setData(response.data);
-        } else {
-            setError(response.message || "An unknown error occurred while fetching inventory data.");
-        }
-        setIsLoading(false);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const response = await fetchInventoryListDataAction();
+    if (response.success && response.data) {
+        setData(response.data);
+    } else {
+        setError(response.message || "An unknown error occurred while fetching inventory data.");
     }
-    loadData();
+    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <div className="container mx-auto py-2">
@@ -95,7 +96,7 @@ export default function InventoryPage() {
         Inventory Overview
       </h1>
       <Suspense fallback={<InventoryListSkeleton />}>
-        {isLoading ? (
+        {isLoading && !data ? ( // Show skeleton only on initial load
           <InventoryListSkeleton />
         ) : error ? (
            <Alert variant="destructive">
@@ -110,9 +111,10 @@ export default function InventoryPage() {
             initialInventoryItems={data.inventoryItems} 
             suppliers={data.suppliers} 
             uniqueDbLocations={data.uniqueLocations}
+            onDataNeeded={loadData}
           />
         ) : (
-             <InventoryListSkeleton />
+             <InventoryListSkeleton /> // Fallback skeleton
         )}
       </Suspense>
     </div>
