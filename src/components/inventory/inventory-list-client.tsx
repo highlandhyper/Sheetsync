@@ -695,4 +695,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   );
 }
 
-    
