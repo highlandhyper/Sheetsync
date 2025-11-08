@@ -79,7 +79,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
             toast({
                 title: 'Cache Warning: Storage Full',
                 description: 'Your dataset is too large to save in the browser cache. The app will be fast this session, but will need to sync again on next visit.',
-                variant: 'destructive',
+                variant: 'default',
                 duration: 10000,
             });
             // Clear the potentially partially-written item to be safe
