@@ -40,8 +40,48 @@ interface DataCacheContextType {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const CACHE_KEY = 'sheetSyncDataCache';
+const DB_NAME = 'SheetSyncDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'appDataCache';
+const CACHE_KEY = 'sheetSyncDataCache'; // This key is used inside the object store
 const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
+
+// --- IndexedDB Helper Functions ---
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function getFromDB(db: IDBDatabase): Promise<AppData | null> {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(CACHE_KEY);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result || null);
+  });
+}
+
+async function setToDB(db: IDBDatabase, data: AppData): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(data, CACHE_KEY);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+}
+
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
@@ -68,26 +108,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
     if (response.success && response.data) {
       const now = Date.now();
-      const newData = { ...response.data, lastSync: now };
+      const newData: AppData = { ...response.data, lastSync: now };
       setData(newData);
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
+        const db = await openDB();
+        await setToDB(db, newData);
+        db.close();
         toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
-      } catch (error: any) {
-        if (error.name === 'QuotaExceededError') {
-            console.warn("LocalStorage quota exceeded. Cache will not be persisted for next session.");
-            toast({
-                title: 'Cache Warning: Storage Full',
-                description: 'Your dataset is too large to save in the browser cache. The app will be fast this session, but will need to sync again on next visit.',
-                variant: 'default',
-                duration: 10000,
-            });
-            // Clear the potentially partially-written item to be safe
-            localStorage.removeItem(CACHE_KEY);
-        } else {
-            console.error("Failed to save to localStorage:", error);
-            toast({ title: 'Cache Warning', description: 'Could not save data to local cache.', variant: 'destructive' });
-        }
+      } catch (error) {
+        console.error("Failed to save to IndexedDB:", error);
+        toast({ title: 'Cache Warning', description: 'Could not save data to the local browser database.', variant: 'destructive' });
       }
     } else {
       toast({ title: 'Sync Failed', description: response.message || 'Could not fetch data from the server.', variant: 'destructive' });
@@ -101,19 +131,19 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         return;
     };
 
-    const loadCache = () => {
+    const loadCache = async () => {
       try {
-        const cachedData = localStorage.getItem(CACHE_KEY);
-        if (cachedData) {
-          const parsedData: AppData = JSON.parse(cachedData);
-          if (parsedData.lastSync && (Date.now() - parsedData.lastSync < CACHE_EXPIRATION_MS)) {
-            setData(parsedData);
-            setIsInitialized(true);
-            return;
-          }
+        const db = await openDB();
+        const cachedData = await getFromDB(db);
+        db.close();
+
+        if (cachedData && cachedData.lastSync && (Date.now() - cachedData.lastSync < CACHE_EXPIRATION_MS)) {
+          setData(cachedData);
+          setIsInitialized(true);
+          return;
         }
       } catch (error) {
-        console.error("Failed to load from localStorage:", error);
+        console.error("Failed to load from IndexedDB:", error);
       }
       // If no valid cache, fetch fresh data
       refreshData().finally(() => setIsInitialized(true));
