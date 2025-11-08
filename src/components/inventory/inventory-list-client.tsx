@@ -28,6 +28,8 @@ import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
+import { fetchInventoryListDataAction } from '@/app/actions';
+import { Skeleton } from '../ui/skeleton';
 
 
 interface InventoryListClientProps {
@@ -55,9 +57,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
 
@@ -84,17 +84,10 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
+  
+  // Use state from parent for real-time updates
+  const inventoryItems = initialInventoryItems;
 
-
-  useEffect(() => {
-    setIsLoading(true);
-    if (initialInventoryItems) {
-      setInventoryItems([...initialInventoryItems]);
-    } else {
-      setInventoryItems([]);
-    }
-    setIsLoading(false);
-  }, [initialInventoryItems]);
 
   useEffect(() => {
     const filterTypeFromQuery = searchParams.get('filterType');
@@ -515,9 +508,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         </Alert>
       )}
 
-      {isLoading ? (
-        <div className="text-center py-10"><Search className="mx-auto h-12 w-12 animate-spin text-primary" /></div>
-      ) : itemsToRender.length > 0 ? (
+      {itemsToRender.length > 0 ? (
         <Card className="shadow-md">
           <Table>
             <TableHeader>
@@ -556,7 +547,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     formattedExpiryDate = "Invalid Date";
                   }
                 }
-                const isProductFound = item.productName !== '[Not Found]';
+                const isProductFound = item.productName.trim().toLowerCase() !== '[not found]';
                 return (
                   <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
                      {role === 'admin' && isMultiSelectEnabled && (
@@ -702,3 +693,5 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
+
+    
