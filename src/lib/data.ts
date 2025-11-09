@@ -1,7 +1,6 @@
 
 
-
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -10,6 +9,7 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
+const AUDIT_LOG_SHEET_NAME = "Audit Log"; // New sheet for audit trail
 
 // --- Column Indices (0-based - MUST MATCH YOUR ACTUAL SHEET STRUCTURE) ---
 // "Form responses 2" - Inventory Log (Assuming A-I, with J for app-generated Unique ID)
@@ -52,19 +52,38 @@ const RL_COL_RETURN_TIMESTAMP = 10; // K (Timestamp of when the return was proce
 const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
 const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
+// "Audit Log"
+const AL_COL_TIMESTAMP = 0;       // A - Timestamp of the event
+const AL_COL_USER = 1;            // B - User who performed the action (email)
+const AL_COL_ACTION = 2;          // C - The action performed (e.g., "CREATE_PRODUCT")
+const AL_COL_TARGET = 3;          // D - The primary identifier of the object affected (e.g., barcode, supplier name)
+const AL_COL_DETAILS = 4;         // E - A descriptive string of what changed
 
 // --- Read Ranges ---
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:D`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
+const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
 // --- Append Ranges (for adding new rows) ---
 const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:D`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
 const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
+const AUDIT_LOG_APPEND_RANGE = `${AUDIT_LOG_SHEET_NAME}!A:E`;
 
+// --- Audit Event Logging ---
+async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<void> {
+  // Fire-and-forget logging. We don't want to block the user's action if logging fails.
+  try {
+    const timestamp = format(new Date(), "dd/MM/yyyy HH:mm:ss");
+    const logRow = [timestamp, user, action, target, details];
+    await appendSheetData(AUDIT_LOG_APPEND_RANGE, [logRow]);
+  } catch (error) {
+    console.error("AUDIT_LOG_FAILURE: Could not log audit event.", { user, action, target, details, error });
+  }
+}
 
 function excelSerialDateToJSDate(serial: number): Date | null {
   if (isNaN(serial) || serial <= 0) return null;
@@ -246,6 +265,37 @@ function transformToReturnedItem(row: any[], rowIndex: number): ReturnedItem | n
   }
 }
 
+function transformToAuditLogEntry(row: any[], index: number): AuditLogEntry | null {
+  const sheetRowNumber = index + 2;
+  try {
+    const expectedCols = 5;
+    if (!row || row.length < expectedCols) return null;
+    
+    const timestampValue = row[AL_COL_TIMESTAMP];
+    const timestamp = parseFlexibleTimestamp(timestampValue);
+    
+    const user = String(row[AL_COL_USER] || 'Unknown User').trim();
+    const action = String(row[AL_COL_ACTION] || 'UNKNOWN_ACTION').trim();
+    const target = String(row[AL_COL_TARGET] || 'N/A').trim();
+    const details = String(row[AL_COL_DETAILS] || '').trim();
+
+    if (!timestamp || !user || !action) return null;
+
+    return {
+      id: `${sheetRowNumber}-${timestamp.getTime()}`,
+      timestamp: timestamp.toISOString(),
+      user,
+      action,
+      target,
+      details,
+    };
+
+  } catch (error) {
+    console.error(`GS_Data: Error transforming audit log row ${sheetRowNumber} from "${AUDIT_LOG_SHEET_NAME}":`, error, "Row data:", row);
+    return null;
+  }
+}
+
 export async function getProducts(): Promise<Product[]> {
   const timeLabel = "GS_Data: getProducts total duration";
   console.time(timeLabel);
@@ -422,7 +472,32 @@ export async function getReturnedItems(): Promise<ReturnedItem[]> {
   }
 }
 
-export async function addProduct(productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
+export async function getAuditLogEntries(): Promise<AuditLogEntry[]> {
+  const timeLabel = "GS_Data: getAuditLogEntries total duration";
+  console.time(timeLabel);
+  try {
+    const sheetData = await readSheetData(AUDIT_LOG_READ_RANGE);
+    if (!sheetData) {
+      console.log("GS_Data: getAuditLogEntries - No sheet data from readSheetData. Audit Log sheet may not exist yet.");
+      return [];
+    }
+    const entries = sheetData.map((row, index) => transformToAuditLogEntry(row, index)).filter(entry => entry !== null) as AuditLogEntry[];
+    entries.sort((a,b) => {
+        const dateA = parseISO(a.timestamp);
+        const dateB = parseISO(b.timestamp);
+        return dateB.getTime() - dateA.getTime();
+    });
+    console.log(`GS_Data: getAuditLogEntries - Transformed and sorted ${entries.length} audit log entries.`);
+    return entries;
+  } catch (error) {
+    console.error("GS_Data: Critical error in getAuditLogEntries:", error);
+    return [];
+  } finally {
+    console.timeEnd(timeLabel);
+  }
+}
+
+export async function addProduct(userEmail: string, productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
   const timeLabel = "GS_Data: addProduct total duration";
   console.time(timeLabel);
   try {
@@ -445,7 +520,7 @@ export async function addProduct(productData: { barcode: string; productName: st
       return null;
     }
 
-    console.log("GS_Data: addProduct - Added to DB sheet.");
+    logAuditEvent(userEmail, 'CREATE_PRODUCT', productData.barcode, `Created product "${productData.productName}" with supplier "${productData.supplierName}".`);
     
     return {
       id: productData.barcode, barcode: productData.barcode.trim(), productName: productData.productName.trim(),
@@ -459,7 +534,7 @@ export async function addProduct(productData: { barcode: string; productName: st
   }
 }
 
-export async function addSupplier(supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
+export async function addSupplier(userEmail: string, supplierData: { name: string }): Promise<{ supplier: Supplier | null; error?: string }> {
   const timeLabel = "GS_Data: addSupplier total duration";
   console.time(timeLabel);
   try {
@@ -477,7 +552,7 @@ export async function addSupplier(supplierData: { name: string }): Promise<{ sup
     const newRow = [placeholderBarcode, '', placeholderProduct, supplierData.name.trim()];
 
     if (await appendSheetData(DB_APPEND_RANGE, [newRow])) {
-      console.log(`GS_Data: addSupplier - Successfully added supplier: "${supplierData.name.trim()}" by creating a placeholder product row.`);
+      logAuditEvent(userEmail, 'CREATE_SUPPLIER', supplierData.name.trim(), `Created new supplier.`);
       return { supplier: transformToSupplier(supplierData.name.trim(), dbSheet?.length || 0) };
     } else {
       console.error(`GS_Data: addSupplier - Failed to append new supplier "${supplierData.name.trim()}" to sheet.`);
@@ -529,6 +604,7 @@ async function getNextInventoryRowNumber(): Promise<number> {
 }
 
 export async function addInventoryItem(
+  userEmail: string,
   itemFormValues: AddInventoryItemFormValues,
   resolvedProductDetails: { productName: string; supplierName: string; }
 ): Promise<InventoryItem | null> {
@@ -557,6 +633,11 @@ export async function addInventoryItem(
       return null;
     }
 
+    logAuditEvent(
+      userEmail, 'CREATE_INVENTORY_ITEM', itemFormValues.barcode,
+      `Logged ${itemFormValues.quantity} of "${resolvedProductDetails.productName}" in ${itemFormValues.location}.`
+    );
+
     const parsedTimestamp = dateParse(newRowData[INV_COL_TIMESTAMP] as string, "dd/MM/yyyy HH:mm:ss", new Date());
     return {
       id: clientSideUniqueId, productName: resolvedProductDetails.productName.trim(), barcode: itemFormValues.barcode.trim(),
@@ -573,7 +654,7 @@ export async function addInventoryItem(
   }
 }
 
-export async function processReturn(itemId: string, quantityToReturn: number, staffNameProcessingReturn: string): Promise<{ success: boolean; message?: string }> {
+export async function processReturn(userEmail: string, itemId: string, quantityToReturn: number, staffNameProcessingReturn: string): Promise<{ success: boolean; message?: string }> {
   const timeLabel = `GS_Data: processReturn for item ${itemId} total duration`;
   console.time(timeLabel);
   try {
@@ -610,6 +691,7 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
       resultMessage = operationSuccessful ? `Returned ${actualReturnedQty} of ${currentItem.productName}. New quantity: ${newQuantity}.` : `Failed to update quantity for ${itemId}.`;
     }
     if (operationSuccessful) {
+      logAuditEvent(userEmail, 'PROCESS_RETURN', currentItem.barcode, `Returned ${actualReturnedQty} of "${currentItem.productName}". Processed by: ${staffNameProcessingReturn}.`);
       const logEntry = [
         itemId,
         currentItem.productName,
@@ -638,7 +720,7 @@ export async function processReturn(itemId: string, quantityToReturn: number, st
   }
 }
 
-export async function updateSupplierNameAndReferences(currentName: string, newName: string): Promise<boolean> {
+export async function updateSupplierNameAndReferences(userEmail: string, currentName: string, newName: string): Promise<boolean> {
   const timeLabel = "GS_Data: updateSupplierNameAndReferences total duration";
   console.time(timeLabel);
   try {
@@ -709,6 +791,8 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
       return false;
     }
 
+    logAuditEvent(userEmail, 'UPDATE_SUPPLIER', currentName, `Renamed supplier to "${newName}". Updated ${dbRowsUpdated} DB entries, ${invDataRowsUpdated} inventory logs, and ${returnsLogRowsUpdated} return logs.`);
+
     const success = await batchUpdateSheetCells(batchUpdates);
     console.log(`GS_Data: updateSupplierName - Batch update for "${currentName}" to "${newName}" ${success ? 'succeeded' : 'failed'}. Updates: ${dbRowsUpdated} in DB, ${invDataRowsUpdated} in Inventory Log, ${returnsLogRowsUpdated} in Returns Log.`);
     return success;
@@ -721,6 +805,7 @@ export async function updateSupplierNameAndReferences(currentName: string, newNa
 }
 
 export async function updateInventoryItemDetails(
+  userEmail: string,
   itemId: string,
   updates: { location?: string; expiryDate?: string | null; itemType?: ItemType, quantity?: number }
 ): Promise<boolean> {
@@ -758,6 +843,9 @@ export async function updateInventoryItemDetails(
       console.log(`GS_Data: updateInventoryItemDetails - No actual changes to update for item ${itemId}.`);
       return true;
     }
+
+    logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated item details: ${JSON.stringify(updates)}`);
+
     const success = await batchUpdateSheetCells(cellUpdates);
     console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}. Changes: ${JSON.stringify(updates)}`);
     return success;
@@ -794,7 +882,7 @@ async function findProductRowByBarcode(barcode: string): Promise<number | null> 
     return null;
 }
 
-export async function updateProductAndSupplierLinks(barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
+export async function updateProductAndSupplierLinks(userEmail: string, barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
   const timeLabel = `GS_Data: updateProductAndSupplierLinks for barcode ${barcode}`;
   console.time(timeLabel);
   try {
@@ -818,6 +906,8 @@ export async function updateProductAndSupplierLinks(barcode: string, newProductN
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${rowNumber}`,
           values: [[newSupplierName.trim()]]
       });
+
+      logAuditEvent(userEmail, 'UPDATE_PRODUCT', barcode, `Updated product to name="${newProductName}" and supplier="${newSupplierName}".`);
 
       const productNameChanged = oldProductName.toLowerCase() !== newProductName.trim().toLowerCase();
 
@@ -905,151 +995,75 @@ export async function getInventoryLogEntriesByBarcode(barcode: string): Promise<
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  const timeLabel = "GS_Data: getDashboardMetrics total duration";
-  console.time(timeLabel);
-  try {
-    const [products, currentInventoryItems, suppliersList, allInventoryLogRows, allReturnLogRows] = await Promise.all([
-        getProducts(),
-        getInventoryItems(), 
-        getSuppliers(),
-        readSheetData(INVENTORY_READ_RANGE), // Raw inventory log for today's additions
-        readSheetData(RETURN_LOG_READ_RANGE)  // Raw returns log for today's returns
-    ]);
+    const timeLabel = "GS_Data: getDashboardMetrics total duration";
+    console.time(timeLabel);
+    try {
+        const [products, currentInventoryItems, suppliersList] = await Promise.all([
+            getProducts(),
+            getInventoryItems(),
+            getSuppliers(),
+        ]);
 
-    const totalProducts = products.length; 
-    const totalStockQuantity = currentInventoryItems.reduce((sum, item) => sum + item.quantity, 0);
-    const totalSuppliers = suppliersList.length;
-    
-    let itemsExpiringSoon = 0;
-    const todayDate = startOfDay(new Date()); // Use startOfDay for consistent comparison
-    const sevenDaysFromNow = addDays(todayDate, 7);
-    currentInventoryItems.forEach(item => {
-      if (item.itemType === 'Expiry' && item.expiryDate) {
-        try {
-          const expiry = startOfDay(parseISO(item.expiryDate)); 
-          if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, todayDate)) {
-            itemsExpiringSoon++;
-          }
-        } catch (e) {
-          console.warn(`GS_Data: getDashboardMetrics - Could not parse expiry date '${item.expiryDate}' for item ID ${item.id}`);
-        }
-      }
-    });
-    
-    const damagedItemsCount = currentInventoryItems.filter(item => item.itemType === 'Damage').length;
-    
-    const stockBySupplierMap = new Map<string, number>();
-    currentInventoryItems.forEach(item => {
-        const supplier = item.supplierName || "Unknown Supplier";
-        stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
-    });
+        const totalProducts = products.length;
+        const totalStockQuantity = currentInventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalSuppliers = suppliersList.length;
 
-    const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
-      .map(([name, totalStock]) => ({ name, totalStock }))
-      .sort((a, b) => b.totalStock - a.totalStock);
-
-    // --- Stock Trend Calculation ---
-    const thirtyDaysAgo = startOfDay(subDays(new Date(), 29));
-    const dailyChanges = new Map<string, number>();
-
-    // Process additions
-    if (allInventoryLogRows) {
-        allInventoryLogRows.forEach(row => {
-            const timestampValue = row[INV_COL_TIMESTAMP];
-            const itemDate = parseFlexibleTimestamp(timestampValue);
-            if (itemDate && isValid(itemDate) && isSameDay(itemDate, thirtyDaysAgo) || isBefore(itemDate, new Date()) && isBefore(thirtyDaysAgo, itemDate)) {
-                const dateKey = format(startOfDay(itemDate), 'yyyy-MM-dd');
-                const quantity = parseInt(String(row[INV_COL_QTY] || '0').trim(), 10);
-                if (!isNaN(quantity)) {
-                    dailyChanges.set(dateKey, (dailyChanges.get(dateKey) || 0) + quantity);
+        let itemsExpiringSoon = 0;
+        const todayDate = startOfDay(new Date());
+        const sevenDaysFromNow = addDays(todayDate, 7);
+        currentInventoryItems.forEach(item => {
+            if (item.itemType === 'Expiry' && item.expiryDate) {
+                try {
+                    const expiry = startOfDay(parseISO(item.expiryDate));
+                    if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, todayDate)) {
+                        itemsExpiringSoon++;
+                    }
+                } catch (e) {
+                    console.warn(`GS_Data: getDashboardMetrics - Could not parse expiry date '${item.expiryDate}' for item ID ${item.id}`);
                 }
             }
         });
-    }
 
-    // Process returns (subtractions)
-    if (allReturnLogRows) {
-        allReturnLogRows.forEach(row => {
-            const timestampValue = row[RL_COL_RETURN_TIMESTAMP];
-            const itemDate = parseFlexibleTimestamp(timestampValue);
-            if (itemDate && isValid(itemDate) && isSameDay(itemDate, thirtyDaysAgo) || isBefore(itemDate, new Date()) && isBefore(thirtyDaysAgo, itemDate)) {
-                const dateKey = format(startOfDay(itemDate), 'yyyy-MM-dd');
-                const quantity = parseInt(String(row[RL_COL_RETURNED_QTY] || '0').trim(), 10);
-                if (!isNaN(quantity)) {
-                    dailyChanges.set(dateKey, (dailyChanges.get(dateKey) || 0) - quantity);
-                }
-            }
+        const damagedItemsCount = currentInventoryItems.filter(item => item.itemType === 'Damage').length;
+
+        const stockBySupplierMap = new Map<string, number>();
+        currentInventoryItems.forEach(item => {
+            const supplier = item.supplierName || "Unknown Supplier";
+            stockBySupplierMap.set(supplier, (stockBySupplierMap.get(supplier) || 0) + item.quantity);
         });
-    }
 
-    // Calculate historical stock trend
-    const stockTrend: StockTrendData[] = [];
-    let runningTotal = totalStockQuantity;
-    for (let i = 0; i < 30; i++) {
-        const date = subDays(todayDate, i);
-        const dateKey = format(date, 'yyyy-MM-dd');
+        const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
+            .map(([name, totalStock]) => ({ name, totalStock }))
+            .sort((a, b) => b.totalStock - a.totalStock);
         
-        if (i === 0) { // For today, use the current total
-             stockTrend.push({ date: dateKey, totalStock: runningTotal });
-        } else {
-             const previousDayKey = format(addDays(date, 1), 'yyyy-MM-dd');
-             const change = dailyChanges.get(previousDayKey) || 0;
-             runningTotal -= change;
-             stockTrend.push({ date: dateKey, totalStock: runningTotal });
-        }
-    }
-    stockTrend.reverse(); // So it goes from past to present
+        const metrics: DashboardMetrics = {
+            totalProducts,
+            totalStockQuantity,
+            itemsExpiringSoon,
+            damagedItemsCount,
+            stockBySupplier,
+            totalSuppliers,
+        };
 
-    // Calculate daily changes for today's summary card
-    const netChangeToday = dailyChanges.get(format(todayDate, 'yyyy-MM-dd')) || 0;
-    const stockAtStartOfDay = totalStockQuantity - netChangeToday;
-    
-    let dailyStockChangePercent: number | undefined = undefined;
-    let dailyStockChangeDirection: 'increase' | 'decrease' | 'none' = 'none';
+        return metrics;
 
-    if (stockAtStartOfDay > 0) {
-        dailyStockChangePercent = (netChangeToday / stockAtStartOfDay) * 100;
+    } catch (error) {
+        console.error("GS_Data: Critical error in getDashboardMetrics:", error);
+        return {
+            totalProducts: 0,
+            totalStockQuantity: 0,
+            itemsExpiringSoon: 0,
+            damagedItemsCount: 0,
+            stockBySupplier: [],
+            totalSuppliers: 0,
+        };
+    } finally {
+        console.timeEnd(timeLabel);
     }
-    
-    if (netChangeToday > 0) {
-      dailyStockChangeDirection = 'increase';
-    } else if (netChangeToday < 0) {
-      dailyStockChangeDirection = 'decrease';
-    }
-
-    const metrics: DashboardMetrics = {
-      totalProducts,
-      totalStockQuantity,
-      itemsExpiringSoon,
-      damagedItemsCount,
-      stockBySupplier,
-      totalSuppliers,
-      dailyStockChangePercent,
-      dailyStockChangeDirection,
-      netItemsAddedToday: dailyStockChangeDirection === 'increase' ? netChangeToday : undefined,
-      stockTrend,
-    };
-    return metrics;
-  } catch (error) {
-    console.error("GS_Data: Critical error in getDashboardMetrics:", error);
-    return {
-      totalProducts: 0,
-      totalStockQuantity: 0,
-      itemsExpiringSoon: 0,
-      damagedItemsCount: 0,
-      stockBySupplier: [],
-      totalSuppliers: 0,
-      dailyStockChangePercent: undefined,
-      dailyStockChangeDirection: 'none',
-      netItemsAddedToday: undefined,
-      stockTrend: [],
-    };
-  } finally {
-    console.timeEnd(timeLabel);
-  }
 }
 
-export async function deleteInventoryItemById(itemId: string): Promise<boolean> {
+
+export async function deleteInventoryItemById(userEmail: string, itemId: string): Promise<boolean> {
   const timeLabel = `GS_Data: deleteInventoryItemById for item ${itemId} total duration`;
   console.time(timeLabel);
   try {
@@ -1062,6 +1076,9 @@ export async function deleteInventoryItemById(itemId: string): Promise<boolean> 
       console.warn(`GS_Data: deleteInventoryItemById - Item ID ${itemId} not found in sheet (Col J).`);
       return false; // Or throw an error to be caught by the action
     }
+
+    logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry.`);
+
     const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
@@ -1156,3 +1173,4 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+

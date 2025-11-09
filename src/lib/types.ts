@@ -89,7 +89,7 @@ export interface DashboardMetrics {
   dailyStockChangePercent?: number;
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
   netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
-  stockTrend: StockTrendData[];
+  stockTrend?: StockTrendData[];
 }
 
 export type Role = 'admin' | 'viewer';
@@ -97,3 +97,13 @@ export type Role = 'admin' | 'viewer';
 export type Permissions = {
   [key in Role]: string[];
 };
+
+export interface AuditLogEntry {
+    id: string;
+    timestamp: string; // ISO 8601 format
+    user: string; // User's email or ID
+    action: string; // e.g., "CREATE_PRODUCT", "UPDATE_INVENTORY", "PROCESS_RETURN"
+    target: string; // The primary identifier of the item affected (e.g., barcode, item ID, supplier name)
+    details: string; // A human-readable description of the change
+}
+
