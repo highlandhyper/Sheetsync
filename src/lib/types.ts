@@ -1,4 +1,5 @@
 
+
 // Firebase uses string IDs for documents/nodes
 export interface Product {
   id: string; 
@@ -73,6 +74,11 @@ export interface StockBySupplier {
   totalStock: number;
 }
 
+export interface StockTrendData {
+  date: string;
+  totalStock: number;
+}
+
 export interface DashboardMetrics {
   totalProducts: number;
   totalStockQuantity: number;
@@ -83,6 +89,7 @@ export interface DashboardMetrics {
   dailyStockChangePercent?: number;
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
   netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
+  stockTrend: StockTrendData[];
 }
 
 export type Role = 'admin' | 'viewer';

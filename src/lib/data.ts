@@ -1,8 +1,9 @@
 
 
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions } from '@/lib/types';
+
+import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
-import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay } from 'date-fns';
+import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 // --- Sheet Names (MUST MATCH YOUR ACTUAL SHEET NAMES) ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -947,47 +948,67 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       .map(([name, totalStock]) => ({ name, totalStock }))
       .sort((a, b) => b.totalStock - a.totalStock);
 
-    // Calculate daily changes
-    let quantityAddedToday = 0;
+    // --- Stock Trend Calculation ---
+    const thirtyDaysAgo = startOfDay(subDays(new Date(), 29));
+    const dailyChanges = new Map<string, number>();
+
+    // Process additions
     if (allInventoryLogRows) {
         allInventoryLogRows.forEach(row => {
             const timestampValue = row[INV_COL_TIMESTAMP];
             const itemDate = parseFlexibleTimestamp(timestampValue);
-            if (itemDate && isValid(itemDate) && isSameDay(itemDate, todayDate)) {
-                const quantityStr = String(row[INV_COL_QTY] || '0').trim();
-                const quantity = parseInt(quantityStr, 10);
-                if (!isNaN(quantity) && quantity > 0) {
-                    quantityAddedToday += quantity;
+            if (itemDate && isValid(itemDate) && isSameDay(itemDate, thirtyDaysAgo) || isBefore(itemDate, new Date()) && isBefore(thirtyDaysAgo, itemDate)) {
+                const dateKey = format(startOfDay(itemDate), 'yyyy-MM-dd');
+                const quantity = parseInt(String(row[INV_COL_QTY] || '0').trim(), 10);
+                if (!isNaN(quantity)) {
+                    dailyChanges.set(dateKey, (dailyChanges.get(dateKey) || 0) + quantity);
                 }
             }
         });
     }
 
-    let quantityReturnedToday = 0;
+    // Process returns (subtractions)
     if (allReturnLogRows) {
         allReturnLogRows.forEach(row => {
             const timestampValue = row[RL_COL_RETURN_TIMESTAMP];
-            const returnDate = parseFlexibleTimestamp(timestampValue);
-            if (returnDate && isValid(returnDate) && isSameDay(returnDate, todayDate)) {
-                const quantityStr = String(row[RL_COL_RETURNED_QTY] || '0').trim();
-                const quantity = parseInt(quantityStr, 10);
-                if (!isNaN(quantity) && quantity > 0) {
-                    quantityReturnedToday += quantity;
+            const itemDate = parseFlexibleTimestamp(timestampValue);
+            if (itemDate && isValid(itemDate) && isSameDay(itemDate, thirtyDaysAgo) || isBefore(itemDate, new Date()) && isBefore(thirtyDaysAgo, itemDate)) {
+                const dateKey = format(startOfDay(itemDate), 'yyyy-MM-dd');
+                const quantity = parseInt(String(row[RL_COL_RETURNED_QTY] || '0').trim(), 10);
+                if (!isNaN(quantity)) {
+                    dailyChanges.set(dateKey, (dailyChanges.get(dateKey) || 0) - quantity);
                 }
             }
         });
     }
 
-    const netChangeToday = quantityAddedToday - quantityReturnedToday;
-    const stockAtStartOfDay = totalStockQuantity - netChangeToday;
+    // Calculate historical stock trend
+    const stockTrend: StockTrendData[] = [];
+    let runningTotal = totalStockQuantity;
+    for (let i = 0; i < 30; i++) {
+        const date = subDays(todayDate, i);
+        const dateKey = format(date, 'yyyy-MM-dd');
+        
+        if (i === 0) { // For today, use the current total
+             stockTrend.push({ date: dateKey, totalStock: runningTotal });
+        } else {
+             const previousDayKey = format(addDays(date, 1), 'yyyy-MM-dd');
+             const change = dailyChanges.get(previousDayKey) || 0;
+             runningTotal -= change;
+             stockTrend.push({ date: dateKey, totalStock: runningTotal });
+        }
+    }
+    stockTrend.reverse(); // So it goes from past to present
 
+    // Calculate daily changes for today's summary card
+    const netChangeToday = dailyChanges.get(format(todayDate, 'yyyy-MM-dd')) || 0;
+    const stockAtStartOfDay = totalStockQuantity - netChangeToday;
+    
     let dailyStockChangePercent: number | undefined = undefined;
     let dailyStockChangeDirection: 'increase' | 'decrease' | 'none' = 'none';
 
     if (stockAtStartOfDay > 0) {
         dailyStockChangePercent = (netChangeToday / stockAtStartOfDay) * 100;
-    } else if (netChangeToday > 0) { 
-        dailyStockChangePercent = undefined;
     }
     
     if (netChangeToday > 0) {
@@ -995,7 +1016,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     } else if (netChangeToday < 0) {
       dailyStockChangeDirection = 'decrease';
     }
-
 
     const metrics: DashboardMetrics = {
       totalProducts,
@@ -1007,6 +1027,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       dailyStockChangePercent,
       dailyStockChangeDirection,
       netItemsAddedToday: dailyStockChangeDirection === 'increase' ? netChangeToday : undefined,
+      stockTrend,
     };
     return metrics;
   } catch (error) {
@@ -1021,6 +1042,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       dailyStockChangePercent: undefined,
       dailyStockChangeDirection: 'none',
       netItemsAddedToday: undefined,
+      stockTrend: [],
     };
   } finally {
     console.timeEnd(timeLabel);
