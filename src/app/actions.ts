@@ -29,9 +29,10 @@ import {
   getSuppliers,
   getReturnedItems,
   getUniqueLocations,
-  getUniqueStaffNames
+  getUniqueStaffNames,
+  getAuditLogEntries,
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
 
 
@@ -124,6 +125,7 @@ export async function addProductAction(
   try {
     const rawFormData = Object.fromEntries(formData.entries());
     const validationResult = addProductSchema.safeParse(rawFormData);
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     if (!validationResult.success) {
       return {
@@ -136,7 +138,7 @@ export async function addProductAction(
     const { barcode, productName, supplierName } = validationResult.data;
 
     // Using the more comprehensive dbAddProduct which handles BAR DATA and SUP DATA
-    const newProduct = await dbAddProduct({
+    const newProduct = await dbAddProduct(userEmail, {
       barcode,
       productName,
       supplierName,
@@ -204,6 +206,7 @@ export async function saveProductAction(
   try {
     const rawFormData = Object.fromEntries(formData.entries());
     const editMode = rawFormData.editMode as 'create' | 'edit';
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     const validationResult = addProductSchema.safeParse(rawFormData); // Using addProductSchema for now
 
@@ -219,12 +222,12 @@ export async function saveProductAction(
     let savedProduct: Product | null = null;
 
     if (editMode === 'create') {
-      savedProduct = await dbAddProduct({ barcode, productName, supplierName });
+      savedProduct = await dbAddProduct(userEmail, { barcode, productName, supplierName });
       if (!savedProduct) {
         throw new Error("Failed to create new product. Check server logs.");
       }
     } else if (editMode === 'edit') {
-      const success = await dbUpdateProductAndSupplierLinks(barcode, productName, supplierName);
+      const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName);
       if (!success) {
         throw new Error("Failed to update existing product. Check server logs.");
       }
@@ -262,6 +265,7 @@ export async function addSupplierAction(
   try {
     const rawFormData = Object.fromEntries(formData.entries());
     const validationResult = addSupplierSchema.safeParse(rawFormData);
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     if (!validationResult.success) {
       return {
@@ -273,7 +277,7 @@ export async function addSupplierAction(
 
     const { supplierName } = validationResult.data;
 
-    const result = await dbAddSupplier({ name: supplierName });
+    const result = await dbAddSupplier(userEmail, { name: supplierName });
 
     if (result.error || !result.supplier) {
       return {
@@ -311,6 +315,7 @@ export async function editSupplierAction(
   try {
     const rawFormData = Object.fromEntries(formData.entries());
     const validationResult = editSupplierSchema.safeParse(rawFormData);
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     if (!validationResult.success) {
       return {
@@ -330,7 +335,7 @@ export async function editSupplierAction(
       };
     }
 
-    const success = await dbUpdateSupplierName(currentSupplierName, newSupplierName);
+    const success = await dbUpdateSupplierName(userEmail, currentSupplierName, newSupplierName);
 
     if (!success) {
       // dbUpdateSupplierName logs specific errors, but we can generalize here
@@ -365,6 +370,7 @@ export async function addInventoryItemAction(
   console.time(timeLabel);
   try {
     const rawFormData = Object.fromEntries(formData.entries());
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     const parsedData = {
       ...rawFormData,
@@ -403,6 +409,7 @@ export async function addInventoryItemAction(
     };
 
     const newInventoryItem = await dbAddInventoryItem(
+      userEmail,
       itemToAdd,
       { productName: productDetails.productName, supplierName: productDetails.supplierName || 'N/A' }
     );
@@ -430,7 +437,7 @@ export async function addInventoryItemAction(
   }
 }
 
-export async function returnInventoryItemAction(itemId: string, quantityToReturn: number, staffName: string): Promise<ActionResponse> {
+export async function returnInventoryItemAction(userEmail: string, itemId: string, quantityToReturn: number, staffName: string): Promise<ActionResponse> {
   const timeLabel = "Action: returnInventoryItemAction";
   console.time(timeLabel);
   try {
@@ -444,7 +451,7 @@ export async function returnInventoryItemAction(itemId: string, quantityToReturn
       return { success: false, message: 'Staff name for processing the return is required.' };
     }
 
-    const result = await dbProcessReturn(itemId, quantityToReturn, staffName);
+    const result = await dbProcessReturn(userEmail, itemId, quantityToReturn, staffName);
     if (result.success) {
       revalidateRelevantPaths();
       return { success: true, message: result.message || 'Item processed for return.' };
@@ -468,6 +475,7 @@ export async function editInventoryItemAction(
   console.time(timeLabel);
   try {
     const rawFormData = Object.fromEntries(formData.entries());
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
     const parsedData = {
       itemId: rawFormData.itemId as string,
@@ -500,7 +508,7 @@ export async function editInventoryItemAction(
       expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
     };
 
-    const success = await dbUpdateInventoryItemDetails(itemId, updates);
+    const success = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
 
     if (!success) {
       throw new Error("Failed to update inventory item details. Check server logs.");
@@ -547,21 +555,22 @@ export async function fetchInventoryLogEntriesByBarcodeAction(barcode: string): 
 }
 
 export async function fetchDashboardMetricsAction(): Promise<ActionResponse<DashboardMetrics>> {
-  const timeLabel = "Action: fetchDashboardMetricsAction";
-  console.time(timeLabel);
-  try {
-    const metrics = await getDashboardMetrics();
-    return { success: true, data: metrics };
-  } catch (error) {
-    console.error("Error in fetchDashboardMetricsAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching dashboard metrics.";
-    return { success: false, message: `Failed to fetch dashboard metrics: ${errorMessage}`, data: undefined };
-  } finally {
-    console.timeEnd(timeLabel);
-  }
+    const timeLabel = "Action: fetchDashboardMetricsAction";
+    console.time(timeLabel);
+    try {
+        const metrics = await getDashboardMetrics();
+        return { success: true, data: metrics };
+    } catch (error) {
+        console.error("Error in fetchDashboardMetricsAction:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching dashboard metrics.";
+        return { success: false, message: `Failed to fetch dashboard metrics: ${errorMessage}`, data: undefined };
+    } finally {
+        console.timeEnd(timeLabel);
+    }
 }
 
-export async function deleteInventoryItemAction(itemId: string): Promise<ActionResponse> {
+
+export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
   const timeLabel = `Action: deleteInventoryItemAction for item ${itemId}`;
   console.time(timeLabel);
   try {
@@ -569,7 +578,7 @@ export async function deleteInventoryItemAction(itemId: string): Promise<ActionR
       return { success: false, message: 'Item ID is required for deletion.' };
     }
 
-    const success = await dbDeleteInventoryItemById(itemId);
+    const success = await dbDeleteInventoryItemById(userEmail, itemId);
 
     if (success) {
       revalidateRelevantPaths();
@@ -623,7 +632,7 @@ export async function setPermissionsAction(permissions: Permissions): Promise<Ac
     
 // --- Bulk Actions ---
 
-export async function bulkDeleteInventoryItemsAction(itemIds: string[]): Promise<ActionResponse> {
+export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds: string[]): Promise<ActionResponse> {
   const timeLabel = `Action: bulkDeleteInventoryItemsAction for ${itemIds.length} items`;
   console.time(timeLabel);
   try {
@@ -637,7 +646,7 @@ export async function bulkDeleteInventoryItemsAction(itemIds: string[]): Promise
     // Process deletions sequentially to avoid rate-limiting issues.
     // For higher throughput, a batch-delete function in google-sheets-client.ts would be better.
     for (const itemId of itemIds) {
-      const success = await dbDeleteInventoryItemById(itemId);
+      const success = await dbDeleteInventoryItemById(userEmail, itemId);
       if (success) {
         successfulDeletions++;
       } else {
@@ -666,6 +675,7 @@ export async function bulkDeleteInventoryItemsAction(itemIds: string[]): Promise
 }
 
 export async function bulkReturnInventoryItemsAction(
+  userEmail: string,
   itemIds: string[], 
   staffName: string, 
   returnType: 'all' | 'specific',
@@ -691,7 +701,7 @@ export async function bulkReturnInventoryItemsAction(
     for (const itemId of itemIds) {
         // For 'all', we pass a very large number; the backend logic will cap it at the available quantity.
         const quantityToReturn = returnType === 'all' ? Number.MAX_SAFE_INTEGER : quantity!;
-        const result = await dbProcessReturn(itemId, quantityToReturn, staffName);
+        const result = await dbProcessReturn(userEmail, itemId, quantityToReturn, staffName);
       if (result.success) {
         successfulReturns++;
       } else {
@@ -719,6 +729,16 @@ export async function bulkReturnInventoryItemsAction(
   }
 }
 
+export async function getAuditLogEntriesAction(): Promise<ActionResponse<AuditLogEntry[]>> {
+    try {
+        const entries = await getAuditLogEntries();
+        return { success: true, data: entries };
+    } catch (error) {
+        console.error("Error in getAuditLogEntriesAction:", error);
+        return { success: false, message: "Could not retrieve audit logs." };
+    }
+}
+
 
 function revalidateRelevantPaths() {
     revalidatePath('/inventory');
@@ -730,8 +750,10 @@ function revalidateRelevantPaths() {
     revalidatePath('/products/list');
     revalidatePath('/products/manage');
     revalidatePath('/suppliers');
+    revalidatePath('/audit');
 }
     
 
     
+
 
