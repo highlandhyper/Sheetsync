@@ -74,7 +74,7 @@ const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
 const AUDIT_LOG_APPEND_RANGE = `${AUDIT_LOG_SHEET_NAME}!A:E`;
 
 // --- Audit Event Logging ---
-async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<void> {
+export async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<void> {
   // Fire-and-forget logging. We don't want to block the user's action if logging fails.
   try {
     const timestamp = format(new Date(), "dd/MM/yyyy HH:mm:ss");
@@ -805,7 +805,6 @@ export async function updateSupplierNameAndReferences(userEmail: string, current
 }
 
 export async function updateInventoryItemDetails(
-  userEmail: string,
   itemId: string,
   updates: { location?: string; expiryDate?: string | null; itemType?: ItemType, quantity?: number }
 ): Promise<boolean> {
@@ -843,8 +842,6 @@ export async function updateInventoryItemDetails(
       console.log(`GS_Data: updateInventoryItemDetails - No actual changes to update for item ${itemId}.`);
       return true;
     }
-
-    logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated item details: ${JSON.stringify(updates)}`);
 
     const success = await batchUpdateSheetCells(cellUpdates);
     console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}. Changes: ${JSON.stringify(updates)}`);
@@ -1173,4 +1170,5 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
