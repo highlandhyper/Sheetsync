@@ -3,16 +3,15 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, History } from 'lucide-react';
+import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { fetchDashboardMetricsAction } from '@/app/actions';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -147,65 +146,6 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   );
 }
 
-function StockTrendChart({ data }: { data: StockTrendData[] }) {
-    const chartConfig = {
-        totalStock: {
-            label: "Total Stock",
-            color: "hsl(var(--chart-2))",
-        },
-    } satisfies ChartConfig;
-
-    if (!data || data.length === 0) {
-        return <p className="text-center text-muted-foreground py-8">No stock trend data available.</p>;
-    }
-
-    return (
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-[350px]">
-            <LineChart
-                accessibilityLayer
-                data={data}
-                margin={{
-                    top: 5,
-                    right: 20,
-                    left: 10,
-                    bottom: 5,
-                }}
-            >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => format(new Date(value), "MMM d")}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  domain={['dataMin - 5', 'dataMax + 5']}
-                 />
-                <ChartTooltip
-                    cursor={true}
-                    content={<ChartTooltipContent className="bg-background shadow-lg rounded-md p-2" />}
-                />
-                <Line
-                    dataKey="totalStock"
-                    type="monotone"
-                    stroke="var(--color-totalStock)"
-                    strokeWidth={2}
-                    dot={{
-                        r: 4,
-                        fill: "var(--color-totalStock)",
-                        stroke: "var(--background)",
-                        strokeWidth: 2,
-                    }}
-                />
-            </LineChart>
-        </ChartContainer>
-    );
-}
-
 function DashboardSkeleton() {
   return (
     <div className="space-y-8">
@@ -222,7 +162,7 @@ function DashboardSkeleton() {
             description="Items marked as damage"
         />
       </div>
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2"> 
+      <div className="grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -230,18 +170,6 @@ function DashboardSkeleton() {
                 Stock by Supplier
             </CardTitle>
             <CardDescription>Total stock quantity held per supplier.</CardDescription>
-            </CardHeader>
-            <CardContent className="pl-0 pr-4 pb-6">
-            <Skeleton className="h-[350px] w-full" />
-            </CardContent>
-        </Card>
-        <Card className="col-span-1 shadow-lg rounded-lg">
-            <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-                <History className="mr-2 h-5 w-5" />
-                Stock History
-            </CardTitle>
-            <CardDescription>Total stock quantity over the last 30 days.</CardDescription>
             </CardHeader>
             <CardContent className="pl-0 pr-4 pb-6">
             <Skeleton className="h-[350px] w-full" />
@@ -355,7 +283,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8"> 
+       <div className="grid grid-cols-1 mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -368,20 +296,6 @@ export default function DashboardPage() {
             {isLoading ? <Skeleton className="h-[350px] w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
           </CardContent>
         </Card>
-
-        <Card className="col-span-1 shadow-lg rounded-lg">
-            <CardHeader>
-                <CardTitle className="text-xl flex items-center">
-                    <History className="mr-2 h-5 w-5" />
-                    Stock History
-                </CardTitle>
-                <CardDescription>Total stock quantity over the last 30 days.</CardDescription>
-            </CardHeader>
-            <CardContent className="pl-0 pr-4 pb-6">
-                {isLoading ? <Skeleton className="h-[350px] w-full" /> : <StockTrendChart data={metrics.stockTrend} />}
-            </CardContent>
-        </Card>
-
       </div>
     </div>
   );
