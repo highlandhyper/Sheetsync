@@ -144,10 +144,9 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
 
   const processFormSubmit = async (data: EditInventoryItemFormValues) => {
     if (!item) return;
-
-    const actualQuantityChanged = initialQuantity !== data.quantity;
     
-    if (actualQuantityChanged) {
+    // Authorization check only if quantity changed
+    if (quantityChanged) {
         const isAuthorized = verifyCredentials(data.authUsername, data.authPassword);
         if (!isAuthorized) {
             setError("authUsername", { type: "manual", message: "Invalid username or password." });
@@ -161,14 +160,16 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       return;
     }
 
+    if (!user?.email) {
+      toast({ title: 'Error', description: 'Could not identify the current user. Please log in again.', variant: 'destructive' });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('itemId', item.id);
     formData.append('location', data.location);
     formData.append('itemType', data.itemType);
-    if(user?.email) {
-      formData.append('userEmail', user.email);
-    }
-    
+    formData.append('userEmail', user.email);
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
