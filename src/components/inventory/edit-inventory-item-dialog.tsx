@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useActionState, useTransition, useMemo, useState, useCallback } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, KeyRound, User } from 'lucide-react';
@@ -32,11 +32,10 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 
 import { editInventoryItemSchema, type EditInventoryItemFormValues } from '@/lib/schemas';
 import type { InventoryItem, ItemType } from '@/lib/types';
-import { editInventoryItemAction, type ActionResponse } from '@/app/actions';
+import { editInventoryItemAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { cn } from '@/lib/utils';
@@ -51,25 +50,13 @@ interface EditInventoryItemDialogProps {
 }
 
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button type="submit" disabled={isPending}>
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-      Save Changes
-    </Button>
-  );
-}
-
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
   
-  const [state, formAction] = useActionState<ActionResponse<InventoryItem> | undefined, FormData>(
-    editInventoryItemAction,
-    undefined
-  );
+  const [state, formAction] = useState<any | undefined>(undefined);
 
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
   const [quantityChanged, setQuantityChanged] = useState(false);
@@ -137,35 +124,25 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     [item, reset, isOpen] 
   );
 
-  const handleSuccess = useCallback(() => {
-    if (state?.success) {
-        toast({
-            title: 'Success!',
-            description: state.message || 'Item updated successfully.',
-        });
-        onSuccess?.();
-        onOpenChange(false);
+ useEffect(() => {
+    if (!state) return;
+    if (state.success) {
+      toast({
+        title: 'Success!',
+        description: state.message || 'Item updated successfully.',
+      });
+      onSuccess?.();
+      onOpenChange(false);
+    } else {
+      toast({
+        title: 'Error Updating Item',
+        description: state.message || 'Could not update the item.',
+        variant: 'destructive',
+      });
     }
   }, [state, toast, onOpenChange, onSuccess]);
 
-
-  useEffect(
-    function handleActionState() {
-      if (!state) return;
-      if (state.success) {
-        handleSuccess();
-      } else {
-        toast({
-          title: 'Error Updating Item',
-          description: state.message || 'Could not update the item.',
-          variant: 'destructive',
-        });
-      }
-    },
-    [state, toast, onOpenChange, onSuccess, handleSuccess]
-  );
-
-  const processFormSubmit = (data: EditInventoryItemFormValues) => {
+  const processFormSubmit = async (data: EditInventoryItemFormValues) => {
     if (!item) return;
 
     const actualQuantityChanged = initialQuantity !== data.quantity;
@@ -188,10 +165,10 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('itemId', item.id);
     formData.append('location', data.location);
     formData.append('itemType', data.itemType);
-    if(user?.email) formData.append('userEmail', user.email);
+    if(user?.email) {
+      formData.append('userEmail', user.email);
+    }
     
-    // The schema requires quantity, so we must always send it.
-    // The check for `actualQuantityChanged` above is only to trigger the auth UI.
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
@@ -201,8 +178,9 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         return;
     }
     
-    startActionTransition(() => {
-      formAction(formData);
+    startActionTransition(async () => {
+      const result = await editInventoryItemAction(undefined, formData);
+      formAction(result);
     });
   };
   
@@ -360,7 +338,10 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                 Cancel
               </Button>
             </DialogClose>
-            <SubmitButton isPending={isActionPending} />
+            <Button type="submit" disabled={isActionPending}>
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Changes
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
