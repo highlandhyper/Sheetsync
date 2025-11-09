@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import { bulkDeleteInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/context/auth-context';
 
 interface BulkDeleteDialogProps {
   isOpen: boolean;
@@ -39,6 +41,7 @@ type DeleteFormValues = z.infer<typeof deleteSchema>;
 
 export function BulkDeleteDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkDeleteDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
 
@@ -67,9 +70,13 @@ export function BulkDeleteDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
       toast({ variant: "destructive", title: "Authorization Failed", description: "The local admin credentials provided are incorrect." });
       return;
     }
+    if (!user?.email) {
+      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+      return;
+    }
 
     setIsSubmitting(true);
-    const response = await bulkDeleteInventoryItemsAction(itemIds);
+    const response = await bulkDeleteInventoryItemsAction(user.email, itemIds);
     setIsSubmitting(false);
 
     if (response.success) {

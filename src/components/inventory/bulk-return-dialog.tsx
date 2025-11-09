@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { useAuth } from '@/context/auth-context';
 
 interface BulkReturnDialogProps {
   isOpen: boolean;
@@ -49,6 +51,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 
 export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkReturnDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnType, setReturnType] = useState<'all' | 'specific'>('all');
 
@@ -77,8 +80,12 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
   };
 
   const onSubmit = async (data: ReturnFormValues) => {
+    if (!user?.email) {
+      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+      return;
+    }
     setIsSubmitting(true);
-    const response = await bulkReturnInventoryItemsAction(itemIds, data.staffName, data.returnType, data.quantity);
+    const response = await bulkReturnInventoryItemsAction(user.email, itemIds, data.staffName, data.returnType, data.quantity);
     setIsSubmitting(false);
 
     if (response.success) {

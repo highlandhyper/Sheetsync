@@ -31,6 +31,7 @@ import {
   getUniqueLocations,
   getUniqueStaffNames,
   getAuditLogEntries,
+  logAuditEvent,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
@@ -437,7 +438,12 @@ export async function addInventoryItemAction(
   }
 }
 
-export async function returnInventoryItemAction(userEmail: string, itemId: string, quantityToReturn: number, staffName: string): Promise<ActionResponse> {
+export async function returnInventoryItemAction(
+  userEmail: string, 
+  itemId: string, 
+  quantityToReturn: number, 
+  staffName: string
+): Promise<ActionResponse> {
   const timeLabel = "Action: returnInventoryItemAction";
   console.time(timeLabel);
   try {
@@ -508,11 +514,19 @@ export async function editInventoryItemAction(
       expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
     };
 
-    const success = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
+    const success = await dbUpdateInventoryItemDetails(itemId, updates);
 
     if (!success) {
       throw new Error("Failed to update inventory item details. Check server logs.");
     }
+
+    // Log the audit event after successful DB update
+    await logAuditEvent(
+      userEmail, 
+      'UPDATE_INVENTORY_ITEM',
+      itemId,
+      `Updated item details: ${JSON.stringify(updates)}`
+    );
 
     revalidateRelevantPaths();
 
@@ -755,5 +769,6 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 

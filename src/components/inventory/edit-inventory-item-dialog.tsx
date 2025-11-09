@@ -40,6 +40,7 @@ import { editInventoryItemAction, type ActionResponse } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
 
 interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
@@ -61,6 +62,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
   
@@ -186,6 +188,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('itemId', item.id);
     formData.append('location', data.location);
     formData.append('itemType', data.itemType);
+    if(user?.email) formData.append('userEmail', user.email);
     
     // The schema requires quantity, so we must always send it.
     // The check for `actualQuantityChanged` above is only to trigger the auth UI.
