@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { returnInventoryItemAction, type ActionResponse } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
 
 interface ReturnQuantityDialogProps {
   item: InventoryItem | null;
@@ -38,6 +40,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 
 export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSuccess }: ReturnQuantityDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -70,8 +73,13 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
       });
       return;
     }
+    if (!user?.email) {
+      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+      return;
+    }
+
     setIsSubmitting(true);
-    const response = await returnInventoryItemAction(item.id, data.quantityToReturn, data.staffName);
+    const response = await returnInventoryItemAction(user.email, item.id, data.quantityToReturn, data.staffName);
     setIsSubmitting(false);
 
     if (response.success) {

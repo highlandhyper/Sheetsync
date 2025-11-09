@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,6 +24,7 @@ import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/context/auth-context';
 
 interface DeleteConfirmationDialogProps {
   item: InventoryItem | null;
@@ -39,6 +41,7 @@ type DeleteFormValues = z.infer<typeof deleteSchema>;
 
 export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess }: DeleteConfirmationDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
 
@@ -62,9 +65,13 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
       toast({ variant: "destructive", title: "Authorization Failed", description: "The local admin credentials provided are incorrect." });
       return;
     }
+    if (!user?.email) {
+      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+      return;
+    }
 
     setIsSubmitting(true);
-    const response = await deleteInventoryItemAction(item.id);
+    const response = await deleteInventoryItemAction(user.email, item.id);
     setIsSubmitting(false);
 
     if (response.success) {
