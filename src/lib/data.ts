@@ -1,6 +1,6 @@
 
 
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -9,7 +9,6 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
-const AUDIT_LOG_SHEET_NAME = "Audit Log"; // New sheet for audit trail
 
 // --- Column Indices (0-based - MUST MATCH YOUR ACTUAL SHEET STRUCTURE) ---
 // "Form responses 2" - Inventory Log (Assuming A-I, with J for app-generated Unique ID)
@@ -52,38 +51,17 @@ const RL_COL_RETURN_TIMESTAMP = 10; // K (Timestamp of when the return was proce
 const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
 const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
-// "Audit Log"
-const AL_COL_TIMESTAMP = 0;       // A - Timestamp of the event
-const AL_COL_USER = 1;            // B - User who performed the action (email)
-const AL_COL_ACTION = 2;          // C - The action performed (e.g., "CREATE_PRODUCT")
-const AL_COL_TARGET = 3;          // D - The primary identifier of the object affected (e.g., barcode, supplier name)
-const AL_COL_DETAILS = 4;         // E - A descriptive string of what changed
-
 // --- Read Ranges ---
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:D`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
-const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
 // --- Append Ranges (for adding new rows) ---
 const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:D`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
 const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
-const AUDIT_LOG_APPEND_RANGE = `${AUDIT_LOG_SHEET_NAME}!A:E`;
-
-// --- Audit Event Logging ---
-export async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<void> {
-  // Fire-and-forget logging. We don't want to block the user's action if logging fails.
-  try {
-    const timestamp = format(new Date(), "dd/MM/yyyy HH:mm:ss");
-    const logRow = [timestamp, user, action, target, details];
-    await appendSheetData(AUDIT_LOG_APPEND_RANGE, [logRow]);
-  } catch (error) {
-    console.error("AUDIT_LOG_FAILURE: Could not log audit event.", { user, action, target, details, error });
-  }
-}
 
 function excelSerialDateToJSDate(serial: number): Date | null {
   if (isNaN(serial) || serial <= 0) return null;
@@ -265,37 +243,6 @@ function transformToReturnedItem(row: any[], rowIndex: number): ReturnedItem | n
   }
 }
 
-function transformToAuditLogEntry(row: any[], index: number): AuditLogEntry | null {
-  const sheetRowNumber = index + 2;
-  try {
-    const expectedCols = 5;
-    if (!row || row.length < expectedCols) return null;
-    
-    const timestampValue = row[AL_COL_TIMESTAMP];
-    const timestamp = parseFlexibleTimestamp(timestampValue);
-    
-    const user = String(row[AL_COL_USER] || 'Unknown User').trim();
-    const action = String(row[AL_COL_ACTION] || 'UNKNOWN_ACTION').trim();
-    const target = String(row[AL_COL_TARGET] || 'N/A').trim();
-    const details = String(row[AL_COL_DETAILS] || '').trim();
-
-    if (!timestamp || !user || !action) return null;
-
-    return {
-      id: `${sheetRowNumber}-${timestamp.getTime()}`,
-      timestamp: timestamp.toISOString(),
-      user,
-      action,
-      target,
-      details,
-    };
-
-  } catch (error) {
-    console.error(`GS_Data: Error transforming audit log row ${sheetRowNumber} from "${AUDIT_LOG_SHEET_NAME}":`, error, "Row data:", row);
-    return null;
-  }
-}
-
 export async function getProducts(): Promise<Product[]> {
   const timeLabel = "GS_Data: getProducts total duration";
   console.time(timeLabel);
@@ -472,31 +419,6 @@ export async function getReturnedItems(): Promise<ReturnedItem[]> {
   }
 }
 
-export async function getAuditLogEntries(): Promise<AuditLogEntry[]> {
-  const timeLabel = "GS_Data: getAuditLogEntries total duration";
-  console.time(timeLabel);
-  try {
-    const sheetData = await readSheetData(AUDIT_LOG_READ_RANGE);
-    if (!sheetData) {
-      console.log("GS_Data: getAuditLogEntries - No sheet data from readSheetData. Audit Log sheet may not exist yet.");
-      return [];
-    }
-    const entries = sheetData.map((row, index) => transformToAuditLogEntry(row, index)).filter(entry => entry !== null) as AuditLogEntry[];
-    entries.sort((a,b) => {
-        const dateA = parseISO(a.timestamp);
-        const dateB = parseISO(b.timestamp);
-        return dateB.getTime() - dateA.getTime();
-    });
-    console.log(`GS_Data: getAuditLogEntries - Transformed and sorted ${entries.length} audit log entries.`);
-    return entries;
-  } catch (error) {
-    console.error("GS_Data: Critical error in getAuditLogEntries:", error);
-    return [];
-  } finally {
-    console.timeEnd(timeLabel);
-  }
-}
-
 export async function addProduct(userEmail: string, productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
   const timeLabel = "GS_Data: addProduct total duration";
   console.time(timeLabel);
@@ -519,8 +441,6 @@ export async function addProduct(userEmail: string, productData: { barcode: stri
       console.error("GS_Data: addProduct - Failed to append to DB sheet.");
       return null;
     }
-
-    logAuditEvent(userEmail, 'CREATE_PRODUCT', productData.barcode, `Created product "${productData.productName}" with supplier "${productData.supplierName}".`);
     
     return {
       id: productData.barcode, barcode: productData.barcode.trim(), productName: productData.productName.trim(),
@@ -552,7 +472,6 @@ export async function addSupplier(userEmail: string, supplierData: { name: strin
     const newRow = [placeholderBarcode, '', placeholderProduct, supplierData.name.trim()];
 
     if (await appendSheetData(DB_APPEND_RANGE, [newRow])) {
-      logAuditEvent(userEmail, 'CREATE_SUPPLIER', supplierData.name.trim(), `Created new supplier.`);
       return { supplier: transformToSupplier(supplierData.name.trim(), dbSheet?.length || 0) };
     } else {
       console.error(`GS_Data: addSupplier - Failed to append new supplier "${supplierData.name.trim()}" to sheet.`);
@@ -632,12 +551,7 @@ export async function addInventoryItem(
       console.error("GS_Data: addInventoryItem - Failed to append data to sheet.");
       return null;
     }
-
-    logAuditEvent(
-      userEmail, 'CREATE_INVENTORY_ITEM', itemFormValues.barcode,
-      `Logged ${itemFormValues.quantity} of "${resolvedProductDetails.productName}" in ${itemFormValues.location}.`
-    );
-
+    
     const parsedTimestamp = dateParse(newRowData[INV_COL_TIMESTAMP] as string, "dd/MM/yyyy HH:mm:ss", new Date());
     return {
       id: clientSideUniqueId, productName: resolvedProductDetails.productName.trim(), barcode: itemFormValues.barcode.trim(),
@@ -691,7 +605,6 @@ export async function processReturn(userEmail: string, itemId: string, quantityT
       resultMessage = operationSuccessful ? `Returned ${actualReturnedQty} of ${currentItem.productName}. New quantity: ${newQuantity}.` : `Failed to update quantity for ${itemId}.`;
     }
     if (operationSuccessful) {
-      logAuditEvent(userEmail, 'PROCESS_RETURN', currentItem.barcode, `Returned ${actualReturnedQty} of "${currentItem.productName}". Processed by: ${staffNameProcessingReturn}.`);
       const logEntry = [
         itemId,
         currentItem.productName,
@@ -790,9 +703,7 @@ export async function updateSupplierNameAndReferences(userEmail: string, current
       console.warn(`GS_Data: updateSupplierName - No supplier found with name "${currentName}" anywhere. No update performed.`);
       return false;
     }
-
-    logAuditEvent(userEmail, 'UPDATE_SUPPLIER', currentName, `Renamed supplier to "${newName}". Updated ${dbRowsUpdated} DB entries, ${invDataRowsUpdated} inventory logs, and ${returnsLogRowsUpdated} return logs.`);
-
+    
     const success = await batchUpdateSheetCells(batchUpdates);
     console.log(`GS_Data: updateSupplierName - Batch update for "${currentName}" to "${newName}" ${success ? 'succeeded' : 'failed'}. Updates: ${dbRowsUpdated} in DB, ${invDataRowsUpdated} in Inventory Log, ${returnsLogRowsUpdated} in Returns Log.`);
     return success;
@@ -805,6 +716,7 @@ export async function updateSupplierNameAndReferences(userEmail: string, current
 }
 
 export async function updateInventoryItemDetails(
+  userEmail: string,
   itemId: string,
   updates: { location?: string; expiryDate?: string | null; itemType?: ItemType, quantity?: number }
 ): Promise<boolean> {
@@ -903,8 +815,6 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${rowNumber}`,
           values: [[newSupplierName.trim()]]
       });
-
-      logAuditEvent(userEmail, 'UPDATE_PRODUCT', barcode, `Updated product to name="${newProductName}" and supplier="${newSupplierName}".`);
 
       const productNameChanged = oldProductName.toLowerCase() !== newProductName.trim().toLowerCase();
 
@@ -1073,9 +983,7 @@ export async function deleteInventoryItemById(userEmail: string, itemId: string)
       console.warn(`GS_Data: deleteInventoryItemById - Item ID ${itemId} not found in sheet (Col J).`);
       return false; // Or throw an error to be caught by the action
     }
-
-    logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry.`);
-
+    
     const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
@@ -1170,6 +1078,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 

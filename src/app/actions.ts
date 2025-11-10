@@ -30,10 +30,8 @@ import {
   getReturnedItems,
   getUniqueLocations,
   getUniqueStaffNames,
-  getAuditLogEntries,
-  logAuditEvent,
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem } from '@/lib/types';
 import { format } from 'date-fns';
 
 
@@ -514,19 +512,11 @@ export async function editInventoryItemAction(
       expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
     };
 
-    const success = await dbUpdateInventoryItemDetails(itemId, updates);
+    const success = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
 
     if (!success) {
       throw new Error("Failed to update inventory item details. Check server logs.");
     }
-
-    // Log the audit event after successful DB update
-    await logAuditEvent(
-      userEmail, 
-      'UPDATE_INVENTORY_ITEM',
-      itemId,
-      `Updated item details: ${JSON.stringify(updates)}`
-    );
 
     revalidateRelevantPaths();
 
@@ -743,17 +733,6 @@ export async function bulkReturnInventoryItemsAction(
   }
 }
 
-export async function getAuditLogEntriesAction(): Promise<ActionResponse<AuditLogEntry[]>> {
-    try {
-        const entries = await getAuditLogEntries();
-        return { success: true, data: entries };
-    } catch (error) {
-        console.error("Error in getAuditLogEntriesAction:", error);
-        return { success: false, message: "Could not retrieve audit logs." };
-    }
-}
-
-
 function revalidateRelevantPaths() {
     revalidatePath('/inventory');
     revalidatePath('/inventory/returns');
@@ -764,11 +743,11 @@ function revalidateRelevantPaths() {
     revalidatePath('/products/list');
     revalidatePath('/products/manage');
     revalidatePath('/suppliers');
-    revalidatePath('/audit');
 }
     
 
     
+
 
 
 
