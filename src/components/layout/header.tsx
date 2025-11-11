@@ -109,5 +109,3 @@ export function Header({ className }: { className?: string }) {
     </>
   );
 }
-
-    
