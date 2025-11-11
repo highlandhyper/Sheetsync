@@ -472,5 +472,3 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     </div>
   );
 }
-
-    

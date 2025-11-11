@@ -1,7 +1,7 @@
 
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
