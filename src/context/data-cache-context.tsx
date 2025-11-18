@@ -154,65 +154,70 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [user, refreshData]);
 
   // --- Local Data Mutation Helpers ---
-  const addInventoryItem = (item: InventoryItem) => {
+  const addInventoryItem = useCallback((item: InventoryItem) => {
     setData(prev => ({
       ...prev,
       inventoryItems: [item, ...prev.inventoryItems],
     }));
-  };
+  }, []);
 
-  const updateInventoryItem = (updatedItem: InventoryItem) => {
+  const updateInventoryItem = useCallback((updatedItem: InventoryItem) => {
     setData(prev => ({
       ...prev,
       inventoryItems: prev.inventoryItems.map(item => item.id === updatedItem.id ? updatedItem : item),
     }));
-  };
+  }, []);
 
-  const removeInventoryItem = (itemId: string) => {
+  const removeInventoryItem = useCallback((itemId: string) => {
     setData(prev => ({
       ...prev,
       inventoryItems: prev.inventoryItems.filter(item => item.id !== itemId),
     }));
-  };
+  }, []);
 
-  const addSupplier = (supplier: Supplier) => {
+  const addSupplier = useCallback((supplier: Supplier) => {
     setData(prev => ({
       ...prev,
       suppliers: [...prev.suppliers, supplier].sort((a,b) => a.name.localeCompare(b.name)),
       uniqueStaffNames: [...new Set([...prev.uniqueStaffNames, supplier.name])].sort()
     }));
-  };
+  }, []);
 
-  const updateSupplier = (updatedSupplier: Supplier) => {
+  const updateSupplier = useCallback((updatedSupplier: Supplier) => {
     setData(prev => ({
       ...prev,
       suppliers: prev.suppliers.map(s => s.id === updatedSupplier.id ? updatedSupplier : s),
     }));
-  };
+  }, []);
   
-  const addProduct = (product: Product) => {
+  const addProduct = useCallback((product: Product) => {
       setData(prev => ({
           ...prev,
           products: [product, ...prev.products]
       }));
-  }
+  }, [])
   
-  const updateProduct = (updatedProduct: Product) => {
+  const updateProduct = useCallback((updatedProduct: Product) => {
       setData(prev => ({
           ...prev,
           products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
       }))
-  }
+  }, [])
 
-  const addReturnedItem = (item: ReturnedItem) => {
+  const addReturnedItem = useCallback((item: ReturnedItem) => {
     setData(prev => ({
       ...prev,
       returnedItems: [item, ...prev.returnedItems],
     }));
-  };
+  }, []);
 
   const contextValue = useMemo(() => ({
-    ...data,
+    inventoryItems: data.inventoryItems,
+    products: data.products,
+    suppliers: data.suppliers,
+    returnedItems: data.returnedItems,
+    uniqueLocations: data.uniqueLocations,
+    uniqueStaffNames: data.uniqueStaffNames,
     isCacheReady,
     isSyncing,
     refreshData,
@@ -224,7 +229,20 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     addProduct,
     updateProduct,
     addReturnedItem,
-  }), [data, isCacheReady, isSyncing, refreshData]);
+  }), [
+      data, 
+      isCacheReady, 
+      isSyncing, 
+      refreshData, 
+      updateInventoryItem, 
+      addInventoryItem, 
+      removeInventoryItem, 
+      addSupplier, 
+      updateSupplier, 
+      addProduct, 
+      updateProduct, 
+      addReturnedItem
+  ]);
 
   return (
     <DataCacheContext.Provider value={contextValue}>
