@@ -719,15 +719,22 @@ export async function updateInventoryItemDetails(
   userEmail: string,
   itemId: string,
   updates: { location?: string; expiryDate?: string | null; itemType?: ItemType, quantity?: number }
-): Promise<boolean> {
+): Promise<InventoryItem | null> {
   const timeLabel = `GS_Data: updateInventoryItemDetails for item ${itemId} total duration`;
   console.time(timeLabel);
   try {
     const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, itemId, INV_COL_UNIQUE_ID);
     if (!rowNumber) {
       console.warn(`GS_Data: updateInventoryItemDetails - Item ID ${itemId} not found.`);
-      return false;
+      return null;
     }
+
+    const itemRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:${String.fromCharCode('A'.charCodeAt(0) + INVENTORY_TOTAL_COLUMNS_FOR_WRITE - 1)}${rowNumber}`);
+    if (!itemRowData || itemRowData.length === 0) {
+      console.error(`GS_Data: Could not read row ${rowNumber} for item ${itemId} to construct return object.`);
+      return null;
+    }
+    
     const cellUpdates: { range: string; values: any[][] }[] = [];
     if (updates.location !== undefined) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_LOCATION)}${rowNumber}`, values: [[updates.location]] });
@@ -752,15 +759,29 @@ export async function updateInventoryItemDetails(
     }
     if (cellUpdates.length === 0) {
       console.log(`GS_Data: updateInventoryItemDetails - No actual changes to update for item ${itemId}.`);
-      return true;
+       const existingItem = transformToInventoryItem(itemRowData[0], rowNumber - 2);
+       return existingItem;
     }
 
     const success = await batchUpdateSheetCells(cellUpdates);
     console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}. Changes: ${JSON.stringify(updates)}`);
-    return success;
+    
+    if (success) {
+        // Construct the updated item object to return for optimistic UI update
+        const updatedRowData = [...itemRowData[0]];
+        if (updates.location !== undefined) updatedRowData[INV_COL_LOCATION] = updates.location;
+        if (updates.quantity !== undefined) updatedRowData[INV_COL_QTY] = updates.quantity;
+        if (updates.itemType !== undefined) updatedRowData[INV_COL_TYPE] = updates.itemType;
+        if (updates.expiryDate !== undefined) {
+            updatedRowData[INV_COL_EXPIRY] = updates.expiryDate ? format(parseISO(updates.expiryDate), 'dd/MM/yyyy') : '';
+        }
+        return transformToInventoryItem(updatedRowData, rowNumber - 2);
+    }
+
+    return null;
   } catch (error) {
     console.error(`GS_Data: Critical error in updateInventoryItemDetails for ${itemId}:`, error);
-    return false;
+    return null;
   } finally {
     console.timeEnd(timeLabel);
   }
@@ -1078,6 +1099,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 
