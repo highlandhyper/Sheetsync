@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Building, Edit } from 'lucide-react';
 import type { Supplier } from '@/lib/types';
+import { memo } from 'react';
 
 interface SupplierCardProps {
   supplier: Supplier;
   onEdit: (supplier: Supplier) => void;
 }
 
-export function SupplierCard({ supplier, onEdit }: SupplierCardProps) {
+const SupplierCardComponent = ({ supplier, onEdit }: SupplierCardProps) => {
   return (
     <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader className="pb-3">
@@ -38,3 +39,5 @@ export function SupplierCard({ supplier, onEdit }: SupplierCardProps) {
     </Card>
   );
 }
+
+export const SupplierCard = memo(SupplierCardComponent);
