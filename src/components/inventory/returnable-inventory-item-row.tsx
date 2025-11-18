@@ -7,6 +7,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Undo2, Eye, Pencil } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
+import { memo } from 'react';
 
 interface ReturnableInventoryItemRowProps {
   item: InventoryItem;
@@ -22,7 +23,7 @@ interface ReturnableInventoryItemRowProps {
   showCheckbox?: boolean;
 }
 
-export function ReturnableInventoryItemRow({
+const ReturnableInventoryItemRowComponent = ({
   item,
   onInitiateReturn,
   onViewDetails,
@@ -34,7 +35,7 @@ export function ReturnableInventoryItemRow({
   isSelected = false,
   onSelectRow,
   showCheckbox = false,
-}: ReturnableInventoryItemRowProps) {
+}: ReturnableInventoryItemRowProps) => {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
   const isExpired = isValidExpiry && parsedExpiryDate! < new Date();
@@ -127,3 +128,5 @@ export function ReturnableInventoryItemRow({
     </TableRow>
   );
 }
+
+export const ReturnableInventoryItemRow = memo(ReturnableInventoryItemRowComponent);

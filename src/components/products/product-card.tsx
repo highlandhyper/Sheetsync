@@ -2,12 +2,13 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Barcode as BarcodeIcon, Building } from 'lucide-react';
 import type { Product } from '@/lib/types';
+import { memo } from 'react';
 
 interface ProductCardProps {
   product: Product;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+const ProductCardComponent = ({ product }: ProductCardProps) => {
   return (
     <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader className="pb-2">
@@ -40,3 +41,5 @@ export function ProductCard({ product }: ProductCardProps) {
     </Card>
   );
 }
+
+export const ProductCard = memo(ProductCardComponent);
