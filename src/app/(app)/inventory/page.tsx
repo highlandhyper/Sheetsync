@@ -9,6 +9,7 @@ import { ClipboardList, AlertTriangle } from 'lucide-react';
 import { fetchInventoryListDataAction } from '@/app/actions';
 import type { InventoryItem, Supplier } from '@/lib/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 
 function InventoryListSkeleton() {
