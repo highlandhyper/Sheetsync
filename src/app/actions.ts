@@ -512,9 +512,9 @@ export async function editInventoryItemAction(
       expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
     };
 
-    const success = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
+    const updatedItem = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
 
-    if (!success) {
+    if (!updatedItem) {
       throw new Error("Failed to update inventory item details. Check server logs.");
     }
 
@@ -523,6 +523,7 @@ export async function editInventoryItemAction(
     return {
       success: true,
       message: 'Inventory item details updated successfully!',
+      data: updatedItem,
     };
   } catch (error) {
     console.error("Error in editInventoryItemAction:", error);
@@ -747,6 +748,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 

@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
@@ -53,6 +54,7 @@ interface EditInventoryItemDialogProps {
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { updateInventoryItem } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
   
@@ -126,11 +128,13 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
 
  useEffect(() => {
     if (!state) return;
-    if (state.success) {
+    if (state.success && state.data) {
       toast({
         title: 'Success!',
         description: state.message || 'Item updated successfully.',
       });
+      // Optimistically update the local cache
+      updateInventoryItem(state.data);
       onSuccess?.();
       onOpenChange(false);
     } else {
@@ -140,12 +144,11 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         variant: 'destructive',
       });
     }
-  }, [state, toast, onOpenChange, onSuccess]);
+  }, [state, toast, onOpenChange, onSuccess, updateInventoryItem]);
 
   const processFormSubmit = async (data: EditInventoryItemFormValues) => {
     if (!item) return;
     
-    // Authorization check only if quantity changed
     if (quantityChanged) {
         const isAuthorized = verifyCredentials(data.authUsername, data.authPassword);
         if (!isAuthorized) {
