@@ -10,7 +10,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/auth-context';
@@ -23,7 +22,6 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
-  const { state } = useSidebar();
 
   const navItems = allNavItems.filter(item => role && isAllowed(role, item.href));
   const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
