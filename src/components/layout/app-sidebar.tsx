@@ -23,7 +23,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
-  const { state, isMobile, toggleSidebar } = useSidebar();
+  const { state } = useSidebar();
 
   const navItems = allNavItems.filter(item => role && isAllowed(role, item.href));
   const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
