@@ -152,5 +152,3 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
     </Dialog>
   );
 }
-
-    

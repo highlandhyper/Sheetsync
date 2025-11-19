@@ -106,5 +106,3 @@ export interface AuditLogEntry {
     target: string; // The primary identifier of the item affected (e.g., barcode, item ID, supplier name)
     details: string; // A human-readable description of the change
 }
-
-
