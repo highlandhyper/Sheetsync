@@ -42,14 +42,12 @@ export function Header({ className }: { className?: string }) {
         <div className="flex-1" />
         
         <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCommandPaletteOpen(true)}
-            className="text-muted-foreground"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="text-muted-foreground"
         >
-            <Command className="h-4 w-4 mr-2" />
-            <span>Command...</span>
-            <kbd className="pointer-events-none ml-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+           <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium flex">
               <span className="text-xs">⌘</span>K
             </kbd>
         </Button>
