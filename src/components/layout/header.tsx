@@ -43,13 +43,12 @@ export function Header({ className }: { className?: string }) {
         
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={() => setIsCommandPaletteOpen(true)}
           className="text-muted-foreground"
+          aria-label="Open command palette"
         >
-           <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium flex">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+          <Command className="h-4 w-4" />
         </Button>
         
         <Button
