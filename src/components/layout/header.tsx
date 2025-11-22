@@ -45,18 +45,13 @@ export function Header({ className }: { className?: string }) {
             variant="outline"
             size="sm"
             onClick={() => setIsCommandPaletteOpen(true)}
-            className="group relative w-36 items-center justify-center text-muted-foreground sm:w-auto overflow-hidden"
+            className="text-muted-foreground"
         >
-            <div className="flex items-center gap-2 transition-transform duration-300 group-hover:-translate-y-12">
-                <Command className="h-4 w-4" />
-                <span>Command...</span>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center gap-1 transition-transform duration-300 translate-y-12 group-hover:translate-y-0">
-                 <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                    <span className="text-xs">⌘</span>K
-                </kbd>
-                 <span className="sm:hidden">Search...</span>
-            </div>
+            <Command className="h-4 w-4 mr-2" />
+            <span>Command...</span>
+            <kbd className="pointer-events-none ml-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+              <span className="text-xs">⌘</span>K
+            </kbd>
         </Button>
         
         <Button
