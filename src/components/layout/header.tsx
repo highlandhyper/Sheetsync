@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Command, LogOut, UserCircle, RotateCw } from 'lucide-react';
+import { Zap, LogOut, UserCircle, RotateCw, Command } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,7 @@ export function Header({ className }: { className?: string }) {
           className="text-muted-foreground"
           aria-label="Open command palette"
         >
-          <Command className="h-4 w-4" />
+          <Zap className="h-4 w-4" />
         </Button>
         
         <Button
