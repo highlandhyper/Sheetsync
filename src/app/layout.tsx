@@ -33,8 +33,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'SheetSync',
   description: 'Next-Gen Inventory Management',
+  manifest: '/manifest.json',
   icons: {
-    icon: null, 
+    icon: '/favicon.ico', 
   },
 };
 
@@ -45,6 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+       <head>
+        <meta name="theme-color" content="#29ABE2" />
+      </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
