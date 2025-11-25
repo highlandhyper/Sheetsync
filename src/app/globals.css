@@ -178,26 +178,9 @@ body {
   /* Make all text inside printable area black, important to override theme */
   .printable-area, .printable-area * {
     color: black !important;
-    border-color: #4ade80 !important; /* Green-400 for borders */
+    border-color: #ddd !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  .printable-area .text-blue-800 {
-      color: #1e40af !important;
-  }
-  .printable-area .text-red-500 {
-      color: #ef4444 !important;
-  }
-  .printable-area .border-green-500 {
-      border-color: #22c55e !important;
-  }
-  .printable-area .border-black {
-      border-color: black !important;
-  }
-
-  .invoice-table td, .invoice-table th {
-    height: 24px; /* Give rows a fixed height */
   }
 
   /* Reset main layout containers for print */
@@ -241,6 +224,7 @@ body {
     word-wrap: break-word; /* Prevent long text from overflowing */
     color: black !important; /* Ensure text in table cells is black */
     background-color: transparent !important; /* Ensure table cell backgrounds are transparent */
+    border: 1px solid #ddd;
   }
   .printable-area .text-right {
     text-align: right !important;

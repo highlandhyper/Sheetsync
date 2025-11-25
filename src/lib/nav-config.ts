@@ -9,7 +9,6 @@ export const allNavItems = [
   { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, roles: ['admin'] },
   { href: '/inventory/lookup', label: 'Barcode Log Lookup', icon: SearchCode, roles: ['admin', 'viewer'] },
   { href: '/inventory/returns', label: 'Return Log', icon: History, roles: ['admin'] },
-  { href: '/invoice', label: 'Invoice Generator', icon: FileText, roles: ['admin'] },
 ];
 
 export const accountNavItems = [
