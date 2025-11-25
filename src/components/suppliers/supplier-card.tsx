@@ -15,7 +15,7 @@ const SupplierCardComponent = ({ supplier, onEdit }: SupplierCardProps) => {
     <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader className="pb-3">
          <Image
-            src={`https://placehold.co/400x200/e2e8f0/64748b.png?text=${supplier.name.substring(0,1)}`}
+            src={`https://picsum.photos/seed/${supplier.id}/400/200`}
             alt={supplier.name}
             width={400}
             height={200}
