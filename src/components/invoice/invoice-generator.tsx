@@ -38,11 +38,17 @@ export function InvoiceGenerator() {
   const tax = useMemo(() => subtotal * taxRate, [subtotal, taxRate]);
   const total = useMemo(() => subtotal + tax, [subtotal, tax]);
 
-  const handleLineItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
+  const handleLineItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string) => {
     setLineItems(
-      lineItems.map(item =>
-        item.id === id ? { ...item, [field]: typeof value === 'string' ? value : Number(value) } : item
-      )
+      lineItems.map(item => {
+        if (item.id === id) {
+          if (field === 'quantity' || field === 'price') {
+            return { ...item, [field]: Number(value) || 0 };
+          }
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
     );
   };
 
