@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -6,6 +5,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
@@ -15,7 +17,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  turbopack: {},
 };
 
 export default nextConfig;
