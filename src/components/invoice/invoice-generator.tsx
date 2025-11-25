@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, PlusCircle, Printer, FileDown } from 'lucide-react';
+import { Trash2, PlusCircle, Printer } from 'lucide-react';
 
 interface LineItem {
   id: number;
@@ -19,36 +19,29 @@ interface LineItem {
 
 export function InvoiceGenerator() {
   const [invoiceNumber, setInvoiceNumber] = useState('INV-001');
-  const [customerName, setCustomerName] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerName, setCustomerName] = useState('CASH');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
+  const [salesperson, setSalesperson] = useState('');
+  const [job, setJob] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('');
+  const [discount, setDiscount] = useState(0);
+
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: 1, description: '', quantity: 1, price: 0 },
   ]);
-  const [notes, setNotes] = useState('');
-  const [companyName, setCompanyName] = useState('Your Company Name');
-  const [companyAddress, setCompanyAddress] = useState('123 Main Street, Anytown, USA');
 
   const subtotal = useMemo(() => {
     return lineItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
   }, [lineItems]);
+  
+  const total = useMemo(() => subtotal - discount, [subtotal, discount]);
 
-  const taxRate = 0.08; // Example tax rate: 8%
-  const tax = useMemo(() => subtotal * taxRate, [subtotal, taxRate]);
-  const total = useMemo(() => subtotal + tax, [subtotal, tax]);
-
-  const handleLineItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string) => {
+  const handleLineItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
     setLineItems(
-      lineItems.map(item => {
-        if (item.id === id) {
-          if (field === 'quantity' || field === 'price') {
-            return { ...item, [field]: Number(value) || 0 };
-          }
-          return { ...item, [field]: value };
-        }
-        return item;
-      })
+      lineItems.map(item =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
     );
   };
 
@@ -73,25 +66,13 @@ export function InvoiceGenerator() {
           <CardDescription>Enter the main details for the invoice.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="companyName">Your Company Name</Label>
-            <Input id="companyName" value={companyName} onChange={e => setCompanyName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="companyAddress">Your Company Address</Label>
-            <Input id="companyAddress" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} />
-          </div>
            <div className="space-y-2">
             <Label htmlFor="invoiceNumber">Invoice Number</Label>
             <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="customerName">Customer Name</Label>
-            <Input id="customerName" placeholder="e.g., John Doe" value={customerName} onChange={e => setCustomerName(e.target.value)} />
-          </div>
-           <div className="space-y-2">
-            <Label htmlFor="customerAddress">Customer Address</Label>
-            <Textarea id="customerAddress" placeholder="e.g., 456 Oak Avenue..." value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />
+            <Label htmlFor="customerName">Customer Name (TO:)</Label>
+            <Input id="customerName" placeholder="e.g., CASH" value={customerName} onChange={e => setCustomerName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invoiceDate">Invoice Date</Label>
@@ -100,6 +81,22 @@ export function InvoiceGenerator() {
           <div className="space-y-2">
             <Label htmlFor="dueDate">Due Date</Label>
             <Input id="dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="salesperson">Salesperson</Label>
+            <Input id="salesperson" value={salesperson} onChange={e => setSalesperson(e.target.value)} />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="job">Job</Label>
+            <Input id="job" value={job} onChange={e => setJob(e.target.value)} />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="paymentTerms">Payment Terms</Label>
+            <Input id="paymentTerms" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="discount">Discount</Label>
+            <Input id="discount" type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} />
           </div>
         </CardContent>
       </Card>
@@ -121,11 +118,11 @@ export function InvoiceGenerator() {
                   </div>
                   <div className="space-y-1">
                      {index === 0 && <Label className="sm:hidden">Quantity</Label>}
-                    <Input type="number" placeholder="Qty" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', e.target.value)} className="text-right" min="0" />
+                    <Input type="number" placeholder="Qty" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', Number(e.target.value))} className="text-right" min="0" />
                   </div>
                   <div className="space-y-1">
-                     {index === 0 && <Label className="sm-hidden">Price</Label>}
-                    <Input type="number" placeholder="Price" value={item.price} onChange={e => handleLineItemChange(item.id, 'price', e.target.value)} className="text-right" min="0" step="0.01" />
+                     {index === 0 && <Label className="sm:hidden">Price</Label>}
+                    <Input type="number" placeholder="Price" value={item.price} onChange={e => handleLineItemChange(item.id, 'price', Number(e.target.value))} className="text-right" min="0" step="0.01" />
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} disabled={lineItems.length <= 1} className="text-destructive h-10 w-10 mt-1 sm:mt-0">
@@ -140,103 +137,91 @@ export function InvoiceGenerator() {
         </CardContent>
       </Card>
       
-       <Card className="noprint">
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-          <CardDescription>Add any additional notes or payment instructions.</CardDescription>
-        </CardHeader>
-        <CardContent>
-           <Textarea placeholder="Thank you for your business." value={notes} onChange={e => setNotes(e.target.value)} />
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end gap-2 noprint">
         <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
       </div>
 
       {/* Printable Invoice Preview */}
-      <div className="printable-area bg-card text-card-foreground shadow-lg rounded-lg p-8 ring-1 ring-border">
-        {/* Header */}
-        <header className="flex justify-between items-start mb-10">
-          <div>
-            <h2 className="text-2xl font-bold text-primary">{companyName}</h2>
-            <p className="text-muted-foreground whitespace-pre-line">{companyAddress}</p>
-          </div>
-          <div className="text-right">
-            <h1 className="text-4xl font-extrabold text-primary uppercase tracking-wider">Invoice</h1>
-            <p className="text-muted-foreground mt-1"># {invoiceNumber}</p>
-          </div>
-        </header>
+        <div className="printable-area bg-white text-black p-8 max-w-4xl mx-auto ring-1 ring-gray-200">
+            <header className="mb-8">
+                <h1 className="text-3xl font-sans font-bold text-blue-800 tracking-wider">HIGHLAND HYPERMARKET</h1>
+                <div className="mt-4 flex justify-between items-end border-b-2 border-green-500 pb-2">
+                    <div>
+                        <p className="text-sm">DATE: <span className="font-mono">{invoiceDate ? new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-GB') : ''}</span></p>
+                        <p className="text-sm mt-2">INVOICE# <span className="text-red-500 font-mono">{invoiceNumber}</span></p>
+                    </div>
+                    <p className="text-sm">TO: <span className="text-red-500 font-mono">{customerName}</span></p>
+                </div>
+                 <h2 className="text-center font-bold mt-2">INVOICE</h2>
+            </header>
 
-        {/* Customer & Dates */}
-        <section className="grid grid-cols-2 gap-4 mb-10">
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bill To</h3>
-            <p className="font-bold">{customerName || 'Customer Name'}</p>
-            <p className="text-muted-foreground whitespace-pre-line">{customerAddress || 'Customer Address'}</p>
-          </div>
-          <div className="text-right">
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Invoice Date</p>
-              <p className="font-medium">{invoiceDate ? new Date(invoiceDate).toLocaleDateString() : '---'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Due Date</p>
-              <p className="font-medium">{dueDate ? new Date(dueDate).toLocaleDateString() : '---'}</p>
-            </div>
-          </div>
-        </section>
+            <section className="mb-4 text-sm">
+                <div className="flex border-2 border-green-500">
+                    <div className="w-1/3 p-1 border-r-2 border-green-500">
+                        <p className="font-bold">SALESPERSON</p>
+                        <p className="font-mono h-6">{salesperson}</p>
+                    </div>
+                    <div className="w-1/3 p-1 border-r-2 border-green-500">
+                        <p className="font-bold">JOB</p>
+                        <p className="font-mono h-6">{job}</p>
+                    </div>
+                    <div className="w-1/3 p-1">
+                        <p className="font-bold">PAYMENT TERMS</p>
+                        <p className="font-mono h-6">{paymentTerms}</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section>
+                <table className="w-full text-sm invoice-table">
+                    <thead>
+                        <tr className="border-2 border-green-500">
+                            <th className="w-1/6 p-1 text-left font-bold border-r-2 border-green-500">QTY</th>
+                            <th className="w-1/2 p-1 text-left font-bold border-r-2 border-green-500">DESCRIPTION</th>
+                            <th className="w-1/6 p-1 text-left font-bold border-r-2 border-green-500">PRICE</th>
+                            <th className="w-1/6 p-1 text-left font-bold">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[...lineItems, ...Array(Math.max(0, 15 - lineItems.length)).fill(null)].map((item, index) => (
+                             <tr key={item ? item.id : `empty-${index}`} className="border-x-2 border-green-500">
+                                <td className="p-1 border-r-2 border-green-500 font-mono">{item?.quantity || ''}</td>
+                                <td className="p-1 border-r-2 border-green-500 font-mono">{item?.description || ''}</td>
+                                <td className="p-1 border-r-2 border-green-500 font-mono">{item ? item.price.toFixed(2) : ''}</td>
+                                <td className="p-1 font-mono">{item ? (item.quantity * item.price).toFixed(2) : ''}</td>
+                            </tr>
+                        ))}
+                         <tr className="border-2 border-green-500">
+                            <td className="p-1 border-r-2 border-green-500 h-6"></td>
+                            <td className="p-1 border-r-2 border-green-500"></td>
+                            <td className="p-1 border-r-2 border-green-500"></td>
+                            <td className="p-1"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section className="mt-4 flex justify-between">
+                <div>
+                    <p className="font-bold">DISCOUNT</p>
+                    <p className="font-mono text-lg">{discount > 0 ? discount.toFixed(2) : ''}</p>
+                </div>
+                <div className="w-1/3">
+                    <div className="flex justify-between border-2 border-green-500 p-1">
+                        <span className="font-bold">GR.</span>
+                        <span className="font-mono">{total.toFixed(2)}</span>
+                    </div>
+                </div>
+            </section>
 
-        {/* Line Items Table */}
-        <section className="mb-10">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-1/2">Description</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lineItems.map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.description || 'Not specified'}</TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right font-medium">${(item.quantity * item.price).toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-              {lineItems.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No items added.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
-        </section>
-
-        {/* Totals */}
-        <section className="flex justify-end mb-10">
-          <div className="w-full max-w-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-medium">${subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax ({ (taxRate * 100).toFixed(0) }%)</span>
-              <span className="font-medium">${tax.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold text-primary pt-2 border-t mt-2">
-              <span>Total</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer Notes */}
-        {notes && (
-          <footer className="border-t pt-6">
-            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Notes</h4>
-            <p className="text-muted-foreground text-sm whitespace-pre-line">{notes}</p>
-          </footer>
-        )}
+            <footer className="mt-20 flex justify-between text-sm">
+                <div>
+                    <p className="border-t border-black pt-1">Customer signature</p>
+                </div>
+                <div>
+                    <p className="border-t border-black pt-1">For HIGHLAND</p>
+                </div>
+            </footer>
       </div>
     </div>
   );
