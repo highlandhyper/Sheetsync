@@ -14,7 +14,7 @@ const ProductCardComponent = ({ product }: ProductCardProps) => {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <Image
-            src={`https://placehold.co/80x80.png?text=${product.productName.substring(0,1)}`}
+            src={`https://picsum.photos/seed/${product.id}/80/80`}
             alt={product.productName}
             width={60}
             height={60}
