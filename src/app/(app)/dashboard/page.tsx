@@ -214,7 +214,7 @@ export default function DashboardPage() {
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
   if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    const colorClass = isIncrease ? 'text-green-600' : 'text-destructive';
+    const colorClass = isIncrease ? 'text-destructive' : 'text-green-600'; // USER REQUEST: Green for decrease, red for increase
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
     let trendText: string;
