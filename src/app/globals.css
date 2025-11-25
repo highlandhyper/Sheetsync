@@ -159,16 +159,50 @@ body {
   .noprint {
     display: none !important;
   }
-
-  /* Show elements marked with .print-show-table-cell specifically for table cells */
-  .print-show-table-cell {
-    display: table-cell !important;
+  
+  .printable-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    padding: 2rem !important; /* Add some padding to the print page */
+    margin: 0 !important;
+    background-color: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    color: black !important;
+  }
+  
+  /* Make all text inside printable area black, important to override theme */
+  .printable-area, .printable-area * {
+    color: black !important;
+    border-color: #4ade80 !important; /* Green-400 for borders */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  .printable-area .text-blue-800 {
+      color: #1e40af !important;
+  }
+  .printable-area .text-red-500 {
+      color: #ef4444 !important;
+  }
+  .printable-area .border-green-500 {
+      border-color: #22c55e !important;
+  }
+  .printable-area .border-black {
+      border-color: black !important;
+  }
+
+  .invoice-table td, .invoice-table th {
+    height: 24px; /* Give rows a fixed height */
+  }
 
   /* Reset main layout containers for print */
   main,
-  main > .container, /* Targets the direct .container child of main */
+  main > .container,
   .printable-area {
     padding: 0 !important;
     margin: 0 !important;
@@ -202,7 +236,6 @@ body {
   }
   .printable-area th, .printable-area td,
   .printable-area thead th, .printable-area tbody td { /* More specific selectors */
-    border: 1px solid #ccc !important;
     padding: 4px !important;
     text-align: left !important;
     word-wrap: break-word; /* Prevent long text from overflowing */
@@ -247,52 +280,5 @@ body {
     margin-bottom: 1rem !important; /* Example spacing */
     color: black !important;
     background-color: transparent !important;
-  }
-
-  /* General text color override for elements within printable-area */
-  .printable-area,
-  .printable-area *,
-  .printable-area p,
-  .printable-area span,
-  .printable-area div,
-  .printable-area li,
-  .printable-area h2, .printable-area h3, .printable-area h4, .printable-area h5, .printable-area h6 {
-    color: black !important;
-    background-color: transparent !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Explicitly override common Tailwind text color utilities within printable area */
-  .printable-area .text-muted-foreground,
-  .printable-area .text-primary,
-  .printable-area .text-secondary,
-  .printable-area .text-accent,
-  .printable-area .text-destructive,
-  .printable-area .text-foreground,
-  .printable-area .text-card-foreground,
-  .printable-area .text-popover-foreground,
-  .printable-area .text-primary-foreground,
-  .printable-area .text-secondary-foreground,
-  .printable-area .text-muted-foreground, /* Repeated for emphasis */
-  .printable-area .text-accent-foreground,
-  .printable-area .text-destructive-foreground,
-  .printable-area .text-orange-500, /* Specific for damage type, if used */
-  .printable-area [class*="text-orange-"], /* Catch variations */
-  .printable-area [class*="text-red-"], /* Catch variations for destructive */
-  .printable-area [class*="text-yellow-"] /* Catch variations for warnings if any */
-  {
-    color: black !important;
-  }
-
-  /* Ensure icons (Lucide, SVGs) become black if they use text color or specific fills */
-  .printable-area svg {
-    color: black !important; /* If color is inherited */
-    fill: black !important; /* If SVGs use fill directly and should be black */
-    stroke: black !important; /* If SVGs use stroke directly and should be black */
-  }
-  /* More specific for lucide icons if needed, though above should cover them */
-  .printable-area [class*="lucide-"] {
-     color: black !important;
   }
 }
