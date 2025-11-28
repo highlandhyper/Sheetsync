@@ -822,9 +822,6 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
           return false;
       }
 
-      const existingProductRow = await readSheetData(`${DB_SHEET_NAME}!A${rowNumber}:D${rowNumber}`);
-      const oldProductName = (existingProductRow && existingProductRow[0]) ? String(existingProductRow[0][DB_COL_PRODUCT_NAME] || '').trim() : '';
-
       const batchUpdates: { range: string; values: any[][] }[] = [];
 
       // Update product name and supplier name in the DB sheet for the found row
@@ -836,37 +833,7 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${rowNumber}`,
           values: [[newSupplierName.trim()]]
       });
-
-      const productNameChanged = oldProductName.toLowerCase() !== newProductName.trim().toLowerCase();
-
-      // If product name changed, cascade the update to other sheets
-      if (productNameChanged && oldProductName) {
-          console.log(`GS_Data: Product name changed from "${oldProductName}" to "${newProductName}". Searching for inventory and return log entries to update.`);
-          
-          const [inventorySheetData, returnLogSheetData] = await Promise.all([
-              readSheetData(INVENTORY_READ_RANGE),
-              readSheetData(RETURN_LOG_READ_RANGE)
-          ]);
-          
-          if (inventorySheetData) {
-              inventorySheetData.forEach((row, index) => {
-                  if (String(row[INV_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
-                      const cell = `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_PRODUCT_NAME)}${index + 2}`;
-                      batchUpdates.push({ range: cell, values: [[newProductName.trim()]] });
-                  }
-              });
-          }
-          
-          if (returnLogSheetData) {
-              returnLogSheetData.forEach((row, index) => {
-                  if(String(row[RL_COL_PRODUCT_NAME] || '').trim().toLowerCase() === oldProductName.toLowerCase()) {
-                      const cell = `${RETURNS_LOG_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + RL_COL_PRODUCT_NAME)}${index + 2}`;
-                      batchUpdates.push({range: cell, values: [[newProductName.trim()]]});
-                  }
-              });
-          }
-      }
-
+      
       if (batchUpdates.length === 0) {
           console.log("GS_Data: updateProductAndSupplierLinks - No changes to apply.");
           return true;
@@ -1099,6 +1066,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 
