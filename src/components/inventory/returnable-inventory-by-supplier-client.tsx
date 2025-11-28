@@ -30,6 +30,7 @@ import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { useMultiSelect } from '@/context/multi-select-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 interface ReturnableInventoryBySupplierClientProps {
@@ -42,6 +43,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 export function ReturnableInventoryBySupplierClient({ initialInventoryItems, allSuppliers }: ReturnableInventoryBySupplierClientProps) {
   const { toast } = useToast();
   const { isMultiSelectEnabled } = useMultiSelect();
+  const { refreshData } = useDataCache();
   const [selectedSupplierNames, setSelectedSupplierNames] = useState<string[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,13 +127,15 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
   const handleEditSuccess = useCallback(() => {
     setSelectedItemIds(new Set());
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
 
   const handleReturnSuccess = useCallback(() => {
     setSelectedItemForReturn(null);
     setSelectedItemIds(new Set());
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   const filteredInventoryItemsBySupplier = useMemo(() => {
     if (selectedSupplierNames.length === 0) {
