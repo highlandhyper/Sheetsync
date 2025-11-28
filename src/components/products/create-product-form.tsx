@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition, useMemo } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,15 +54,10 @@ interface EditOrCreateProductFormProps {
 export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { products: cachedProducts } = useDataCache();
+  const { products: cachedProducts, addProduct: addProductToCache, updateProduct: updateProductInCache } = useDataCache();
   const [isSavePending, startSaveTransition] = useTransition();
   const [isFetchPending, startFetchTransition] = useTransition();
   
-  const [saveState, saveFormAction] = useActionState<ActionResponse<Product> | undefined, FormData>(
-    saveProductAction,
-    undefined
-  );
-
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchedBarcode, setSearchedBarcode] = useState(''); 
   const [currentProductName, setCurrentProductName] = useState('');
@@ -99,43 +94,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!saveState) return;
-
-    if (saveState.success) {
-      toast({
-        title: 'Success!',
-        description: saveState.message,
-      });
-      if (editMode === 'create' && saveState.data?.productName) {
-        setCurrentProductName(saveState.data.productName);
-        setValue('productName', saveState.data.productName); 
-        setValue('barcode', saveState.data.barcode);
-        setValue('supplierName', saveState.data.supplierName || '');
-        setSearchedBarcode(saveState.data.barcode); 
-        setEditMode('edit'); 
-        setProductNotFound(false);
-        setShowForm(true);
-      } else if (editMode === 'edit' && saveState.data?.productName) {
-        setCurrentProductName(saveState.data.productName);
-      } else {
-        reset({ barcode: '', productName: '', supplierName: '' }); 
-        setShowForm(false); 
-        setSearchedBarcode(''); 
-        setBarcodeToSearch(''); 
-        setEditMode('create');
-        setProductNotFound(false);
-        setCurrentProductName('');
-      }
-    } else if (saveState.message && !saveState.success) {
-      toast({
-        title: 'Error Saving Product',
-        description: saveState.message,
-        variant: 'destructive',
-      });
-    }
-  }, [saveState, toast, reset, editMode, setValue]);
 
   const handleSearchBarcode = async (barcode?: string) => {
     const barcodeToUse = barcode || barcodeToSearch;
@@ -189,8 +147,38 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     formData.append('supplierName', data.supplierName); 
     formData.append('editMode', editMode);
     
-    startSaveTransition(() => {
-      saveFormAction(formData);
+    startSaveTransition(async () => {
+      const result = await saveProductAction(undefined, formData);
+      if (result.success && result.data) {
+        toast({
+            title: 'Success!',
+            description: result.message,
+        });
+
+        // This is the new part: update the local cache
+        if (editMode === 'create') {
+            addProductToCache(result.data);
+        } else {
+            updateProductInCache(result.data);
+        }
+
+        // Update form state for continued editing
+        setCurrentProductName(result.data.productName);
+        setValue('productName', result.data.productName); 
+        setValue('barcode', result.data.barcode);
+        setValue('supplierName', result.data.supplierName || '');
+        setSearchedBarcode(result.data.barcode); 
+        setEditMode('edit'); 
+        setProductNotFound(false);
+        setShowForm(true);
+
+      } else if (result.message && !result.success) {
+          toast({
+              title: 'Error Saving Product',
+              description: result.message,
+              variant: 'destructive',
+          });
+      }
     });
   };
   
@@ -260,7 +248,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   className="bg-muted cursor-not-allowed"
                 />
                  {formErrors.barcode && <p className="text-sm text-destructive mt-1">{formErrors.barcode.message}</p>}
-                 {saveState?.errors?.find(e => e.path.includes('barcode')) && <p className="text-sm text-destructive mt-1">{saveState.errors.find(e => e.path.includes('barcode'))?.message}</p>}
               </div>
               <div>
                 <Label htmlFor="productName">Product Name</Label>
@@ -270,10 +257,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   {...register('productName', { 
                       onChange: (e) => setCurrentProductName(e.target.value) 
                   })}
-                  className={cn(formErrors.productName || saveState?.errors?.find(e => e.path.includes('productName')) ? 'border-destructive' : '')}
+                  className={cn(formErrors.productName && 'border-destructive')}
                 />
                 {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
-                {saveState?.errors?.find(e => e.path.includes('productName')) && <p className="text-sm text-destructive mt-1">{saveState.errors.find(e => e.path.includes('productName'))?.message}</p>}
               </div>
               <div>
                 <Label htmlFor="supplierName">Supplier Name</Label>
@@ -286,7 +272,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       className={cn(
                         "w-full justify-between font-normal",
                         !supplierNameValue && "text-muted-foreground",
-                        (formErrors.supplierName || saveState?.errors?.find(e => e.path.includes('supplierName'))) && 'border-destructive'
+                        formErrors.supplierName && 'border-destructive'
                       )}
                     >
                       {supplierNameValue
@@ -352,7 +338,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   </PopoverContent>
                 </Popover>
                 {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-                {saveState?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{saveState.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
                 <p className="text-xs text-muted-foreground mt-1">If supplier doesn't exist in the list, it will be created.</p>
               </div>
 
