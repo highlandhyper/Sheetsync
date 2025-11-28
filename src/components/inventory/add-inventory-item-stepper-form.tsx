@@ -76,9 +76,16 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
-export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames }: AddInventoryItemStepperFormProps) {
+export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames: initialStaffNames }: AddInventoryItemStepperFormProps) {
   const { toast } = useToast();
-  const { products: cachedProducts } = useDataCache();
+  const { 
+    products: cachedProducts, 
+    uniqueLocations, 
+    uniqueStaffNames, 
+    addInventoryItem,
+    addReturnedItem, // Assuming addReturnedItem exists if logic is added
+    refreshData // For full sync if needed
+  } = useDataCache();
   const [currentStep, setCurrentStep] = useState(0);
   
   const [isPending, startTransition] = useTransition();
@@ -120,45 +127,36 @@ export function AddInventoryItemStepperForm({ uniqueLocations, uniqueStaffNames 
   const allFormValues = watch();
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
-    try {
-      startTransition(async () => {
-        try {
-          // Convert form data to FormData
-          const formData = new FormData();
-          formData.append('barcode', data.barcode);
-          formData.append('staffName', data.staffName);
-          formData.append('itemType', data.itemType);
-          formData.append('quantity', data.quantity.toString());
-          formData.append('expiryDate', data.expiryDate ? data.expiryDate.toISOString() : '');
-          formData.append('location', data.location);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append('barcode', data.barcode);
+      formData.append('staffName', data.staffName);
+      formData.append('itemType', data.itemType);
+      formData.append('quantity', data.quantity.toString());
+      formData.append('expiryDate', data.expiryDate ? data.expiryDate.toISOString() : '');
+      formData.append('location', data.location);
 
-          const response = await addInventoryItemAction(undefined, formData);
-          
-          if (response.success) {
-            toast({
-              title: 'Success!',
-              description: 'Inventory item added successfully.'
-            });
-            reset();
-            setProductName('');
-            setProductSupplier('');
-            setProductLookupError('');
-            setCurrentStep(0);
-          } else {
-            throw new Error(response.errors?.join(', ') || 'Failed to add inventory item');
-          }
-        } catch (error) {
-          throw error;
-        }
-      });
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add inventory item'
-      });
-    }
+      const response = await addInventoryItemAction(undefined, formData);
+      
+      if (response.success && response.data) {
+        addInventoryItem(response.data); // Update local cache
+        toast({
+          title: 'Success!',
+          description: 'Inventory item added successfully.'
+        });
+        reset();
+        setProductName('');
+        setProductSupplier('');
+        setProductLookupError('');
+        setCurrentStep(0);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error Logging Item',
+          description: response.message || response.errors?.map(e => e.message).join(', ') || 'Failed to add inventory item.'
+        });
+      }
+    });
   };
 
   const handleBarcodeLookup = useCallback(async (barcode: string) => {
