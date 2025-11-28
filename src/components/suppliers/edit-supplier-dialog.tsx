@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Building } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { editSupplierSchema, type EditSupplierFormValues } from '@/lib/schemas';
-import { editSupplierAction, type ActionResponse } from '@/app/actions'; // Ensure this action exists
+import { editSupplierAction } from '@/app/actions'; 
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -41,13 +41,8 @@ interface EditSupplierDialogProps {
 
 export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSupplierDialogProps) {
   const { toast } = useToast();
-  const { refreshData } = useDataCache();
+  const { updateSupplier: updateSupplierInCache, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
-
-  const [state, formAction] = useActionState<ActionResponse<Supplier> | undefined, FormData>(
-    editSupplierAction,
-    undefined
-  );
 
   const {
     register,
@@ -73,25 +68,6 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
     }
   }, [supplier, reset, isOpen]);
 
-  useEffect(() => {
-    if (!state) return;
-
-    if (state.success) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      refreshData();
-      onOpenChange(false); 
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Updating Supplier',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, onOpenChange, refreshData]);
-
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!isDirty) {
         toast({ title: 'No Changes', description: 'The supplier name has not been changed.' });
@@ -102,7 +78,26 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
     formData.append('supplierId', supplier?.id || data.supplierId);
     formData.append('currentSupplierName', supplier?.name || data.currentSupplierName);
     formData.append('newSupplierName', data.newSupplierName);
-    startActionTransition(() => formAction(formData));
+    
+    startActionTransition(async () => {
+      const result = await editSupplierAction(undefined, formData);
+      if (result.success && result.data) {
+        toast({
+          title: 'Success!',
+          description: result.message,
+        });
+        // Instead of local cache update, we refresh all data because this change
+        // affects multiple denormalized fields across the app.
+        refreshData();
+        onOpenChange(false);
+      } else if (result.message && !result.success) {
+        toast({
+          title: 'Error Updating Supplier',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    });
   };
   
   if (!supplier) return null;
@@ -128,10 +123,9 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
                 id="newSupplierName"
                 placeholder="Enter new supplier name"
                 {...register('newSupplierName')}
-                className={cn(formErrors.newSupplierName || state?.errors?.find(e => e.path.includes('newSupplierName')) ? 'border-destructive' : '')}
+                className={cn(formErrors.newSupplierName && 'border-destructive')}
               />
               {formErrors.newSupplierName && <p className="text-sm text-destructive mt-1">{formErrors.newSupplierName.message}</p>}
-              {state?.errors?.find(e => e.path.includes('newSupplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('newSupplierName'))?.message}</p>}
             </div>
           </div>
           <DialogFooter>
@@ -145,5 +139,3 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
     </Dialog>
   );
 }
-
-    
