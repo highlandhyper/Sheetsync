@@ -125,17 +125,38 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSuccess = useCallback(() => {
+  const handleEditSuccess = useCallback((updatedItem?: InventoryItem) => {
+    if (updatedItem) {
+      setInventoryItems(prevItems => 
+        prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
+      );
+    } else {
+      // If no item is returned, do a full refresh as a fallback
+      refreshData();
+    }
     setSelectedItemIds(new Set());
-    refreshData();
   }, [refreshData]);
 
 
-  const handleReturnSuccess = useCallback(() => {
+  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
+    setInventoryItems(prevItems => {
+      const newItems = [];
+      for (const item of prevItems) {
+        if (item.id === returnedItemId) {
+          const newQuantity = item.quantity - returnedQuantity;
+          if (newQuantity > 0) {
+            newItems.push({ ...item, quantity: newQuantity });
+          }
+          // If newQuantity is 0 or less, we simply don't add it back to the list
+        } else {
+          newItems.push(item);
+        }
+      }
+      return newItems;
+    });
     setSelectedItemForReturn(null);
     setSelectedItemIds(new Set());
-    refreshData();
-  }, [refreshData]);
+  }, []);
 
   const filteredInventoryItemsBySupplier = useMemo(() => {
     if (selectedSupplierNames.length === 0) {
@@ -463,14 +484,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleReturnSuccess}
+        onSuccess={refreshData}
         itemCount={selectedItemIds.size}
       />
       <BulkDeleteDialog
         isOpen={isBulkDeleteOpen}
         onOpenChange={setIsBulkDeleteOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleEditSuccess}
+        onSuccess={refreshData}
         itemCount={selectedItemIds.size}
       />
     </div>

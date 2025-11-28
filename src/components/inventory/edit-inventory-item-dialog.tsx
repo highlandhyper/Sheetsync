@@ -46,7 +46,7 @@ interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (updatedItem?: InventoryItem) => void;
   uniqueLocationsFromDb: string[]; 
 }
 
@@ -54,7 +54,6 @@ interface EditInventoryItemDialogProps {
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { updateInventoryItem } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
   
@@ -133,9 +132,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         title: 'Success!',
         description: state.message || 'Item updated successfully.',
       });
-      // Optimistically update the local cache
-      updateInventoryItem(state.data);
-      onSuccess?.();
+      onSuccess?.(state.data);
       onOpenChange(false);
     } else {
       toast({
@@ -144,7 +141,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         variant: 'destructive',
       });
     }
-  }, [state, toast, onOpenChange, onSuccess, updateInventoryItem]);
+  }, [state, toast, onOpenChange, onSuccess]);
 
   const processFormSubmit = async (data: EditInventoryItemFormValues) => {
     if (!item) return;

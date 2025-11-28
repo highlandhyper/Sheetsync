@@ -29,7 +29,7 @@ interface ReturnQuantityDialogProps {
   item: InventoryItem | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onReturnSuccess: () => void; // Callback for when return is successful
+  onReturnSuccess: (returnedItemId: string, returnedQuantity: number) => void; // Callback for when return is successful
 }
 
 const returnSchema = z.object({
@@ -87,7 +87,7 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
         title: 'Return Processed',
         description: response.message,
       });
-      onReturnSuccess(); // Call success callback
+      onReturnSuccess(item.id, data.quantityToReturn); // Call success callback
       onOpenChange(false); // Close dialog
     } else {
       toast({
