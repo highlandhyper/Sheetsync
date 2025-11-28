@@ -30,7 +30,7 @@ interface DeleteConfirmationDialogProps {
   item: InventoryItem | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (deletedItemId: string) => void;
 }
 
 const deleteSchema = z.object({
@@ -79,7 +79,7 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
         title: 'Deletion Successful',
         description: response.message,
       });
-      onSuccess();
+      onSuccess(item.id);
       onOpenChange(false);
       reset();
     } else {
