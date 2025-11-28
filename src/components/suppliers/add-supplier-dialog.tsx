@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Building } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addSupplierSchema, type AddSupplierFormValues } from '@/lib/schemas';
-import { addSupplierAction, type ActionResponse } from '@/app/actions';
+import { addSupplierAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -40,14 +40,9 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 
 export function AddSupplierDialog() {
   const { toast } = useToast();
-  const { refreshData } = useDataCache();
+  const { addSupplier: addSupplierToCache } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
-
-  const [state, formAction] = useActionState<ActionResponse<Supplier> | undefined, FormData>(
-    addSupplierAction,
-    undefined
-  );
 
   const {
     register,
@@ -61,33 +56,6 @@ export function AddSupplierDialog() {
     }
   });
   
-  useEffect(() => {
-    if (!state) return;
-
-    if (state.success && state.data) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      refreshData(); // Refresh the cache
-      reset();
-      setIsOpen(false); 
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Adding Supplier',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, reset, refreshData]);
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      reset(); 
-    }
-    setIsOpen(open);
-  };
-
   const processFormSubmit = (data: AddSupplierFormValues) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
@@ -95,9 +63,31 @@ export function AddSupplierDialog() {
           formData.append(key, String(value));
       }
     });
-    startActionTransition(() => {
-      formAction(formData);
+    startActionTransition(async () => {
+      const result = await addSupplierAction(undefined, formData);
+      if (result.success && result.data) {
+        toast({
+          title: 'Success!',
+          description: result.message,
+        });
+        addSupplierToCache(result.data); // Optimistically update cache
+        reset();
+        setIsOpen(false);
+      } else if (result.message && !result.success) {
+        toast({
+          title: 'Error Adding Supplier',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
     });
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      reset(); 
+    }
+    setIsOpen(open);
   };
 
   return (
@@ -124,10 +114,9 @@ export function AddSupplierDialog() {
                 id="supplierName"
                 placeholder="e.g., Global Provisions Inc."
                 {...register('supplierName')}
-                className={cn(formErrors.supplierName || state?.errors?.find(e => e.path.includes('supplierName')) ? 'border-destructive' : '')}
+                className={cn(formErrors.supplierName && 'border-destructive')}
               />
               {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-              {state?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
             </div>
           </div>
           <DialogFooter>
@@ -141,5 +130,3 @@ export function AddSupplierDialog() {
     </Dialog>
   );
 }
-
-    

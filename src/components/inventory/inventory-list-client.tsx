@@ -28,6 +28,7 @@ import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 interface InventoryListClientProps {
@@ -52,6 +53,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const { toast } = useToast();
   const { role, user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
+  const { inventoryItems: cachedItems, updateInventoryItem, removeInventoryItem, addProduct: addProductToCache, refreshData } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -362,47 +364,46 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   };
 
   const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
-    setInventoryItems(prevItems => {
-      const newItems: InventoryItem[] = [];
-      for (const item of prevItems) {
-        if (item.id === returnedItemId) {
-          const newQuantity = item.quantity - returnedQuantity;
-          if (newQuantity > 0) {
-            newItems.push({ ...item, quantity: newQuantity });
-          }
-          // If quantity is 0 or less, the item is removed from the list.
+    const itemToUpdate = inventoryItems.find(item => item.id === returnedItemId);
+    if (itemToUpdate) {
+        const newQuantity = itemToUpdate.quantity - returnedQuantity;
+        if (newQuantity > 0) {
+            updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
         } else {
-          newItems.push(item);
+            removeInventoryItem(returnedItemId);
         }
-      }
-      return newItems;
-    });
-    setSelectedItemIds(new Set()); // Clear selection after action
-  }, []);
+    }
+    setSelectedItemIds(new Set());
+    setIsReturnDialogOpen(false);
+  }, [inventoryItems, updateInventoryItem, removeInventoryItem]);
+
 
   const handleEditSuccess = useCallback((updatedItem?: InventoryItem) => {
     if (updatedItem) {
-      setInventoryItems(prevItems =>
-        prevItems.map(item => (item.id === updatedItem.id ? updatedItem : item))
-      );
+        updateInventoryItem(updatedItem);
     } else {
-      // Fallback to full refresh if optimistic update fails
       onDataNeeded();
     }
     setSelectedItemIds(new Set());
-  }, [onDataNeeded]);
+    setIsEditDialogOpen(false);
+  }, [updateInventoryItem, onDataNeeded]);
+
 
   const handleDeleteSuccess = useCallback((deletedItemId: string) => {
-    setInventoryItems(prevItems => prevItems.filter(item => item.id !== deletedItemId));
+    removeInventoryItem(deletedItemId);
     setSelectedItemIds(new Set());
-  }, []);
+    setIsDeleteDialogOpen(false);
+  }, [removeInventoryItem]);
   
   const handleBulkSuccess = useCallback(() => {
-    // Both bulk actions remove items, so a full refresh is the safest way
-    // to ensure consistency without complex local state management.
     onDataNeeded();
     setSelectedItemIds(new Set());
   }, [onDataNeeded]);
+  
+  const handleProductCreateSuccess = useCallback((newProduct: Product) => {
+    addProductToCache(newProduct);
+    refreshData();
+  }, [addProductToCache, refreshData]);
 
   const handlePrint = () => {
     window.print();
@@ -719,7 +720,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
           onOpenChange={setIsCreateProductDialogOpen}
-          onSuccess={onDataNeeded}
+          onSuccess={handleProductCreateSuccess}
         />
       )}
       

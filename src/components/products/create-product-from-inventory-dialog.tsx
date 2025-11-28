@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useActionState, useTransition, useMemo } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Check, ChevronsUpDown } from 'lucide-react';
@@ -28,18 +28,17 @@ import {
 } from "@/components/ui/command";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { saveProductAction, type ActionResponse } from '@/app/actions';
+import { saveProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useDataCache } from '@/context/data-cache-context';
 
 interface CreateProductFromInventoryDialogProps {
   barcode: string;
   allSuppliers: Supplier[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (newProduct: Product) => void;
 }
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -55,10 +54,6 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
   const { toast } = useToast();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
-  const [state, formAction] = useActionState<ActionResponse<Product> | undefined, FormData>(
-    saveProductAction,
-    undefined
-  );
 
   const {
     register,
@@ -86,34 +81,29 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
     });
   }, [barcode, reset, isOpen]);
 
-  useEffect(() => {
-    if (!state) return;
-
-    if (state.success) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Creating Product',
-        description: state.message,
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, onOpenChange, onSuccess]);
-
   const processFormSubmit = (data: AddProductFormValues) => {
     const formData = new FormData();
     formData.append('barcode', data.barcode);
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
-    formData.append('editMode', 'create'); // Always creating here
+    formData.append('editMode', 'create'); 
     
-    startActionTransition(() => {
-      formAction(formData);
+    startActionTransition(async () => {
+      const result = await saveProductAction(undefined, formData);
+      if (result.success && result.data) {
+        toast({
+          title: 'Success!',
+          description: result.message,
+        });
+        onSuccess(result.data);
+        onOpenChange(false);
+      } else {
+        toast({
+          title: 'Error Creating Product',
+          description: result.message || 'An unknown error occurred.',
+          variant: 'destructive',
+        });
+      }
     });
   };
 
