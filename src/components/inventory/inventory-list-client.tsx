@@ -83,8 +83,11 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
   
-  // Use state from parent for real-time updates
-  const inventoryItems = initialInventoryItems;
+  // Use state that can be locally mutated for instant updates
+  const [inventoryItems, setInventoryItems] = useState(initialInventoryItems);
+  useEffect(() => {
+    setInventoryItems(initialInventoryItems);
+  }, [initialInventoryItems]);
 
 
   useEffect(() => {
@@ -350,9 +353,47 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDialogSuccess = useCallback(() => {
+  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
+    setInventoryItems(prevItems => {
+      const newItems: InventoryItem[] = [];
+      for (const item of prevItems) {
+        if (item.id === returnedItemId) {
+          const newQuantity = item.quantity - returnedQuantity;
+          if (newQuantity > 0) {
+            newItems.push({ ...item, quantity: newQuantity });
+          }
+          // If quantity is 0 or less, the item is removed from the list.
+        } else {
+          newItems.push(item);
+        }
+      }
+      return newItems;
+    });
+    setSelectedItemIds(new Set()); // Clear selection after action
+  }, []);
+
+  const handleEditSuccess = useCallback((updatedItem?: InventoryItem) => {
+    if (updatedItem) {
+      setInventoryItems(prevItems =>
+        prevItems.map(item => (item.id === updatedItem.id ? updatedItem : item))
+      );
+    } else {
+      // Fallback to full refresh if optimistic update fails
+      onDataNeeded();
+    }
     setSelectedItemIds(new Set());
-    onDataNeeded(); // Trigger data refresh in parent
+  }, [onDataNeeded]);
+
+  const handleDeleteSuccess = useCallback((deletedItemId: string) => {
+    setInventoryItems(prevItems => prevItems.filter(item => item.id !== deletedItemId));
+    setSelectedItemIds(new Set());
+  }, []);
+  
+  const handleBulkSuccess = useCallback(() => {
+    // Both bulk actions remove items, so a full refresh is the safest way
+    // to ensure consistency without complex local state management.
+    onDataNeeded();
+    setSelectedItemIds(new Set());
   }, [onDataNeeded]);
 
   const handlePrint = () => {
@@ -640,7 +681,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleDialogSuccess}
+        onReturnSuccess={handleReturnSuccess}
       />
       <InventoryItemDetailsDialog
         item={selectedItemForDetails}
@@ -653,14 +694,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleDialogSuccess}
+        onSuccess={handleEditSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onSuccess={handleDialogSuccess}
+        onSuccess={() => handleDeleteSuccess(selectedItemForDeletion!.id)}
       />
       
        {/* Create Product Dialog */}
@@ -670,7 +711,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
           onOpenChange={setIsCreateProductDialogOpen}
-          onSuccess={handleDialogSuccess}
+          onSuccess={onDataNeeded}
         />
       )}
       
@@ -679,14 +720,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleDialogSuccess}
+        onSuccess={handleBulkSuccess}
         itemCount={selectedItemIds.size}
       />
       <BulkDeleteDialog
         isOpen={isBulkDeleteOpen}
         onOpenChange={setIsBulkDeleteOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleDialogSuccess}
+        onSuccess={handleBulkSuccess}
         itemCount={selectedItemIds.size}
       />
     </div>
