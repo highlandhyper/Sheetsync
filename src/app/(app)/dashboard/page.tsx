@@ -72,9 +72,13 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   }
   
   let chartDisplayData = data;
+  let otherSuppliersData: StockBySupplier[] | null = null;
+
   if (data.length > MAX_SUPPLIERS_IN_CHART) {
     const topSuppliers = data.slice(0, MAX_SUPPLIERS_IN_CHART -1);
-    const otherStock = data.slice(MAX_SUPPLIERS_IN_CHART - 1).reduce((sum, s) => sum + s.totalStock, 0);
+    otherSuppliersData = data.slice(MAX_SUPPLIERS_IN_CHART - 1);
+    const otherStock = otherSuppliersData.reduce((sum, s) => sum + s.totalStock, 0);
+
     if (otherStock > 0) {
         chartDisplayData = [...topSuppliers, { name: "Other Suppliers", totalStock: otherStock }];
     } else {
@@ -83,13 +87,11 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   }
 
   const handleBarClick = (barPayload: any) => {
-    if (barPayload && barPayload.name === "Other Suppliers") {
-      const otherActualSupplierNames = data.slice(MAX_SUPPLIERS_IN_CHART - 1).map(s => s.name);
+    if (barPayload && barPayload.name === "Other Suppliers" && otherSuppliersData) {
+      const otherActualSupplierNames = otherSuppliersData.map(s => s.name);
       if (otherActualSupplierNames.length > 0) {
         const suppliersQueryParam = encodeURIComponent(otherActualSupplierNames.join(','));
         router.push(`/inventory?filterType=otherSuppliers&suppliers=${suppliersQueryParam}`);
-      } else {
-        router.push('/inventory');
       }
     } else if (barPayload && barPayload.name) {
       router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.name)}`);
@@ -131,9 +133,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           radius={4}
           onClick={(payload) => handleBarClick(payload.payload)} 
           onMouseEnter={(props, e: any) => { 
-            if (props.name) { 
-              if (e && e.target) e.target.style.cursor = 'pointer';
-            }
+            if (e && e.target) e.target.style.cursor = 'pointer';
           }}
           onMouseLeave={(props, e: any) => {
              if (e && e.target) e.target.style.cursor = 'default';
@@ -214,7 +214,7 @@ export default function DashboardPage() {
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
   if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    const colorClass = isIncrease ? 'text-destructive' : 'text-green-600'; // USER REQUEST: Green for decrease, red for increase
+    const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
     let trendText: string;
@@ -290,7 +290,7 @@ export default function DashboardPage() {
               <TrendingUp className="mr-2 h-5 w-5" />
               Stock by Supplier
             </CardTitle>
-            <CardDescription>Total stock quantity held per supplier.</CardDescription>
+            <CardDescription>Total stock quantity held per supplier. Click a bar to filter inventory.</CardDescription>
           </CardHeader>
           <CardContent className="pl-0 pr-4 pb-6">
             {isLoading ? <Skeleton className="h-[350px] w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }

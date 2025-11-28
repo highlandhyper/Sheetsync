@@ -40,7 +40,7 @@ interface InventoryListClientProps {
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 
 type DashboardFilterType = {
-  type: 'damaged' | 'expiringSoon' | 'otherSuppliers' | 'customExpiry';
+  type: 'damaged' | 'expiringSoon' | 'otherSuppliers' | 'customExpiry' | 'specificSupplier';
   suppliers?: string[];
   customExpiryFrom?: string;
   customExpiryTo?: string;
@@ -100,34 +100,31 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     let clearUrlParams = false;
 
     if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
-      const specificSupplierName = decodeURIComponent(suppliersFromQuery);
-      if (suppliers.some(s => s.name === specificSupplierName)) {
-        setSelectedSupplier(specificSupplierName);
-        setSearchTerm(''); // Clear other local filters
-        setSelectedDateRange(undefined);
-        toast({ title: "Filter Applied", description: `Showing items for supplier: ${specificSupplierName} (from dashboard).` });
-      } else {
-        toast({ title: "Filter Error", description: `Supplier "${specificSupplierName}" from dashboard link not found. Displaying all items.`, variant: "destructive" });
-      }
-      clearUrlParams = true; 
-      newPotentialFilter = null; 
+      newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
+      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
       newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
     } else if (filterTypeFromQuery === 'damaged') {
       newPotentialFilter = { type: 'damaged' };
+      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'expiringSoon') {
       newPotentialFilter = { type: 'expiringSoon' };
+      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
       const supplierNames = decodeURIComponent(suppliersFromQuery).split(',');
       newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
+      clearUrlParams = true;
     }
 
     if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
       setActiveDashboardFilter(newPotentialFilter);
-      if (newPotentialFilter && newPotentialFilter.type !== 'specificSupplier') { // specificSupplier uses local state
+      if (newPotentialFilter) {
         setSearchTerm('');
         setSelectedSupplier('');
         setSelectedDateRange(undefined);
+        if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
+            setSelectedSupplier(newPotentialFilter.suppliers[0]);
+        }
       }
     } 
     
@@ -135,7 +132,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         router.replace('/inventory', { shallow: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, suppliers, toast, router]);
+  }, [searchParams, router]);
 
   // Clear selections when multi-select is disabled
   useEffect(() => {
@@ -148,46 +145,57 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const itemsAfterDashboardFilters = useMemo(() => {
     if (!activeDashboardFilter) return inventoryItems;
 
-    if (activeDashboardFilter.type === 'damaged') {
-      return inventoryItems.filter(item => item.itemType === 'Damage');
-    }
-    if (activeDashboardFilter.type === 'expiringSoon') {
-      const today = startOfDay(new Date());
-      const sevenDaysFromNow = startOfDay(addDays(today, 7));
-      return inventoryItems.filter(item => {
-        if (item.itemType === 'Expiry' && item.expiryDate) {
-          try {
-            const expiry = startOfDay(parseISO(item.expiryDate));
-            return isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today);
-          } catch { return false; }
-        }
-        return false;
-      });
-    }
-    if (activeDashboardFilter.type === 'otherSuppliers' && activeDashboardFilter.suppliers) {
-      const lowerCaseOtherSuppliers = activeDashboardFilter.suppliers.map(s => s.toLowerCase());
-      return inventoryItems.filter(item =>
-        item.supplierName && lowerCaseOtherSuppliers.includes(item.supplierName.toLowerCase())
-      );
-    }
-    if (activeDashboardFilter.type === 'customExpiry' && activeDashboardFilter.customExpiryFrom && activeDashboardFilter.customExpiryTo) {
-      try {
-        const from = startOfDay(parseISO(activeDashboardFilter.customExpiryFrom));
-        const to = startOfDay(parseISO(activeDashboardFilter.customExpiryTo));
-        if (!isValid(from) || !isValid(to)) return inventoryItems;
+    let filtered = inventoryItems;
 
-        return inventoryItems.filter(item => {
-          if (item.itemType === 'Expiry' && item.expiryDate) {
-            try {
-              const expiry = startOfDay(parseISO(item.expiryDate));
-              return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
-            } catch { return false; }
-          }
-          return false;
-        });
-      } catch { return inventoryItems; }
+    switch(activeDashboardFilter.type) {
+        case 'damaged':
+            return filtered.filter(item => item.itemType === 'Damage');
+        case 'expiringSoon': {
+            const today = startOfDay(new Date());
+            const sevenDaysFromNow = startOfDay(addDays(today, 7));
+            return filtered.filter(item => {
+                if (item.itemType === 'Expiry' && item.expiryDate) {
+                    try {
+                        const expiry = startOfDay(parseISO(item.expiryDate));
+                        return isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today);
+                    } catch { return false; }
+                }
+                return false;
+            });
+        }
+        case 'otherSuppliers':
+        case 'specificSupplier': {
+            if (activeDashboardFilter.suppliers) {
+                const lowerCaseSuppliers = activeDashboardFilter.suppliers.map(s => s.toLowerCase());
+                return filtered.filter(item =>
+                    item.supplierName && lowerCaseSuppliers.includes(item.supplierName.toLowerCase())
+                );
+            }
+            return filtered;
+        }
+        case 'customExpiry': {
+            if (activeDashboardFilter.customExpiryFrom && activeDashboardFilter.customExpiryTo) {
+                try {
+                    const from = startOfDay(parseISO(activeDashboardFilter.customExpiryFrom));
+                    const to = startOfDay(parseISO(activeDashboardFilter.customExpiryTo));
+                    if (!isValid(from) || !isValid(to)) return filtered;
+
+                    return filtered.filter(item => {
+                    if (item.itemType === 'Expiry' && item.expiryDate) {
+                        try {
+                        const expiry = startOfDay(parseISO(item.expiryDate));
+                        return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
+                        } catch { return false; }
+                    }
+                    return false;
+                    });
+                } catch { return filtered; }
+            }
+            return filtered;
+        }
+        default:
+            return filtered;
     }
-    return inventoryItems;
   }, [inventoryItems, activeDashboardFilter]);
 
 
@@ -271,7 +279,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     } else {
       setSelectedSupplier(value);
     }
-    if (activeDashboardFilter && (activeDashboardFilter.type === 'otherSuppliers' || activeDashboardFilter.type === 'specificSupplier')) {
+    if (activeDashboardFilter) {
         setActiveDashboardFilter(null);
         router.replace('/inventory', { shallow: true });
     }
@@ -286,7 +294,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     if (range?.from && range?.to) {
       setIsDatePopoverOpen(false);
     }
-    if (activeDashboardFilter && (activeDashboardFilter.type === 'expiringSoon' || activeDashboardFilter.type === 'customExpiry')) {
+    if (activeDashboardFilter) {
         setActiveDashboardFilter(null);
         router.replace('/inventory', { shallow: true });
     }
@@ -305,9 +313,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     if (!activeDashboardFilter) return null;
     if (activeDashboardFilter.type === 'damaged') return "Showing only Damaged items from dashboard.";
     if (activeDashboardFilter.type === 'expiringSoon') return "Showing only Items Expiring Soon (next 7 days) from dashboard.";
-    if (activeDashboardFilter.type === 'otherSuppliers') {
+    if (activeDashboardFilter.type === 'otherSuppliers' || activeDashboardFilter.type === 'specificSupplier') {
       const count = activeDashboardFilter.suppliers?.length || 0;
-      return `Showing items from ${count} 'Other Supplier${count !== 1 ? 's' : ''}' identified on the dashboard.`;
+      return `Showing items from ${count} supplier${count !== 1 ? 's' : ''} (from dashboard).`;
     }
     if (activeDashboardFilter.type === 'customExpiry' && activeDashboardFilter.customExpiryFrom && activeDashboardFilter.customExpiryTo) {
       try {
