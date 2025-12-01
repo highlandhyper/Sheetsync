@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -17,12 +16,6 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
-  },
-  // Add the allowedDevOrigins configuration below
-  experimental: {
-    allowedDevOrigins: [
-        "https://*.cluster-c3a7z3wnwzapkx3rfr5kz62dac.cloudworkstations.dev"
-    ]
   },
 };
 
