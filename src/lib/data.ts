@@ -3,8 +3,6 @@
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
-import { getAdminAuth, getAdminFirestore, adminInitializationError } from './firebase-admin';
-
 
 // --- Sheet Names (MUST MATCH YOUR ACTUAL SHEET NAMES) ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -1063,31 +1061,11 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
         console.timeEnd(timeLabel);
     }
 }
-
-// --- Firebase Admin Dependent Functions ---
-
-export async function createUserInFirebase(email: string, password?: string): Promise<{ uid: string } | { error: string }> {
-  try {
-    const auth = getAdminAuth(); // This will throw if not initialized
-    const userRecord = await auth.createUser({
-      email,
-      password, // Password can be optional for admin-created users
-      emailVerified: true,
-    });
-    return { uid: userRecord.uid };
-  } catch (error: any) {
-    console.error("Error creating user in Firebase:", error);
-    // If admin SDK is not initialized, adminInitializationError will have a value
-    if (adminInitializationError) {
-      return { error: `Firebase Admin SDK initialization error: ${adminInitializationError}` };
-    }
-    return { error: error.message || "An unknown error occurred while creating the user." };
-  }
-}
     
 
     
 
+    
 
 
 
