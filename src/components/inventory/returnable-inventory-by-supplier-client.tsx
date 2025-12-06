@@ -31,6 +31,7 @@ import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useDataCache } from '@/context/data-cache-context';
+import { useAuth } from '@/context/auth-context';
 
 
 interface ReturnableInventoryBySupplierClientProps {
@@ -42,10 +43,17 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
 export function ReturnableInventoryBySupplierClient({ initialInventoryItems, allSuppliers }: ReturnableInventoryBySupplierClientProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
-  const { refreshData } = useDataCache();
+  const { 
+    inventoryItems: cachedItems,
+    uniqueLocations,
+    updateInventoryItem,
+    removeInventoryItem,
+    addReturnedItem,
+    refreshData 
+  } = useDataCache();
   const [selectedSupplierNames, setSelectedSupplierNames] = useState<string[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
@@ -72,36 +80,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const uniqueDbLocations = useMemo(() => {
-    const locations = new Set<string>();
-    (initialInventoryItems || []).forEach(item => {
-      if (item.location) locations.add(item.location);
-    });
-    return Array.from(locations).sort();
-  }, [initialInventoryItems]);
+    return uniqueLocations;
+  }, [uniqueLocations]);
 
 
   useEffect(() => {
     setAllSortedSuppliers((allSuppliers || []).sort((a, b) => a.name.localeCompare(b.name)));
-
-    if (initialInventoryItems) {
-       const sortedAndFiltered = initialInventoryItems
-        .filter(item => item.quantity > 0)
-        .sort((a, b) => {
-          const dateA = a.timestamp ? parseISO(a.timestamp) : null;
-          const dateB = b.timestamp ? parseISO(b.timestamp) : null;
-          if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
-            return dateB.getTime() - dateA.getTime();
-          }
-          if (dateA && isValid(dateA)) return -1;
-          if (dateB && isValid(dateB)) return 1;
-          return 0;
-        });
-      setInventoryItems(sortedAndFiltered);
-    } else {
-      setInventoryItems([]);
-    }
     setIsLoading(false);
-  }, [initialInventoryItems, allSuppliers]);
+  }, [allSuppliers]);
   
   useEffect(() => {
     if (!isMultiSelectEnabled) {
@@ -126,26 +112,59 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   };
 
   const handleEditSuccess = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
+    // Local state is updated by the context, no full refresh needed
+    setIsEditDialogOpen(false);
+    setSelectedItemIds(new Set());
+  }, []);
 
 
-  const handleReturnSuccess = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
+  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
+    const itemToUpdate = cachedItems.find(item => item.id === returnedItemId);
+    if (itemToUpdate) {
+        const newQuantity = itemToUpdate.quantity - returnedQuantity;
+        addReturnedItem({
+            ...itemToUpdate,
+            id: `ret_${Date.now()}`,
+            originalInventoryItemId: itemToUpdate.id,
+            returnedQuantity: returnedQuantity,
+            returnTimestamp: new Date().toISOString(),
+            processedBy: user?.email || 'Unknown', 
+        });
+
+        if (newQuantity > 0) {
+            updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
+        } else {
+            removeInventoryItem(returnedItemId);
+        }
+    }
+    setIsReturnDialogOpen(false);
+    setSelectedItemIds(new Set());
+  }, [cachedItems, user, addReturnedItem, updateInventoryItem, removeInventoryItem]);
+
 
   const filteredInventoryItemsBySupplier = useMemo(() => {
+    const sortedAndFiltered = cachedItems
+      .filter(item => item.quantity > 0)
+      .sort((a, b) => {
+        const dateA = a.timestamp ? parseISO(a.timestamp) : null;
+        const dateB = b.timestamp ? parseISO(b.timestamp) : null;
+        if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        return 0;
+      });
+      
     if (selectedSupplierNames.length === 0) {
       setTotalItemsForSelectedSuppliers(0);
       return [];
     }
     const lowerSelectedSupplierNames = selectedSupplierNames.map(name => name.toLowerCase());
-    const filtered = inventoryItems.filter(item =>
+    const filtered = sortedAndFiltered.filter(item =>
       item.supplierName && lowerSelectedSupplierNames.includes(item.supplierName.toLowerCase()) && item.quantity > 0
     );
     setTotalItemsForSelectedSuppliers(filtered.length);
     return filtered;
-  }, [inventoryItems, selectedSupplierNames]);
+  }, [cachedItems, selectedSupplierNames]);
 
   useEffect(() => {
     setSelectedItemIds(new Set());
@@ -193,6 +212,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
       }, 50);
     }
   };
+  
+  const handleBulkSuccess = useCallback(() => {
+      // This action affects multiple items, so a full refresh is acceptable here
+      refreshData();
+      setSelectedItemIds(new Set());
+      setIsBulkReturnOpen(false);
+      setIsBulkDeleteOpen(false);
+  }, [refreshData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -460,14 +487,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={refreshData}
+        onSuccess={handleBulkSuccess}
         itemCount={selectedItemIds.size}
       />
       <BulkDeleteDialog
         isOpen={isBulkDeleteOpen}
         onOpenChange={setIsBulkDeleteOpen}
         itemIds={Array.from(selectedItemIds)}
-        onSuccess={refreshData}
+        onSuccess={handleBulkSuccess}
         itemCount={selectedItemIds.size}
       />
     </div>

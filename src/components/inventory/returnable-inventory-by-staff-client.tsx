@@ -31,9 +31,14 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 export function ReturnableInventoryByStaffClient({ initialInventoryItems, allStaffNames }: ReturnableInventoryByStaffClientProps) {
   const { toast } = useToast();
   const { role } = useAuth(); 
-  const { refreshData } = useDataCache();
+  const { 
+    inventoryItems: cachedItems, 
+    uniqueLocations, 
+    updateInventoryItem, 
+    removeInventoryItem,
+    addReturnedItem,
+  } = useDataCache();
   const [selectedStaffName, setSelectedStaffName] = useState<string>('');
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
@@ -48,34 +53,13 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   const [totalItemsForSelectedStaff, setTotalItemsForSelectedStaff] = useState(0);
 
   const uniqueDbLocations = useMemo(() => {
-    const locations = new Set<string>();
-    (initialInventoryItems || []).forEach(item => {
-      if (item.location) locations.add(item.location);
-    });
-    return Array.from(locations).sort();
-  }, [initialInventoryItems]);
+    return uniqueLocations;
+  }, [uniqueLocations]);
 
 
   useEffect(() => {
     setCurrentItemToEdit(null);
     setIsEditDialogOpen(false);
-    if (initialInventoryItems) {
-      const sortedAndFiltered = initialInventoryItems
-        .filter(item => item.quantity > 0)
-        .sort((a, b) => {
-          const dateA = a.timestamp ? parseISO(a.timestamp) : null;
-          const dateB = b.timestamp ? parseISO(b.timestamp) : null;
-          if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
-            return dateB.getTime() - dateA.getTime();
-          }
-          if (dateA && isValid(dateA)) return -1;
-          if (dateB && isValid(dateB)) return 1;
-          return 0;
-        });
-      setInventoryItems(sortedAndFiltered);
-    } else {
-      setInventoryItems([]);
-    }
     setIsLoading(false);
   }, [initialInventoryItems]);
 
@@ -97,25 +81,55 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   };
 
   const handleEditSuccess = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
+    // Local state is updated by the context, no full refresh needed
+    setIsEditDialogOpen(false);
+  }, []);
 
-  const handleReturnSuccess = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
+  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
+    const itemToUpdate = cachedItems.find(item => item.id === returnedItemId);
+    if (itemToUpdate) {
+        const newQuantity = itemToUpdate.quantity - returnedQuantity;
+         addReturnedItem({
+            ...itemToUpdate,
+            id: `ret_${Date.now()}`,
+            originalInventoryItemId: itemToUpdate.id,
+            returnedQuantity: returnedQuantity,
+            returnTimestamp: new Date().toISOString(),
+            processedBy: role || 'Unknown', 
+        });
+
+        if (newQuantity > 0) {
+            updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
+        } else {
+            removeInventoryItem(returnedItemId);
+        }
+    }
+    setIsReturnDialogOpen(false);
+  }, [cachedItems, role, addReturnedItem, updateInventoryItem, removeInventoryItem]);
 
   const filteredInventoryItemsByStaff = useMemo(() => {
+    const sortedAndFiltered = cachedItems
+      .filter(item => item.quantity > 0)
+      .sort((a, b) => {
+        const dateA = a.timestamp ? parseISO(a.timestamp) : null;
+        const dateB = b.timestamp ? parseISO(b.timestamp) : null;
+        if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        return 0;
+      });
+
     if (!selectedStaffName.trim()) {
       setTotalItemsForSelectedStaff(0);
       return [];
     }
     const lowerStaffName = selectedStaffName.toLowerCase();
-    const filtered = inventoryItems.filter(item =>
+    const filtered = sortedAndFiltered.filter(item =>
       item.staffName?.toLowerCase() === lowerStaffName
     );
     setTotalItemsForSelectedStaff(filtered.length);
     return filtered;
-  }, [inventoryItems, selectedStaffName]);
+  }, [cachedItems, selectedStaffName]);
 
   const clearStaffSearch = () => {
     setSelectedStaffName('');

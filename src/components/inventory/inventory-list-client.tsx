@@ -53,7 +53,14 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const { toast } = useToast();
   const { role, user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
-  const { updateInventoryItem, removeInventoryItem, addProduct: addProductToCache, refreshData } = useDataCache();
+  const { 
+      inventoryItems: cachedItems,
+      updateInventoryItem, 
+      removeInventoryItem, 
+      addProduct: addProductToCache, 
+      refreshData,
+      addReturnedItem,
+  } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -85,11 +92,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
   
-  // Use state that can be locally mutated for instant updates
-  const [inventoryItems, setInventoryItems] = useState(initialInventoryItems);
-  useEffect(() => {
-    setInventoryItems(initialInventoryItems);
-  }, [initialInventoryItems]);
+  const inventoryItems = useMemo(() => initialInventoryItems, [initialInventoryItems]);
 
 
   useEffect(() => {
@@ -145,9 +148,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
 
   const itemsAfterDashboardFilters = useMemo(() => {
-    if (!activeDashboardFilter) return inventoryItems;
+    if (!activeDashboardFilter) return cachedItems;
 
-    let filtered = inventoryItems;
+    let filtered = cachedItems;
 
     switch(activeDashboardFilter.type) {
         case 'damaged':
@@ -198,7 +201,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
         default:
             return filtered;
     }
-  }, [inventoryItems, activeDashboardFilter]);
+  }, [cachedItems, activeDashboardFilter]);
 
 
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
@@ -364,40 +367,50 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   };
 
   const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
-    const itemToUpdate = inventoryItems.find(item => item.id === returnedItemId);
+    const itemToUpdate = cachedItems.find(item => item.id === returnedItemId);
     if (itemToUpdate) {
         const newQuantity = itemToUpdate.quantity - returnedQuantity;
+        // Also add to returned items log for other pages if needed
+        const returnedLogEntry = {
+            ...itemToUpdate,
+            id: `ret_${Date.now()}`,
+            originalInventoryItemId: itemToUpdate.id,
+            returnedQuantity: returnedQuantity,
+            returnTimestamp: new Date().toISOString(),
+            processedBy: user?.email || 'Unknown', // Assuming staff name is needed
+        };
+        addReturnedItem(returnedLogEntry);
+
         if (newQuantity > 0) {
             updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
         } else {
             removeInventoryItem(returnedItemId);
         }
     }
-    setSelectedItemIds(new Set());
     setIsReturnDialogOpen(false);
-  }, [inventoryItems, updateInventoryItem, removeInventoryItem]);
-
-
-  const handleEditSuccess = useCallback((updatedItem?: InventoryItem) => {
-    if (updatedItem) {
-        updateInventoryItem(updatedItem);
-    } else {
-      onDataNeeded();
-    }
     setSelectedItemIds(new Set());
+  }, [cachedItems, updateInventoryItem, removeInventoryItem, addReturnedItem, user]);
+
+
+  const handleEditSuccess = useCallback(() => {
+    // No full refresh, local state is already updated via updateInventoryItem in dialog
     setIsEditDialogOpen(false);
-  }, [updateInventoryItem, onDataNeeded]);
+    setSelectedItemIds(new Set());
+  }, []);
 
 
   const handleDeleteSuccess = useCallback((deletedItemId: string) => {
     removeInventoryItem(deletedItemId);
-    setSelectedItemIds(new Set());
     setIsDeleteDialogOpen(false);
+    setSelectedItemIds(new Set());
   }, [removeInventoryItem]);
   
   const handleBulkSuccess = useCallback(() => {
+    // This action affects multiple items, so a full refresh is acceptable here
     onDataNeeded();
     setSelectedItemIds(new Set());
+    setIsBulkReturnOpen(false);
+    setIsBulkDeleteOpen(false);
   }, [onDataNeeded]);
   
   const handleProductCreateSuccess = useCallback((newProduct: Product) => {
