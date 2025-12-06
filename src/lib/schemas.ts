@@ -46,8 +46,6 @@ export const editInventoryItemSchema = z.object({
   itemType: z.enum(['Expiry', 'Damage'], { required_error: "Item type is required." }),
   quantity: z.coerce.number().int().min(0, "Quantity must be a whole number and not negative."),
   expiryDate: z.date().nullable().optional(), // Can be null if itemType is 'Damage'
-  authUsername: z.string().optional(),
-  authPassword: z.string().optional(),
 }).refine(data => {
   if (data.itemType === 'Expiry' && !data.expiryDate) {
     return false; // If type is Expiry, expiryDate must be provided
