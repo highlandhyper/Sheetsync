@@ -44,6 +44,7 @@ const DB_NAME = 'SheetSyncDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'appDataCache';
 const CACHE_KEY = 'sheetSyncDataCache'; // This key is used inside the object store
+const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
 
 // --- IndexedDB Helper Functions ---
 
@@ -136,9 +137,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         const cachedData = await getFromDB(db);
         db.close();
 
-        // Always load from cache if it exists, regardless of age.
-        // The user can manually sync if they need the latest data.
-        if (cachedData) {
+        const now = Date.now();
+        // If cache exists and is not older than 5 minutes, load it.
+        if (cachedData && cachedData.lastSync && (now - cachedData.lastSync < CACHE_EXPIRATION_MS)) {
           setData(cachedData);
           setIsInitialized(true);
           return;
@@ -146,7 +147,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       } catch (error) {
         console.error("Failed to load from IndexedDB:", error);
       }
-      // If no valid cache exists at all, fetch fresh data for the first time.
+      // If no valid/fresh cache exists, fetch fresh data.
       refreshData().finally(() => setIsInitialized(true));
     };
 
