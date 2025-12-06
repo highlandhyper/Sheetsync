@@ -37,10 +37,10 @@ import { editInventoryItemSchema, type EditInventoryItemFormValues } from '@/lib
 import type { InventoryItem, ItemType } from '@/lib/types';
 import { editInventoryItemAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
+import { AuthorizeActionDialog } from './authorize-action-dialog';
 
 interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
@@ -55,11 +55,12 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   const { toast } = useToast();
   const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
-  const { verifyCredentials } = useLocalSettingsAuth();
   const { updateInventoryItem } = useDataCache();
   
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
   const [quantityChanged, setQuantityChanged] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [stagedData, setStagedData] = useState<EditInventoryItemFormValues | null>(null);
 
   const {
     register,
@@ -67,7 +68,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     reset,
     control,
     watch,
-    setError,
     formState: { errors: formErrors, isDirty },
   } = useForm<EditInventoryItemFormValues>({
     resolver: zodResolver(editInventoryItemSchema),
@@ -77,8 +77,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       itemType: item?.itemType || 'Expiry',
       quantity: item?.quantity || 0,
       expiryDate: item?.expiryDate ? parseISO(item.expiryDate) : null,
-      authUsername: '',
-      authPassword: '',
     },
   });
 
@@ -113,8 +111,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
           itemType: item.itemType,
           quantity: item.quantity,
           expiryDate: item.expiryDate ? parseISO(item.expiryDate) : null,
-          authUsername: '',
-          authPassword: '',
         });
       } else {
         setInitialQuantity(null);
@@ -123,26 +119,10 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     },
     [item, reset, isOpen] 
   );
-
-  const processFormSubmit = async (data: EditInventoryItemFormValues) => {
-    if (!item) return;
-    
-    if (quantityChanged) {
-        const isAuthorized = verifyCredentials(data.authUsername, data.authPassword);
-        if (!isAuthorized) {
-            setError("authUsername", { type: "manual", message: "Invalid username or password." });
-            setError("authPassword", { type: "manual", message: "" });
-            toast({ variant: "destructive", title: "Authorization Failed", description: "The local admin credentials provided are incorrect." });
-            return;
-        }
-    } else if (!isDirty) {
-      toast({ title: "No Changes", description: "No changes were made to the item." });
-      onOpenChange(false);
-      return;
-    }
-
-    if (!user?.email) {
-      toast({ title: 'Error', description: 'Could not identify the current user. Please log in again.', variant: 'destructive' });
+  
+  const executeSave = (data: EditInventoryItemFormValues) => {
+    if (!item || !user?.email) {
+      toast({ title: 'Error', description: 'User or item data is missing.', variant: 'destructive' });
       return;
     }
 
@@ -167,7 +147,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
             title: 'Success!',
             description: result.message || 'Item updated successfully.',
         });
-        updateInventoryItem(result.data); // Optimistically update cache
+        updateInventoryItem(result.data);
         onSuccess?.();
         onOpenChange(false);
       } else {
@@ -178,11 +158,35 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         });
       }
     });
+  }
+
+  const handlePrimarySubmit = (data: EditInventoryItemFormValues) => {
+    if (!isDirty) {
+      toast({ title: "No Changes", description: "No changes were made to the item." });
+      onOpenChange(false);
+      return;
+    }
+
+    if (quantityChanged) {
+        setStagedData(data);
+        setIsAuthDialogOpen(true);
+    } else {
+        executeSave(data);
+    }
   };
   
+  const handleAuthorizationSuccess = () => {
+    setIsAuthDialogOpen(false);
+    if (stagedData) {
+      executeSave(stagedData);
+      setStagedData(null);
+    }
+  };
+
   if (!item) return null;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -191,7 +195,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
             Update the details for this inventory item. Barcode: {item.barcode}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 py-4">
+        <form onSubmit={handleSubmit(handlePrimarySubmit)} className="space-y-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 {/* Location */}
                 <div>
@@ -241,6 +245,12 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         />
                    </div>
                   {formErrors.quantity && <p className="text-sm text-destructive mt-1">{formErrors.quantity.message}</p>}
+                  {quantityChanged && (
+                    <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-1.5">
+                      <ShieldQuestion className="h-3.5 w-3.5" />
+                      <span>Authorization will be required to save.</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Item Type */}
@@ -300,33 +310,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                 {formErrors.expiryDate && currentItemType === 'Expiry' && <p className="text-sm text-destructive mt-1">{formErrors.expiryDate.message}</p>}
                 </div>
             </div>
-
-            {quantityChanged && (
-                <div className="space-y-4 pt-4 mt-4 border-t border-dashed">
-                     <div className="flex items-center gap-3 text-sm font-semibold text-destructive">
-                        <ShieldQuestion className="h-5 w-5" />
-                        <p>Admin authorization is required to change quantity.</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 p-4 bg-muted/50 rounded-lg">
-                        <div>
-                             <Label htmlFor="authUsername">Local Admin Username</Label>
-                              <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="authUsername" {...register('authUsername')} className={cn('pl-8', formErrors.authUsername && 'border-destructive')} placeholder="Username" />
-                              </div>
-                            {formErrors.authUsername && <p className="text-sm text-destructive mt-1">{formErrors.authUsername.message}</p>}
-                        </div>
-                         <div>
-                             <Label htmlFor="authPassword">Local Admin Password</Label>
-                              <div className="relative">
-                                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="authPassword" type="password" {...register('authPassword')} className={cn('pl-8', formErrors.authPassword && 'border-destructive')} placeholder="Password" />
-                              </div>
-                            {formErrors.authPassword && <p className="text-sm text-destructive mt-1">{formErrors.authPassword.message}</p>}
-                        </div>
-                    </div>
-                </div>
-            )}
           
           <DialogFooter className="pt-4">
             <DialogClose asChild>
@@ -342,5 +325,13 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         </form>
       </DialogContent>
     </Dialog>
+    <AuthorizeActionDialog
+        isOpen={isAuthDialogOpen}
+        onOpenChange={setIsAuthDialogOpen}
+        onAuthorizationSuccess={handleAuthorizationSuccess}
+        actionDescription="You are changing the quantity of an inventory item. This requires local admin authorization."
+    />
+    </>
   );
 }
+
