@@ -53,7 +53,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const { toast } = useToast();
   const { role, user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
-  const { inventoryItems: cachedItems, updateInventoryItem, removeInventoryItem, addProduct: addProductToCache, refreshData } = useDataCache();
+  const { updateInventoryItem, removeInventoryItem, addProduct: addProductToCache, refreshData } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');

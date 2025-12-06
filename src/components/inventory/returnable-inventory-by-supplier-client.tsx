@@ -125,38 +125,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSuccess = useCallback((updatedItem?: InventoryItem) => {
-    if (updatedItem) {
-      setInventoryItems(prevItems => 
-        prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
-      );
-    } else {
-      // If no item is returned, do a full refresh as a fallback
-      refreshData();
-    }
-    setSelectedItemIds(new Set());
+  const handleEditSuccess = useCallback(() => {
+    refreshData();
   }, [refreshData]);
 
 
-  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
-    setInventoryItems(prevItems => {
-      const newItems = [];
-      for (const item of prevItems) {
-        if (item.id === returnedItemId) {
-          const newQuantity = item.quantity - returnedQuantity;
-          if (newQuantity > 0) {
-            newItems.push({ ...item, quantity: newQuantity });
-          }
-          // If newQuantity is 0 or less, we simply don't add it back to the list
-        } else {
-          newItems.push(item);
-        }
-      }
-      return newItems;
-    });
-    setSelectedItemForReturn(null);
-    setSelectedItemIds(new Set());
-  }, []);
+  const handleReturnSuccess = useCallback(() => {
+    refreshData();
+  }, [refreshData]);
 
   const filteredInventoryItemsBySupplier = useMemo(() => {
     if (selectedSupplierNames.length === 0) {

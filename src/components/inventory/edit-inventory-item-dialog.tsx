@@ -46,7 +46,7 @@ interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: (updatedItem?: InventoryItem) => void;
+  onSuccess?: () => void;
   uniqueLocationsFromDb: string[]; 
 }
 
@@ -56,9 +56,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const { verifyCredentials } = useLocalSettingsAuth();
+  const { updateInventoryItem } = useDataCache();
   
-  const [state, formAction] = useState<any | undefined>(undefined);
-
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
   const [quantityChanged, setQuantityChanged] = useState(false);
 
@@ -125,24 +124,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     [item, reset, isOpen] 
   );
 
- useEffect(() => {
-    if (!state) return;
-    if (state.success && state.data) {
-      toast({
-        title: 'Success!',
-        description: state.message || 'Item updated successfully.',
-      });
-      onSuccess?.(state.data);
-      onOpenChange(false);
-    } else {
-      toast({
-        title: 'Error Updating Item',
-        description: state.message || 'Could not update the item.',
-        variant: 'destructive',
-      });
-    }
-  }, [state, toast, onOpenChange, onSuccess]);
-
   const processFormSubmit = async (data: EditInventoryItemFormValues) => {
     if (!item) return;
     
@@ -181,7 +162,21 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     
     startActionTransition(async () => {
       const result = await editInventoryItemAction(undefined, formData);
-      formAction(result);
+      if (result.success && result.data) {
+        toast({
+            title: 'Success!',
+            description: result.message || 'Item updated successfully.',
+        });
+        updateInventoryItem(result.data); // Optimistically update cache
+        onSuccess?.();
+        onOpenChange(false);
+      } else {
+        toast({
+            title: 'Error Updating Item',
+            description: result.message || 'Could not update the item.',
+            variant: 'destructive',
+        });
+      }
     });
   };
   

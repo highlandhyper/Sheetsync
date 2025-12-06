@@ -57,19 +57,19 @@ function ReturnableInventorySkeleton() {
 
 
 export default function ReturnInventoryBySupplierPage() {
-  const { inventoryItems, suppliers, isCacheReady } = useDataCache();
+  const { inventoryItems, suppliers, isCacheReady, isSyncing } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Supplier</h1>
       <Suspense fallback={<ReturnableInventorySkeleton />}>
-        {isCacheReady ? (
+        {!isCacheReady || isSyncing ? (
+          <ReturnableInventorySkeleton />
+        ) : (
           <ReturnableInventoryBySupplierClient
             initialInventoryItems={inventoryItems}
             allSuppliers={suppliers}
           />
-        ) : (
-          <ReturnableInventorySkeleton />
         )}
       </Suspense>
     </div>

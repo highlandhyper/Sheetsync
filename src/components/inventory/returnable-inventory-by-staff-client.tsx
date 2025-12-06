@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 interface ReturnableInventoryByStaffClientProps {
@@ -30,6 +31,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 export function ReturnableInventoryByStaffClient({ initialInventoryItems, allStaffNames }: ReturnableInventoryByStaffClientProps) {
   const { toast } = useToast();
   const { role } = useAuth(); 
+  const { refreshData } = useDataCache();
   const [selectedStaffName, setSelectedStaffName] = useState<string>('');
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,12 +97,12 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   };
 
   const handleEditSuccess = useCallback(() => {
-    // Data revalidation should handle list update by server action revalidatePath
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   const handleReturnSuccess = useCallback(() => {
-    // Data revalidation should handle list update
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   const filteredInventoryItemsByStaff = useMemo(() => {
     if (!selectedStaffName.trim()) {

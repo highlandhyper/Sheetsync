@@ -1,15 +1,14 @@
 
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { ClipboardList, AlertTriangle } from 'lucide-react';
-import { fetchInventoryListDataAction } from '@/app/actions';
-import type { InventoryItem, Supplier } from '@/lib/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useDataCache } from '@/context/data-cache-context';
 
 
 function InventoryListSkeleton() {
@@ -63,66 +62,40 @@ function InventoryListSkeleton() {
   );
 }
 
-interface InventoryPageData {
-    inventoryItems: InventoryItem[];
-    suppliers: Supplier[];
-    uniqueLocations: string[];
-}
-
 export default function InventoryPage() {
-  const [data, setData] = useState<InventoryPageData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    const { 
+        inventoryItems, 
+        suppliers, 
+        uniqueLocations, 
+        isCacheReady, 
+        refreshData, 
+        isSyncing 
+    } = useDataCache();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetchInventoryListDataAction();
-      if (response.success && response.data) {
-          setData(response.data);
-      } else {
-          setError(response.message || "An unknown error occurred while fetching inventory data.");
-      }
-    } catch (e: any) {
-        setError(e.message || "A network error occurred.");
-    } finally {
-        setIsLoading(false);
-    }
-  }, []);
+    // The error state from the old fetch is no longer needed as the context handles it.
+    // However, we can add a check for empty data if we want.
+    const hasData = inventoryItems.length > 0 && suppliers.length > 0;
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  return (
-    <div className="container mx-auto py-2">
-      <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
-        <ClipboardList className="mr-3 h-8 w-8" />
-        Inventory Overview
-      </h1>
-      <Suspense fallback={<InventoryListSkeleton />}>
-        {isLoading && !data ? ( // Show skeleton only on initial load
-          <InventoryListSkeleton />
-        ) : error ? (
-           <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error Loading Inventory</AlertTitle>
-                <AlertDescription>
-                    {error} <Button variant="link" onClick={loadData}>Try again</Button>
-                </AlertDescription>
-            </Alert>
-        ) : data ? (
-          <InventoryListClient 
-            initialInventoryItems={data.inventoryItems} 
-            suppliers={data.suppliers} 
-            uniqueDbLocations={data.uniqueLocations}
-            onDataNeeded={loadData} // Pass the loadData function directly
-          />
-        ) : (
-             <InventoryListSkeleton /> // Fallback skeleton
-        )}
-      </Suspense>
-    </div>
-  );
+    return (
+        <div className="container mx-auto py-2">
+            <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
+                <ClipboardList className="mr-3 h-8 w-8" />
+                Inventory Overview
+            </h1>
+            <Suspense fallback={<InventoryListSkeleton />}>
+                {!isCacheReady || isSyncing ? (
+                    <InventoryListSkeleton />
+                ) : (
+                    <InventoryListClient 
+                        // Key prop forces re-mount when initial data changes, ensuring consistency
+                        key={inventoryItems.length + suppliers.length + uniqueLocations.length}
+                        initialInventoryItems={inventoryItems} 
+                        suppliers={suppliers} 
+                        uniqueDbLocations={uniqueLocations}
+                        onDataNeeded={refreshData}
+                    />
+                )}
+            </Suspense>
+        </div>
+    );
 }
