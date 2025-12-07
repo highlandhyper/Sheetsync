@@ -15,7 +15,7 @@ import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 export default function SettingsPage() {
   const { role } = useAuth();
 
-  const DialogCard = ({ icon, title, description, children, triggerText = "Manage" }: { icon: React.ElementType, title: string, description: string, children: React.ReactNode, triggerText?: string }) => (
+  const DialogCard = ({ icon, title, description, children, triggerText = "Manage", dialogClassName }: { icon: React.ElementType, title: string, description: string, children: React.ReactNode, triggerText?: string, dialogClassName?: string }) => (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader>
         <div className="flex items-start gap-4">
@@ -36,7 +36,7 @@ export default function SettingsPage() {
                 {triggerText}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent className={dialogClassName || "sm:max-w-[525px]"}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
@@ -95,6 +95,7 @@ export default function SettingsPage() {
             title="User Access Control"
             description="Enable or disable access to specific pages for the 'Viewer' role."
             triggerText="Manage Access"
+            dialogClassName="sm:max-w-xl"
           >
             <AccessControlManager />
           </DialogCard>
