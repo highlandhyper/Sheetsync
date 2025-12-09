@@ -197,7 +197,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="barcodeSearch">Search Barcode</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               id="barcodeSearch"
               placeholder="Enter barcode to search or edit"
@@ -209,8 +209,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   handleSearchBarcode();
                 }
               }}
+              className="flex-grow"
             />
-            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()}>
+            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="w-full sm:w-auto">
               {isFetchPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               Search
             </Button>

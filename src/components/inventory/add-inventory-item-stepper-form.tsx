@@ -515,14 +515,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     </Card>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-2xl w-full p-0">
+        <DialogContent className="max-w-md w-full p-0">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle>Scan Barcode</DialogTitle>
                 <DialogDescription>
                     Position the barcode within the frame. The scanner will automatically detect it.
                 </DialogDescription>
             </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-video [&>span]:hidden" />
+            <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <div className="p-6 pt-0 flex justify-end">
                 <Button 
                   variant="outline" 

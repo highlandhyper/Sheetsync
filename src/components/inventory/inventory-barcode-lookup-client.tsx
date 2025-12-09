@@ -241,91 +241,93 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
 
       {!isLoading && hasSearched && searchResults.length > 0 && (
         <Card className="shadow-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Staff</TableHead>
-                <TableHead>Logged At</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead>Type</TableHead>
-                {role === 'admin' && <TableHead className="text-center">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {searchResults.map((item) => {
-                const parsedTimestamp = item.timestamp ? parseISO(item.timestamp) : null;
-                const formattedTimestamp = parsedTimestamp && isValid(parsedTimestamp) ? format(parsedTimestamp, 'PPp') : 'N/A';
-                
-                let formattedExpiryDate = 'N/A';
-                if (item.expiryDate) {
-                    const parsedExp = parseISO(item.expiryDate);
-                    if (isValid(parsedExp)) {
-                        formattedExpiryDate = format(parsedExp, 'PP');
-                        if (item.itemType === 'Expiry' && parsedExp < new Date() && parsedExp.setHours(0,0,0,0) !== new Date().setHours(0,0,0,0)) {
-                             formattedExpiryDate += " (Expired)";
-                        }
-                    } else {
-                        formattedExpiryDate = "Invalid Date";
-                    }
-                }
-                const isExpiredNow = item.itemType === 'Expiry' && item.expiryDate ? 
-                                     (isValid(parseISO(item.expiryDate)) && parseISO(item.expiryDate) < new Date() && parseISO(item.expiryDate).setHours(0,0,0,0) !== new Date().setHours(0,0,0,0) ) : false;
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead>Staff</TableHead>
+                  <TableHead>Logged At</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead>Type</TableHead>
+                  {role === 'admin' && <TableHead className="text-center">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {searchResults.map((item) => {
+                  const parsedTimestamp = item.timestamp ? parseISO(item.timestamp) : null;
+                  const formattedTimestamp = parsedTimestamp && isValid(parsedTimestamp) ? format(parsedTimestamp, 'PPp') : 'N/A';
+                  
+                  let formattedExpiryDate = 'N/A';
+                  if (item.expiryDate) {
+                      const parsedExp = parseISO(item.expiryDate);
+                      if (isValid(parsedExp)) {
+                          formattedExpiryDate = format(parsedExp, 'PP');
+                          if (item.itemType === 'Expiry' && parsedExp < new Date() && parsedExp.setHours(0,0,0,0) !== new Date().setHours(0,0,0,0)) {
+                               formattedExpiryDate += " (Expired)";
+                          }
+                      } else {
+                          formattedExpiryDate = "Invalid Date";
+                      }
+                  }
+                  const isExpiredNow = item.itemType === 'Expiry' && item.expiryDate ? 
+                                       (isValid(parseISO(item.expiryDate)) && parseISO(item.expiryDate) < new Date() && parseISO(item.expiryDate).setHours(0,0,0,0) !== new Date().setHours(0,0,0,0) ) : false;
 
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.productName}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{formattedTimestamp}</TableCell>
-                    <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                    <TableCell className={cn(isExpiredNow ? "text-destructive" : "text-muted-foreground")}>
-                        {formattedExpiryDate}
-                    </TableCell>
-                    <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500" : "text-muted-foreground")}>
-                      {item.itemType}
-                    </TableCell>
-                    {role === 'admin' && (
-                      <TableCell className="text-center">
-                         <div className="flex justify-center items-center gap-1">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenEditDialog(item)}
-                                aria-label={`Edit log for ${item.productName}`}
-                                className="p-2 h-auto"
-                            >
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenReturnDialog(item)}
-                                disabled={item.quantity <= 0} 
-                                aria-label={`Return ${item.productName}`}
-                                className="p-2 h-auto"
-                            >
-                                <Undo2 className="h-4 w-4" />
-                            </Button>
-                             <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleOpenDeleteDialog(item)}
-                                aria-label={`Delete log for ${item.productName}`}
-                                className="p-2 h-auto"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                         </div>
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.productName}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{formattedTimestamp}</TableCell>
+                      <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.location}</TableCell>
+                      <TableCell className={cn(isExpiredNow ? "text-destructive" : "text-muted-foreground", "whitespace-nowrap")}>
+                          {formattedExpiryDate}
                       </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500" : "text-muted-foreground")}>
+                        {item.itemType}
+                      </TableCell>
+                      {role === 'admin' && (
+                        <TableCell className="text-center">
+                           <div className="flex justify-center items-center gap-1">
+                              <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenEditDialog(item)}
+                                  aria-label={`Edit log for ${item.productName}`}
+                                  className="p-2 h-auto"
+                              >
+                                  <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenReturnDialog(item)}
+                                  disabled={item.quantity <= 0} 
+                                  aria-label={`Return ${item.productName}`}
+                                  className="p-2 h-auto"
+                              >
+                                  <Undo2 className="h-4 w-4" />
+                              </Button>
+                               <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleOpenDeleteDialog(item)}
+                                  aria-label={`Delete log for ${item.productName}`}
+                                  className="p-2 h-auto"
+                              >
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                           </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       )}
 
@@ -350,14 +352,14 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
       )}
 
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-2xl w-full p-0">
+        <DialogContent className="max-w-md w-full p-0">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle>Scan Barcode</DialogTitle>
                 <DialogDescription>
                     Position the barcode within the frame. The scanner will automatically detect it.
                 </DialogDescription>
             </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-video [&>span]:hidden" />
+            <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <div className="p-6 pt-0 flex justify-end">
                 <Button 
                   variant="outline" 

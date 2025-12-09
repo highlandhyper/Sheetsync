@@ -1,7 +1,7 @@
 {
-  "name": "SheetSync",
+  "name": "SheetSync - Next-Gen Inventory Management",
   "short_name": "SheetSync",
-  "description": "Next-Gen Inventory Management",
+  "description": "An inventory management application powered by Google Sheets.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F0F8FF",

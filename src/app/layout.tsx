@@ -47,6 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#29ABE2" />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
