@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/auth-context';
@@ -22,6 +23,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
+  const { setOpenMobile } = useSidebar(); // Get the function to close the mobile sidebar
 
   const navItems = allNavItems.filter(item => role && isAllowed(role, item.href));
   const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
@@ -74,6 +76,7 @@ export function AppSidebar({ className }: { className?: string }) {
           href={getDefaultHomePage()}
           className="flex items-center gap-2 font-poppins text-2xl font-bold text-primary pl-2.5"
           aria-label="Home"
+          onClick={() => setOpenMobile(false)}
         >
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
@@ -89,7 +92,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 isActive={isNavItemActive(item.href, pathname)}
                 tooltip={{ children: item.label, className: "group-data-[state=expanded]/sidebar:hidden" }}
               >
-                <Link href={item.href}>
+                <Link href={item.href} onClick={() => setOpenMobile(false)}>
                   <item.icon />
                   <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">{item.label}</span>
                 </Link>
@@ -108,7 +111,7 @@ export function AppSidebar({ className }: { className?: string }) {
                    isActive={isAccountNavItemActive(item.href, pathname)}
                    tooltip={{ children: item.label, className: "group-data-[state=expanded]/sidebar:hidden" }}
                  >
-                   <Link href={item.href}>
+                   <Link href={item.href} onClick={() => setOpenMobile(false)}>
                      <item.icon />
                      <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">{item.label}</span>
                    </Link>
