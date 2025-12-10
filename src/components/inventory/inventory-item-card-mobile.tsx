@@ -132,9 +132,9 @@ export function InventoryItemCardMobile({
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
          {isProductFound ? (
              <>
-                {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" /> Edit</Button>}
-                {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" /> Return</Button>}
-                {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>}
+                {onEdit && <Button variant="ghost" size="icon" onClick={onEdit} className="h-9 w-9"><Edit className="h-4 w-4" /></Button>}
+                {onReturn && <Button variant="outline" size="icon" onClick={onReturn} disabled={item.quantity === 0} className="h-9 w-9"><Undo2 className="h-4 w-4" /></Button>}
+                {onDelete && <Button variant="destructive" size="icon" onClick={onDelete} className="h-9 w-9"><Trash2 className="h-4 w-4" /></Button>}
              </>
          ) : (
             onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct}><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
