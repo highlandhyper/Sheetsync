@@ -59,7 +59,14 @@ export function Header({ className }: { className?: string }) {
          </div>
         
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none md:hidden">
-          <Link href="/" className="pointer-events-auto font-poppins text-2xl font-bold text-primary">
+          <Link
+            href="/"
+            className={cn(
+              "pointer-events-auto font-poppins text-2xl font-bold",
+              "bg-gradient-to-r from-primary via-primary/70 to-primary bg-clip-text text-transparent",
+              "animate-shine" // Apply the shine animation
+            )}
+          >
             SheetSync
           </Link>
         </div>
