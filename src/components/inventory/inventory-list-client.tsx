@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -564,7 +564,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
             <ListChecks className="h-4 w-4 !text-blue-500" />
             <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
             <AlertDescription>
-                Checkboxes are now available for bulk actions. You can disable this in settings or via the command menu (Ctrl/Cmd + K).
+                Checkboxes are now visible for bulk actions. You can disable this in settings or via the command menu (Ctrl/Cmd + K).
             </AlertDescription>
         </Alert>
       )}
@@ -589,7 +589,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                     <TableHead>Product Name</TableHead>
                     <TableHead className="hidden md:table-cell">Barcode</TableHead>
-                    <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                    <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="hidden sm:table-cell">Location</TableHead>
@@ -669,7 +669,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                         </TableCell>
                         <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
                         <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
-                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
                         <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
                         {formattedExpiryDate}
@@ -775,3 +775,5 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
+
+    
