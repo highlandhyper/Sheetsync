@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -32,6 +31,7 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
+import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 
 interface ReturnableInventoryBySupplierClientProps {
@@ -399,55 +399,74 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
           </p>
         </div>
       ) : itemsToRender.length > 0 ? (
-        <Card className="shadow-md">
-          <Table>
-            <TableHeader>
-            <TableRow>
-              {isMultiSelectEnabled && (
-                <TableHead className="w-12 text-center noprint">
-                  <Checkbox
-                    checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                    onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                    aria-label="Select all rows"
-                  />
-                </TableHead>
-              )}
-              <TableHead className="w-20 text-center">Return</TableHead>
-              <TableHead className="w-20 text-center">Details</TableHead>
-              <TableHead>Product Name</TableHead>
-              <TableHead>Barcode</TableHead>
-              <TableHead className="text-right">In Stock</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="w-20 text-center">Edit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itemsToRender.map((item) => (
-              <ReturnableInventoryItemRow
-                key={item.id}
-                item={item}
-                onInitiateReturn={handleOpenReturnDialog}
-                onViewDetails={handleOpenDetailsDialog}
-                onEditItem={handleOpenEditDialog} 
-                isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
-                showSupplierName={false} 
-                showEditButtonText={false}
-                isSelected={selectedItemIds.has(item.id)}
-                onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
-                showCheckbox={isMultiSelectEnabled}
-              />
-            ))}
-          </TableBody></Table>
-          {filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
-            <CardContent className="pt-4 text-center filters-card-noprint">
-              <p className="text-sm text-muted-foreground">
-                Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsBySupplier.length} items for this selection.
-              </p>
-            </CardContent>
-          )}
-        </Card>
+        <>
+            {/* Desktop Table View */}
+            <Card className="shadow-md hidden md:block">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                {isMultiSelectEnabled && (
+                    <TableHead className="w-12 text-center noprint">
+                    <Checkbox
+                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                        aria-label="Select all rows"
+                    />
+                    </TableHead>
+                )}
+                <TableHead className="w-20 text-center">Return</TableHead>
+                <TableHead className="w-20 text-center">Details</TableHead>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Barcode</TableHead>
+                <TableHead className="text-right">In Stock</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="w-20 text-center">Edit</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {itemsToRender.map((item) => (
+                <ReturnableInventoryItemRow
+                    key={item.id}
+                    item={item}
+                    onInitiateReturn={handleOpenReturnDialog}
+                    onViewDetails={handleOpenDetailsDialog}
+                    onEditItem={handleOpenEditDialog} 
+                    isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
+                    showSupplierName={false} 
+                    showEditButtonText={false}
+                    isSelected={selectedItemIds.has(item.id)}
+                    onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
+                    showCheckbox={isMultiSelectEnabled}
+                />
+                ))}
+            </TableBody></Table>
+            {filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
+                <CardContent className="pt-4 text-center filters-card-noprint">
+                <p className="text-sm text-muted-foreground">
+                    Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsBySupplier.length} items for this selection.
+                </p>
+                </CardContent>
+            )}
+            </Card>
+
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {itemsToRender.map((item) => (
+                    <InventoryItemCardMobile
+                        key={item.id}
+                        item={item}
+                        onDetails={() => handleOpenDetailsDialog(item)}
+                        onEdit={() => handleOpenEditDialog(item)}
+                        onReturn={() => handleOpenReturnDialog(item)}
+                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
+                        onSelect={isMultiSelectEnabled ? () => handleSelectRow(item.id) : undefined}
+                        context="supplier"
+                    />
+                ))}
+            </div>
+        </>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
