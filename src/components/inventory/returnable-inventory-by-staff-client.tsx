@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -19,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
+import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 
 interface ReturnableInventoryByStaffClientProps {
@@ -30,7 +30,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
 export function ReturnableInventoryByStaffClient({ initialInventoryItems, allStaffNames }: ReturnableInventoryByStaffClientProps) {
   const { toast } = useToast();
-  const { role } = useAuth(); 
+  const { role, user } = useAuth(); 
   const { 
     inventoryItems: cachedItems, 
     uniqueLocations, 
@@ -95,7 +95,7 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
             originalInventoryItemId: itemToUpdate.id,
             returnedQuantity: returnedQuantity,
             returnTimestamp: new Date().toISOString(),
-            processedBy: role || 'Unknown', 
+            processedBy: user?.email || 'Unknown', 
         });
 
         if (newQuantity > 0) {
@@ -105,7 +105,7 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
         }
     }
     setIsReturnDialogOpen(false);
-  }, [cachedItems, role, addReturnedItem, updateInventoryItem, removeInventoryItem]);
+  }, [cachedItems, user, addReturnedItem, updateInventoryItem, removeInventoryItem]);
 
   const filteredInventoryItemsByStaff = useMemo(() => {
     const sortedAndFiltered = cachedItems
@@ -256,43 +256,60 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
           </p>
         </div>
       ) : itemsToRender.length > 0 ? (
-        <Card className="shadow-md">
-          <Table><TableHeader>
-            <TableRow>{/*
-             */}<TableHead className="w-20 text-center">Return</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Details</TableHead>{/*
-             */}<TableHead>Product Name</TableHead>{/*
-             */}<TableHead>Barcode</TableHead>{/*
-             */}<TableHead>Supplier</TableHead>{/*
-             */}<TableHead className="text-right">In Stock</TableHead>{/*
-             */}<TableHead>Expiry</TableHead>{/*
-             */}<TableHead>Location</TableHead>{/*
-             */}<TableHead>Type</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
-           */}</TableRow>
-          </TableHeader><TableBody>
-            {itemsToRender.map((item) => (
-              <ReturnableInventoryItemRow
-                key={item.id}
-                item={item}
-                onInitiateReturn={handleOpenReturnDialog}
-                onViewDetails={handleOpenDetailsDialog}
-                onEditItem={role === 'admin' ? handleOpenEditDialog : undefined}
-                isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
-                showSupplierName={true}
-                showEditButtonText={false}
-                disableReturnButton={role === 'viewer'}
-              />
-            ))}
-          </TableBody></Table>
-           {filteredInventoryItemsByStaff.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
-            <CardContent className="pt-4 text-center filters-card-noprint">
-                <p className="text-sm text-muted-foreground">
-                Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsByStaff.length} items for this staff member.
-                </p>
-            </CardContent>
-            )}
-        </Card>
+        <>
+            {/* Desktop Table View */}
+            <Card className="shadow-md hidden md:block">
+            <Table><TableHeader>
+                <TableRow>{/*
+                */}<TableHead className="w-20 text-center">Return</TableHead>{/*
+                */}<TableHead className="w-20 text-center">Details</TableHead>{/*
+                */}<TableHead>Product Name</TableHead>{/*
+                */}<TableHead>Barcode</TableHead>{/*
+                */}<TableHead>Supplier</TableHead>{/*
+                */}<TableHead className="text-right">In Stock</TableHead>{/*
+                */}<TableHead>Expiry</TableHead>{/*
+                */}<TableHead>Location</TableHead>{/*
+                */}<TableHead>Type</TableHead>{/*
+                */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
+            */}</TableRow>
+            </TableHeader><TableBody>
+                {itemsToRender.map((item) => (
+                <ReturnableInventoryItemRow
+                    key={item.id}
+                    item={item}
+                    onInitiateReturn={handleOpenReturnDialog}
+                    onViewDetails={handleOpenDetailsDialog}
+                    onEditItem={role === 'admin' ? handleOpenEditDialog : undefined}
+                    isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
+                    showSupplierName={true}
+                    showEditButtonText={false}
+                    disableReturnButton={role === 'viewer'}
+                />
+                ))}
+            </TableBody></Table>
+            {filteredInventoryItemsByStaff.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
+                <CardContent className="pt-4 text-center filters-card-noprint">
+                    <p className="text-sm text-muted-foreground">
+                    Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsByStaff.length} items for this staff member.
+                    </p>
+                </CardContent>
+                )}
+            </Card>
+
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {itemsToRender.map((item) => (
+                    <InventoryItemCardMobile
+                        key={item.id}
+                        item={item}
+                        onDetails={() => handleOpenDetailsDialog(item)}
+                        onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
+                        onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(item) : undefined}
+                        context="staff"
+                    />
+                ))}
+            </div>
+        </>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />

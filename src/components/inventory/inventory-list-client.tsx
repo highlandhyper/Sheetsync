@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -29,6 +28,7 @@ import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
 import { useDataCache } from '@/context/data-cache-context';
+import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 
 interface InventoryListClientProps {
@@ -570,119 +570,139 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
       )}
 
       {itemsToRender.length > 0 ? (
-        <Card className="shadow-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {role === 'admin' && isMultiSelectEnabled && (
-                  <TableHead className="w-12 text-center noprint">
-                    <Checkbox
-                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                      aria-label="Select all rows"
-                    />
-                  </TableHead>
-                )}
-                <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead className="hidden md:table-cell">Barcode</TableHead>
-                <TableHead className="hidden lg:table-cell">Supplier</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead className="hidden sm:table-cell">Location</TableHead>
-                <TableHead>Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itemsToRender.map((item, index) => {
-                const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
-                const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-                const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
-                let formattedExpiryDate = 'N/A';
-                if (item.expiryDate) {
-                  if (isValidExpiry) {
-                    formattedExpiryDate = format(parsedExpiryDate!, 'PP');
-                    if (isExpired) formattedExpiryDate += " (Expired)";
-                  } else {
-                    formattedExpiryDate = "Invalid Date";
-                  }
-                }
-                const isProductFound = item.productName !== 'Not Found';
-
-                return (
-                  <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
-                     {role === 'admin' && isMultiSelectEnabled && (
-                      <TableCell className="text-center noprint">
+        <>
+            {/* Desktop Table View */}
+            <Card className="shadow-md hidden md:block">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    {role === 'admin' && isMultiSelectEnabled && (
+                    <TableHead className="w-12 text-center noprint">
                         <Checkbox
-                          checked={selectedItemIds.has(item.id)}
-                          onCheckedChange={() => handleSelectRow(item.id)}
-                          aria-label={`Select row for ${item.productName}`}
+                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                        aria-label="Select all rows"
                         />
-                      </TableCell>
+                    </TableHead>
                     )}
-                    <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                    <TableCell className="text-center noprint">
-                      <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                        {isProductFound ? (
-                            <>
-                                <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
-                                <Eye className="h-4 w-4" />
-                                </Button>
-                                {role === 'admin' && (
-                                <>
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                                    <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleOpenReturnDialog(item)}
-                                    disabled={item.quantity === 0}
-                                    className="h-8 w-8"
-                                    aria-label="Return Item"
-                                    >
-                                    <Undo2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleOpenDeleteDialog(item)}
-                                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                    aria-label="Delete Item"
-                                    >
-                                    <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </>
-                                )}
-                            </>
-                        ) : (
-                             role === 'admin' && (
-                                <Button onClick={() => handleOpenCreateProductDialog(item.barcode)} variant="default" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Create
-                                </Button>
-                            )
+                    <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
+                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Barcode</TableHead>
+                    <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead>Expiry</TableHead>
+                    <TableHead className="hidden sm:table-cell">Location</TableHead>
+                    <TableHead>Type</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {itemsToRender.map((item, index) => {
+                    const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
+                    const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
+                    const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
+                    let formattedExpiryDate = 'N/A';
+                    if (item.expiryDate) {
+                    if (isValidExpiry) {
+                        formattedExpiryDate = format(parsedExpiryDate!, 'PP');
+                        if (isExpired) formattedExpiryDate += " (Expired)";
+                    } else {
+                        formattedExpiryDate = "Invalid Date";
+                    }
+                    }
+                    const isProductFound = item.productName !== 'Not Found';
+
+                    return (
+                    <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                        {role === 'admin' && isMultiSelectEnabled && (
+                        <TableCell className="text-center noprint">
+                            <Checkbox
+                            checked={selectedItemIds.has(item.id)}
+                            onCheckedChange={() => handleSelectRow(item.id)}
+                            aria-label={`Select row for ${item.productName}`}
+                            />
+                        </TableCell>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
-                    <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
-                    <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                    <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
-                      {formattedExpiryDate}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
-                    <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
-                      {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
-                      {item.itemType}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Card>
+                        <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
+                        <TableCell className="text-center noprint">
+                        <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                            {isProductFound ? (
+                                <>
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                                    <Eye className="h-4 w-4" />
+                                    </Button>
+                                    {role === 'admin' && (
+                                    <>
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
+                                        <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleOpenReturnDialog(item)}
+                                        disabled={item.quantity === 0}
+                                        className="h-8 w-8"
+                                        aria-label="Return Item"
+                                        >
+                                        <Undo2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleOpenDeleteDialog(item)}
+                                        className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                        aria-label="Delete Item"
+                                        >
+                                        <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </>
+                                    )}
+                                </>
+                            ) : (
+                                role === 'admin' && (
+                                    <Button onClick={() => handleOpenCreateProductDialog(item.barcode)} variant="default" size="sm">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Create
+                                    </Button>
+                                )
+                            )}
+                        </div>
+                        </TableCell>
+                        <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
+                        <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
+                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.supplierName || 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                        <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
+                        {formattedExpiryDate}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
+                        <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
+                        {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
+                        {item.itemType}
+                        </TableCell>
+                    </TableRow>
+                    );
+                })}
+                </TableBody>
+            </Table>
+            </Card>
+
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {itemsToRender.map((item) => (
+                    <InventoryItemCardMobile
+                        key={item.id}
+                        item={item}
+                        onDetails={() => handleOpenDetailsDialog(item)}
+                        onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
+                        onReturn={role === 'admin' ? () => handleOpenReturnDialog(item) : undefined}
+                        onDelete={role === 'admin' ? () => handleOpenDeleteDialog(item) : undefined}
+                        onCreateProduct={role === 'admin' ? () => handleOpenCreateProductDialog(item.barcode) : undefined}
+                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
+                        onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(item.id) : undefined}
+                    />
+                ))}
+            </div>
+        </>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
