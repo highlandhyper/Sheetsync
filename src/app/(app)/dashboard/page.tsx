@@ -101,19 +101,15 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   };
   
   const yAxisWidth = isMobile ? 120 : 180;
+  const charMargin = isMobile ? { top: 20, right: 30, left: 10, bottom: 5 } : { top: 20, right: 30, left: 20, bottom: 5 };
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[300px] sm:min-h-[350px] w-full h-[400px]">
+    <ChartContainer config={chartConfig} className="min-h-[300px] sm:min-h-[350px] w-full h-full max-h-[400px]">
       <ResponsiveContainer width="100%" height="100%">
       <BarChart
         accessibilityLayer
         data={chartDisplayData}
-        margin={{
-          top: 20,
-          right: 30, 
-          left: 10,  
-          bottom: 5,
-        }}
+        margin={charMargin}
         layout="vertical"
       >
         <CartesianGrid horizontal={false} vertical={true} strokeDasharray="3 3" />
@@ -127,7 +123,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           width={yAxisWidth} 
           interval={0} 
           className="text-xs"
-          tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 18)}...` : value}
+          tickFormatter={(value) => value.length > (isMobile ? 15 : 20) ? `${value.substring(0, (isMobile ? 13 : 18))}...` : value}
         />
         <ChartTooltip
             cursor={false}
@@ -178,8 +174,8 @@ function DashboardSkeleton() {
             </CardTitle>
             <CardDescription>Total stock quantity held per supplier.</CardDescription>
             </CardHeader>
-            <CardContent className="pl-0 pr-2 sm:pr-4 pb-6">
-            <Skeleton className="h-[300px] sm:h-[350px] w-full" />
+            <CardContent className="pl-0 pr-2 sm:pr-4 pb-6 h-[400px]">
+              <Skeleton className="h-full w-full" />
             </CardContent>
         </Card>
       </div>
@@ -208,8 +204,8 @@ export default function DashboardPage() {
 
   if (isLoading || !metrics) {
     return (
-      <div className="container mx-auto p-0 sm:p-2">
-         <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight px-4 sm:px-0">
+      <div className="container mx-auto p-4 md:p-6">
+         <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
           <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
           Inventory Dashboard
         </h1>
@@ -248,12 +244,12 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="container mx-auto p-0 sm:p-2">
-      <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight px-4 sm:px-0">
+    <div className="container mx-auto p-4 md:p-6">
+      <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
         <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4 sm:px-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -290,7 +286,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-       <div className="mt-6 md:mt-8 px-2 sm:px-0"> 
+       <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -299,8 +295,8 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription>Total stock quantity held per supplier. Click a bar to filter inventory.</CardDescription>
           </CardHeader>
-          <CardContent className="pl-0 pr-2 sm:pr-4 pb-4 sm:pb-6">
-            {isLoading ? <Skeleton className="h-[350px] w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
+          <CardContent className="pl-0 pr-2 sm:pr-4 pb-4 sm:pb-6 h-[400px]">
+            {isLoading ? <Skeleton className="h-full w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
           </CardContent>
         </Card>
       </div>
