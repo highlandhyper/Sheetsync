@@ -164,7 +164,7 @@ function DashboardSkeleton() {
             description="Items marked as damage"
         />
       </div>
-      <div className="grid grid-cols-1 hidden sm:grid"> 
+      <div className="grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -185,7 +185,6 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function getMetrics() {
@@ -286,8 +285,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-      {!isMobile && (
-       <div className="mt-6 md:mt-8"> 
+      <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -301,8 +299,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      )}
     </div>
   );
 }
-
