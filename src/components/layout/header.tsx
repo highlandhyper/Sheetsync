@@ -53,11 +53,13 @@ export function Header({ className }: { className?: string }) {
 
   return (
     <>
-      <header className={cn("sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
-         <SidebarTrigger className="md:hidden" />
+      <header className={cn("sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
+         <div className="flex items-center gap-2 md:hidden">
+            <SidebarTrigger />
+         </div>
         
-        <div className="flex-1 md:hidden">
-          <Link href="/" className="flex justify-center items-center font-poppins text-xl font-bold text-primary">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none md:hidden">
+          <Link href="/" className="pointer-events-auto font-poppins text-xl font-bold text-primary">
             SheetSync
           </Link>
         </div>
