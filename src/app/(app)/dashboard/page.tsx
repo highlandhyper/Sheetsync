@@ -247,7 +247,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto p-4 md:p-6">
       <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
-        <Activity className="mr-3 h-7 w-7 sm:h-8 sm-w-8" />
+        <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
@@ -304,5 +304,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
