@@ -61,7 +61,6 @@ const MAX_SUPPLIERS_IN_CHART = 7;
 
 function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const chartConfig = {
     totalStock: {
       label: "Total Stock",
@@ -100,11 +99,11 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
     }
   };
   
-  const yAxisWidth = isMobile ? 120 : 180;
-  const charMargin = isMobile ? { top: 20, right: 30, left: 10, bottom: 5 } : { top: 20, right: 30, left: 20, bottom: 5 };
+  const yAxisWidth = 180;
+  const charMargin = { top: 20, right: 30, left: 20, bottom: 5 };
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[300px] sm:min-h-[350px] w-full h-full max-h-[400px]">
+    <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
       <ResponsiveContainer width="100%" height="100%">
       <BarChart
         accessibilityLayer
@@ -123,7 +122,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           width={yAxisWidth} 
           interval={0} 
           className="text-xs"
-          tickFormatter={(value) => value.length > (isMobile ? 15 : 20) ? `${value.substring(0, (isMobile ? 13 : 18))}...` : value}
+          tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 18)}...` : value}
         />
         <ChartTooltip
             cursor={false}
@@ -153,7 +152,7 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-8">
        <Skeleton className="h-10 w-2/3 mb-6" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
         <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description="Unique suppliers registered" />
         <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description="Next 7 days" />
@@ -165,7 +164,7 @@ function DashboardSkeleton() {
             description="Items marked as damage"
         />
       </div>
-      <div className="grid grid-cols-1"> 
+      <div className="grid grid-cols-1 hidden sm:grid"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -186,6 +185,7 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function getMetrics() {
@@ -249,7 +249,7 @@ export default function DashboardPage() {
         <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -286,6 +286,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
+      {!isMobile && (
        <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
@@ -300,6 +301,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }
+
