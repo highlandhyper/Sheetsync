@@ -55,68 +55,77 @@ export function Header({ className }: { className?: string }) {
     <>
       <header className={cn("sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
          <SidebarTrigger className="md:hidden" />
-        <div className="flex-1" />
         
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsCommandPaletteOpen(true)}
-          className="text-muted-foreground"
-          aria-label="Open command palette"
-        >
-          <Zap className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsSyncDialogOpen(true)}
-          disabled={isSyncing}
-          className="text-muted-foreground"
-          aria-label="Sync Data"
-        >
-            <RotateCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-        </Button>
+        <div className="flex-1 md:hidden">
+          <Link href="/" className="flex justify-center items-center font-poppins text-xl font-bold text-primary">
+            SheetSync
+          </Link>
+        </div>
 
-        {loading ? (
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
-        ) : user ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" />
-                  <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {user.displayName || user.email?.split('@')[0] || "User"}
-                  </p>
-                  {user.email && (
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+        <div className="flex-1 hidden md:block" />
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="text-muted-foreground"
+            aria-label="Open command palette"
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsSyncDialogOpen(true)}
+            disabled={isSyncing}
+            className="text-muted-foreground"
+            aria-label="Sync Data"
+          >
+              <RotateCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+          </Button>
+
+          {loading ? (
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" />
+                    <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {user.displayName || user.email?.split('@')[0] || "User"}
                     </p>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-           <Button asChild variant="outline">
-              <Link href="/login">
-                <UserCircle className="mr-2 h-4 w-4" /> Login
-              </Link>
-            </Button>
-        )}
+                    {user.email && (
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+             <Button asChild variant="outline">
+                <Link href="/login">
+                  <UserCircle className="mr-2 h-4 w-4" /> Login
+                </Link>
+              </Button>
+          )}
+        </div>
       </header>
       <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
       
