@@ -59,7 +59,7 @@ export function Header({ className }: { className?: string }) {
          </div>
         
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none md:hidden">
-          <Link href="/" className="pointer-events-auto font-poppins text-xl font-bold text-primary">
+          <Link href="/" className="pointer-events-auto font-poppins text-2xl font-bold text-primary">
             SheetSync
           </Link>
         </div>
