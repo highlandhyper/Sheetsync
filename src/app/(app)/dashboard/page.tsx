@@ -61,6 +61,8 @@ const MAX_SUPPLIERS_IN_CHART = 7;
 
 function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
+
   const chartConfig = {
     totalStock: {
       label: "Total Stock",
@@ -99,7 +101,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
     }
   };
   
-  const yAxisWidth = 180;
+  const yAxisWidth = isMobile ? 120 : 180;
   const charMargin = { top: 20, right: 30, left: 20, bottom: 5 };
 
   return (
@@ -122,7 +124,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           width={yAxisWidth} 
           interval={0} 
           className="text-xs"
-          tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 18)}...` : value}
+          tickFormatter={(value) => value.length > (isMobile ? 15 : 20) ? `${value.substring(0, isMobile ? 13 : 18)}...` : value}
         />
         <ChartTooltip
             cursor={false}
@@ -150,9 +152,9 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
-       <Skeleton className="h-10 w-2/3 mb-6" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
+    <div className="space-y-6">
+       <Skeleton className="h-10 w-2/3 mb-4" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"> 
         <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description="Unique suppliers registered" />
         <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description="Next 7 days" />
@@ -164,7 +166,7 @@ function DashboardSkeleton() {
             description="Items marked as damage"
         />
       </div>
-      <div className="grid grid-cols-1"> 
+      <div className="hidden md:grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -245,10 +247,10 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto p-4 md:p-6">
       <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
-        <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
+        <Activity className="mr-3 h-7 w-7 sm:h-8 sm-w-8" />
         Inventory Dashboard
       </h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -285,7 +287,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-      <div className="mt-6 md:mt-8"> 
+      <div className="mt-6 md:mt-8 hidden md:block"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -302,3 +304,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
