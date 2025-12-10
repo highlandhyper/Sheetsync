@@ -893,24 +893,28 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     const timeLabel = "GS_Data: getDashboardMetrics total duration";
     console.time(timeLabel);
     try {
-        const [products, currentInventoryItems, suppliersList] = await Promise.all([
+        const [inventoryLog, returnedLog, products, suppliersList] = await Promise.all([
+            readSheetData(INVENTORY_READ_RANGE),
+            readSheetData(RETURN_LOG_READ_RANGE),
             getProducts(),
-            getInventoryItems(),
             getSuppliers(),
         ]);
+
+        const allInventoryEvents = (inventoryLog || []).map((row, index) => transformToInventoryItem(row, index)).filter(Boolean) as InventoryItem[];
+        const currentInventoryItems = allInventoryEvents.filter(item => item.quantity > 0);
 
         const totalProducts = products.length;
         const totalStockQuantity = currentInventoryItems.reduce((sum, item) => sum + item.quantity, 0);
         const totalSuppliers = suppliersList.length;
 
         let itemsExpiringSoon = 0;
-        const todayDate = startOfDay(new Date());
-        const sevenDaysFromNow = addDays(todayDate, 7);
+        const today = startOfDay(new Date());
+        const sevenDaysFromNow = addDays(today, 7);
         currentInventoryItems.forEach(item => {
             if (item.itemType === 'Expiry' && item.expiryDate) {
                 try {
                     const expiry = startOfDay(parseISO(item.expiryDate));
-                    if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, todayDate)) {
+                    if (isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today)) {
                         itemsExpiringSoon++;
                     }
                 } catch (e) {
@@ -918,7 +922,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
                 }
             }
         });
-
+        
         const damagedItemsCount = currentInventoryItems.filter(item => item.itemType === 'Damage').length;
 
         const stockBySupplierMap = new Map<string, number>();
@@ -930,7 +934,32 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
         const stockBySupplier: StockBySupplier[] = Array.from(stockBySupplierMap.entries())
             .map(([name, totalStock]) => ({ name, totalStock }))
             .sort((a, b) => b.totalStock - a.totalStock);
+
+        const allReturnedItems = (returnedLog || []).map((row, index) => transformToReturnedItem(row, index)).filter(Boolean) as ReturnedItem[];
         
+        const endOfYesterday = endOfDay(subDays(today, 1));
+        const stockAtEndOfYesterday = allInventoryEvents.reduce((acc, item) => {
+            if (item.timestamp && parseISO(item.timestamp) <= endOfYesterday) {
+                acc[item.id] = (acc[item.id] || 0) + item.quantity;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        allReturnedItems.forEach(ret => {
+            if (ret.originalInventoryItemId && ret.returnTimestamp && parseISO(ret.returnTimestamp) <= endOfYesterday) {
+                if (stockAtEndOfYesterday[ret.originalInventoryItemId]) {
+                    stockAtEndOfYesterday[ret.originalInventoryItemId] -= ret.returnedQuantity;
+                }
+            }
+        });
+        const totalStockYesterday = Object.values(stockAtEndOfYesterday).reduce((sum, qty) => sum + qty, 0);
+
+        const netItemsAddedToday = totalStockQuantity - totalStockYesterday;
+        let dailyStockChangePercent: number | undefined = undefined;
+        if (totalStockYesterday > 0) {
+            dailyStockChangePercent = (netItemsAddedToday / totalStockYesterday) * 100;
+        }
+
         const metrics: DashboardMetrics = {
             totalProducts,
             totalStockQuantity,
@@ -938,6 +967,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
             damagedItemsCount,
             stockBySupplier,
             totalSuppliers,
+            dailyStockChangePercent: dailyStockChangePercent,
+            dailyStockChangeDirection: netItemsAddedToday > 0 ? 'increase' : (netItemsAddedToday < 0 ? 'decrease' : 'none'),
+            netItemsAddedToday: netItemsAddedToday
         };
 
         return metrics;
@@ -956,6 +988,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
         console.timeEnd(timeLabel);
     }
 }
+
 
 
 export async function deleteInventoryItemById(userEmail: string, itemId: string): Promise<boolean> {
@@ -1066,6 +1099,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 
