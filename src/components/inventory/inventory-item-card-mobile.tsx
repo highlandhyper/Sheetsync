@@ -87,17 +87,10 @@ export function InventoryItemCardMobile({
       </CardHeader>
       <CardContent className="space-y-3 text-sm pb-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-          {context === 'staff' ? (
-             <div className="flex items-start gap-2">
-                <Building className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div><span className="font-medium">Supplier</span><p className="text-muted-foreground">{item.supplierName || 'N/A'}</p></div>
-             </div>
-          ): (
-             <div className="flex items-start gap-2">
-                <Building className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div><span className="font-medium">Supplier</span><p className="text-muted-foreground">{item.supplierName || 'N/A'}</p></div>
-             </div>
-          )}
+          <div className="flex items-start gap-2">
+            <Building className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div><span className="font-medium">Supplier</span><p className="text-muted-foreground">{item.supplierName || 'N/A'}</p></div>
+          </div>
          
           <div className="flex items-start gap-2">
             <Hash className="h-4 w-4 mt-0.5 text-muted-foreground" />
@@ -143,3 +136,5 @@ export function InventoryItemCardMobile({
     </Card>
   );
 }
+
+    
