@@ -94,8 +94,8 @@ export function InventoryItemCardMobile({
              </div>
           ): (
              <div className="flex items-start gap-2">
-                <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div><span className="font-medium">Logged by</span><p className="text-muted-foreground">{item.staffName}</p></div>
+                <Building className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <div><span className="font-medium">Supplier</span><p className="text-muted-foreground">{item.supplierName || 'N/A'}</p></div>
              </div>
           )}
          
@@ -132,9 +132,9 @@ export function InventoryItemCardMobile({
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
          {isProductFound ? (
              <>
-                {onEdit && <Button variant="ghost" size="icon" onClick={onEdit} className="h-9 w-9"><Edit className="h-4 w-4" /></Button>}
-                {onReturn && <Button variant="outline" size="icon" onClick={onReturn} disabled={item.quantity === 0} className="h-9 w-9"><Undo2 className="h-4 w-4" /></Button>}
-                {onDelete && <Button variant="destructive" size="icon" onClick={onDelete} className="h-9 w-9"><Trash2 className="h-4 w-4" /></Button>}
+                {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+                {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
+                {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
              </>
          ) : (
             onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct}><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
