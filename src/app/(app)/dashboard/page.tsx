@@ -220,7 +220,7 @@ export default function DashboardPage() {
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
   if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    const colorClass = isIncrease ? 'text-green-600' : 'text-destructive';
+    const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
     let trendText: string;
@@ -289,7 +289,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-       <div className="mt-6 md:mt-8"> 
+       <div className={cn("mt-6 md:mt-8", isMobile && "hidden")}> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -306,5 +306,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
