@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   description: 'Next-Gen Inventory Management',
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico', 
+    icon: '/logo.ico', 
   },
 };
 
