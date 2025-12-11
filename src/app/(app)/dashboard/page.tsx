@@ -29,7 +29,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             <div className="text-2xl font-bold">{value}</div>
         )}
         {description && !isLoading && <div className="text-xs text-muted-foreground pt-1 flex items-center">{description}</div>}
-        {description && isLoading && <Skeleton className="h-6 w-3/4 mt-1" />} 
+        {isLoading && <Skeleton className="h-4 w-3/4 mt-1" />}
       </CardContent>
     </>
   );
@@ -102,7 +102,8 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   };
   
   const yAxisWidth = isMobile ? 120 : 180;
-  const charMargin = { top: 20, right: 30, left: 20, bottom: 5 };
+  const charMargin = isMobile ? { top: 20, right: 30, left: 10, bottom: 5 } : { top: 20, right: 30, left: 20, bottom: 5 };
+
 
   return (
     <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
@@ -155,16 +156,29 @@ function DashboardSkeleton() {
     <div className="space-y-6">
        <Skeleton className="h-10 w-2/3 mb-4" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"> 
-        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
-        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description="Unique suppliers registered" />
-        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description="Next 7 days" />
+        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} />
+        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} />
+        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} />
         <MetricCard 
             title="Damaged Items" 
             value="" 
             iconNode={<AlertTriangle className="h-5 w-5" />}
             isLoading={true}
-            description="Items marked as damage"
         />
+      </div>
+      <div className="grid grid-cols-1 md:hidden"> 
+        <Card className="col-span-1 shadow-lg rounded-lg">
+            <CardHeader>
+            <CardTitle className="text-xl flex items-center">
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Stock by Supplier
+            </CardTitle>
+            <CardDescription>Total stock quantity held per supplier.</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-0 pr-2 sm:pr-4 pb-6 h-[400px]">
+              <Skeleton className="h-full w-full" />
+            </CardContent>
+        </Card>
       </div>
       <div className="hidden md:grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
@@ -287,7 +301,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-      <div className="mt-6 md:mt-8 hidden md:block"> 
+      <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
