@@ -1,47 +1,36 @@
-
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# Dependencies
 /node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
 
-# testing
-/coverage
-
-# next.js
+# Build directory
 /.next/
-/out/
 
-# production
+# Production build
 /build
+/out
 
-# misc
-.DS_Store
-*.pem
+# Static analysis cache
+/.eslintcache
 
-# debug
+# Local environment variables
+.env*.local
+
+# Log files
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-firebase-debug.log* # Add this if you use Firebase CLI debugging
+pnpm-debug.log*
 
-# local env files
-.env.local
-.env.development.local
-.env.production.local
-.env.test.local
+# Editor directories and files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# turbo
-.turbo
-
-# dotenv
-.env # If you ever use a general .env, though .env.local is preferred for Next.js secrets
+# macOS
+.DS_Store
