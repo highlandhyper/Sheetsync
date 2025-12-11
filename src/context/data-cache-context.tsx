@@ -85,7 +85,7 @@ async function setToDB(db: IDBDatabase, data: AppData): Promise<void> {
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<AppData>({
     inventoryItems: [],
     products: [],
@@ -126,10 +126,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [toast]);
   
   useEffect(() => {
-    if (!user) { // Don't try to load cache if not logged in
-        setIsInitialized(true);
-        return;
-    };
+    if (authLoading || !user) {
+      if (!authLoading) {
+        setIsInitialized(true); // If not loading and no user, we are "initialized" with no data.
+      }
+      return;
+    }
 
     const loadCache = async () => {
       try {
@@ -138,21 +140,25 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         db.close();
 
         const now = Date.now();
-        // If cache exists and is not older than 5 minutes, load it.
         if (cachedData && cachedData.lastSync && (now - cachedData.lastSync < CACHE_EXPIRATION_MS)) {
           setData(cachedData);
           setIsInitialized(true);
-          return;
+        } else {
+          // If cache is stale or doesn't exist, fetch fresh data
+          await refreshData();
+          setIsInitialized(true);
         }
       } catch (error) {
-        console.error("Failed to load from IndexedDB:", error);
+        console.error("Failed to load from IndexedDB, fetching fresh data:", error);
+        await refreshData();
+        setIsInitialized(true);
       }
-      // If no valid/fresh cache exists, fetch fresh data.
-      refreshData().finally(() => setIsInitialized(true));
     };
 
-    loadCache();
-  }, [user, refreshData]);
+    if (!isInitialized) {
+      loadCache();
+    }
+  }, [user, authLoading, isInitialized, refreshData]);
 
   // --- Local Data Mutation Helpers ---
   const addInventoryItem = useCallback((item: InventoryItem) => {
@@ -259,3 +265,5 @@ export function useDataCache() {
   }
   return context;
 }
+
+    
