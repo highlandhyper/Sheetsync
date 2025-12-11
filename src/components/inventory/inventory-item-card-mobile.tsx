@@ -120,6 +120,15 @@ export function InventoryItemCardMobile({
                 </p>
                 </div>
            </div>
+           {context === 'inventory' && (
+             <div className="flex items-start gap-2 col-span-2">
+                <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <div>
+                <span className="font-medium">Logged By</span>
+                <p className="text-muted-foreground">{item.staffName}</p>
+                </div>
+              </div>
+           )}
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
@@ -136,5 +145,3 @@ export function InventoryItemCardMobile({
     </Card>
   );
 }
-
-    

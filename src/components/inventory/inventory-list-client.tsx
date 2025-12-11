@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -472,7 +472,10 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
                 <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
-                  <SelectValue placeholder="Filter by Supplier" />
+                  <div className="flex items-center">
+                    <Building className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by Supplier" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
@@ -486,7 +489,10 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
               
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                 <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
-                  <SelectValue placeholder="Filter by Type" />
+                 <div className="flex items-center">
+                    <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by Type" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Item Types</SelectItem>
@@ -588,8 +594,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
                     <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                     <TableHead>Product Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Barcode</TableHead>
+                    <TableHead className="hidden lg:table-cell">Barcode</TableHead>
                     <TableHead>Supplier</TableHead>
+                    <TableHead>Logged By</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="hidden sm:table-cell">Location</TableHead>
@@ -668,8 +675,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                         </div>
                         </TableCell>
                         <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
-                        <TableCell className="text-muted-foreground hidden md:table-cell">{item.barcode}</TableCell>
+                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.barcode}</TableCell>
                         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.staffName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
                         <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
                         {formattedExpiryDate}
@@ -699,6 +707,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                         onCreateProduct={role === 'admin' ? () => handleOpenCreateProductDialog(item.barcode) : undefined}
                         isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
                         onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(item.id) : undefined}
+                        context="inventory"
                     />
                 ))}
             </div>
@@ -775,5 +784,3 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
     </div>
   );
 }
-
-    
