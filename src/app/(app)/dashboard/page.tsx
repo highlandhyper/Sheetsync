@@ -90,14 +90,14 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   }
 
   const handleBarClick = (barPayload: any) => {
-    if (barPayload && barPayload.name === "Other Suppliers" && otherSuppliersData) {
+    if (barPayload && barPayload.payload.name === "Other Suppliers" && otherSuppliersData) {
       const otherActualSupplierNames = otherSuppliersData.map(s => s.name);
       if (otherActualSupplierNames.length > 0) {
         const suppliersQueryParam = encodeURIComponent(otherActualSupplierNames.join(','));
         router.push(`/inventory?filterType=otherSuppliers&suppliers=${suppliersQueryParam}`);
       }
-    } else if (barPayload && barPayload.name) {
-      router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.name)}`);
+    } else if (barPayload && barPayload.payload.name) {
+      router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.payload.name)}`);
     }
   };
   
@@ -135,7 +135,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           dataKey="totalStock" 
           fill="var(--color-totalStock)" 
           radius={4}
-          onClick={(payload) => handleBarClick(payload.payload)} 
+          onClick={(payload) => handleBarClick(payload)} 
           onMouseEnter={(props, e: any) => { 
             if (e && e.target) e.target.style.cursor = 'pointer';
           }}
@@ -167,7 +167,7 @@ function DashboardSkeleton() {
             description={<Skeleton className="h-4 w-3/4 mt-1" />}
         />
       </div>
-      <div className="grid grid-cols-1"> 
+      <div className="grid grid-cols-1 hidden md:block"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -188,7 +188,6 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function getMetrics() {
@@ -252,7 +251,7 @@ export default function DashboardPage() {
         <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -289,7 +288,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-       <div className={cn("mt-6 md:mt-8", isMobile && "hidden")}> 
+       <div className="mt-6 md:mt-8 hidden md:block"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -306,3 +305,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
