@@ -166,20 +166,6 @@ function DashboardSkeleton() {
             isLoading={true}
         />
       </div>
-      <div className="grid grid-cols-1 md:hidden"> 
-        <Card className="col-span-1 shadow-lg rounded-lg">
-            <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5" />
-                Stock by Supplier
-            </CardTitle>
-            <CardDescription>Total stock quantity held per supplier.</CardDescription>
-            </CardHeader>
-            <CardContent className="pl-0 pr-2 sm:pr-4 pb-6 h-[400px]">
-              <Skeleton className="h-full w-full" />
-            </CardContent>
-        </Card>
-      </div>
       <div className="hidden md:grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
@@ -301,7 +287,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-      <div className="mt-6 md:mt-8"> 
+      <div className="mt-6 md:mt-8 hidden md:block"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
