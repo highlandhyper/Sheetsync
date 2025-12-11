@@ -155,18 +155,19 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6">
        <Skeleton className="h-10 w-2/3 mb-4" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"> 
-        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} />
-        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} />
-        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} />
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
+        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
+        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
+        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard 
             title="Damaged Items" 
             value="" 
             iconNode={<AlertTriangle className="h-5 w-5" />}
             isLoading={true}
+            description={<Skeleton className="h-4 w-3/4 mt-1" />}
         />
       </div>
-      <div className="hidden md:grid grid-cols-1"> 
+      <div className="grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -187,6 +188,7 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function getMetrics() {
@@ -250,7 +252,7 @@ export default function DashboardPage() {
         <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -287,7 +289,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-      <div className="mt-6 md:mt-8 hidden md:block"> 
+       <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -304,3 +306,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
