@@ -15,7 +15,6 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchInventoryLogEntriesByBarcodeAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -138,14 +137,18 @@ export function HeaderBarcodeLookup() {
     }
   };
 
+  const handleClear = () => {
+    setBarcode('');
+  }
+
   return (
     <>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Barcode lookup"
-          className="pl-9"
+          className="pl-9 pr-24"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           onKeyDown={(e) => {
@@ -153,6 +156,11 @@ export function HeaderBarcodeLookup() {
           }}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-1.5">
+           {barcode && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={handleClear}>
+              <X className="h-4 w-4" />
+            </Button>
+           )}
            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setIsScannerOpen(true)}>
              <ScanBarcode className="h-4 w-4" />
            </Button>
