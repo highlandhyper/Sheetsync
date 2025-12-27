@@ -126,27 +126,33 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [toast]);
   
   useEffect(() => {
-    if (authLoading || !user) {
-      if (!authLoading) {
-        setIsInitialized(true); // If not loading and no user, we are "initialized" with no data.
-      }
-      return;
+    // This effect should only run once when the auth state is finalized.
+    if (authLoading) {
+      return; // Wait until authentication is resolved.
     }
-
-    const loadCache = async () => {
+  
+    const initializeCache = async () => {
+      if (!user) {
+        // If there's no user, there's no data to fetch. We're "initialized".
+        setIsInitialized(true);
+        return;
+      }
+  
+      // From this point, we have a user.
       try {
         const db = await openDB();
         const cachedData = await getFromDB(db);
         db.close();
-
+  
         const now = Date.now();
         if (cachedData && cachedData.lastSync && (now - cachedData.lastSync < CACHE_EXPIRATION_MS)) {
+          // Cache is valid and not expired.
           setData(cachedData);
           setIsInitialized(true);
         } else {
-          // If cache is stale or doesn't exist, fetch fresh data
+          // Cache is missing, stale, or expired. Fetch fresh data.
           await refreshData();
-          setIsInitialized(true);
+          setIsInitialized(true); // Now we're initialized with fresh data.
         }
       } catch (error) {
         console.error("Failed to load from IndexedDB, fetching fresh data:", error);
@@ -154,11 +160,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         setIsInitialized(true);
       }
     };
-
-    if (!isInitialized) {
-      loadCache();
-    }
-  }, [user, authLoading, isInitialized, refreshData]);
+  
+    initializeCache();
+  
+    // We only want this to run when authLoading changes from true to false.
+    // The dependency array reflects this intent.
+  }, [authLoading, user, refreshData]);
 
   // --- Local Data Mutation Helpers ---
   const addInventoryItem = useCallback((item: InventoryItem) => {
@@ -265,5 +272,3 @@ export function useDataCache() {
   }
   return context;
 }
-
-    
