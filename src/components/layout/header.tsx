@@ -59,14 +59,12 @@ export function Header({ className }: { className?: string }) {
             <SidebarTrigger className="md:hidden" />
         </div>
         
-        {/* Desktop: Centered search bar */}
-        <div className="hidden md:flex flex-1 justify-center px-8">
-            <div className="w-full max-w-sm">
-                <HeaderBarcodeLookup />
-            </div>
-        </div>
+        {/* Desktop: Right-aligned search bar and action buttons */}
+        <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
+          <div className="hidden md:block w-full max-w-sm">
+             <HeaderBarcodeLookup />
+          </div>
 
-        <div className="flex items-center justify-end gap-2 md:gap-4">
           <Button
             variant="outline"
             size="icon"
