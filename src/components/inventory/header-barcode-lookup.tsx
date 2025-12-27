@@ -135,11 +135,11 @@ export function HeaderBarcodeLookup() {
 
   return (
     <>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Lookup barcode in inventory log..."
+          placeholder="Barcode lookup"
           className="pl-9"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
