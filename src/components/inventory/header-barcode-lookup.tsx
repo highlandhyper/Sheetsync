@@ -24,7 +24,7 @@ import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { ReturnQuantityDialog } from './return-quantity-dialog';
 import { EditInventoryItemDialog } from './edit-inventory-item-dialog';
-import { DeleteConfirmationDialog } from './delete-inventory-item-dialog';
+import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 import { Html5Qrcode } from 'html5-qrcode';
 
 
@@ -135,7 +135,7 @@ export function HeaderBarcodeLookup() {
 
   return (
     <>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
