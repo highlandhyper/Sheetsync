@@ -1,69 +1,39 @@
 
 'use client';
-import { InventoryBarcodeLookupClient } from '@/components/inventory/inventory-barcode-lookup-client';
-import { Suspense } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { useDataCache } from '@/context/data-cache-context';
 
+// This page is no longer used for desktop view as the lookup functionality
+// has been moved to a component in the header.
+// It can be kept for mobile-specific navigation or future use.
+// For now, it will just show a message.
 
-function BarcodeLookupSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg shadow bg-card">
-        <Skeleton className="h-10 w-full sm:flex-grow" /> {/* Barcode Input */}
-        <Skeleton className="h-10 w-full sm:w-28" /> {/* Search Button */}
-      </div>
-      <Card className="shadow-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product Name</TableHead>
-              <TableHead>Barcode</TableHead>
-              <TableHead>Staff Name</TableHead>
-              <TableHead>Logged At</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead>Type</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
-  );
-}
+import { FileSearch } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function InventoryLogLookupPage() {
-  const { uniqueLocations, isCacheReady } = useDataCache();
+  const router = useRouter();
+
+  // On desktop, this page is redundant. We can redirect or show a message.
+  // A redirect might be jarring if a user explicitly navigates here.
+  // Let's show a message and guide them.
+  useEffect(() => {
+    // Optionally, redirect on desktop if preferred
+    // if (window.innerWidth >= 768) {
+    //   router.replace('/inventory');
+    // }
+  }, [router]);
 
   return (
-    <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Inventory Log Lookup</h1>
-      <Suspense fallback={<BarcodeLookupSkeleton />}>
-        {isCacheReady ? (
-          <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations} />
-        ) : (
-          <BarcodeLookupSkeleton />
-        )}
-      </Suspense>
+    <div className="container mx-auto py-10 text-center">
+      <FileSearch className="mx-auto h-16 w-16 text-muted-foreground" />
+      <h1 className="mt-4 text-2xl font-bold text-primary">Barcode Lookup</h1>
+      <p className="mt-2 text-muted-foreground">
+        On desktop, this tool is now available in the header bar for quick access from any page.
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        On mobile, you can continue to use this page for barcode lookups.
+      </p>
+      {/* You could re-integrate the <InventoryBarcodeLookupClient /> here for mobile-only */}
     </div>
   );
 }
-
-    
