@@ -55,9 +55,12 @@ export function Header({ className }: { className?: string }) {
   return (
     <>
       <header className={cn("sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6", className)}>
-         <div className="flex items-center gap-2 md:hidden">
-            <SidebarTrigger />
-         </div>
+        <div className="flex items-center gap-2">
+            <SidebarTrigger className="md:hidden" />
+            <div className="hidden md:block font-poppins text-2xl font-bold text-primary">
+                SheetSync
+            </div>
+        </div>
         
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none md:hidden">
           <Link
@@ -71,11 +74,11 @@ export function Header({ className }: { className?: string }) {
           </Link>
         </div>
 
-        <div className="flex-1 hidden md:block">
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="hidden md:block">
             <HeaderBarcodeLookup />
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
