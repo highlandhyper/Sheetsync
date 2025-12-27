@@ -7,7 +7,6 @@ export const allNavItems = [
   { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'] },
   { href: '/inventory', label: 'View Inventory', icon: ClipboardList, roles: ['admin'] },
   { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, roles: ['admin'] },
-  { href: '/inventory/lookup', label: 'Barcode Log Lookup', icon: SearchCode, roles: ['admin', 'viewer'] },
   { href: '/inventory/returns', label: 'Return Log', icon: History, roles: ['admin'] },
 ];
 

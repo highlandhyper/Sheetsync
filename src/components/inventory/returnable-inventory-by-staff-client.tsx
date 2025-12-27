@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil } from 'lucide-react'; // Added Pencil
+import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -19,6 +20,11 @@ import { format, parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
+import { Checkbox } from '../ui/checkbox';
+import { useMultiSelect } from '@/context/multi-select-context';
+import { BulkReturnDialog } from './bulk-return-dialog';
+import { BulkDeleteDialog } from './bulk-delete-dialog';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 
 interface ReturnableInventoryByStaffClientProps {
@@ -30,13 +36,15 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
 export function ReturnableInventoryByStaffClient({ initialInventoryItems, allStaffNames }: ReturnableInventoryByStaffClientProps) {
   const { toast } = useToast();
-  const { role, user } = useAuth(); 
+  const { role, user } = useAuth();
+  const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems, 
     uniqueLocations, 
     updateInventoryItem, 
     removeInventoryItem,
     addReturnedItem,
+    refreshData,
   } = useDataCache();
   const [selectedStaffName, setSelectedStaffName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +59,10 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
 
   const [totalItemsForSelectedStaff, setTotalItemsForSelectedStaff] = useState(0);
+  
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const uniqueDbLocations = useMemo(() => {
     return uniqueLocations;
@@ -62,6 +74,12 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
     setIsEditDialogOpen(false);
     setIsLoading(false);
   }, [initialInventoryItems]);
+  
+  useEffect(() => {
+    if (!isMultiSelectEnabled) {
+      setSelectedItemIds(new Set());
+    }
+  }, [isMultiSelectEnabled]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     if (role === 'viewer') return; 
@@ -83,6 +101,7 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   const handleEditSuccess = useCallback(() => {
     // Local state is updated by the context, no full refresh needed
     setIsEditDialogOpen(false);
+    setSelectedItemIds(new Set());
   }, []);
 
   const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
@@ -105,7 +124,15 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
         }
     }
     setIsReturnDialogOpen(false);
+    setSelectedItemIds(new Set());
   }, [cachedItems, user, addReturnedItem, updateInventoryItem, removeInventoryItem]);
+  
+  const handleBulkSuccess = useCallback(() => {
+      refreshData();
+      setSelectedItemIds(new Set());
+      setIsBulkReturnOpen(false);
+      setIsBulkDeleteOpen(false);
+  }, [refreshData]);
 
   const filteredInventoryItemsByStaff = useMemo(() => {
     const sortedAndFiltered = cachedItems
@@ -130,6 +157,10 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
     setTotalItemsForSelectedStaff(filtered.length);
     return filtered;
   }, [cachedItems, selectedStaffName]);
+  
+  useEffect(() => {
+    setSelectedItemIds(new Set());
+  }, [selectedStaffName]);
 
   const clearStaffSearch = () => {
     setSelectedStaffName('');
@@ -146,6 +177,27 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allItemIds = new Set(itemsToRender.map(item => item.id));
+      setSelectedItemIds(allItemIds);
+    } else {
+      setSelectedItemIds(new Set());
+    }
+  };
+
+  const handleSelectRow = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
   };
 
   if (isLoading) {
@@ -196,56 +248,78 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <Select
-              value={selectedStaffName}
-              onValueChange={(value) => {
-                setSelectedStaffName(value === "__EMPTY_STAFF_VALUE__" ? "" : value);
-              }}
-            >
-              <SelectTrigger className="w-full md:max-w-lg">
-                <div className="flex items-center">
-                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder="Filter by staff member..." />
+          {selectedItemIds.size > 0 && isMultiSelectEnabled && role === 'admin' ? (
+             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
+               <div className="text-sm font-medium text-muted-foreground">
+                  {selectedItemIds.size} item(s) selected
+               </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
                 </div>
-              </SelectTrigger>
-              <SelectContent>
-                <ScrollArea className="h-72">
-                  <SelectItem value="__EMPTY_STAFF_VALUE__">
-                    <em>Show All / Clear Filter</em>
-                  </SelectItem>
-                  {allStaffNames.length > 0 ? (
-                    allStaffNames.map((staffName) => (
-                      <SelectItem key={staffName} value={staffName}>
-                        {staffName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                     <div className="p-2 text-sm text-muted-foreground text-center">No staff names available.</div>
-                  )}
-                </ScrollArea>
-              </SelectContent>
-            </Select>
+             </div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center gap-4">
+                <Select
+                value={selectedStaffName}
+                onValueChange={(value) => {
+                    setSelectedStaffName(value === "__EMPTY_STAFF_VALUE__" ? "" : value);
+                }}
+                >
+                <SelectTrigger className="w-full md:max-w-lg">
+                    <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by staff member..." />
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    <ScrollArea className="h-72">
+                    <SelectItem value="__EMPTY_STAFF_VALUE__">
+                        <em>Show All / Clear Filter</em>
+                    </SelectItem>
+                    {allStaffNames.length > 0 ? (
+                        allStaffNames.map((staffName) => (
+                        <SelectItem key={staffName} value={staffName}>
+                            {staffName}
+                        </SelectItem>
+                        ))
+                    ) : (
+                        <div className="p-2 text-sm text-muted-foreground text-center">No staff names available.</div>
+                    )}
+                    </ScrollArea>
+                </SelectContent>
+                </Select>
 
-            {selectedStaffName && (
-              <Button variant="ghost" onClick={clearStaffSearch} className="w-full md:w-auto">
-                 <X className="mr-2 h-4 w-4" /> Clear Staff
-              </Button>
-            )}
-            <div className="print-button-container ml-auto md:ml-0">
-                <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                    <Printer className="mr-2 h-4 w-4" /> Print List
+                {selectedStaffName && (
+                <Button variant="ghost" onClick={clearStaffSearch} className="w-full md:w-auto">
+                    <X className="mr-2 h-4 w-4" /> Clear Staff
                 </Button>
+                )}
+                <div className="print-button-container ml-auto md:ml-0">
+                    <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
+                        <Printer className="mr-2 h-4 w-4" /> Print List
+                    </Button>
+                </div>
+                {selectedStaffName && (
+                <div className="flex items-center text-sm text-muted-foreground md:ml-auto">
+                    <ListFilter className="mr-2 h-4 w-4" />
+                    <span>Found: {totalItemsForSelectedStaff} item(s) by {selectedStaffName}</span>
+                </div>
+                )}
             </div>
-            {selectedStaffName && (
-              <div className="flex items-center text-sm text-muted-foreground md:ml-auto">
-                <ListFilter className="mr-2 h-4 w-4" />
-                <span>Found: {totalItemsForSelectedStaff} item(s) by {selectedStaffName}</span>
-              </div>
-            )}
-          </div>
+          )}
         </CardContent>
       </Card>
+      
+      {isMultiSelectEnabled && selectedStaffName && (
+        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
+            <ListChecks className="h-4 w-4 !text-blue-500" />
+            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
+            <AlertDescription>
+                Checkboxes are now available for bulk actions. You can disable this in settings.
+            </AlertDescription>
+        </Alert>
+      )}
 
       {!selectedStaffName.trim() ? (
          <div className="text-center py-12">
@@ -260,18 +334,27 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
             {/* Desktop Table View */}
             <Card className="shadow-md hidden md:block">
             <Table><TableHeader>
-                <TableRow>{/*
-                */}<TableHead className="w-20 text-center">Return</TableHead>{/*
-                */}<TableHead className="w-20 text-center">Details</TableHead>{/*
-                */}<TableHead>Product Name</TableHead>{/*
-                */}<TableHead>Barcode</TableHead>{/*
-                */}<TableHead>Supplier</TableHead>{/*
-                */}<TableHead className="text-right">In Stock</TableHead>{/*
-                */}<TableHead>Expiry</TableHead>{/*
-                */}<TableHead>Location</TableHead>{/*
-                */}<TableHead>Type</TableHead>{/*
-                */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
-            */}</TableRow>
+                <TableRow>
+                {isMultiSelectEnabled && role === 'admin' && (
+                  <TableHead className="w-12 text-center noprint">
+                      <Checkbox
+                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                      aria-label="Select all rows"
+                      />
+                  </TableHead>
+                )}
+                <TableHead className="w-20 text-center">Return</TableHead>
+                <TableHead className="w-20 text-center">Details</TableHead>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Barcode</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="text-right">In Stock</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="w-20 text-center">Edit</TableHead>
+            </TableRow>
             </TableHeader><TableBody>
                 {itemsToRender.map((item) => (
                 <ReturnableInventoryItemRow
@@ -284,6 +367,9 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
                     showSupplierName={true}
                     showEditButtonText={false}
                     disableReturnButton={role === 'viewer'}
+                    isSelected={selectedItemIds.has(item.id)}
+                    onSelectRow={isMultiSelectEnabled && role === 'admin' ? handleSelectRow : undefined}
+                    showCheckbox={isMultiSelectEnabled && role === 'admin'}
                 />
                 ))}
             </TableBody></Table>
@@ -338,6 +424,20 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
+      />
+       <BulkReturnDialog 
+        isOpen={isBulkReturnOpen}
+        onOpenChange={setIsBulkReturnOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleBulkSuccess}
+        itemCount={selectedItemIds.size}
+      />
+      <BulkDeleteDialog
+        isOpen={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        itemIds={Array.from(selectedItemIds)}
+        onSuccess={handleBulkSuccess}
+        itemCount={selectedItemIds.size}
       />
     </div>
   );

@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
 import { useDataCache } from '@/context/data-cache-context';
+import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
 
 export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
@@ -64,14 +65,15 @@ export function Header({ className }: { className?: string }) {
             className={cn(
               "pointer-events-auto font-poppins text-2xl font-bold",
               "bg-gradient-to-r from-primary via-primary/70 to-primary bg-clip-text text-transparent",
-              "animate-shine" // Apply the shine animation
             )}
           >
             SheetSync
           </Link>
         </div>
 
-        <div className="flex-1 hidden md:block" />
+        <div className="flex-1 hidden md:block">
+            <HeaderBarcodeLookup />
+        </div>
 
         <div className="flex items-center gap-2">
           <Button
