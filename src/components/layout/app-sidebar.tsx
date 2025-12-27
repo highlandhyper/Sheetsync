@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Sidebar,
@@ -18,7 +19,6 @@ import { useAccessControl } from '@/context/access-control-context';
 import { allNavItems, accountNavItems } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Layers } from 'lucide-react';
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -79,7 +79,7 @@ export function AppSidebar({ className }: { className?: string }) {
           aria-label="Home"
           onClick={() => setOpenMobile(false)}
         >
-          <Layers className="h-7 w-7" />
+          <Image src="/logo.png" alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" />
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
           </span>
