@@ -142,6 +142,13 @@ body {
   @apply bg-primary/80;
 }
 
+/* Hide default browser clear button on search inputs */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+
 /* Hide elements by default that should only appear in print */
 .print-show-table-cell {
   display: none;
