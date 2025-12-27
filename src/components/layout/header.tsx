@@ -59,72 +59,78 @@ export function Header({ className }: { className?: string }) {
             <SidebarTrigger className="md:hidden" />
         </div>
         
-        {/* Desktop: Right-aligned search bar and action buttons */}
+        {/* Container for search and actions, aligned right */}
         <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
-          <div className="hidden md:block w-full max-w-sm">
-             <HeaderBarcodeLookup />
+          {/* Search bar takes up available space */}
+          <div className="hidden md:flex flex-1 justify-center px-4">
+             <div className="w-full max-w-sm">
+                <HeaderBarcodeLookup />
+            </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsCommandPaletteOpen(true)}
-            className="text-muted-foreground"
-            aria-label="Open command palette"
-          >
-            <Zap className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsSyncDialogOpen(true)}
-            disabled={isSyncing}
-            className="text-muted-foreground"
-            aria-label="Sync Data"
-          >
-              <RotateCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-          </Button>
+          {/* Action buttons have fixed size */}
+          <div className="flex items-center gap-2">
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="text-muted-foreground"
+                aria-label="Open command palette"
+            >
+                <Zap className="h-4 w-4" />
+            </Button>
+            
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsSyncDialogOpen(true)}
+                disabled={isSyncing}
+                className="text-muted-foreground"
+                aria-label="Sync Data"
+            >
+                <RotateCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+            </Button>
 
-          {loading ? (
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
-          ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" />
-                    <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
-                  </Avatar>
+            {loading ? (
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
+            ) : user ? (
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" />
+                        <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                    </Avatar>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                        {user.displayName || user.email?.split('@')[0] || "User"}
+                        </p>
+                        {user.email && (
+                        <p className="text-xs leading-none text-muted-foreground">
+                            {user.email}
+                        </p>
+                        )}
+                    </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+                </DropdownMenu>
+            ) : (
+                <Button asChild variant="outline">
+                    <Link href="/login">
+                    <UserCircle className="mr-2 h-4 w-4" /> Login
+                    </Link>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user.displayName || user.email?.split('@')[0] || "User"}
-                    </p>
-                    {user.email && (
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                      </p>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-             <Button asChild variant="outline">
-                <Link href="/login">
-                  <UserCircle className="mr-2 h-4 w-4" /> Login
-                </Link>
-              </Button>
-          )}
+            )}
+           </div>
         </div>
       </header>
       <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
