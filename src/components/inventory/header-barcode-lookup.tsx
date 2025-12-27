@@ -39,7 +39,7 @@ export function HeaderBarcodeLookup() {
   const [isLoading, startSearchTransition] = useTransition();
   const { toast } = useToast();
   const { role } = useAuth();
-  const { uniqueLocations, refreshData } = useDataCache();
+  const { inventoryItems, uniqueLocations, refreshData } = useDataCache();
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
 
   // States for action dialogs
@@ -51,26 +51,31 @@ export function HeaderBarcodeLookup() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   const executeSearch = useCallback(
-    async (barcodeToSearch: string) => {
+    (barcodeToSearch: string) => {
       if (!barcodeToSearch.trim()) return;
 
-      startSearchTransition(async () => {
+      startSearchTransition(() => {
         setLastSearchedBarcode(barcodeToSearch);
-        const response = await fetchInventoryLogEntriesByBarcodeAction(barcodeToSearch);
-        if (response.success && response.data) {
-          setResults(response.data);
-        } else {
-          setResults([]);
-          toast({
-            title: 'Search Error',
-            description: response.message || 'Failed to fetch inventory log.',
-            variant: 'destructive',
-          });
-        }
+        const searchResults = inventoryItems.filter(
+          item => item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase()
+        ).sort((a, b) => {
+            const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+            const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        setResults(searchResults);
         setIsDialogOpen(true);
+        if (searchResults.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Not Found',
+                description: `No inventory items found with barcode: ${barcodeToSearch}`,
+            });
+        }
       });
     },
-    [toast]
+    [inventoryItems, toast]
   );
   
   const onScanSuccess = useCallback((decodedText: string) => {
@@ -126,16 +131,16 @@ export function HeaderBarcodeLookup() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    refreshData(); // Refresh all data after any modification
-    // Re-run the search to update the dialog content
-    if(lastSearchedBarcode) {
+    // Data is already updated via context, but we can re-run the search
+    // to refresh the dialog if it's still open.
+    if(isDialogOpen && lastSearchedBarcode) {
         executeSearch(lastSearchedBarcode);
     }
   };
 
   return (
     <>
-      <div className="relative w-full">
+      <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
