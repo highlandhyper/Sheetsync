@@ -18,6 +18,7 @@ import { useAccessControl } from '@/context/access-control-context';
 import { allNavItems, accountNavItems } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Layers } from 'lucide-react';
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -70,14 +71,15 @@ export function AppSidebar({ className }: { className?: string }) {
   return (
     <Sidebar collapsible="icon" className={cn(className)}>
        <div
-        className="relative flex h-16 shrink-0 items-center justify-between px-4 py-2 group-data-[state=collapsed]/sidebar:h-14 group-data-[state=collapsed]/sidebar:justify-center group-data-[state=collapsed]/sidebar:p-0"
+        className="relative flex h-16 shrink-0 items-center justify-center px-4 py-2 group-data-[state=collapsed]/sidebar:h-14 group-data-[state=collapsed]/sidebar:p-0"
       >
         <Link
           href={getDefaultHomePage()}
-          className="flex items-center gap-2 font-poppins text-2xl font-bold text-primary pl-2.5"
+          className="flex items-center gap-2 font-poppins text-2xl font-bold text-primary"
           aria-label="Home"
           onClick={() => setOpenMobile(false)}
         >
+          <Layers className="h-7 w-7" />
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
           </span>
