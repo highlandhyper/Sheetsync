@@ -24,9 +24,13 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
-  const { setOpenMobile } = useSidebar(); // Get the function to close the mobile sidebar
+  const { setOpenMobile, isMobile } = useSidebar(); // Get the function to close the mobile sidebar and isMobile state
 
-  const navItems = allNavItems.filter(item => role && isAllowed(role, item.href));
+  const navItems = allNavItems.filter(item => {
+    if (item.mobileOnly && !isMobile) return false;
+    return role && isAllowed(role, item.href)
+  });
+
   const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
 
 
@@ -128,7 +132,7 @@ export function AppSidebar({ className }: { className?: string }) {
                </Avatar>
                <div className="flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
                  <p className="truncate text-sm font-medium text-sidebar-foreground">{user.displayName || user.email?.split('@')[0] || "User"}</p>
-                 {user.email && <p className="truncate text-xs text-sidebar-foreground/70">{user.email}</p>}
+                 {user.email && <p className="truncate text-xs text-muted-foreground/70">{user.email}</p>}
                </div>
            </div>
         </SidebarFooter>
