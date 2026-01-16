@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, DollarSign } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -55,6 +56,7 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
       inventoryItems: cachedItems,
+      products: cachedProducts,
       updateInventoryItem, 
       removeInventoryItem, 
       addProduct: addProductToCache, 
@@ -93,6 +95,10 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
   
   const inventoryItems = useMemo(() => initialInventoryItems, [initialInventoryItems]);
+
+  const productsByBarcode = useMemo(() => {
+    return new Map(cachedProducts.map(p => [p.barcode, p]));
+  }, [cachedProducts]);
 
 
   useEffect(() => {
@@ -598,6 +604,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     <TableHead>Supplier</TableHead>
                     <TableHead>Logged By</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Unit Cost</TableHead>
+                    <TableHead className="text-right">Total Value</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="hidden sm:table-cell">Location</TableHead>
                     <TableHead>Type</TableHead>
@@ -618,6 +626,9 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                     }
                     }
                     const isProductFound = item.productName !== 'Not Found';
+                    const product = productsByBarcode.get(item.barcode);
+                    const costPrice = product?.costPrice;
+                    const totalValue = costPrice !== undefined ? costPrice * item.quantity : undefined;
 
                     return (
                     <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
@@ -679,6 +690,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
                         <TableCell className="text-muted-foreground">{item.staffName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `$${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{totalValue !== undefined ? `$${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
                         {formattedExpiryDate}
                         </TableCell>
@@ -696,20 +709,24 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
             {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {itemsToRender.map((item) => (
-                    <InventoryItemCardMobile
-                        key={item.id}
-                        item={item}
-                        onDetails={() => handleOpenDetailsDialog(item)}
-                        onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
-                        onReturn={role === 'admin' ? () => handleOpenReturnDialog(item) : undefined}
-                        onDelete={role === 'admin' ? () => handleOpenDeleteDialog(item) : undefined}
-                        onCreateProduct={role === 'admin' ? () => handleOpenCreateProductDialog(item.barcode) : undefined}
-                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
-                        onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(item.id) : undefined}
-                        context="inventory"
-                    />
-                ))}
+                {itemsToRender.map((item) => {
+                    const product = productsByBarcode.get(item.barcode);
+                    return (
+                        <InventoryItemCardMobile
+                            key={item.id}
+                            item={item}
+                            product={product}
+                            onDetails={() => handleOpenDetailsDialog(item)}
+                            onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
+                            onReturn={role === 'admin' ? () => handleOpenReturnDialog(item) : undefined}
+                            onDelete={role === 'admin' ? () => handleOpenDeleteDialog(item) : undefined}
+                            onCreateProduct={role === 'admin' ? () => handleOpenCreateProductDialog(item.barcode) : undefined}
+                            isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
+                            onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(item.id) : undefined}
+                            context="inventory"
+                        />
+                    )
+                })}
             </div>
         </>
       ) : (

@@ -935,6 +935,14 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
         const allInventoryEvents = (inventoryLog || []).map((row, index) => transformToInventoryItem(row, index)).filter(Boolean) as InventoryItem[];
         const currentInventoryItems = allInventoryEvents.filter(item => item.quantity > 0);
 
+        const productsByBarcode = new Map(products.map(p => [p.barcode, p]));
+        const totalStockValue = currentInventoryItems.reduce((sum, item) => {
+            const product = productsByBarcode.get(item.barcode);
+            const itemCost = product?.costPrice ?? 0;
+            return sum + (item.quantity * itemCost);
+        }, 0);
+
+
         const totalProducts = products.length;
         const totalStockQuantity = currentInventoryItems.reduce((sum, item) => sum + item.quantity, 0);
         const totalSuppliers = suppliersList.length;
@@ -999,6 +1007,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
             damagedItemsCount,
             stockBySupplier,
             totalSuppliers,
+            totalStockValue,
             dailyStockChangePercent: dailyStockChangePercent,
             dailyStockChangeDirection: netItemsAddedToday > 0 ? 'increase' : (netItemsAddedToday < 0 ? 'decrease' : 'none'),
             netItemsAddedToday: netItemsAddedToday
@@ -1015,6 +1024,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
             damagedItemsCount: 0,
             stockBySupplier: [],
             totalSuppliers: 0,
+            totalStockValue: 0,
         };
     } finally {
         console.timeEnd(timeLabel);
@@ -1131,6 +1141,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 

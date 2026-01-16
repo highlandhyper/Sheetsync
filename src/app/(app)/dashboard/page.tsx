@@ -1,9 +1,10 @@
 
+
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -157,6 +158,7 @@ function DashboardSkeleton() {
        <Skeleton className="h-10 w-2/3 mb-4" />
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
         <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
+        <MetricCard title="Total Stock Value" value="" iconNode={<Wallet className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
         <MetricCard 
@@ -258,6 +260,13 @@ export default function DashboardPage() {
           iconNode={<Warehouse className="h-5 w-5" />}
           description={totalStockDescription}
           href="/inventory"
+          isLoading={isLoading}
+        />
+        <MetricCard 
+          title="Total Stock Value" 
+          value={metrics.totalStockValue ? `$${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+          iconNode={<Wallet className="h-5 w-5" />}
+          description="Total cost of all items in stock"
           isLoading={isLoading}
         />
          <MetricCard 
