@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { InventoryItem, Product } from '@/lib/types';
@@ -103,13 +104,13 @@ export function InventoryItemCardMobile({
             <Hash className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div><span className="font-medium">In Stock</span><p className="text-muted-foreground">{item.quantity}</p></div>
           </div>
-          {context === 'supplier' && costPrice !== undefined && (
+          {(context === 'supplier' || context === 'inventory') && costPrice !== undefined && (
              <>
                 <div className="flex items-start gap-2">
                     <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div><span className="font-medium">Unit Cost</span><p className="text-muted-foreground">${costPrice.toFixed(2)}</p></div>
                 </div>
-                <div className="flex items-start gap-2 col-span-2">
+                <div className="flex items-start gap-2">
                     <Wallet className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div><span className="font-medium">Total Value</span><p className="text-muted-foreground font-semibold">${(costPrice * item.quantity).toFixed(2)}</p></div>
                 </div>

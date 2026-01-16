@@ -83,10 +83,12 @@ export interface StockTrendData {
 export interface DashboardMetrics {
   totalProducts: number;
   totalStockQuantity: number;
+_totalStockValue?: number;
   itemsExpiringSoon: number;
   damagedItemsCount: number;
   stockBySupplier: StockBySupplier[];
   totalSuppliers: number;
+  totalStockValue?: number;
   dailyStockChangePercent?: number;
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
   netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
