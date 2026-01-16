@@ -690,8 +690,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
                         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
                         <TableCell className="text-muted-foreground">{item.staffName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `$${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{totalValue !== undefined ? `$${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
                         {formattedExpiryDate}
                         </TableCell>

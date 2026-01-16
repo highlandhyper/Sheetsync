@@ -427,7 +427,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
                 </div>
             </div>
             <p className="text-2xl font-bold text-primary">
-                ${totalValueForSelectedSuppliers.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                QAR {totalValueForSelectedSuppliers.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             </div>
         </Card>
