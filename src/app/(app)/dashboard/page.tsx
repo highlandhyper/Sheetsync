@@ -264,7 +264,7 @@ export default function DashboardPage() {
         />
         <MetricCard 
           title="Total Stock Value" 
-          value={metrics.totalStockValue ? `$${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+          value={metrics.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
           iconNode={<Wallet className="h-5 w-5" />}
           description="Total cost of all items in stock"
           isLoading={isLoading}
