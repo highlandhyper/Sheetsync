@@ -135,13 +135,14 @@ export async function addProductAction(
       };
     }
 
-    const { barcode, productName, supplierName } = validationResult.data;
+    const { barcode, productName, supplierName, costPrice } = validationResult.data;
 
     // Using the more comprehensive dbAddProduct which handles BAR DATA and SUP DATA
     const newProduct = await dbAddProduct(userEmail, {
       barcode,
       productName,
       supplierName,
+      costPrice
     });
 
     if (!newProduct) {
@@ -183,6 +184,7 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
         barcode: productDetails.barcode,
         productName: productDetails.productName,
         supplierName: productDetails.supplierName || '', // Ensure supplierName is a string
+        costPrice: productDetails.costPrice,
       };
       return { success: true, data: product };
     } else {
@@ -218,20 +220,20 @@ export async function saveProductAction(
       };
     }
 
-    const { barcode, productName, supplierName } = validationResult.data;
+    const { barcode, productName, supplierName, costPrice } = validationResult.data;
     let savedProduct: Product | null = null;
 
     if (editMode === 'create') {
-      savedProduct = await dbAddProduct(userEmail, { barcode, productName, supplierName });
+      savedProduct = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
       if (!savedProduct) {
         throw new Error("Failed to create new product. Check server logs.");
       }
     } else if (editMode === 'edit') {
-      const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName);
+      const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
       if (!success) {
         throw new Error("Failed to update existing product. Check server logs.");
       }
-      savedProduct = { id: barcode, barcode, productName, supplierName, createdAt: new Date().toISOString() }; // Construct a representative Product object
+      savedProduct = { id: barcode, barcode, productName, supplierName, costPrice, createdAt: new Date().toISOString() }; // Construct a representative Product object
     } else {
       throw new Error("Invalid edit mode specified.");
     }
@@ -749,6 +751,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 

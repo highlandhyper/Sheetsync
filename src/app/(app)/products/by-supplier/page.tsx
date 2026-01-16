@@ -26,10 +26,12 @@ function ReturnableInventorySkeleton() {
              */}<TableHead>Product Name</TableHead>{/*
              */}<TableHead>Barcode</TableHead>{/*
              */}<TableHead className="text-right">In Stock</TableHead>{/*
+             */}<TableHead className="text-right">Unit Cost</TableHead>{/*
+             */}<TableHead className="text-right">Total Value</TableHead>{/*
              */}<TableHead>Expiry</TableHead>{/*
              */}<TableHead>Location</TableHead>{/*
              */}<TableHead>Type</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Edit</TableHead>{/* New Edit column
+             */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
            */}</TableRow>
           </TableHeader>{/*
           Ensure no whitespace between TableHeader and TableBody
@@ -40,7 +42,9 @@ function ReturnableInventorySkeleton() {
                 */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/* Details button skeleton
                 */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Product Name
                 */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Barcode
-                */}<TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell>{/* In Stock
+                */}<TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>{/* In Stock
+                */}<TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>{/* Unit Cost
+                */}<TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>{/* Total Value
                 */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Expiry
                 */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Location
                 */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Type

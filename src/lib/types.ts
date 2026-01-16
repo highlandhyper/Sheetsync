@@ -7,6 +7,7 @@ export interface Product {
   productName: string;
   supplierId?: string; 
   supplierName?: string; // Denormalized for convenience
+  costPrice?: number;
   createdAt?: string; // ISO string or number (timestamp)
 }
 
