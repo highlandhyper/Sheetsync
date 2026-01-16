@@ -89,6 +89,21 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
 
+  const totalValueOfSelectedItems = useMemo(() => {
+    if (selectedItemIds.size === 0) return 0;
+
+    let totalValue = 0;
+    selectedItemIds.forEach(itemId => {
+      const item = cachedItems.find(i => i.id === itemId);
+      if (item) {
+        const product = productsByBarcode.get(item.barcode);
+        const costPrice = product?.costPrice ?? 0;
+        totalValue += costPrice * item.quantity;
+      }
+    });
+    return totalValue;
+  }, [selectedItemIds, cachedItems, productsByBarcode]);
+
   useEffect(() => {
     setAllSortedSuppliers((allSuppliers || []).sort((a, b) => a.name.localeCompare(b.name)));
     setIsLoading(false);
@@ -308,9 +323,17 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         <CardContent className="p-0">
           {selectedItemIds.size > 0 && isMultiSelectEnabled ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
-               <div className="text-sm font-medium text-muted-foreground">
-                  {selectedItemIds.size} item(s) selected
-               </div>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="text-sm font-medium text-muted-foreground">
+                        {selectedItemIds.size} item(s) selected
+                    </div>
+                    <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>
+                            Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
                     <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
