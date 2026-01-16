@@ -1,6 +1,6 @@
 'use client';
 
-import type { InventoryItem } from '@/lib/types';
+import type { InventoryItem, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -22,10 +22,13 @@ import {
   Undo2,
   Trash2,
   PlusCircle,
+  DollarSign,
+  Wallet,
 } from 'lucide-react';
 
 interface InventoryItemCardMobileProps {
   item: InventoryItem;
+  product?: Product;
   onDetails: () => void;
   onEdit?: () => void;
   onReturn?: () => void;
@@ -38,6 +41,7 @@ interface InventoryItemCardMobileProps {
 
 export function InventoryItemCardMobile({
   item,
+  product,
   onDetails,
   onEdit,
   onReturn,
@@ -51,6 +55,7 @@ export function InventoryItemCardMobile({
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
   const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
   const isProductFound = item.productName !== 'Not Found';
+  const costPrice = product?.costPrice;
 
   let formattedExpiryDate = 'N/A';
   if (item.expiryDate) {
@@ -98,6 +103,18 @@ export function InventoryItemCardMobile({
             <Hash className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div><span className="font-medium">In Stock</span><p className="text-muted-foreground">{item.quantity}</p></div>
           </div>
+          {context === 'supplier' && costPrice !== undefined && (
+             <>
+                <div className="flex items-start gap-2">
+                    <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div><span className="font-medium">Unit Cost</span><p className="text-muted-foreground">${costPrice.toFixed(2)}</p></div>
+                </div>
+                <div className="flex items-start gap-2 col-span-2">
+                    <Wallet className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div><span className="font-medium">Total Value</span><p className="text-muted-foreground font-semibold">${(costPrice * item.quantity).toFixed(2)}</p></div>
+                </div>
+             </>
+          )}
           <div className="flex items-start gap-2">
             <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div><span className="font-medium">Location</span><p className="text-muted-foreground">{item.location}</p></div>

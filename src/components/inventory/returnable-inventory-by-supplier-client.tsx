@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
-import type { InventoryItem, Supplier } from '@/lib/types';
-import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import type { InventoryItem, Supplier, Product } from '@/lib/types';
+import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -47,6 +48,7 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems,
+    products: cachedProducts,
     uniqueLocations,
     updateInventoryItem,
     removeInventoryItem,
@@ -83,6 +85,9 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     return uniqueLocations;
   }, [uniqueLocations]);
 
+  const productsByBarcode = useMemo(() => {
+    return new Map(cachedProducts.map(p => [p.barcode, p]));
+  }, [cachedProducts]);
 
   useEffect(() => {
     setAllSortedSuppliers((allSuppliers || []).sort((a, b) => a.name.localeCompare(b.name)));
@@ -165,6 +170,15 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
     setTotalItemsForSelectedSuppliers(filtered.length);
     return filtered;
   }, [cachedItems, selectedSupplierNames]);
+  
+  const totalValueForSelectedSuppliers = useMemo(() => {
+    return filteredInventoryItemsBySupplier.reduce((total, item) => {
+      const product = productsByBarcode.get(item.barcode);
+      const itemValue = (product?.costPrice ?? 0) * item.quantity;
+      return total + itemValue;
+    }, 0);
+  }, [filteredInventoryItemsBySupplier, productsByBarcode]);
+
 
   useEffect(() => {
     setSelectedItemIds(new Set());
@@ -253,11 +267,33 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         </div>
         <Card className="shadow-md">
           <Table><TableHeader>
-            <TableRow><TableHead className="w-20 text-center">Return</TableHead><TableHead className="w-20 text-center">Details</TableHead><TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead>Expiry</TableHead><TableHead>Location</TableHead><TableHead>Type</TableHead><TableHead className="w-20 text-center">Edit</TableHead>
-           </TableRow>
+            <TableRow>
+              <TableHead className="w-20 text-center">Return</TableHead>
+              <TableHead className="w-20 text-center">Details</TableHead>
+              <TableHead>Product Name</TableHead>
+              <TableHead>Barcode</TableHead>
+              <TableHead className="text-right">In Stock</TableHead>
+              <TableHead className="text-right">Unit Cost</TableHead>
+              <TableHead className="text-right">Total Value</TableHead>
+              <TableHead>Expiry</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className="w-20 text-center">Edit</TableHead>
+            </TableRow>
           </TableHeader><TableBody>
             {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
+                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
               </TableRow>
             ))}
           </TableBody></Table>
@@ -380,6 +416,23 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
         </CardContent>
       </Card>
       
+      {selectedSupplierNames.length > 0 && itemsToRender.length > 0 && (
+        <Card className="p-4 shadow-md filters-card-noprint">
+            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Wallet className="h-6 w-6 text-primary" />
+                <div>
+                    <h3 className="text-lg font-semibold">Selection Value</h3>
+                    <p className="text-sm text-muted-foreground">Total cost of all listed items for the selected supplier(s).</p>
+                </div>
+            </div>
+            <p className="text-2xl font-bold text-primary">
+                ${totalValueForSelectedSuppliers.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            </div>
+        </Card>
+      )}
+
       {isMultiSelectEnabled && selectedSupplierNames.length > 0 && (
         <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
             <ListChecks className="h-4 w-4 !text-blue-500" />
@@ -404,44 +457,52 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
             <Card className="shadow-md hidden md:block">
             <Table>
                 <TableHeader>
-                <TableRow>
-                {isMultiSelectEnabled && (
-                    <TableHead className="w-12 text-center noprint">
-                    <Checkbox
-                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                        aria-label="Select all rows"
-                    />
-                    </TableHead>
-                )}
-                <TableHead className="w-20 text-center">Return</TableHead>
-                <TableHead className="w-20 text-center">Details</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Barcode</TableHead>
-                <TableHead className="text-right">In Stock</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="w-20 text-center">Edit</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {itemsToRender.map((item) => (
-                <ReturnableInventoryItemRow
-                    key={item.id}
-                    item={item}
-                    onInitiateReturn={handleOpenReturnDialog}
-                    onViewDetails={handleOpenDetailsDialog}
-                    onEditItem={handleOpenEditDialog} 
-                    isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
-                    showSupplierName={false} 
-                    showEditButtonText={false}
-                    isSelected={selectedItemIds.has(item.id)}
-                    onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
-                    showCheckbox={isMultiSelectEnabled}
-                />
-                ))}
-            </TableBody></Table>
+                  <TableRow>
+                  {isMultiSelectEnabled && (
+                      <TableHead className="w-12 text-center noprint">
+                      <Checkbox
+                          checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                          onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                          aria-label="Select all rows"
+                      />
+                      </TableHead>
+                  )}
+                  <TableHead className="w-20 text-center">Return</TableHead>
+                  <TableHead className="w-20 text-center">Details</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead>Barcode</TableHead>
+                  <TableHead className="text-right">In Stock</TableHead>
+                  <TableHead className="text-right">Unit Cost</TableHead>
+                  <TableHead className="text-right font-semibold">Total Value</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="w-20 text-center">Edit</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {itemsToRender.map((item) => {
+                      const product = productsByBarcode.get(item.barcode);
+                      return (
+                          <ReturnableInventoryItemRow
+                              key={item.id}
+                              item={item}
+                              onInitiateReturn={handleOpenReturnDialog}
+                              onViewDetails={handleOpenDetailsDialog}
+                              onEditItem={handleOpenEditDialog} 
+                              isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
+                              showSupplierName={false} 
+                              showEditButtonText={false}
+                              isSelected={selectedItemIds.has(item.id)}
+                              onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
+                              showCheckbox={isMultiSelectEnabled}
+                              costPrice={product?.costPrice}
+                              showCost={true}
+                          />
+                      )
+                  })}
+              </TableBody>
+            </Table>
             {filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
                 <CardContent className="pt-4 text-center filters-card-noprint">
                 <p className="text-sm text-muted-foreground">
@@ -453,18 +514,22 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
 
             {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {itemsToRender.map((item) => (
-                    <InventoryItemCardMobile
-                        key={item.id}
-                        item={item}
-                        onDetails={() => handleOpenDetailsDialog(item)}
-                        onEdit={() => handleOpenEditDialog(item)}
-                        onReturn={() => handleOpenReturnDialog(item)}
-                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
-                        onSelect={isMultiSelectEnabled ? () => handleSelectRow(item.id) : undefined}
-                        context="supplier"
-                    />
-                ))}
+                {itemsToRender.map((item) => {
+                    const product = productsByBarcode.get(item.barcode);
+                    return (
+                        <InventoryItemCardMobile
+                            key={item.id}
+                            item={item}
+                            product={product}
+                            onDetails={() => handleOpenDetailsDialog(item)}
+                            onEdit={() => handleOpenEditDialog(item)}
+                            onReturn={() => handleOpenReturnDialog(item)}
+                            isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
+                            onSelect={isMultiSelectEnabled ? () => handleSelectRow(item.id) : undefined}
+                            context="supplier"
+                        />
+                    )
+                })}
             </div>
         </>
       ) : (

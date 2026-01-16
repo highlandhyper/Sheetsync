@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown, DollarSign } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,6 +80,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       barcode: '',
       productName: '',
       supplierName: '',
+      costPrice: undefined,
     }
   });
   
@@ -112,6 +113,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('barcode', cachedProduct.barcode);
         setValue('productName', cachedProduct.productName);
         setValue('supplierName', cachedProduct.supplierName || '');
+        setValue('costPrice', cachedProduct.costPrice);
         setCurrentProductName(cachedProduct.productName);
         setEditMode('edit');
         setProductNotFound(false);
@@ -125,6 +127,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('barcode', result.data.barcode);
         setValue('productName', result.data.productName);
         setValue('supplierName', result.data.supplierName || '');
+        setValue('costPrice', result.data.costPrice);
         setCurrentProductName(result.data.productName);
         setEditMode('edit');
         setProductNotFound(false);
@@ -132,6 +135,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('barcode', currentSearchTerm); 
         setValue('productName', '');
         setValue('supplierName', '');
+        setValue('costPrice', undefined);
         setCurrentProductName('');
         setEditMode('create');
         setProductNotFound(true);
@@ -144,7 +148,10 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     const formData = new FormData();
     formData.append('barcode', searchedBarcode); 
     formData.append('productName', data.productName);
-    formData.append('supplierName', data.supplierName); 
+    formData.append('supplierName', data.supplierName);
+    if(data.costPrice !== undefined) {
+        formData.append('costPrice', String(data.costPrice));
+    }
     formData.append('editMode', editMode);
     
     startSaveTransition(async () => {
@@ -167,6 +174,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('productName', result.data.productName); 
         setValue('barcode', result.data.barcode);
         setValue('supplierName', result.data.supplierName || '');
+        setValue('costPrice', result.data.costPrice);
         setSearchedBarcode(result.data.barcode); 
         setEditMode('edit'); 
         setProductNotFound(false);
@@ -262,84 +270,101 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 />
                 {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
               </div>
-              <div>
-                <Label htmlFor="supplierName">Supplier Name</Label>
-                <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={supplierComboboxOpen}
-                      className={cn(
-                        "w-full justify-between font-normal",
-                        !supplierNameValue && "text-muted-foreground",
-                        formErrors.supplierName && 'border-destructive'
-                      )}
-                    >
-                      {supplierNameValue
-                        ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name
-                        : "Select or type supplier..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command
-                      filter={(value, search) => {
-                        if (value.toLowerCase().includes(search.toLowerCase())) return 1;
-                        return 0;
-                      }}
-                    >
-                      <CommandInput
-                        placeholder="Search supplier or type new..."
-                        value={supplierNameValue || ''}
-                        onValueChange={(currentValue) => {
-                           setValue('supplierName', currentValue, { shouldValidate: true });
-                        }}
-                      />
-                      <CommandList>
-                        <CommandEmpty>
-                          {supplierNameValue ? `Create "${supplierNameValue}"? Press Enter or select.` : "No supplier found. Type to add."}
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {sortedSuppliers.map((supplier) => (
-                            <CommandItem
-                              key={supplier.id}
-                              value={supplier.name}
-                              onSelect={(currentValue) => {
-                                setValue("supplierName", currentValue === supplierNameValue.toLowerCase() ? supplierNameValue : currentValue, { shouldValidate: true });
-                                setSupplierComboboxOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {supplier.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                         {supplierNameValue && !sortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase()) && (
-                            <CommandItem
-                                key={supplierNameValue}
-                                value={supplierNameValue}
-                                onSelect={() => {
-                                    setValue("supplierName", supplierNameValue, { shouldValidate: true });
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="supplierName">Supplier Name</Label>
+                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={supplierComboboxOpen}
+                          className={cn(
+                            "w-full justify-between font-normal",
+                            !supplierNameValue && "text-muted-foreground",
+                            formErrors.supplierName && 'border-destructive'
+                          )}
+                        >
+                          {supplierNameValue
+                            ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name
+                            : "Select or type supplier..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command
+                          filter={(value, search) => {
+                            if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                            return 0;
+                          }}
+                        >
+                          <CommandInput
+                            placeholder="Search supplier or type new..."
+                            value={supplierNameValue || ''}
+                            onValueChange={(currentValue) => {
+                               setValue('supplierName', currentValue, { shouldValidate: true });
+                            }}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {supplierNameValue ? `Create "${supplierNameValue}"? Press Enter or select.` : "No supplier found. Type to add."}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {sortedSuppliers.map((supplier) => (
+                                <CommandItem
+                                  key={supplier.id}
+                                  value={supplier.name}
+                                  onSelect={(currentValue) => {
+                                    setValue("supplierName", currentValue === supplierNameValue.toLowerCase() ? supplierNameValue : currentValue, { shouldValidate: true });
                                     setSupplierComboboxOpen(false);
-                                }}
-                                className="italic text-muted-foreground"
-                            >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Create new supplier: "{supplierNameValue}"
-                            </CommandItem>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-                <p className="text-xs text-muted-foreground mt-1">If supplier doesn't exist in the list, it will be created.</p>
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {supplier.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                             {supplierNameValue && !sortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase()) && (
+                                <CommandItem
+                                    key={supplierNameValue}
+                                    value={supplierNameValue}
+                                    onSelect={() => {
+                                        setValue("supplierName", supplierNameValue, { shouldValidate: true });
+                                        setSupplierComboboxOpen(false);
+                                    }}
+                                    className="italic text-muted-foreground"
+                                >
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Create new supplier: "{supplierNameValue}"
+                                </CommandItem>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">If supplier doesn't exist, it will be created.</p>
+                </div>
+                <div>
+                    <Label htmlFor="costPrice">Cost Price</Label>
+                    <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            id="costPrice"
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g., 12.99"
+                            {...register('costPrice')}
+                            className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                        />
+                    </div>
+                    {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
+                </div>
               </div>
 
               <CardFooter className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center p-0 pt-6 gap-3">

@@ -59,6 +59,7 @@ export function AddProductDialog() {
       barcode: '',
       productName: '',
       supplierName: '',
+      costPrice: undefined,
     }
   });
   
@@ -155,6 +156,20 @@ export function AddProductDialog() {
               />
               {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
               {state?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
+            </div>
+            <div className="grid grid-cols-1 gap-2 items-center">
+              <Label htmlFor="costPrice" className="text-left">
+                Cost Price
+              </Label>
+              <Input
+                id="costPrice"
+                type="number"
+                step="0.01"
+                placeholder="e.g., 12.99"
+                {...register('costPrice')}
+                className={cn(formErrors.costPrice && 'border-destructive')}
+              />
+              {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
             </div>
           </div>
           <DialogFooter>

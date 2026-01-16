@@ -32,6 +32,7 @@ const DB_COL_BARCODE_A = 0;           // A - Barcode
 const DB_COL_BARCODE_B = 1;           // B - Barcode
 const DB_COL_PRODUCT_NAME = 2;      // C - Product Name
 const DB_COL_SUPPLIER_NAME = 3;     // D - Supplier Name
+const DB_COL_COST_PRICE = 4;        // E - Cost Price
 
 
 // "Returns Log"
@@ -52,13 +53,13 @@ const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
 const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
 // --- Read Ranges ---
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:D`;
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:E`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 
 // --- Append Ranges (for adding new rows) ---
-const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:D`;
+const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:E`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
 const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
@@ -114,11 +115,18 @@ function transformToProduct(row: any[], rowIndex: number): Product | null {
     const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
     const supplierName = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
     if (!barcode || !productName) { return null; }
+
+    const costPriceRaw = row[DB_COL_COST_PRICE];
+    const costPrice = (costPriceRaw !== undefined && costPriceRaw !== null && String(costPriceRaw).trim() !== '')
+      ? parseFloat(String(costPriceRaw).replace(/[^0-9.-]+/g,"")) // Clean up currency symbols etc.
+      : undefined;
+      
     return { 
         id: barcode, 
         barcode: barcode, 
         productName: productName,
-        supplierName: supplierName || undefined
+        supplierName: supplierName || undefined,
+        costPrice: costPrice && !isNaN(costPrice) ? costPrice : undefined,
     };
   } catch (error) {
     console.error(`GS_Data: Error transforming product row ${sheetRowNumber} from "${DB_SHEET_NAME}":`, error, "Row data:", row);
@@ -419,7 +427,7 @@ export async function getReturnedItems(): Promise<ReturnedItem[]> {
   }
 }
 
-export async function addProduct(userEmail: string, productData: { barcode: string; productName: string; supplierName: string }): Promise<Product | null> {
+export async function addProduct(userEmail: string, productData: { barcode: string; productName: string; supplierName: string; costPrice?: number }): Promise<Product | null> {
   const timeLabel = "GS_Data: addProduct total duration";
   console.time(timeLabel);
   try {
@@ -434,8 +442,14 @@ export async function addProduct(userEmail: string, productData: { barcode: stri
         return null; // Or handle as an update
     }
 
-    // New row will have barcode in A, empty B, product name in C, supplier name in D
-    const newRow = [productData.barcode.trim(), '', productData.productName.trim(), productData.supplierName.trim()];
+    // New row will have barcode in A, empty B, product name in C, supplier name in D, cost in E
+    const newRow = [
+      productData.barcode.trim(),
+      '',
+      productData.productName.trim(),
+      productData.supplierName.trim(),
+      productData.costPrice ?? ''
+    ];
     
     if (!await appendSheetData(DB_APPEND_RANGE, [newRow])) {
       console.error("GS_Data: addProduct - Failed to append to DB sheet.");
@@ -443,8 +457,12 @@ export async function addProduct(userEmail: string, productData: { barcode: stri
     }
     
     return {
-      id: productData.barcode, barcode: productData.barcode.trim(), productName: productData.productName.trim(),
-      supplierName: productData.supplierName.trim(), createdAt: new Date().toISOString(),
+      id: productData.barcode,
+      barcode: productData.barcode.trim(),
+      productName: productData.productName.trim(),
+      supplierName: productData.supplierName.trim(),
+      costPrice: productData.costPrice,
+      createdAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error("GS_Data: Critical error in addProduct:", error);
@@ -504,9 +522,17 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
     }
     const productName = String(productRow[DB_COL_PRODUCT_NAME] || '').trim();
     const supplierName = String(productRow[DB_COL_SUPPLIER_NAME] || '').trim();
-    
+    const costPriceRaw = productRow[DB_COL_COST_PRICE];
+    const costPrice = (costPriceRaw !== undefined && costPriceRaw !== null && String(costPriceRaw).trim() !== '')
+      ? parseFloat(String(costPriceRaw).replace(/[^0-9.-]+/g,""))
+      : undefined;
+
     return {
-      id: barcode, productName: productName, barcode: barcode.trim(), supplierName: supplierName || undefined,
+      id: barcode,
+      productName: productName,
+      barcode: barcode.trim(),
+      supplierName: supplierName || undefined,
+      costPrice: costPrice && !isNaN(costPrice) ? costPrice : undefined,
     };
   } catch (error) {
     console.error(`GS_Data: Critical error in getProductDetailsByBarcode for ${barcode}:`, error);
@@ -812,7 +838,7 @@ async function findProductRowByBarcode(barcode: string): Promise<number | null> 
     return null;
 }
 
-export async function updateProductAndSupplierLinks(userEmail: string, barcode: string, newProductName: string, newSupplierName: string): Promise<boolean> {
+export async function updateProductAndSupplierLinks(userEmail: string, barcode: string, newProductName: string, newSupplierName: string, newCostPrice?: number): Promise<boolean> {
   const timeLabel = `GS_Data: updateProductAndSupplierLinks for barcode ${barcode}`;
   console.time(timeLabel);
   try {
@@ -824,7 +850,7 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
 
       const batchUpdates: { range: string; values: any[][] }[] = [];
 
-      // Update product name and supplier name in the DB sheet for the found row
+      // Update product name, supplier name, and cost price in the DB sheet for the found row
       batchUpdates.push({
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_PRODUCT_NAME)}${rowNumber}`,
           values: [[newProductName.trim()]]
@@ -833,6 +859,12 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_SUPPLIER_NAME)}${rowNumber}`,
           values: [[newSupplierName.trim()]]
       });
+      if (newCostPrice !== undefined) {
+        batchUpdates.push({
+            range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_COST_PRICE)}${rowNumber}`,
+            values: [[newCostPrice]]
+        });
+      }
       
       if (batchUpdates.length === 0) {
           console.log("GS_Data: updateProductAndSupplierLinks - No changes to apply.");
@@ -1099,6 +1131,7 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
     
 
     
+
 
 
 

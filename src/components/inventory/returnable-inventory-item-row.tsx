@@ -22,6 +22,8 @@ interface ReturnableInventoryItemRowProps {
   isSelected?: boolean;
   onSelectRow?: (id: string) => void;
   showCheckbox?: boolean;
+  costPrice?: number;
+  showCost?: boolean;
 }
 
 const ReturnableInventoryItemRowComponent = ({
@@ -36,6 +38,8 @@ const ReturnableInventoryItemRowComponent = ({
   isSelected = false,
   onSelectRow,
   showCheckbox = false,
+  costPrice,
+  showCost = false,
 }: ReturnableInventoryItemRowProps) => {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
@@ -105,6 +109,12 @@ const ReturnableInventoryItemRowComponent = ({
         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
       )}
       <TableCell className="text-right">{item.quantity}</TableCell>
+      {showCost && (
+        <>
+          <TableCell className="text-right text-sm text-muted-foreground">{costPrice !== undefined ? `$${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
+          <TableCell className="text-right font-semibold">{costPrice !== undefined ? `$${(costPrice * item.quantity).toFixed(2)}` : 'N/A'}</TableCell>
+        </>
+      )}
       <TableCell className={cn(isExpired && isValidExpiry ? "text-destructive font-semibold" : "text-muted-foreground")}>
         {formattedExpiryDate}
       </TableCell>

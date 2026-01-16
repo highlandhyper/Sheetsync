@@ -21,6 +21,7 @@ export const addProductSchema = z.object({
   barcode: z.string().min(1, "Barcode is required."),
   productName: z.string().min(1, "Product name is required."),
   supplierName: z.string().min(1, "Supplier name is required. This name will be used to find an existing supplier or create a new one if it doesn't exist."),
+  costPrice: z.coerce.number().nonnegative("Cost price must be a positive number.").optional(),
 });
 export type AddProductFormValues = z.infer<typeof addProductSchema>;
 
