@@ -43,8 +43,7 @@ const DataCacheContext = createContext<DataCacheContextType | undefined>(undefin
 const DB_NAME = 'SheetSyncDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'appDataCache';
-const CACHE_KEY = 'sheetSyncDataCache'; // This key is used inside the object store
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_KEY = 'sheetSyncDataCache';
 
 // --- IndexedDB Helper Functions ---
 
@@ -98,11 +97,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const isCacheReady = isInitialized && !isSyncing;
+  const isCacheReady = isInitialized;
 
-  const refreshData = useCallback(async () => {
+  const refreshDataInternal = useCallback(async ({ isManualSync = false }: { isManualSync?: boolean } = {}) => {
     setIsSyncing(true);
-    toast({ title: 'Syncing Data...', description: 'Fetching the latest data from Google Sheets.' });
+    if (isManualSync) {
+      toast({ title: 'Syncing Data...', description: 'Fetching the latest data from Google Sheets.' });
+    }
 
     const response = await fetchAllDataAction();
 
@@ -110,47 +111,75 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       const now = Date.now();
       const newData: AppData = { ...response.data, lastSync: now };
       setData(newData);
+
       try {
         const db = await openDB();
         await setToDB(db, newData);
         db.close();
-        toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
+        if (isManualSync) {
+          toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
+        } else if (isInitialized) { // It was a background sync after initial load
+          toast({ title: 'Data Updated', description: 'App data has been synced in the background.' });
+        }
       } catch (error) {
         console.error("Failed to save to IndexedDB:", error);
-        toast({ title: 'Cache Warning', description: 'Could not save data to the local browser database.', variant: 'destructive' });
+        toast({ title: 'Cache Warning', description: 'Could not save data to local database.', variant: 'destructive' });
       }
     } else {
-      toast({ title: 'Sync Failed', description: response.message || 'Could not fetch data from the server.', variant: 'destructive' });
+      if (isManualSync) {
+        toast({ title: 'Sync Failed', description: response.message || 'Could not fetch data from the server.', variant: 'destructive' });
+      }
     }
+    
     setIsSyncing(false);
-  }, [toast]);
+    // This ensures initialization is marked true after the first network call, even if it fails.
+    if (!isInitialized) {
+        setIsInitialized(true);
+    }
+  }, [toast, isInitialized]);
   
   useEffect(() => {
-    // This effect ensures data is loaded when the auth state is ready.
-    if (authLoading) {
-      return; // Wait until authentication is resolved.
-    }
+    if (authLoading) return;
 
     if (!user) {
-      // If user logs out, clear data and reset initialization status for the next login.
-      setData({
-        inventoryItems: [], products: [], suppliers: [], returnedItems: [],
-        uniqueLocations: [], uniqueStaffNames: [], lastSync: null
-      });
+      // Clear data on logout
+      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
       setIsInitialized(false);
       return;
     }
 
-    // If we have a user but data hasn't been initialized for this session, fetch it.
-    // This ensures that a fresh login or a page refresh always gets the latest data.
-    if (user && !isInitialized) {
-      const initializeData = async () => {
-        await refreshData();
-        setIsInitialized(true);
-      };
-      initializeData();
-    }
-  }, [authLoading, user, isInitialized, refreshData]);
+    // This effect runs once when the user is available
+    const initializeAndBackgroundSync = async () => {
+      let hasLoadedFromCache = false;
+      try {
+        const db = await openDB();
+        const cachedData = await getFromDB(db);
+        db.close();
+        if (cachedData) {
+          setData(cachedData);
+          hasLoadedFromCache = true;
+          setIsInitialized(true); // App is ready to be used with cached data
+          console.log("DataCache: Loaded data from IndexedDB cache.");
+        }
+      } catch (error) {
+        console.warn("DataCache: Could not load from IndexedDB.", error);
+      }
+      
+      // Now, trigger a background sync regardless of cache status
+      // If cache failed to load, this becomes the primary data load.
+      await refreshDataInternal({ isManualSync: false });
+    };
+
+    initializeAndBackgroundSync();
+
+    // We only want this to run once on user change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
+
+  const manualRefreshData = useCallback(async () => {
+    await refreshDataInternal({ isManualSync: true });
+  }, [refreshDataInternal]);
+
 
   // --- Local Data Mutation Helpers ---
   const addInventoryItem = useCallback((item: InventoryItem) => {
@@ -219,7 +248,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueStaffNames: data.uniqueStaffNames,
     isCacheReady,
     isSyncing,
-    refreshData,
+    refreshData: manualRefreshData,
     updateInventoryItem,
     addInventoryItem,
     removeInventoryItem,
@@ -232,7 +261,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       data, 
       isCacheReady, 
       isSyncing, 
-      refreshData, 
+      manualRefreshData, 
       updateInventoryItem, 
       addInventoryItem, 
       removeInventoryItem, 

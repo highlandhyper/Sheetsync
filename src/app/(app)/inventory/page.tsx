@@ -73,7 +73,6 @@ export default function InventoryPage() {
         uniqueLocations, 
         isCacheReady, 
         refreshData, 
-        isSyncing 
     } = useDataCache();
 
     // The error state from the old fetch is no longer needed as the context handles it.
@@ -87,7 +86,7 @@ export default function InventoryPage() {
                 Inventory Overview
             </h1>
             <Suspense fallback={<InventoryListSkeleton />}>
-                {!isCacheReady || isSyncing ? (
+                {!isCacheReady ? (
                     <InventoryListSkeleton />
                 ) : (
                     <InventoryListClient 
