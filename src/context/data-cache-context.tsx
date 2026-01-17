@@ -126,46 +126,31 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [toast]);
   
   useEffect(() => {
-    // This effect should only run once when the auth state is finalized.
+    // This effect ensures data is loaded when the auth state is ready.
     if (authLoading) {
       return; // Wait until authentication is resolved.
     }
-  
-    const initializeCache = async () => {
-      if (!user) {
-        // If there's no user, there's no data to fetch. We're "initialized".
-        setIsInitialized(true);
-        return;
-      }
-  
-      // From this point, we have a user.
-      try {
-        const db = await openDB();
-        const cachedData = await getFromDB(db);
-        db.close();
-  
-        const now = Date.now();
-        if (cachedData && cachedData.lastSync && (now - cachedData.lastSync < CACHE_EXPIRATION_MS)) {
-          // Cache is valid and not expired.
-          setData(cachedData);
-          setIsInitialized(true);
-        } else {
-          // Cache is missing, stale, or expired. Fetch fresh data.
-          await refreshData();
-          setIsInitialized(true); // Now we're initialized with fresh data.
-        }
-      } catch (error) {
-        console.error("Failed to load from IndexedDB, fetching fresh data:", error);
+
+    if (!user) {
+      // If user logs out, clear data and reset initialization status for the next login.
+      setData({
+        inventoryItems: [], products: [], suppliers: [], returnedItems: [],
+        uniqueLocations: [], uniqueStaffNames: [], lastSync: null
+      });
+      setIsInitialized(false);
+      return;
+    }
+
+    // If we have a user but data hasn't been initialized for this session, fetch it.
+    // This ensures that a fresh login or a page refresh always gets the latest data.
+    if (user && !isInitialized) {
+      const initializeData = async () => {
         await refreshData();
         setIsInitialized(true);
-      }
-    };
-  
-    initializeCache();
-  
-    // We only want this to run when authLoading changes from true to false.
-    // The dependency array reflects this intent.
-  }, [authLoading, user, refreshData]);
+      };
+      initializeData();
+    }
+  }, [authLoading, user, isInitialized, refreshData]);
 
   // --- Local Data Mutation Helpers ---
   const addInventoryItem = useCallback((item: InventoryItem) => {
