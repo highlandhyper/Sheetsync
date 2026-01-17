@@ -104,7 +104,7 @@ export function InventoryItemCardMobile({
             <Hash className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div><span className="font-medium">In Stock</span><p className="text-muted-foreground">{item.quantity}</p></div>
           </div>
-          {(context === 'supplier' || context === 'inventory') && costPrice !== undefined && (
+          {(context === 'supplier' || context === 'inventory' || context === 'staff') && costPrice !== undefined && (
              <>
                 <div className="flex items-start gap-2">
                     <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />

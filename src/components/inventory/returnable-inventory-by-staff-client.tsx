@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks } from 'lucide-react';
+import type { InventoryItem, Product } from '@/lib/types';
+import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -40,6 +40,7 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems, 
+    products: cachedProducts,
     uniqueLocations, 
     updateInventoryItem, 
     removeInventoryItem,
@@ -67,6 +68,25 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
   const uniqueDbLocations = useMemo(() => {
     return uniqueLocations;
   }, [uniqueLocations]);
+
+  const productsByBarcode = useMemo(() => {
+    return new Map(cachedProducts.map(p => [p.barcode, p]));
+  }, [cachedProducts]);
+
+  const totalValueOfSelectedItems = useMemo(() => {
+    if (selectedItemIds.size === 0) return 0;
+
+    let totalValue = 0;
+    selectedItemIds.forEach(itemId => {
+      const item = cachedItems.find(i => i.id === itemId);
+      if (item) {
+        const product = productsByBarcode.get(item.barcode);
+        const costPrice = product?.costPrice ?? 0;
+        totalValue += costPrice * item.quantity;
+      }
+    });
+    return totalValue;
+  }, [selectedItemIds, cachedItems, productsByBarcode]);
 
 
   useEffect(() => {
@@ -158,6 +178,14 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
     return filtered;
   }, [cachedItems, selectedStaffName]);
   
+  const totalValueForSelectedStaff = useMemo(() => {
+    return filteredInventoryItemsByStaff.reduce((total, item) => {
+      const product = productsByBarcode.get(item.barcode);
+      const itemValue = (product?.costPrice ?? 0) * item.quantity;
+      return total + itemValue;
+    }, 0);
+  }, [filteredInventoryItemsByStaff, productsByBarcode]);
+
   useEffect(() => {
     setSelectedItemIds(new Set());
   }, [selectedStaffName]);
@@ -250,9 +278,17 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
         <CardContent className="p-0">
           {selectedItemIds.size > 0 && isMultiSelectEnabled && role === 'admin' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
-               <div className="text-sm font-medium text-muted-foreground">
-                  {selectedItemIds.size} item(s) selected
-               </div>
+               <div className="flex items-center gap-4 flex-wrap">
+                    <div className="text-sm font-medium text-muted-foreground">
+                        {selectedItemIds.size} item(s) selected
+                    </div>
+                    <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>
+                            Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
                     <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
@@ -311,6 +347,23 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
         </CardContent>
       </Card>
       
+      {selectedStaffName && itemsToRender.length > 0 && (
+        <Card className="p-4 shadow-md filters-card-noprint">
+            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Wallet className="h-6 w-6 text-primary" />
+                <div>
+                    <h3 className="text-lg font-semibold">Staff Selection Value</h3>
+                    <p className="text-sm text-muted-foreground">Total cost of all items logged by {selectedStaffName}.</p>
+                </div>
+            </div>
+            <p className="text-2xl font-bold text-primary">
+                QAR {totalValueForSelectedStaff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            </div>
+        </Card>
+      )}
+
       {isMultiSelectEnabled && selectedStaffName && (
         <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
             <ListChecks className="h-4 w-4 !text-blue-500" />
@@ -350,6 +403,8 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
                 <TableHead>Barcode</TableHead>
                 <TableHead>Supplier</TableHead>
                 <TableHead className="text-right">In Stock</TableHead>
+                <TableHead className="text-right">Unit Cost</TableHead>
+                <TableHead className="text-right font-semibold">Total Value</TableHead>
                 <TableHead>Expiry</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
@@ -370,6 +425,8 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
                     isSelected={selectedItemIds.has(item.id)}
                     onSelectRow={isMultiSelectEnabled && role === 'admin' ? handleSelectRow : undefined}
                     showCheckbox={isMultiSelectEnabled && role === 'admin'}
+                    costPrice={productsByBarcode.get(item.barcode)?.costPrice}
+                    showCost={true}
                 />
                 ))}
             </TableBody></Table>
@@ -384,16 +441,19 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
 
             {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {itemsToRender.map((item) => (
+                {itemsToRender.map((item) => {
+                    const product = productsByBarcode.get(item.barcode);
+                    return (
                     <InventoryItemCardMobile
                         key={item.id}
                         item={item}
+                        product={product}
                         onDetails={() => handleOpenDetailsDialog(item)}
                         onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
                         onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(item) : undefined}
                         context="staff"
                     />
-                ))}
+                )})}
             </div>
         </>
       ) : (
