@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDataCache } from '@/context/data-cache-context';
 
-const MAX_ITEMS_TO_DISPLAY = 100; // Max items to render to prevent freezing
+const MAX_ITEMS_TO_DISPLAY = 100;
 
 export function ProductListClient() {
   const { products: allProducts } = useDataCache();
