@@ -16,7 +16,7 @@ import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-i
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
@@ -27,21 +27,17 @@ import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 
-interface ReturnableInventoryByStaffClientProps {
-  initialInventoryItems: InventoryItem[];
-  allStaffNames: string[];
-}
-
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
-export function ReturnableInventoryByStaffClient({ initialInventoryItems, allStaffNames }: ReturnableInventoryByStaffClientProps) {
+export function ReturnableInventoryByStaffClient() {
   const { toast } = useToast();
   const { role, user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems, 
     products: cachedProducts,
-    uniqueLocations, 
+    uniqueLocations,
+    uniqueStaffNames: allStaffNames,
     updateInventoryItem, 
     removeInventoryItem,
     addReturnedItem,
@@ -93,7 +89,7 @@ export function ReturnableInventoryByStaffClient({ initialInventoryItems, allSta
     setCurrentItemToEdit(null);
     setIsEditDialogOpen(false);
     setIsLoading(false);
-  }, [initialInventoryItems]);
+  }, []);
   
   useEffect(() => {
     if (!isMultiSelectEnabled) {

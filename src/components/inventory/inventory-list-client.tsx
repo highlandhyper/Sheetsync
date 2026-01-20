@@ -3,14 +3,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, DollarSign } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -31,14 +30,6 @@ import { CreateProductFromInventoryDialog } from '../products/create-product-fro
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
-
-interface InventoryListClientProps {
-  initialInventoryItems: InventoryItem[];
-  suppliers: Supplier[];
-  uniqueDbLocations: string[];
-  onDataNeeded: () => void;
-}
-
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 
 type DashboardFilterType = {
@@ -48,7 +39,7 @@ type DashboardFilterType = {
   customExpiryTo?: string;
 } | null;
 
-export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDbLocations, onDataNeeded }: InventoryListClientProps) {
+export function InventoryListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -57,10 +48,12 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   const { 
       inventoryItems: cachedItems,
       products: cachedProducts,
+      suppliers,
+      uniqueLocations: uniqueDbLocations,
       updateInventoryItem, 
       removeInventoryItem, 
       addProduct: addProductToCache, 
-      refreshData,
+      refreshData: onDataNeeded,
       addReturnedItem,
   } = useDataCache();
 
@@ -93,8 +86,6 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
 
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
-  
-  const inventoryItems = useMemo(() => initialInventoryItems, [initialInventoryItems]);
 
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
@@ -436,8 +427,8 @@ export function InventoryListClient({ initialInventoryItems, suppliers, uniqueDb
   
   const handleProductCreateSuccess = useCallback((newProduct: Product) => {
     addProductToCache(newProduct);
-    refreshData();
-  }, [addProductToCache, refreshData]);
+    onDataNeeded();
+  }, [addProductToCache, onDataNeeded]);
 
   const handlePrint = () => {
     window.print();

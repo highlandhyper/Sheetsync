@@ -35,20 +35,16 @@ import { useAuth } from '@/context/auth-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 
-interface ReturnableInventoryBySupplierClientProps {
-  initialInventoryItems: InventoryItem[];
-  allSuppliers: Supplier[];
-}
-
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
-export function ReturnableInventoryBySupplierClient({ initialInventoryItems, allSuppliers }: ReturnableInventoryBySupplierClientProps) {
+export function ReturnableInventoryBySupplierClient() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems,
     products: cachedProducts,
+    suppliers,
     uniqueLocations,
     updateInventoryItem,
     removeInventoryItem,
@@ -73,13 +69,14 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   const supplierSearchInputRef = useRef<HTMLInputElement>(null); 
 
   const [totalItemsForSelectedSuppliers, setTotalItemsForSelectedSuppliers] = useState(0);
-  const [allSortedSuppliers, setAllSortedSuppliers] = useState<Supplier[]>([]);
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+
+  const allSortedSuppliers = useMemo(() => (suppliers || []).sort((a, b) => a.name.localeCompare(b.name)), [suppliers]);
 
   const uniqueDbLocations = useMemo(() => {
     return uniqueLocations;
@@ -105,9 +102,8 @@ export function ReturnableInventoryBySupplierClient({ initialInventoryItems, all
   }, [selectedItemIds, cachedItems, productsByBarcode]);
 
   useEffect(() => {
-    setAllSortedSuppliers((allSuppliers || []).sort((a, b) => a.name.localeCompare(b.name)));
     setIsLoading(false);
-  }, [allSuppliers]);
+  }, []);
   
   useEffect(() => {
     if (!isMultiSelectEnabled) {
