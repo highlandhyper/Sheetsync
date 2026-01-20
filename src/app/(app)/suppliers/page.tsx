@@ -38,7 +38,7 @@ function SupplierListSkeleton() {
 }
 
 export default function SuppliersPage() { 
-  const { suppliers, isCacheReady } = useDataCache();
+  const { isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -48,7 +48,7 @@ export default function SuppliersPage() {
       </h1>
       <Suspense fallback={<SupplierListSkeleton />}>
         {isCacheReady ? (
-          <SupplierListClient initialSuppliers={suppliers} />
+          <SupplierListClient />
         ) : (
           <SupplierListSkeleton />
         )}
