@@ -23,7 +23,7 @@ export function AccessControlManager() {
         <h4 className="font-semibold text-lg mb-3">Main Navigation Pages</h4>
         <div className="space-y-4">
           {viewerNavItems.map(item => (
-            <div key={item.href} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div key={item.href} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50">
               <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer">
                   <span className="font-medium">{item.label}</span>
                   <span className="text-xs text-muted-foreground">{item.href}</span>
@@ -32,6 +32,7 @@ export function AccessControlManager() {
                 id={`perm-${item.href}`}
                 checked={permissions.viewer.includes(item.href)}
                 onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
+                className="self-end sm:self-center"
               />
             </div>
           ))}
@@ -42,7 +43,7 @@ export function AccessControlManager() {
         <h4 className="font-semibold text-lg mb-3">Account & Management Pages</h4>
         <div className="space-y-4">
           {viewerAccountItems.map(item => (
-            <div key={item.href} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div key={item.href} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50">
               <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer">
                   <span className="font-medium">{item.label}</span>
                   <span className="text-xs text-muted-foreground">{item.href}</span>
@@ -51,6 +52,7 @@ export function AccessControlManager() {
                 id={`perm-${item.href}`}
                 checked={permissions.viewer.includes(item.href)}
                 onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
+                className="self-end sm:self-center"
               />
             </div>
           ))}
