@@ -49,7 +49,6 @@ export function ProductListClient() {
 
   const itemsToRender = useMemo(() => {
     if (filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY) {
-        console.warn(`ProductListClient: Displaying only the first ${MAX_ITEMS_TO_DISPLAY} of ${filteredAndSortedProducts.length} products. Use search to narrow results.`);
         return filteredAndSortedProducts.slice(0, MAX_ITEMS_TO_DISPLAY);
     }
     return filteredAndSortedProducts;
@@ -86,11 +85,18 @@ export function ProductListClient() {
       </div>
 
       {itemsToRender.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {itemsToRender.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {itemsToRender.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+          {filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY && (
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Displaying first {MAX_ITEMS_TO_DISPLAY} of {filteredAndSortedProducts.length} products. Use search to find others.
+            </p>
+          )}
+        </>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-12 w-12 text-muted-foreground" />
