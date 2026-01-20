@@ -264,7 +264,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         <SelectTrigger id="itemType" className={cn(formErrors.itemType && 'border-destructive')}>
                         <div className="flex items-center">
                             {field.value === 'Damage' ? 
-                            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> :
+                            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> : 
                             <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
                             }
                             <SelectValue placeholder="Select type" />
@@ -334,4 +334,3 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     </>
   );
 }
-
