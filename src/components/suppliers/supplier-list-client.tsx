@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Supplier } from '@/lib/types';
-import { Search, Building, Edit } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Search, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AddSupplierDialog } from './add-supplier-dialog';
@@ -13,14 +12,10 @@ import { EditSupplierDialog } from './edit-supplier-dialog';
 import { SupplierCard } from './supplier-card';
 import { useDataCache } from '@/context/data-cache-context';
 
-interface SupplierListClientProps {
-  initialSuppliers: Supplier[];
-}
-
 const MAX_SUPPLIERS_TO_DISPLAY = 250; 
 
-export function SupplierListClient({ initialSuppliers }: SupplierListClientProps) {
-  const { suppliers, isCacheReady } = useDataCache();
+export function SupplierListClient() {
+  const { suppliers } = useDataCache();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -64,26 +59,12 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full"
-            disabled={!isCacheReady}
           />
         </div>
         <AddSupplierDialog />
       </div>
 
-      {!isCacheReady ? (
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <Card key={index} className="w-full">
-                <Skeleton className="aspect-[2/1] w-full rounded-t-lg" />
-                <div className="p-4 space-y-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-9 w-full mt-2" />
-                </div>
-              </Card>
-            ))}
-        </div>
-      ) : itemsToRender.length > 0 ? (
+      {itemsToRender.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {itemsToRender.map((supplier) => (
@@ -132,5 +113,3 @@ export function SupplierListClient({ initialSuppliers }: SupplierListClientProps
     </div>
   );
 }
-
-    

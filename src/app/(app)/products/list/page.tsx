@@ -39,7 +39,7 @@ function ProductListSkeleton() {
 
 
 export default function ProductsListPage() { 
-  const { products, isCacheReady } = useDataCache();
+  const { isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -49,7 +49,7 @@ export default function ProductsListPage() {
       </h1>
       <Suspense fallback={<ProductListSkeleton />}>
         {isCacheReady ? (
-          <ProductListClient initialProducts={products} />
+          <ProductListClient />
         ) : (
           <ProductListSkeleton />
         )}

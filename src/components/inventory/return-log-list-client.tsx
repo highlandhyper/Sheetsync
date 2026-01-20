@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,31 +9,24 @@ import { Search, PackageSearch } from 'lucide-react';
 import type { ReturnedItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useDataCache } from '@/context/data-cache-context';
 
-interface ReturnLogListClientProps {
-  initialReturnedItems: ReturnedItem[];
-}
-
-export function ReturnLogListClient({ initialReturnedItems }: ReturnLogListClientProps) {
+export function ReturnLogListClient() {
+  const { returnedItems: allReturnedItems } = useDataCache();
   const [searchTerm, setSearchTerm] = useState('');
-  const [returnedItems, setReturnedItems] = useState<ReturnedItem[]>(initialReturnedItems);
-
-  useEffect(() => {
-    setReturnedItems(initialReturnedItems);
-  }, [initialReturnedItems]);
 
   const filteredItems = useMemo(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
-    if (!lowerSearchTerm) return returnedItems;
+    if (!lowerSearchTerm) return allReturnedItems;
 
-    return returnedItems.filter(item =>
+    return allReturnedItems.filter(item =>
       item.productName.toLowerCase().includes(lowerSearchTerm) ||
       item.barcode.toLowerCase().includes(lowerSearchTerm) ||
       (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm)) ||
       item.staffName.toLowerCase().includes(lowerSearchTerm) ||
       item.location.toLowerCase().includes(lowerSearchTerm)
     );
-  }, [returnedItems, searchTerm]);
+  }, [allReturnedItems, searchTerm]);
 
   return (
     <div className="space-y-6">

@@ -50,14 +50,14 @@ function ReturnLogSkeleton() {
 
 
 export default function ReturnLogPage() {
-  const { returnedItems, isCacheReady } = useDataCache();
+  const { isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Log</h1>
       <Suspense fallback={<ReturnLogSkeleton />}>
         {isCacheReady ? (
-          <ReturnLogListClient initialReturnedItems={returnedItems} />
+          <ReturnLogListClient />
         ) : (
           <ReturnLogSkeleton />
         )}
@@ -65,5 +65,3 @@ export default function ReturnLogPage() {
     </div>
   );
 }
-
-    
