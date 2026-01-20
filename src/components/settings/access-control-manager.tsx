@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAccessControl } from '@/context/access-control-context';
@@ -23,16 +22,16 @@ export function AccessControlManager() {
         <h4 className="font-semibold text-lg mb-3">Main Navigation Pages</h4>
         <div className="space-y-4">
           {viewerNavItems.map(item => (
-            <div key={item.href} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50">
-              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer">
+            <div key={item.href} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg bg-muted/50">
+              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer flex-grow min-w-0">
                   <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.href}</span>
+                  <span className="text-xs text-muted-foreground break-words">{item.href}</span>
               </Label>
               <Switch
                 id={`perm-${item.href}`}
                 checked={permissions.viewer.includes(item.href)}
                 onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
-                className="self-end sm:self-center"
+                className="flex-shrink-0"
               />
             </div>
           ))}
@@ -43,16 +42,16 @@ export function AccessControlManager() {
         <h4 className="font-semibold text-lg mb-3">Account & Management Pages</h4>
         <div className="space-y-4">
           {viewerAccountItems.map(item => (
-            <div key={item.href} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50">
-              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer">
+            <div key={item.href} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg bg-muted/50">
+              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer flex-grow min-w-0">
                   <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.href}</span>
+                  <span className="text-xs text-muted-foreground break-words">{item.href}</span>
               </Label>
               <Switch
                 id={`perm-${item.href}`}
                 checked={permissions.viewer.includes(item.href)}
                 onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
-                className="self-end sm:self-center"
+                className="flex-shrink-0"
               />
             </div>
           ))}
