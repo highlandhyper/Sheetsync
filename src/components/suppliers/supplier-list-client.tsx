@@ -36,11 +36,10 @@ export function SupplierListClient() {
   
   const itemsToRender = useMemo(() => {
     if (filteredSuppliersToRender.length > MAX_SUPPLIERS_TO_DISPLAY) {
-        console.warn(`SupplierListClient: Search for "${searchTerm}" found ${filteredSuppliersToRender.length} suppliers, displaying first ${MAX_SUPPLIERS_TO_DISPLAY}.`);
         return filteredSuppliersToRender.slice(0, MAX_SUPPLIERS_TO_DISPLAY);
     }
     return filteredSuppliersToRender;
-  }, [filteredSuppliersToRender, searchTerm]);
+  }, [filteredSuppliersToRender]);
 
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -76,17 +75,11 @@ export function SupplierListClient() {
             ))}
           </div>
 
-          {sortedSuppliers.length > MAX_SUPPLIERS_TO_DISPLAY && !searchTerm && (
+          {filteredSuppliersToRender.length > MAX_SUPPLIERS_TO_DISPLAY && (
             <p className="text-sm text-muted-foreground text-center mt-4">
-              Displaying first {MAX_SUPPLIERS_TO_DISPLAY} of {sortedSuppliers.length} suppliers. Use search to find others.
+              Displaying first {MAX_SUPPLIERS_TO_DISPLAY} of {filteredSuppliersToRender.length} suppliers. Use search to find others.
             </p>
           )}
-           {searchTerm && filteredSuppliersToRender.length === 0 && (
-             <div className="text-center py-12">
-              <Building className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-xl font-semibold">No suppliers found for "{searchTerm}"</h3>
-            </div>
-           )}
         </>
       ) : (
         <div className="text-center py-12">
