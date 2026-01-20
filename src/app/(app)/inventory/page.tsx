@@ -1,13 +1,11 @@
 
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
-import { Suspense, useCallback } from 'react';
+import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import { ClipboardList, AlertTriangle } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { ClipboardList } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
 
 
@@ -67,17 +65,7 @@ function InventoryListSkeleton() {
 }
 
 export default function InventoryPage() {
-    const { 
-        inventoryItems, 
-        suppliers, 
-        uniqueLocations, 
-        isCacheReady, 
-        refreshData, 
-    } = useDataCache();
-
-    // The error state from the old fetch is no longer needed as the context handles it.
-    // However, we can add a check for empty data if we want.
-    const hasData = inventoryItems.length > 0 && suppliers.length > 0;
+    const { isCacheReady } = useDataCache();
 
     return (
         <div className="container mx-auto py-2">
@@ -89,14 +77,7 @@ export default function InventoryPage() {
                 {!isCacheReady ? (
                     <InventoryListSkeleton />
                 ) : (
-                    <InventoryListClient 
-                        // Key prop forces re-mount when initial data changes, ensuring consistency
-                        key={inventoryItems.length + suppliers.length + uniqueLocations.length}
-                        initialInventoryItems={inventoryItems} 
-                        suppliers={suppliers} 
-                        uniqueDbLocations={uniqueLocations}
-                        onDataNeeded={refreshData}
-                    />
+                    <InventoryListClient />
                 )}
             </Suspense>
         </div>

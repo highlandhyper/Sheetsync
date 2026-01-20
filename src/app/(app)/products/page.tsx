@@ -59,19 +59,16 @@ function ReturnableInventoryByStaffSkeleton() {
 }
 
 export default function ReturnByStaffPage() { 
-  const { inventoryItems, uniqueStaffNames, isCacheReady, isSyncing } = useDataCache();
+  const { isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
       <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Staff</h1>
       <Suspense fallback={<ReturnableInventoryByStaffSkeleton />}>
-        {!isCacheReady || isSyncing ? (
+        {!isCacheReady ? (
           <ReturnableInventoryByStaffSkeleton />
         ) : (
-          <ReturnableInventoryByStaffClient 
-            initialInventoryItems={inventoryItems} 
-            allStaffNames={uniqueStaffNames} 
-          />
+          <ReturnableInventoryByStaffClient />
         )}
       </Suspense>
     </div>
