@@ -2,7 +2,7 @@
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, ReturnedItem } from '@/lib/types';
@@ -97,6 +97,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Use a ref to track initialization state to avoid stale closures in callbacks.
+  const isInitializedRef = useRef(isInitialized);
+  isInitializedRef.current = isInitialized;
+
   const isCacheReady = isInitialized;
 
   const refreshDataInternal = useCallback(async ({ isManualSync = false }: { isManualSync?: boolean } = {}) => {
@@ -118,7 +122,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         db.close();
         if (isManualSync) {
           toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
-        } else if (isInitialized) { // It was a background sync after initial load
+        } else if (isInitializedRef.current) { // Use ref for the most current value
           toast({ title: 'Data Updated', description: 'App data has been synced in the background.' });
         }
       } catch (error) {
@@ -132,11 +136,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
     
     setIsSyncing(false);
-    // This ensures initialization is marked true after the first network call, even if it fails.
-    if (!isInitialized) {
+    
+    // Set initialization state after the first network call attempt, regardless of success.
+    if (!isInitializedRef.current) {
         setIsInitialized(true);
     }
-  }, [toast, isInitialized]);
+  }, [toast]);
   
   useEffect(() => {
     if (authLoading) return;
@@ -150,14 +155,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
     // This effect runs once when the user is available
     const initializeAndBackgroundSync = async () => {
-      let hasLoadedFromCache = false;
       try {
         const db = await openDB();
         const cachedData = await getFromDB(db);
         db.close();
         if (cachedData) {
           setData(cachedData);
-          hasLoadedFromCache = true;
           setIsInitialized(true); // App is ready to be used with cached data
           console.log("DataCache: Loaded data from IndexedDB cache.");
         }
@@ -172,9 +175,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
     initializeAndBackgroundSync();
 
-    // We only want this to run once on user change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]);
+  }, [user, authLoading, refreshDataInternal]);
 
   const manualRefreshData = useCallback(async () => {
     await refreshDataInternal({ isManualSync: true });
