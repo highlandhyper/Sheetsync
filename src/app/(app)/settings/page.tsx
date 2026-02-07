@@ -95,7 +95,7 @@ export default function SettingsPage() {
             title="User Access Control"
             description="Enable or disable access to specific pages for the 'Viewer' role."
             triggerText="Manage Access"
-            dialogClassName="sm:max-w-xl"
+            dialogClassName="sm:max-w-3xl"
           >
             <AccessControlManager />
           </DialogCard>
