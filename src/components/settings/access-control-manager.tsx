@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAccessControl } from '@/context/access-control-context';
@@ -20,12 +21,12 @@ export function AccessControlManager() {
     <div className="space-y-6">
       <div>
         <h4 className="font-semibold text-lg mb-3">Main Navigation Pages</h4>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {viewerNavItems.map(item => (
-            <div key={item.href} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg bg-muted/50">
-              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer flex-grow min-w-0">
-                  <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground break-words">{item.href}</span>
+            <div key={item.href} className="flex items-center justify-between rounded-lg border bg-card p-3">
+              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer pr-2">
+                  <span className="font-medium block">{item.label}</span>
+                  <span className="text-xs text-muted-foreground block break-all">{item.href}</span>
               </Label>
               <Switch
                 id={`perm-${item.href}`}
@@ -40,12 +41,12 @@ export function AccessControlManager() {
       <Separator />
        <div>
         <h4 className="font-semibold text-lg mb-3">Account & Management Pages</h4>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {viewerAccountItems.map(item => (
-            <div key={item.href} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg bg-muted/50">
-              <Label htmlFor={`perm-${item.href}`} className="flex flex-col gap-1 cursor-pointer flex-grow min-w-0">
-                  <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground break-words">{item.href}</span>
+            <div key={item.href} className="flex items-center justify-between rounded-lg border bg-card p-3">
+              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer pr-2">
+                  <span className="font-medium block">{item.label}</span>
+                  <span className="text-xs text-muted-foreground block break-all">{item.href}</span>
               </Label>
               <Switch
                 id={`perm-${item.href}`}
