@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -82,7 +83,7 @@ export function AppSidebar({ className }: { className?: string }) {
           aria-label="Home"
           onClick={() => setOpenMobile(false)}
         >
-          <Image src="/logo.png" alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" />
+          <Image src={`/logo.png?v=${new Date().getTime()}`} alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" />
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
           </span>
