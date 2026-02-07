@@ -32,7 +32,6 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'SheetSync',
   description: 'Next-Gen Inventory Management',
-  manifest: '/manifest.json',
   icons: {
     icon: '/logo.ico',
     apple: '/logo-pwa.jpg',
@@ -44,11 +43,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const manifestVersion = "1.0.1";
+
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#29ABE2" />
+        <link rel="manifest" href={`/manifest.json?v=${manifestVersion}`} />
         <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
