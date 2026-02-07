@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
@@ -35,7 +34,7 @@ export const metadata: Metadata = {
   description: 'Next-Gen Inventory Management',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo.png',
+    icon: '/logo.ico',
     apple: '/logo-pwa.jpg',
   },
 };
