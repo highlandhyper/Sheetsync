@@ -24,9 +24,8 @@ export function AccessControlManager() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {viewerNavItems.map(item => (
             <div key={item.href} className="flex items-center justify-between rounded-lg border bg-card p-3">
-              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer pr-2">
-                  <span className="font-medium block">{item.label}</span>
-                  <span className="text-xs text-muted-foreground block break-all">{item.href}</span>
+              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer font-medium pr-2">
+                  {item.label}
               </Label>
               <Switch
                 id={`perm-${item.href}`}
@@ -44,9 +43,8 @@ export function AccessControlManager() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {viewerAccountItems.map(item => (
             <div key={item.href} className="flex items-center justify-between rounded-lg border bg-card p-3">
-              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer pr-2">
-                  <span className="font-medium block">{item.label}</span>
-                  <span className="text-xs text-muted-foreground block break-all">{item.href}</span>
+              <Label htmlFor={`perm-${item.href}`} className="cursor-pointer font-medium pr-2">
+                  {item.label}
               </Label>
               <Switch
                 id={`perm-${item.href}`}
