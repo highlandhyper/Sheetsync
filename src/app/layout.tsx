@@ -35,7 +35,8 @@ export const metadata: Metadata = {
   description: 'Next-Gen Inventory Management',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo.ico', 
+    icon: '/logo.png',
+    apple: '/logo-pwa.jpg',
   },
 };
 
@@ -49,6 +50,7 @@ export default function RootLayout({
        <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#29ABE2" />
+        <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
         <ThemeProvider
