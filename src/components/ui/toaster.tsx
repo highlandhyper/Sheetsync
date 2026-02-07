@@ -7,6 +7,7 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
+  ToastDescription,
 } from "@/components/ui/toast"
 
 export function Toaster() {
@@ -19,6 +20,7 @@ export function Toaster() {
           <Toast key={id} {...props}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
+              {/* Description is no longer rendered */}
             </div>
             {action}
             <ToastClose />
