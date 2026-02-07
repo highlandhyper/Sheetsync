@@ -1,8 +1,7 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, ReturnedItem } from '@/lib/types';
@@ -94,93 +93,97 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueStaffNames: [],
     lastSync: null,
   });
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(true); // Start true, set to false after initial load/sync
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Use a ref to track initialization state to avoid stale closures in callbacks.
-  const isInitializedRef = useRef(isInitialized);
-  isInitializedRef.current = isInitialized;
 
   const isCacheReady = isInitialized;
 
-  const refreshDataInternal = useCallback(async ({ isManualSync = false }: { isManualSync?: boolean } = {}) => {
+  const fetchDataAndCache = useCallback(async (isManualSync: boolean, wasAlreadyInitialized: boolean) => {
     setIsSyncing(true);
     if (isManualSync) {
-      toast({ title: 'Syncing Data...', description: 'Fetching the latest data from Google Sheets.' });
+      toast({ title: 'Syncing Data...' });
     }
 
-    const response = await fetchAllDataAction();
+    try {
+      const response = await fetchAllDataAction();
+      if (response.success && response.data) {
+        const now = Date.now();
+        const newData: AppData = { ...response.data, lastSync: now };
+        setData(newData);
 
-    if (response.success && response.data) {
-      const now = Date.now();
-      const newData: AppData = { ...response.data, lastSync: now };
-      setData(newData);
-
-      try {
-        const db = await openDB();
-        await setToDB(db, newData);
-        db.close();
-        if (isManualSync) {
-          toast({ title: 'Sync Complete', description: 'Your local data is now up-to-date.' });
-        } else if (isInitializedRef.current) { // Use ref for the most current value
-          toast({ title: 'Data Updated', description: 'App data has been synced in the background.' });
+        try {
+          const db = await openDB();
+          await setToDB(db, newData);
+          db.close();
+        } catch (dbError) {
+          console.error("Failed to save to IndexedDB:", dbError);
+          toast({ title: 'Cache Warning', variant: 'destructive' });
         }
-      } catch (error) {
-        console.error("Failed to save to IndexedDB:", error);
-        toast({ title: 'Cache Warning', description: 'Could not save data to local database.', variant: 'destructive' });
+
+        if (isManualSync) {
+          toast({ title: 'Sync Complete' });
+        } else if (wasAlreadyInitialized) {
+          toast({ title: 'Data Updated' });
+        }
+      } else {
+        if (isManualSync) {
+          toast({ title: 'Sync Failed', variant: 'destructive' });
+        }
       }
-    } else {
+    } catch (fetchError) {
+      console.error("DataCacheProvider: An error occurred during fetch", fetchError);
       if (isManualSync) {
-        toast({ title: 'Sync Failed', description: response.message || 'Could not fetch data from the server.', variant: 'destructive' });
+        toast({ title: 'Sync Error', variant: 'destructive' });
       }
-    }
-    
-    setIsSyncing(false);
-    
-    // Set initialization state after the first network call attempt, regardless of success.
-    if (!isInitializedRef.current) {
+    } finally {
+      setIsSyncing(false);
+      // This is the crucial part: mark the app as "initialized" after the very first data-loading attempt.
+      if (!wasAlreadyInitialized) {
         setIsInitialized(true);
+      }
     }
   }, [toast]);
-  
-  useEffect(() => {
-    if (authLoading) return;
 
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
     if (!user) {
-      // Clear data on logout
+      // On logout, clear everything and reset state
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
       setIsInitialized(false);
+      setIsSyncing(true);
       return;
     }
 
-    // This effect runs once when the user is available
-    const initializeAndBackgroundSync = async () => {
+    // This is the main effect that runs once on login
+    const initializeApp = async () => {
+      let appWasInitialized = false;
       try {
         const db = await openDB();
         const cachedData = await getFromDB(db);
         db.close();
         if (cachedData) {
           setData(cachedData);
-          setIsInitialized(true); // App is ready to be used with cached data
+          setIsInitialized(true); // App is ready to use with cached data
+          appWasInitialized = true;
           console.log("DataCache: Loaded data from IndexedDB cache.");
         }
       } catch (error) {
         console.warn("DataCache: Could not load from IndexedDB.", error);
       }
-      
-      // Now, trigger a background sync regardless of cache status
-      // If cache failed to load, this becomes the primary data load.
-      await refreshDataInternal({ isManualSync: false });
+
+      // Now, trigger the background sync. It will know if the app was already showing data.
+      await fetchDataAndCache(false, appWasInitialized);
     };
 
-    initializeAndBackgroundSync();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading, refreshDataInternal]);
+    initializeApp();
+  }, [user, authLoading, fetchDataAndCache]);
 
   const manualRefreshData = useCallback(async () => {
-    await refreshDataInternal({ isManualSync: true });
-  }, [refreshDataInternal]);
+    // A manual refresh always happens after the app is initialized.
+    await fetchDataAndCache(true, true);
+  }, [fetchDataAndCache]);
 
 
   // --- Local Data Mutation Helpers ---
@@ -209,15 +212,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     setData(prev => ({
       ...prev,
       suppliers: [...prev.suppliers, supplier].sort((a,b) => a.name.localeCompare(b.name)),
-      uniqueStaffNames: [...new Set([...prev.uniqueStaffNames, supplier.name])].sort()
     }));
   }, []);
 
   const updateSupplier = useCallback((updatedSupplier: Supplier) => {
-    setData(prev => ({
-      ...prev,
-      suppliers: prev.suppliers.map(s => s.id === updatedSupplier.id ? updatedSupplier : s),
-    }));
+    // This action requires a full refresh because supplier name is denormalized.
+    // The calling component (`edit-supplier-dialog`) is responsible for triggering the full `refreshData()`
   }, []);
   
   const addProduct = useCallback((product: Product) => {
