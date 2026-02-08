@@ -44,6 +44,7 @@ const DB_NAME = 'SheetSyncDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'appDataCache';
 const CACHE_KEY = 'sheetSyncDataCache';
+const POLLING_INTERVAL_MS = 10000; // Check for new data every 10 seconds
 
 // --- IndexedDB Helper Functions ---
 
@@ -94,15 +95,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueStaffNames: [],
     lastSync: null,
   });
-
+  
   const isSyncingRef = useRef(false);
   const isInitializedRef = useRef(false);
-
   const isCacheReady = data.lastSync !== null;
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
     if (isSyncingRef.current) {
-      return;
+        // console.log("DataCache: Sync already in progress, skipping fetch.");
+        return;
     }
     isSyncingRef.current = true;
 
@@ -111,7 +112,25 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       if (response.success && response.data) {
         const now = Date.now();
         const newData: AppData = { ...response.data, lastSync: now };
-        setData(newData);
+        
+        setData(prevData => {
+            // Only update and notify if there's a meaningful change.
+            // A simple JSON.stringify is a good enough heuristic for this.
+            if (JSON.stringify(prevData.inventoryItems) !== JSON.stringify(newData.inventoryItems) ||
+                JSON.stringify(prevData.products) !== JSON.stringify(newData.products) ||
+                JSON.stringify(prevData.suppliers) !== JSON.stringify(newData.suppliers) ||
+                JSON.stringify(prevData.returnedItems) !== JSON.stringify(newData.returnedItems)
+            ) {
+                 if (isBackgroundUpdate && isInitializedRef.current) {
+                    toast({ title: 'Data Updated' });
+                }
+                return newData;
+            }
+            // If no change, just update the timestamp
+            return { ...prevData, lastSync: now };
+        });
+
+        isInitializedRef.current = true;
 
         try {
           const db = await openDB();
@@ -121,11 +140,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           console.error("Failed to save to IndexedDB:", dbError);
           toast({ title: 'Cache Write Warning', variant: 'destructive' });
         }
-
-        if (isBackgroundUpdate) {
-          toast({ title: 'Data Updated' });
-        }
-        isInitializedRef.current = true;
       } else {
         console.warn("DataCache: Fetch all data action failed.", response.message);
       }
@@ -139,9 +153,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (authLoading) return;
 
+    let pollInterval: NodeJS.Timeout | undefined;
+
     if (!user) {
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
       isInitializedRef.current = false;
+       if (pollInterval) clearInterval(pollInterval);
       return;
     }
 
@@ -154,28 +171,28 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         db.close();
         if (isMounted && cachedData) {
           setData(cachedData);
-          isInitializedRef.current = true;
         }
       } catch (error) {
         console.warn("DataCache: Could not load from IndexedDB.", error);
       }
       
       await fetchDataAndCache(false);
+      
+      // Start polling after the first fetch is complete
+      if (isMounted) {
+          pollInterval = setInterval(() => {
+            fetchDataAndCache(true);
+          }, POLLING_INTERVAL_MS);
+      }
     };
 
     initialize();
 
-    const handleFocus = () => {
-      if (isInitializedRef.current) {
-        fetchDataAndCache(true);
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-
     return () => {
       isMounted = false;
-      window.removeEventListener('focus', handleFocus);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
     };
   }, [user, authLoading, fetchDataAndCache]);
 
@@ -254,5 +271,3 @@ export function useDataCache() {
   }
   return context;
 }
-
-    
