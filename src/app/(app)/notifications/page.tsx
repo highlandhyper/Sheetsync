@@ -212,16 +212,18 @@ export default function NotificationsPage() {
                         <div>
                             <p className="font-semibold">{item.productName}</p>
                             <p className="text-sm text-muted-foreground">
-                                Qty: <span className="font-medium text-foreground">{item.quantity}</span> &bull; Exp: <span className="font-medium text-destructive">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</span>
+                                Qty: <span className="font-medium text-foreground">{item.quantity}</span> &bull; Barcode: {item.barcode} &bull; Exp: <span className="font-medium text-destructive">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</span>
                             </p>
                         </div>
                     </div>
                     <div className="flex flex-shrink-0 gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleOpenReturnDialog(item)} disabled={item.quantity <= 0}>
-                            <Undo2 className="mr-2 h-4 w-4" /> Return
+                        <Button variant="outline" size="icon" onClick={() => handleOpenReturnDialog(item)} disabled={item.quantity <= 0}>
+                            <Undo2 className="h-4 w-4" />
+                            <span className="sr-only">Return</span>
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleOpenDeleteDialog(item)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        <Button variant="destructive" size="icon" onClick={() => handleOpenDeleteDialog(item)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
                         </Button>
                     </div>
                 </div>
@@ -246,4 +248,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-
