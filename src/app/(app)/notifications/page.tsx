@@ -1,29 +1,39 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useDataCache } from '@/context/data-cache-context';
+import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { BellDot, ScanSearch, CheckCircle, Package, Barcode, Hash, MapPin, Building, User } from 'lucide-react';
+import { BellDot, ScanSearch, CheckCircle, Package, Undo2, Trash2, User } from 'lucide-react';
 import type { InventoryItem } from '@/lib/types';
 import { startOfDay, parseISO, isBefore, isValid, format } from 'date-fns';
+import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
+import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 
 type ExpiredItemsByStaff = {
   [staffName: string]: InventoryItem[];
 };
 
 export default function NotificationsPage() {
-  const { inventoryItems, isCacheReady } = useDataCache();
+  const { inventoryItems, updateInventoryItem, addReturnedItem, removeInventoryItem } = useDataCache();
+  const { user } = useAuth();
   const [expiredItemsByStaff, setExpiredItemsByStaff] = useState<ExpiredItemsByStaff | null>(null);
   const [hasScanned, setHasScanned] = useState(false);
   const [selectedStaffName, setSelectedStaffName] = useState<string | null>(null);
 
+  // State for action dialogs
+  const [itemToReturn, setItemToReturn] = useState<InventoryItem | null>(null);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+
   const handleScanForExpiredItems = () => {
     const today = startOfDay(new Date());
     const expired = inventoryItems.filter(item => {
-      // Only check 'Expiry' items with a positive quantity and a valid date
       if (item.itemType !== 'Expiry' || item.quantity <= 0 || !item.expiryDate) {
         return false;
       }
@@ -31,7 +41,7 @@ export default function NotificationsPage() {
         const expiryDate = startOfDay(parseISO(item.expiryDate));
         return isValid(expiryDate) && isBefore(expiryDate, today);
       } catch {
-        return false; // In case of invalid date format in sheet
+        return false;
       }
     });
 
@@ -61,6 +71,70 @@ export default function NotificationsPage() {
     setSelectedStaffName(null);
   };
 
+  const handleOpenReturnDialog = (item: InventoryItem) => {
+    setItemToReturn(item);
+    setIsReturnDialogOpen(true);
+  };
+  
+  const handleOpenDeleteDialog = (item: InventoryItem) => {
+    setItemToDelete(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleReturnSuccess = (returnedItemId: string, returnedQuantity: number) => {
+    const originalItem = expiredItemsByStaff?.[selectedStaffName!]?.find(item => item.id === returnedItemId);
+    if (!originalItem) return;
+
+    const newQuantity = originalItem.quantity - returnedQuantity;
+
+    // Update global cache
+    const returnedLogEntry = { ...originalItem, id: `ret_${Date.now()}`, originalInventoryItemId: originalItem.id, returnedQuantity: returnedQuantity, returnTimestamp: new Date().toISOString(), processedBy: user?.email || 'Unknown' };
+    addReturnedItem(returnedLogEntry);
+    if (newQuantity > 0) {
+        updateInventoryItem({ ...originalItem, quantity: newQuantity });
+    } else {
+        removeInventoryItem(returnedItemId);
+    }
+    
+    // Update local state to reflect change immediately in the dialog
+    if (selectedStaffName && expiredItemsByStaff) {
+        let updatedStaffItems;
+        if (newQuantity > 0) {
+            updatedStaffItems = expiredItemsByStaff[selectedStaffName].map(item =>
+                item.id === returnedItemId ? { ...item, quantity: newQuantity } : item
+            );
+        } else {
+            updatedStaffItems = expiredItemsByStaff[selectedStaffName].filter(item => item.id !== returnedItemId);
+        }
+
+        const newExpiredItemsByStaff = { ...expiredItemsByStaff, [selectedStaffName]: updatedStaffItems };
+        if (updatedStaffItems.length === 0) {
+            delete newExpiredItemsByStaff[selectedStaffName];
+            setSelectedStaffName(null); // Close the dialog if no items left
+        }
+        setExpiredItemsByStaff(newExpiredItemsByStaff);
+    }
+    
+    setIsReturnDialogOpen(false);
+  };
+
+  const handleDeleteSuccess = (deletedItemId: string) => {
+    // Update global cache
+    removeInventoryItem(deletedItemId);
+
+    // Update local state
+    if (selectedStaffName && expiredItemsByStaff) {
+        const updatedStaffItems = expiredItemsByStaff[selectedStaffName].filter(item => item.id !== deletedItemId);
+        const newExpiredItemsByStaff = { ...expiredItemsByStaff, [selectedStaffName]: updatedStaffItems };
+        if (updatedStaffItems.length === 0) {
+            delete newExpiredItemsByStaff[selectedStaffName];
+            setSelectedStaffName(null);
+        }
+        setExpiredItemsByStaff(newExpiredItemsByStaff);
+    }
+    setIsDeleteDialogOpen(false);
+  };
+
   return (
     <div className="container mx-auto py-2">
       <div className="mb-8">
@@ -73,7 +147,7 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      <Button onClick={handleScanForExpiredItems} disabled={!isCacheReady} size="lg">
+      <Button onClick={handleScanForExpiredItems} size="lg">
         <ScanSearch className="mr-2 h-4 w-4" />
         Scan for Expired Items
       </Button>
@@ -126,27 +200,29 @@ export default function NotificationsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><User className="h-5 w-5" />Expired Items for {selectedStaffName}</DialogTitle>
             <DialogDescription>
-              The following items logged by {selectedStaffName} have passed their expiration date.
+              The following items logged by {selectedStaffName} have passed their expiration date. You can return them to the supplier or delete the log entry.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto p-1">
             <div className="space-y-3 py-4">
               {selectedStaffName && expiredItemsByStaff?.[selectedStaffName]?.map(item => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
-                    <div className="flex items-center gap-4">
+                <div key={item.id} className="flex items-center justify-between rounded-md border p-3 gap-2">
+                    <div className="flex items-center gap-4 flex-grow">
                         <Package className="h-6 w-6 text-primary flex-shrink-0" />
                         <div>
-                        <p className="font-semibold">{item.productName}</p>
-                        <p className="text-sm text-muted-foreground">
-                            {item.barcode} &bull; Qty: <span className="font-medium text-foreground">{item.quantity}</span> &bull; Loc: <span className="font-medium text-foreground">{item.location}</span>
-                        </p>
+                            <p className="font-semibold">{item.productName}</p>
+                            <p className="text-sm text-muted-foreground">
+                                Qty: <span className="font-medium text-foreground">{item.quantity}</span> &bull; Exp: <span className="font-medium text-destructive">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</span>
+                            </p>
                         </div>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                        <p className="text-sm font-bold text-destructive">
-                        {item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Expired</p>
+                    <div className="flex flex-shrink-0 gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenReturnDialog(item)} disabled={item.quantity <= 0}>
+                            <Undo2 className="mr-2 h-4 w-4" /> Return
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleOpenDeleteDialog(item)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </Button>
                     </div>
                 </div>
               ))}
@@ -154,6 +230,20 @@ export default function NotificationsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <ReturnQuantityDialog 
+        item={itemToReturn} 
+        isOpen={isReturnDialogOpen} 
+        onOpenChange={setIsReturnDialogOpen} 
+        onReturnSuccess={handleReturnSuccess} 
+      />
+      <DeleteConfirmationDialog 
+        item={itemToDelete} 
+        isOpen={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen} 
+        onSuccess={handleDeleteSuccess} 
+      />
     </div>
   );
 }
+
