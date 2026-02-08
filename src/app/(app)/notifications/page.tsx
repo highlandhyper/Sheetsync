@@ -122,35 +122,33 @@ export default function NotificationsPage() {
       </div>
 
       <Dialog open={!!selectedStaffName} onOpenChange={(isOpen) => !isOpen && onDialogClose()}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><User className="h-5 w-5" />Expired Items for {selectedStaffName}</DialogTitle>
             <DialogDescription>
               The following items logged by {selectedStaffName} have passed their expiration date.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto p-1 -m-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+          <div className="max-h-[60vh] overflow-y-auto p-1">
+            <div className="space-y-3 py-4">
               {selectedStaffName && expiredItemsByStaff?.[selectedStaffName]?.map(item => (
-                 <Card key={item.id} className="bg-background/80 flex flex-col">
-                    <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <CardTitle className="text-base">{item.productName}</CardTitle>
-                                <CardDescription className="text-xs flex items-center gap-1"><Barcode className="h-3 w-3" />{item.barcode}</CardDescription>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-2">
-                                <p className="text-xs text-destructive font-semibold">Expired On</p>
-                                <p className="font-bold text-destructive">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</p>
-                            </div>
+                <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
+                    <div className="flex items-center gap-4">
+                        <Package className="h-6 w-6 text-primary flex-shrink-0" />
+                        <div>
+                        <p className="font-semibold">{item.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {item.barcode} &bull; Qty: <span className="font-medium text-foreground">{item.quantity}</span> &bull; Loc: <span className="font-medium text-foreground">{item.location}</span>
+                        </p>
                         </div>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm flex-grow">
-                        <div className="flex items-center gap-2 text-muted-foreground"><Hash className="h-4 w-4 text-primary/70"/>Qty: <span className="font-medium text-foreground">{item.quantity}</span></div>
-                        <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4 text-primary/70"/>Location: <span className="font-medium text-foreground">{item.location}</span></div>
-                        <div className="flex items-center gap-2 col-span-2 text-muted-foreground"><Building className="h-4 w-4 text-primary/70"/>Supplier: <span className="font-medium text-foreground">{item.supplierName || 'N/A'}</span></div>
-                    </CardContent>
-                </Card>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-4">
+                        <p className="text-sm font-bold text-destructive">
+                        {item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Expired</p>
+                    </div>
+                </div>
               ))}
             </div>
           </div>
