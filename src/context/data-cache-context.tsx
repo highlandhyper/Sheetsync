@@ -44,7 +44,6 @@ const DB_NAME = 'SheetSyncDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'appDataCache';
 const CACHE_KEY = 'sheetSyncDataCache';
-const POLLING_INTERVAL_MS = 10000; // Check for new data every 10 seconds
 
 // --- IndexedDB Helper Functions ---
 
@@ -102,7 +101,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
     if (isSyncingRef.current) {
-        // console.log("DataCache: Sync already in progress, skipping fetch.");
         return;
     }
     isSyncingRef.current = true;
@@ -114,8 +112,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         const newData: AppData = { ...response.data, lastSync: now };
         
         setData(prevData => {
-            // Only update and notify if there's a meaningful change.
-            // A simple JSON.stringify is a good enough heuristic for this.
             if (JSON.stringify(prevData.inventoryItems) !== JSON.stringify(newData.inventoryItems) ||
                 JSON.stringify(prevData.products) !== JSON.stringify(newData.products) ||
                 JSON.stringify(prevData.suppliers) !== JSON.stringify(newData.suppliers) ||
@@ -126,7 +122,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 }
                 return newData;
             }
-            // If no change, just update the timestamp
             return { ...prevData, lastSync: now };
         });
 
@@ -153,15 +148,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (authLoading) return;
 
-    let pollInterval: NodeJS.Timeout | undefined;
-
     if (!user) {
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
       isInitializedRef.current = false;
-       if (pollInterval) clearInterval(pollInterval);
       return;
     }
-
+    
     let isMounted = true;
 
     const initialize = async () => {
@@ -177,22 +169,25 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       }
       
       await fetchDataAndCache(false);
-      
-      // Start polling after the first fetch is complete
-      if (isMounted) {
-          pollInterval = setInterval(() => {
-            fetchDataAndCache(true);
-          }, POLLING_INTERVAL_MS);
-      }
     };
 
     initialize();
 
+    const handleFocus = () => {
+      fetchDataAndCache(true);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            handleFocus();
+        }
+    });
+
     return () => {
       isMounted = false;
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
     };
   }, [user, authLoading, fetchDataAndCache]);
 
@@ -271,3 +266,4 @@ export function useDataCache() {
   }
   return context;
 }
+    
