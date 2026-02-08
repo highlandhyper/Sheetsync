@@ -59,22 +59,22 @@ export default function NotificationsPage() {
         Expired Item Notifications
       </h1>
 
-      <Card className="shadow-md">
-        <CardHeader>
+      <Card className="border-none shadow-none">
+        <CardHeader className="px-0">
           <CardTitle>Scan for Expired Inventory</CardTitle>
           <CardDescription>
             Click the button to scan all current inventory and identify items that have passed their expiration date. Results will be grouped by the staff member who logged them.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           <Button onClick={handleScanForExpiredItems} disabled={!isCacheReady}>
             <ScanSearch className="mr-2 h-4 w-4" />
             Scan for Expired Items
           </Button>
 
-          <div className="mt-6">
+          <div className="mt-8">
             {!hasScanned && (
-               <div className="text-center py-10 border-2 border-dashed rounded-lg bg-card">
+               <div className="text-center py-10 border-2 border-dashed rounded-lg bg-muted/50">
                 <ScanSearch className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">Awaiting Scan</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -95,20 +95,26 @@ export default function NotificationsPage() {
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="pt-2 px-4 bg-muted/30">
+                    <AccordionContent className="pt-4 pb-2 px-4 bg-muted/30">
                       <div className="space-y-4">
                         {items.map(item => (
-                          <div key={item.id} className="p-4 border rounded-lg bg-card shadow-sm">
-                            <h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary"/>{item.productName}</h4>
-                            <p className="text-sm text-muted-foreground flex items-center gap-2"><Barcode className="h-4 w-4"/>{item.barcode}</p>
-                            <hr className="my-2" />
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                              <p className="flex items-center gap-2"><Hash className="h-4 w-4 text-muted-foreground"/>Quantity: <span className="font-medium">{item.quantity}</span></p>
-                              <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground"/>Location: <span className="font-medium">{item.location}</span></p>
-                              <p className="flex items-center gap-2 col-span-2"><Building className="h-4 w-4 text-muted-foreground"/>Supplier: <span className="font-medium">{item.supplierName || 'N/A'}</span></p>
-                              <p className="flex items-center gap-2 col-span-2 text-destructive"><CalendarOff className="h-4 w-4"/>Expired On: <span className="font-semibold">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</span></p>
+                          <div key={item.id} className="p-4 border rounded-lg bg-background shadow-sm flex flex-col gap-3">
+                            <div>
+                                <h4 className="font-semibold flex items-center gap-2 text-base"><Package className="h-5 w-5 text-primary"/>{item.productName}</h4>
+                                <p className="text-xs text-muted-foreground flex items-center gap-2 ml-7"><Barcode className="h-3 w-3"/>{item.barcode}</p>
                             </div>
-                          </div>
+                            
+                            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-center flex flex-col items-center justify-center gap-1">
+                                <div className="flex items-center gap-2 text-sm font-medium text-destructive"><CalendarOff className="h-4 w-4"/>Expired On</div>
+                                <p className="font-bold text-lg text-destructive">{item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm pt-1">
+                                <div className="flex items-center gap-2 text-muted-foreground"><Hash className="h-4 w-4"/>Quantity: <span className="font-medium text-foreground">{item.quantity}</span></div>
+                                <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4"/>Location: <span className="font-medium text-foreground">{item.location}</span></div>
+                                <div className="flex items-center gap-2 col-span-2 text-muted-foreground"><Building className="h-4 w-4"/>Supplier: <span className="font-medium text-foreground">{item.supplierName || 'N/A'}</span></div>
+                            </div>
+                        </div>
                         ))}
                       </div>
                     </AccordionContent>
