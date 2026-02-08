@@ -2,21 +2,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Zap, LogOut, UserCircle, RotateCw, Command, AlertTriangle } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,18 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from '@/lib/utils';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
-import { useDataCache } from '@/context/data-cache-context';
 import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
 
 export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
-  const { refreshData, isSyncing } = useDataCache();
-
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -47,14 +32,9 @@ export function Header({ className }: { className?: string }) {
     return email.substring(0, 2).toUpperCase();
   };
 
-  const handleSyncConfirm = () => {
-    setIsSyncDialogOpen(false);
-    refreshData();
-  };
-
   return (
     <>
-      <header className={cn("sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 gap-4", className)}>
+      <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 gap-4">
         <div className="flex items-center gap-2">
             <SidebarTrigger className="md:hidden" />
         </div>
@@ -80,17 +60,6 @@ export function Header({ className }: { className?: string }) {
                 <Zap className="h-4 w-4" />
             </Button>
             
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsSyncDialogOpen(true)}
-                disabled={isSyncing}
-                className="text-muted-foreground"
-                aria-label="Sync Data"
-            >
-                <RotateCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-            </Button>
-
             {loading ? (
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
             ) : user ? (
@@ -134,26 +103,6 @@ export function Header({ className }: { className?: string }) {
         </div>
       </header>
       <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
-      
-      <AlertDialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-                <AlertTriangle className="mr-2 h-5 w-5 text-yellow-500" />
-                Confirm Data Sync
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to manually sync all data with Google Sheets? This will update all local data with the latest from the server.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSyncConfirm}>
-              <RotateCw className="mr-2 h-4 w-4" /> Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

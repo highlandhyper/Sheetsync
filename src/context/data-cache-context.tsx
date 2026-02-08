@@ -1,7 +1,8 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, ReturnedItem } from '@/lib/types';
@@ -26,7 +27,6 @@ interface DataCacheContextType {
   uniqueStaffNames: string[];
   isCacheReady: boolean;
   isSyncing: boolean;
-  refreshData: () => Promise<void>;
   updateInventoryItem: (item: InventoryItem) => void;
   addInventoryItem: (item: InventoryItem) => void;
   removeInventoryItem: (itemId: string) => void;
@@ -35,6 +35,7 @@ interface DataCacheContextType {
   addProduct: (product: Product) => void;
   updateProduct: (updatedProduct: Product) => void;
   addReturnedItem: (item: ReturnedItem) => void;
+  refreshData: () => Promise<void>; // Kept for targeted refresh if needed elsewhere
 }
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
@@ -93,12 +94,20 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueStaffNames: [],
     lastSync: null,
   });
-  const [isSyncing, setIsSyncing] = useState(true); // Start true, set to false after initial load/sync
+  const [isSyncing, setIsSyncing] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const isInitializedRef = useRef(isInitialized);
+  useEffect(() => { isInitializedRef.current = isInitialized; }, [isInitialized]);
+  const isSyncingRef = useRef(isSyncing);
+  useEffect(() => { isSyncingRef.current = isSyncing; }, [isSyncing]);
 
   const isCacheReady = isInitialized;
 
-  const fetchDataAndCache = useCallback(async (isManualSync: boolean, wasAlreadyInitialized: boolean) => {
+  const fetchDataAndCache = useCallback(async (isManualSync: boolean) => {
+    if (isSyncingRef.current && !isManualSync) {
+      return;
+    }
     setIsSyncing(true);
     if (isManualSync) {
       toast({ title: 'Syncing Data...' });
@@ -122,7 +131,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
         if (isManualSync) {
           toast({ title: 'Sync Complete' });
-        } else if (wasAlreadyInitialized) {
+        } else if (isInitializedRef.current) {
           toast({ title: 'Data Updated' });
         }
       } else {
@@ -137,108 +146,85 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       }
     } finally {
       setIsSyncing(false);
-      // This is the crucial part: mark the app as "initialized" after the very first data-loading attempt.
-      if (!wasAlreadyInitialized) {
+      if (!isInitializedRef.current) {
         setIsInitialized(true);
       }
     }
   }, [toast]);
 
-  useEffect(() => {
-    if (authLoading) {
-      return;
+  const initializeApp = useCallback(async () => {
+    try {
+      const db = await openDB();
+      const cachedData = await getFromDB(db);
+      db.close();
+      if (cachedData) {
+        setData(cachedData);
+        setIsInitialized(true);
+        console.log("DataCache: Loaded data from IndexedDB cache.");
+      }
+    } catch (error) {
+      console.warn("DataCache: Could not load from IndexedDB.", error);
     }
+    await fetchDataAndCache(false);
+  }, [fetchDataAndCache]);
+
+  useEffect(() => {
+    if (authLoading) return;
     if (!user) {
-      // On logout, clear everything and reset state
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
       setIsInitialized(false);
       setIsSyncing(true);
       return;
     }
-
-    // This is the main effect that runs once on login
-    const initializeApp = async () => {
-      let appWasInitialized = false;
-      try {
-        const db = await openDB();
-        const cachedData = await getFromDB(db);
-        db.close();
-        if (cachedData) {
-          setData(cachedData);
-          setIsInitialized(true); // App is ready to use with cached data
-          appWasInitialized = true;
-          console.log("DataCache: Loaded data from IndexedDB cache.");
-        }
-      } catch (error) {
-        console.warn("DataCache: Could not load from IndexedDB.", error);
-      }
-
-      // Now, trigger the background sync. It will know if the app was already showing data.
-      await fetchDataAndCache(false, appWasInitialized);
-    };
-
     initializeApp();
-  }, [user, authLoading, fetchDataAndCache]);
+  }, [user, authLoading, initializeApp]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && isInitializedRef.current) {
+        console.log("DataCache: Tab became visible, triggering background sync.");
+        fetchDataAndCache(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user, fetchDataAndCache]);
 
   const manualRefreshData = useCallback(async () => {
-    // A manual refresh always happens after the app is initialized.
-    await fetchDataAndCache(true, true);
+    await fetchDataAndCache(true);
   }, [fetchDataAndCache]);
-
 
   // --- Local Data Mutation Helpers ---
   const addInventoryItem = useCallback((item: InventoryItem) => {
-    setData(prev => ({
-      ...prev,
-      inventoryItems: [item, ...prev.inventoryItems],
-    }));
+    setData(prev => ({ ...prev, inventoryItems: [item, ...prev.inventoryItems] }));
   }, []);
 
   const updateInventoryItem = useCallback((updatedItem: InventoryItem) => {
-    setData(prev => ({
-      ...prev,
-      inventoryItems: prev.inventoryItems.map(item => item.id === updatedItem.id ? updatedItem : item),
-    }));
+    setData(prev => ({ ...prev, inventoryItems: prev.inventoryItems.map(item => item.id === updatedItem.id ? updatedItem : item) }));
   }, []);
 
   const removeInventoryItem = useCallback((itemId: string) => {
-    setData(prev => ({
-      ...prev,
-      inventoryItems: prev.inventoryItems.filter(item => item.id !== itemId),
-    }));
+    setData(prev => ({ ...prev, inventoryItems: prev.inventoryItems.filter(item => item.id !== itemId) }));
   }, []);
 
   const addSupplier = useCallback((supplier: Supplier) => {
-    setData(prev => ({
-      ...prev,
-      suppliers: [...prev.suppliers, supplier].sort((a,b) => a.name.localeCompare(b.name)),
-    }));
+    setData(prev => ({ ...prev, suppliers: [...prev.suppliers, supplier].sort((a,b) => a.name.localeCompare(b.name)) }));
   }, []);
 
-  const updateSupplier = useCallback((updatedSupplier: Supplier) => {
-    // This action requires a full refresh because supplier name is denormalized.
-    // The calling component (`edit-supplier-dialog`) is responsible for triggering the full `refreshData()`
-  }, []);
+  const updateSupplier = useCallback(() => {
+    manualRefreshData();
+  }, [manualRefreshData]);
   
   const addProduct = useCallback((product: Product) => {
-      setData(prev => ({
-          ...prev,
-          products: [product, ...prev.products]
-      }));
+      setData(prev => ({ ...prev, products: [product, ...prev.products] }));
   }, [])
   
   const updateProduct = useCallback((updatedProduct: Product) => {
-      setData(prev => ({
-          ...prev,
-          products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-      }))
+      setData(prev => ({ ...prev, products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p) }));
   }, [])
 
   const addReturnedItem = useCallback((item: ReturnedItem) => {
-    setData(prev => ({
-      ...prev,
-      returnedItems: [item, ...prev.returnedItems],
-    }));
+    setData(prev => ({ ...prev, returnedItems: [item, ...prev.returnedItems] }));
   }, []);
 
   const contextValue = useMemo(() => ({
@@ -260,18 +246,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateProduct,
     addReturnedItem,
   }), [
-      data, 
-      isCacheReady, 
-      isSyncing, 
-      manualRefreshData, 
-      updateInventoryItem, 
-      addInventoryItem, 
-      removeInventoryItem, 
-      addSupplier, 
-      updateSupplier, 
-      addProduct, 
-      updateProduct, 
-      addReturnedItem
+      data, isCacheReady, isSyncing, manualRefreshData, updateInventoryItem, addInventoryItem, 
+      removeInventoryItem, addSupplier, updateSupplier, addProduct, updateProduct, addReturnedItem
   ]);
 
   return (
