@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -95,15 +94,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     lastSync: null,
   });
   
-  const isSyncingRef = useRef(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const isInitializedRef = useRef(false);
   const isCacheReady = data.lastSync !== null;
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
-    if (isSyncingRef.current) {
+    if (isSyncing) {
         return;
     }
-    isSyncingRef.current = true;
+    setIsSyncing(true);
 
     try {
       const response = await fetchAllDataAction();
@@ -141,9 +140,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     } catch (fetchError) {
       console.error("DataCacheProvider: An error occurred during fetch", fetchError);
     } finally {
-      isSyncingRef.current = false;
+      setIsSyncing(false);
     }
-  }, [toast]);
+  }, [toast, isSyncing]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -237,7 +236,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueLocations: data.uniqueLocations,
     uniqueStaffNames: data.uniqueStaffNames,
     isCacheReady,
-    isSyncing: isSyncingRef.current,
+    isSyncing,
     refreshData: manualRefreshData,
     updateInventoryItem,
     addInventoryItem,
@@ -248,7 +247,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateProduct,
     addReturnedItem,
   }), [
-      data, isCacheReady, manualRefreshData, updateInventoryItem, addInventoryItem, 
+      data, isCacheReady, isSyncing, manualRefreshData, updateInventoryItem, addInventoryItem, 
       removeInventoryItem, addSupplier, updateSupplier, addProduct, updateProduct, addReturnedItem
   ]);
 

@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
-import { Zap, LogOut, UserCircle, Command } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command, Sync, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,63 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
 import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
+import { useDataCache } from '@/context/data-cache-context';
+import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// New component for sync status
+function LastSyncStatus() {
+  const { lastSync, isSyncing, isCacheReady, refreshData } = useDataCache();
+
+  if (isSyncing) {
+     return (
+        <Button variant="ghost" size="sm" disabled className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            <span>Syncing...</span>
+        </Button>
+     );
+  }
+
+  if (!isCacheReady) {
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={refreshData} className="hidden md:flex items-center gap-1.5 text-xs text-yellow-600 mr-2">
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Sync now</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Data has not been synced yet. Click to sync.</p></TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={refreshData}
+            className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground mr-2"
+          >
+            <Sync className="h-3 w-3" />
+            <span>
+              {lastSync ? `Synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Sync now'}
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to refresh.` : 'Click to sync data now.'}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 
 export function Header({ className }: { className?: string }) {
   const { user, logout, loading } = useAuth();
@@ -50,6 +106,7 @@ export function Header({ className }: { className?: string }) {
 
           {/* Action buttons have fixed size */}
           <div className="flex items-center gap-2">
+            <LastSyncStatus />
             <Button
                 variant="outline"
                 size="icon"
