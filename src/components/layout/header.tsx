@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { Zap, LogOut, UserCircle, Command, Sync, RefreshCw } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ function LastSyncStatus() {
             onClick={refreshData}
             className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground mr-2"
           >
-            <Sync className="h-3 w-3" />
+            <RefreshCw className="h-3 w-3" />
             <span>
               {lastSync ? `Synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Sync now'}
             </span>
