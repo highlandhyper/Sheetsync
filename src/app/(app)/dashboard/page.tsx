@@ -169,7 +169,7 @@ function DashboardSkeleton() {
             description={<Skeleton className="h-4 w-3/4 mt-1" />}
         />
       </div>
-      <div className="grid grid-cols-1 hidden md:block"> 
+      <div className="grid grid-cols-1"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
             <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -297,7 +297,7 @@ export default function DashboardPage() {
             isLoading={isLoading}
         />
       </div>
-       <div className="mt-6 md:mt-8 hidden md:block"> 
+       <div className="mt-6 md:mt-8"> 
         <Card className="col-span-1 shadow-lg rounded-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -314,5 +314,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
