@@ -179,11 +179,16 @@ input[type="search"]::-webkit-search-cancel-button {
     width: 100%;
     padding: 1.5rem !important;
     margin: 0 !important;
+    background-color: white !important;
   }
   
-  /* General text color */
+  /* General text color & background reset for print */
   .printable-area * {
       color: black !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      border-color: #ccc !important;
   }
 
   /* Hide elements specifically marked with .noprint inside the printable area */
@@ -219,7 +224,6 @@ input[type="search"]::-webkit-search-cancel-button {
   .printable-area th, .printable-area td {
     padding: 6px !important;
     border: 1px solid #ccc !important;
-    background-color: transparent !important;
   }
   
   .printable-area .text-right {
@@ -240,8 +244,6 @@ input[type="search"]::-webkit-search-cancel-button {
   .printable-area .card-content,
   .printable-area .card-header {
       border: none !important;
-      box-shadow: none !important;
       padding: 0 !important;
-      background-color: transparent !important;
   }
 }
