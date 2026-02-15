@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -677,14 +678,10 @@ export function InventoryListClient() {
                                     )}
                                 </div>
                             ) : (
-                                <div className='relative flex justify-center'>
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenGroupDetails(group)} className="h-8 w-8" aria-label="View Details">
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                        {individualItems.length}
-                                    </span>
-                                </div>
+                                <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View {individualItems.length} Logs
+                                </Button>
                             )}
                         </TableCell>
                         <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{mainItem.productName}</TableCell>
@@ -800,5 +797,7 @@ export function InventoryListClient() {
     </div>
   );
 }
+
+    
 
     
