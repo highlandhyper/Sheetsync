@@ -18,6 +18,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAuditLogsAction } from '@/app/actions';
 import { Skeleton } from '../ui/skeleton';
+import { Badge } from '../ui/badge';
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
