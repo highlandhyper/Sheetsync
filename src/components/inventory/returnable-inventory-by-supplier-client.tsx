@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -38,7 +39,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
 export function ReturnableInventoryBySupplierClient() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems,
@@ -507,7 +508,8 @@ export function ReturnableInventoryBySupplierClient() {
                               item={item}
                               onInitiateReturn={handleOpenReturnDialog}
                               onViewDetails={handleOpenDetailsDialog}
-                              onEditItem={handleOpenEditDialog} 
+                              onEditItem={role === 'admin' ? handleOpenEditDialog : undefined}
+                              disableReturnButton={role === 'viewer'}
                               isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
                               showSupplierName={false} 
                               showEditButtonText={false}
@@ -540,8 +542,8 @@ export function ReturnableInventoryBySupplierClient() {
                             item={item}
                             product={product}
                             onDetails={() => handleOpenDetailsDialog(item)}
-                            onEdit={() => handleOpenEditDialog(item)}
-                            onReturn={() => handleOpenReturnDialog(item)}
+                            onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
+                            onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(item) : undefined}
                             isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
                             onSelect={isMultiSelectEnabled ? () => handleSelectRow(item.id) : undefined}
                             context="supplier"
@@ -574,7 +576,7 @@ export function ReturnableInventoryBySupplierClient() {
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         displayContext="returnBySupplier" 
-        onStartEdit={handleOpenEditDialog} 
+        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
         item={currentItemToEdit}
