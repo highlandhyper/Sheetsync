@@ -156,120 +156,92 @@ input[type="search"]::-webkit-search-cancel-button {
 
 @media print {
   body {
-    background-color: white !important; /* Ensure body background is white for printing */
-    color: black !important;
-    -webkit-print-color-adjust: exact !important; /* Ensure colors and backgrounds print in Chrome/Safari */
-    print-color-adjust: exact !important;
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  /* Hide elements marked with .noprint */
-  .noprint {
-    display: none !important;
+  /* Hide everything on the page by default */
+  body * {
+    visibility: hidden;
   }
-  
+
+  /* Then, only show the printable-area and its children */
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+
+  /* Position the printable area at the top of the page */
   .printable-area {
-    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
-    height: 100%;
-    padding: 2rem !important; /* Add some padding to the print page */
+    padding: 1.5rem !important;
     margin: 0 !important;
-    background-color: white !important;
-    box-shadow: none !important;
-    border: none !important;
-    color: black !important;
   }
   
-  /* Make all text inside printable area black, important to override theme */
-  .printable-area, .printable-area * {
-    color: black !important;
-    border-color: #ddd !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  /* General text color */
+  .printable-area * {
+      color: black !important;
   }
 
-  /* Reset main layout containers for print */
-  main,
-  main > .container,
-  .printable-area {
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border: none !important;
-    background-color: transparent !important;
+  /* Hide elements specifically marked with .noprint inside the printable area */
+  .printable-area .noprint {
+      display: none !important;
   }
-
-  /* Hide specific filter cards and print button containers within the printable area */
+  
   .printable-area .filters-card-noprint,
   .printable-area .print-button-container {
-    display: none !important;
-  }
-  
-  /* Hide other interactive elements that might overlay content */
-  .printable-area div[role="dialog"],
-  .printable-area [data-radix-popper-content-wrapper],
-  .printable-area [role="tooltip"] {
-    display: none !important;
+      display: none !important;
   }
 
-  /* Table styling for print */
+  /* Show elements specifically for printing */
+  .printable-area .print-show-table-cell {
+      display: table-cell !important;
+  }
+  
+  /* Table styling */
   .printable-area table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 10pt !important; /* Adjust font size for print */
-    table-layout: auto !important; /* Allow table to adjust column widths */
+    font-size: 10pt !important;
   }
-  .printable-area th, .printable-area td,
-  .printable-area thead th, .printable-area tbody td { /* More specific selectors */
-    padding: 4px !important;
-    text-align: left !important;
-    word-wrap: break-word; /* Prevent long text from overflowing */
-    color: black !important; /* Ensure text in table cells is black */
-    background-color: transparent !important; /* Ensure table cell backgrounds are transparent */
-    border: 1px solid #ddd;
+
+  .printable-area thead {
+    display: table-header-group !important; /* Repeat header on each printed page */
   }
+
+  .printable-area tr {
+    page-break-inside: avoid !important;
+  }
+
+  .printable-area th, .printable-area td {
+    padding: 6px !important;
+    border: 1px solid #ccc !important;
+    background-color: transparent !important;
+  }
+  
   .printable-area .text-right {
     text-align: right !important;
   }
+  
   .printable-area .text-center {
     text-align: center !important;
   }
 
-  /* Reset the div wrapper around ShadCN tables if it restricts flow */
+  /* Reset ShadCN table wrapper that causes horizontal scroll */
   .printable-area .relative.w-full.overflow-auto {
     overflow: visible !important;
-    width: auto !important; /* Let table define its own width, which is 100% */
   }
-
-  /* Remove extra padding from Card components within printable area */
-  .printable-area .card > .p-4,
-  .printable-area .card > .p-6,
-  .printable-area .card > [class*="p-"],
-  .printable-area .card-content {
-    padding: 0 !important;
-  }
-
-  /* Ensure any background colors on cards or their content are transparent */
-  .printable-area .bg-card,
-  .printable-area .card-content {
-    background-color: transparent !important;
-  }
-
-  /* Hide generic buttons within the printable area unless explicitly shown */
-  .printable-area button:not(.print-show) {
-      display: none !important;
-  }
-
-  /* Ensure page titles (h1) within the printable area are visible and black */
-  .printable-area h1 {
-    display: block !important; /* Or as desired for print */
-    margin-bottom: 1rem !important; /* Example spacing */
-    color: black !important;
-    background-color: transparent !important;
+  
+  /* Reset Card styles */
+  .printable-area .card, 
+  .printable-area .card-content,
+  .printable-area .card-header {
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      background-color: transparent !important;
   }
 }

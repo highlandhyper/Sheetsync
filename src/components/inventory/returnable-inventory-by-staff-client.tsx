@@ -268,7 +268,7 @@ export function ReturnableInventoryByStaffClient() {
   }
 
   return (
-    <div className="space-y-6 printable-area">
+    <div className="space-y-6">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
           {selectedItemIds.size > 0 && isMultiSelectEnabled && role === 'admin' ? (

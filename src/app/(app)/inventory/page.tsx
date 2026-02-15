@@ -67,8 +67,8 @@ export default function InventoryPage() {
     const { isCacheReady } = useDataCache();
 
     return (
-        <div className="container mx-auto py-2">
-            <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight">
+        <div className="container mx-auto py-2 printable-area">
+            <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight noprint">
                 <ClipboardList className="mr-3 h-8 w-8" />
                 Inventory Overview
             </h1>
