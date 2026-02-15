@@ -481,7 +481,7 @@ export function InventoryListClient() {
   };
 
   return (
-    <div className="space-y-6 printable-area">
+    <div className="space-y-6">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
           {selectedBarcodes.size > 0 && role === 'admin' && isMultiSelectEnabled ? (

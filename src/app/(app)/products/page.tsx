@@ -62,8 +62,8 @@ export default function ReturnByStaffPage() {
   const { isCacheReady } = useDataCache();
 
   return (
-    <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Return Inventory by Staff</h1>
+    <div className="container mx-auto py-2 printable-area">
+      <h1 className="text-3xl font-bold mb-8 text-primary noprint">Return Inventory by Staff</h1>
       <Suspense fallback={<ReturnableInventoryByStaffSkeleton />}>
         {!isCacheReady ? (
           <ReturnableInventoryByStaffSkeleton />
