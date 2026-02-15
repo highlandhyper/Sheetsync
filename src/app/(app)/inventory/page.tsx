@@ -1,4 +1,3 @@
-
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
@@ -43,7 +42,7 @@ function InventoryListSkeleton() {
                 </TableCell>
                 <TableCell className="noprint">
                   <div className="flex gap-2 justify-center">
-                    <Skeleton className="h-8 w-8" /> <Skeleton className="h-8 w-8" /> <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
                   </div>
                 </TableCell>
                 <TableCell><Skeleton className="h-5 w-32" /></TableCell>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { InventoryItem, Product } from '@/lib/types';
@@ -60,6 +59,7 @@ export function InventoryItemCardMobile({
   const isProductFound = item.productName !== 'Not Found';
   const costPrice = product?.costPrice;
   const quantityToShow = totalQuantity ?? item.quantity;
+  const isSingleItem = individualItemCount === 1;
 
 
   let formattedExpiryDate = 'N/A';
@@ -160,19 +160,27 @@ export function InventoryItemCardMobile({
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
-         {context === 'inventory' ? (
-             <Button variant="outline" size="sm" onClick={onDetails} className="w-full">
-                <Eye className="mr-2 h-4 w-4" /> View {individualItemCount || 1} Log(s)
+        {context === 'inventory' ? (
+          isSingleItem ? (
+            <>
+              {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+              {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
+              {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
+            </>
+          ) : (
+            <Button variant="outline" size="sm" onClick={onDetails} className="w-full">
+              <Eye className="mr-2 h-4 w-4" /> View {individualItemCount || 1} Log(s)
             </Button>
-         ) : isProductFound ? (
-             <>
-                {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
-                {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
-                {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
-             </>
-         ) : (
-            onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct}><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
-         )}
+          )
+        ) : isProductFound ? (
+          <>
+            {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+            {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
+            {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
+          </>
+        ) : (
+          onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct}><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -227,18 +226,6 @@ export function InventoryListClient() {
 
     return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);
-  
-  const getItemsForBulkAction = (): string[] => {
-    if (selectedBarcodes.size === 0) return [];
-    
-    const itemIds: string[] = [];
-    groupedItems.forEach(group => {
-        if(selectedBarcodes.has(group.mainItem.barcode)) {
-            group.individualItems.forEach(item => itemIds.push(item.id));
-        }
-    });
-    return itemIds;
-  };
 
   const totalValueOfSelectedItems = useMemo(() => {
     if (selectedBarcodes.size === 0) return 0;
@@ -253,6 +240,18 @@ export function InventoryListClient() {
     });
     return totalValue;
   }, [selectedBarcodes, groupedItems, productsByBarcode]);
+  
+  const getItemsForBulkAction = (): string[] => {
+    if (selectedBarcodes.size === 0) return [];
+    
+    const itemIds: string[] = [];
+    groupedItems.forEach(group => {
+        if(selectedBarcodes.has(group.mainItem.barcode)) {
+            group.individualItems.forEach(item => itemIds.push(item.id));
+        }
+    });
+    return itemIds;
+  };
 
 
   useEffect(() => {
@@ -625,7 +624,7 @@ export function InventoryListClient() {
                     </TableHead>
                     )}
                     <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                    <TableHead className="w-auto sm:w-24 text-center noprint">Details</TableHead>
+                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                     <TableHead>Product Name</TableHead>
                     <TableHead className="hidden lg:table-cell">Barcode</TableHead>
                     <TableHead>Supplier</TableHead>
@@ -642,6 +641,7 @@ export function InventoryListClient() {
                     const product = productsByBarcode.get(mainItem.barcode);
                     const costPrice = product?.costPrice;
                     const totalValue = costPrice !== undefined ? costPrice * totalQuantity : undefined;
+                    const isSingleItem = individualItems.length === 1;
 
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
 
@@ -658,16 +658,34 @@ export function InventoryListClient() {
                         )}
                         <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                         <TableCell className="text-center noprint">
-                            <div className='relative flex justify-center'>
-                                <Button variant="ghost" size="icon" onClick={() => handleOpenGroupDetails(group)} className="h-8 w-8" aria-label="View Details">
-                                    <Eye className="h-4 w-4" />
-                                </Button>
-                                {individualItems.length > 1 && (
-                                     <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                           {isSingleItem ? (
+                                <div className="flex justify-center items-center gap-1">
+                                    {role === 'admin' && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(mainItem)} className="h-8 w-8" aria-label="Edit">
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    {role !== 'viewer' && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
+                                            <Undo2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    {role === 'admin' && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className='relative flex justify-center'>
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenGroupDetails(group)} className="h-8 w-8" aria-label="View Details">
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
                                         {individualItems.length}
                                     </span>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </TableCell>
                         <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{mainItem.productName}</TableCell>
                         <TableCell className="text-muted-foreground hidden lg:table-cell">{mainItem.barcode}</TableCell>
@@ -697,6 +715,9 @@ export function InventoryListClient() {
                             totalQuantity={group.totalQuantity}
                             individualItemCount={group.individualItems.length}
                             onDetails={() => handleOpenGroupDetails(group)}
+                            onEdit={role === 'admin' ? () => handleOpenEditDialog(group.mainItem) : undefined}
+                            onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
+                            onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
                             isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
                             onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(group.mainItem.barcode) : undefined}
                             context="inventory"
@@ -757,6 +778,7 @@ export function InventoryListClient() {
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
           onSuccess={handleProductCreateSuccess}
+          onOpenChange={setIsCreateProductDialogOpen}
         />
       )}
       
