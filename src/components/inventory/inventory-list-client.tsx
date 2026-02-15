@@ -15,7 +15,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
-import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import type { DateRange } from 'react-day-picker';
@@ -29,6 +28,7 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
+import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 
@@ -66,19 +66,20 @@ export function InventoryListClient() {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
+  // States for individual item action dialogs
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [selectedItemForReturn, setSelectedItemForReturn] = useState<InventoryItem | null>(null);
-
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
-
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
-
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
+  
+  // States for grouped item dialog
+  const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<GroupedInventoryItem | null>(null);
 
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
 
   // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
@@ -90,21 +91,32 @@ export function InventoryListClient() {
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
+  
+  const getItemsForBulkAction = (): string[] => {
+    if (selectedBarcodes.size === 0) return [];
+    
+    const itemIds: string[] = [];
+    groupedItems.forEach(group => {
+        if(selectedBarcodes.has(group.mainItem.barcode)) {
+            group.individualItems.forEach(item => itemIds.push(item.id));
+        }
+    });
+    return itemIds;
+  };
 
   const totalValueOfSelectedItems = useMemo(() => {
-    if (selectedItemIds.size === 0) return 0;
+    if (selectedBarcodes.size === 0) return 0;
 
     let totalValue = 0;
-    selectedItemIds.forEach(itemId => {
-      const item = cachedItems.find(i => i.id === itemId);
-      if (item) {
-        const product = productsByBarcode.get(item.barcode);
+    groupedItems.forEach(group => {
+      if (selectedBarcodes.has(group.mainItem.barcode)) {
+        const product = productsByBarcode.get(group.mainItem.barcode);
         const costPrice = product?.costPrice ?? 0;
-        totalValue += costPrice * item.quantity;
+        totalValue += costPrice * group.totalQuantity;
       }
     });
     return totalValue;
-  }, [selectedItemIds, cachedItems, productsByBarcode]);
+  }, [selectedBarcodes, groupedItems, productsByBarcode]);
 
 
   useEffect(() => {
@@ -151,26 +163,54 @@ export function InventoryListClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router]);
 
-  // Clear selections when multi-select is disabled
   useEffect(() => {
     if (!isMultiSelectEnabled) {
-      setSelectedItemIds(new Set());
+      setSelectedBarcodes(new Set());
     }
   }, [isMultiSelectEnabled]);
 
 
-  const itemsAfterDashboardFilters = useMemo(() => {
-    if (!activeDashboardFilter) return cachedItems;
+  const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
+    let items = cachedItems;
 
-    let filtered = cachedItems;
+     if (!activeDashboardFilter) {
+      // Apply manual filters only if no dashboard filter is active
+      if (searchTerm) {
+          const lowerSearchTerm = searchTerm.toLowerCase();
+          items = items.filter(item =>
+              item.productName.toLowerCase().includes(lowerSearchTerm) ||
+              item.barcode.toLowerCase().includes(lowerSearchTerm) ||
+              item.staffName.toLowerCase().includes(lowerSearchTerm) ||
+              item.location.toLowerCase().includes(lowerSearchTerm) ||
+              (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm))
+          );
+      }
 
-    switch(activeDashboardFilter.type) {
-        case 'damaged':
-            return filtered.filter(item => item.itemType === 'Damage');
+      if (selectedSupplier) {
+          items = items.filter(item => item.supplierName === selectedSupplier);
+      }
+
+      if (selectedDateRange?.from && selectedDateRange.to) {
+          const fromDate = startOfDay(selectedDateRange.from);
+          const toDate = startOfDay(selectedDateRange.to);
+          items = items.filter(item => {
+              if (item.itemType === 'Expiry' && item.expiryDate) {
+                  try {
+                      const expiry = startOfDay(parseISO(item.expiryDate));
+                      return isValid(expiry) && !isBefore(expiry, fromDate) && !isAfter(expiry, toDate);
+                  } catch { return false; }
+              }
+              return false;
+          });
+      }
+    } else {
+       // Dashboard filters are applied first
+       switch(activeDashboardFilter.type) {
+        case 'damaged': items = items.filter(item => item.itemType === 'Damage'); break;
         case 'expiringSoon': {
             const today = startOfDay(new Date());
             const sevenDaysFromNow = startOfDay(addDays(today, 7));
-            return filtered.filter(item => {
+            items = items.filter(item => {
                 if (item.itemType === 'Expiry' && item.expiryDate) {
                     try {
                         const expiry = startOfDay(parseISO(item.expiryDate));
@@ -179,102 +219,91 @@ export function InventoryListClient() {
                 }
                 return false;
             });
+            break;
         }
-        case 'otherSuppliers':
-        case 'specificSupplier': {
+        case 'otherSuppliers': case 'specificSupplier': {
             if (activeDashboardFilter.suppliers) {
                 const lowerCaseSuppliers = activeDashboardFilter.suppliers.map(s => s.toLowerCase());
-                return filtered.filter(item =>
-                    item.supplierName && lowerCaseSuppliers.includes(item.supplierName.toLowerCase())
-                );
+                items = items.filter(item => item.supplierName && lowerCaseSuppliers.includes(item.supplierName.toLowerCase()));
             }
-            return filtered;
+            break;
         }
         case 'customExpiry': {
             if (activeDashboardFilter.customExpiryFrom && activeDashboardFilter.customExpiryTo) {
                 try {
                     const from = startOfDay(parseISO(activeDashboardFilter.customExpiryFrom));
                     const to = startOfDay(parseISO(activeDashboardFilter.customExpiryTo));
-                    if (!isValid(from) || !isValid(to)) return filtered;
-
-                    return filtered.filter(item => {
-                    if (item.itemType === 'Expiry' && item.expiryDate) {
-                        try {
-                        const expiry = startOfDay(parseISO(item.expiryDate));
-                        return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
-                        } catch { return false; }
-                    }
-                    return false;
+                    if (!isValid(from) || !isValid(to)) break;
+                    items = items.filter(item => {
+                        if (item.itemType === 'Expiry' && item.expiryDate) {
+                            try {
+                                const expiry = startOfDay(parseISO(item.expiryDate));
+                                return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
+                            } catch { return false; }
+                        }
+                        return false;
                     });
-                } catch { return filtered; }
+                } catch { /* ignore parse errors */ }
             }
-            return filtered;
+            break;
         }
-        default:
-            return filtered;
-    }
-  }, [cachedItems, activeDashboardFilter]);
-
-
-  const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
-    let items = itemsAfterDashboardFilters;
-
-    if (searchTerm) {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        items = items.filter(item =>
-            item.productName.toLowerCase().includes(lowerSearchTerm) ||
-            item.barcode.toLowerCase().includes(lowerSearchTerm) ||
-            item.staffName.toLowerCase().includes(lowerSearchTerm) ||
-            item.location.toLowerCase().includes(lowerSearchTerm) ||
-            (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm))
-        );
+       }
     }
 
-    if (selectedSupplier) {
-        items = items.filter(item => item.supplierName === selectedSupplier);
-    }
-
-    if (selectedDateRange?.from && selectedDateRange.to) {
-        const fromDate = startOfDay(selectedDateRange.from);
-        const toDate = startOfDay(selectedDateRange.to);
-        items = items.filter(item => {
-            if (item.itemType === 'Expiry' && item.expiryDate) {
-                try {
-                    const expiry = startOfDay(parseISO(item.expiryDate));
-                    return isValid(expiry) && !isBefore(expiry, fromDate) && !isAfter(expiry, toDate);
-                } catch { return false; }
-            }
-            return false;
-        });
-    }
 
     if (typeFilter !== 'all') {
       const today = startOfDay(new Date());
       items = items.filter(item => {
-        if (typeFilter === 'damage') {
-          return item.itemType === 'Damage';
-        }
-        if (typeFilter === 'expiry') {
-          return item.itemType === 'Expiry';
-        }
+        if (typeFilter === 'damage') return item.itemType === 'Damage';
+        if (typeFilter === 'expiry') return item.itemType === 'Expiry';
         if (typeFilter === 'expired') {
           if (item.itemType !== 'Expiry' || !item.expiryDate) return false;
           try {
             const expiry = startOfDay(parseISO(item.expiryDate));
             return isValid(expiry) && isBefore(expiry, today);
-          } catch {
-            return false;
-          }
+          } catch { return false; }
         }
         return true;
       });
     }
 
     return items;
-  }, [itemsAfterDashboardFilters, searchTerm, selectedSupplier, selectedDateRange, typeFilter]);
+  }, [cachedItems, activeDashboardFilter, searchTerm, selectedSupplier, selectedDateRange, typeFilter]);
 
-  const itemsToRender = useMemo(() => {
-    return filteredItemsBySearchAndSupplierAndDate;
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();
+
+    for (const item of filteredItemsBySearchAndSupplierAndDate) {
+        if (item.quantity <= 0) continue; // Exclude items with zero or negative quantity from grouping
+        
+        if (!groups.has(item.barcode)) {
+            groups.set(item.barcode, { individualItems: [], totalQuantity: 0 });
+        }
+        const group = groups.get(item.barcode)!;
+        group.individualItems.push(item);
+        group.totalQuantity += item.quantity;
+    }
+
+    const result: GroupedInventoryItem[] = [];
+    for (const [barcode, groupData] of groups.entries()) {
+        groupData.individualItems.sort((a, b) => {
+            const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+            const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+            return dateB - dateA;
+        });
+        
+        const mainItem = groupData.individualItems[0];
+        
+        result.push({
+            mainItem,
+            individualItems: groupData.individualItems,
+            totalQuantity: groupData.totalQuantity,
+        });
+    }
+
+    result.sort((a, b) => a.mainItem.productName.localeCompare(b.mainItem.productName));
+
+    return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);
 
 
@@ -304,6 +333,7 @@ export function InventoryListClient() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    if(activeDashboardFilter) setActiveDashboardFilter(null);
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
@@ -346,15 +376,15 @@ export function InventoryListClient() {
     return null;
   };
 
+  const handleOpenGroupDetails = (group: GroupedInventoryItem) => {
+    setSelectedGroup(group);
+    setIsGroupDetailsOpen(true);
+  };
+  
   const handleOpenReturnDialog = (item: InventoryItem) => {
     if (role === 'viewer') return;
     setSelectedItemForReturn(item);
     setIsReturnDialogOpen(true);
-  };
-
-  const handleOpenDetailsDialog = (item: InventoryItem) => {
-    setSelectedItemForDetails(item);
-    setIsDetailsDialogOpen(true);
   };
 
   const handleOpenEditDialog = (item: InventoryItem) => {
@@ -378,49 +408,33 @@ export function InventoryListClient() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
-    const itemToUpdate = cachedItems.find(item => item.id === returnedItemId);
-    if (itemToUpdate) {
-        const newQuantity = itemToUpdate.quantity - returnedQuantity;
-        // Also add to returned items log for other pages if needed
-        const returnedLogEntry = {
-            ...itemToUpdate,
-            id: `ret_${Date.now()}`,
-            originalInventoryItemId: itemToUpdate.id,
-            returnedQuantity: returnedQuantity,
-            returnTimestamp: new Date().toISOString(),
-            processedBy: user?.email || 'Unknown', // Assuming staff name is needed
-        };
-        addReturnedItem(returnedLogEntry);
+  const handleActionSuccess = useCallback(() => {
+    // This is a generic success handler. We'll refresh all data
+    // to ensure consistency after any modification.
+    onDataNeeded();
+    // Close all individual action dialogs
+    setIsReturnDialogOpen(false);
+    setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
 
-        if (newQuantity > 0) {
-            updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
+    // If the group details dialog is open, we need to update its content
+    // by finding the new state of the group and setting it.
+    if (isGroupDetailsOpen && selectedGroup) {
+        const updatedGroup = groupedItems.find(g => g.mainItem.barcode === selectedGroup.mainItem.barcode);
+        if (updatedGroup) {
+            setSelectedGroup(updatedGroup);
         } else {
-            removeInventoryItem(returnedItemId);
+            // The group might no longer exist (e.g., all items deleted)
+            setIsGroupDetailsOpen(false);
+            setSelectedGroup(null);
         }
     }
-    setIsReturnDialogOpen(false);
-    setSelectedItemIds(new Set());
-  }, [cachedItems, updateInventoryItem, removeInventoryItem, addReturnedItem, user]);
+    setSelectedBarcodes(new Set());
+  }, [onDataNeeded, isGroupDetailsOpen, selectedGroup, groupedItems]);
 
-
-  const handleEditSuccess = useCallback(() => {
-    // No full refresh, local state is already updated via updateInventoryItem in dialog
-    setIsEditDialogOpen(false);
-    setSelectedItemIds(new Set());
-  }, []);
-
-
-  const handleDeleteSuccess = useCallback((deletedItemId: string) => {
-    removeInventoryItem(deletedItemId);
-    setIsDeleteDialogOpen(false);
-    setSelectedItemIds(new Set());
-  }, [removeInventoryItem]);
-  
   const handleBulkSuccess = useCallback(() => {
-    // This action affects multiple items, so a full refresh is acceptable here
     onDataNeeded();
-    setSelectedItemIds(new Set());
+    setSelectedBarcodes(new Set());
     setIsBulkReturnOpen(false);
     setIsBulkDeleteOpen(false);
   }, [onDataNeeded]);
@@ -436,20 +450,20 @@ export function InventoryListClient() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allItemIds = new Set(itemsToRender.map(item => item.id));
-      setSelectedItemIds(allItemIds);
+      const allBarcodes = new Set(groupedItems.map(g => g.mainItem.barcode));
+      setSelectedBarcodes(allBarcodes);
     } else {
-      setSelectedItemIds(new Set());
+      setSelectedBarcodes(new Set());
     }
   };
 
-  const handleSelectRow = (itemId: string) => {
-    setSelectedItemIds(prev => {
+  const handleSelectRow = (barcode: string) => {
+    setSelectedBarcodes(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
+      if (newSet.has(barcode)) {
+        newSet.delete(barcode);
       } else {
-        newSet.add(itemId);
+        newSet.add(barcode);
       }
       return newSet;
     });
@@ -459,11 +473,11 @@ export function InventoryListClient() {
     <div className="space-y-6 printable-area">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
-          {selectedItemIds.size > 0 && role === 'admin' && isMultiSelectEnabled ? (
+          {selectedBarcodes.size > 0 && role === 'admin' && isMultiSelectEnabled ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="flex items-center gap-4 flex-wrap">
                     <div className="text-sm font-medium text-muted-foreground">
-                        {selectedItemIds.size} item(s) selected
+                        {selectedBarcodes.size} product group(s) selected
                     </div>
                     <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
                         <Wallet className="mr-2 h-4 w-4" />
@@ -473,8 +487,8 @@ export function InventoryListClient() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return All</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
                 </div>
              </div>
           ) : (
@@ -595,7 +609,7 @@ export function InventoryListClient() {
         </Alert>
       )}
 
-      {itemsToRender.length > 0 ? (
+      {groupedItems.length > 0 ? (
         <>
             {/* Desktop Table View */}
             <Card className="shadow-md hidden md:block">
@@ -605,114 +619,65 @@ export function InventoryListClient() {
                     {role === 'admin' && isMultiSelectEnabled && (
                     <TableHead className="w-12 text-center noprint">
                         <Checkbox
-                        checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
+                        checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length}
                         onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                         aria-label="Select all rows"
                         />
                     </TableHead>
                     )}
                     <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                    <TableHead className="w-auto sm:w-24 text-center noprint">Details</TableHead>
                     <TableHead>Product Name</TableHead>
                     <TableHead className="hidden lg:table-cell">Barcode</TableHead>
                     <TableHead>Supplier</TableHead>
-                    <TableHead>Logged By</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Total Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right">Total Value</TableHead>
                     <TableHead>Expiry</TableHead>
-                    <TableHead className="hidden sm:table-cell">Location</TableHead>
-                    <TableHead>Type</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {itemsToRender.map((item, index) => {
-                    const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
-                    const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-                    const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
-                    let formattedExpiryDate = 'N/A';
-                    if (item.expiryDate) {
-                    if (isValidExpiry) {
-                        formattedExpiryDate = format(parsedExpiryDate!, 'PP');
-                        if (isExpired) formattedExpiryDate += " (Expired)";
-                    } else {
-                        formattedExpiryDate = "Invalid Date";
-                    }
-                    }
-                    const isProductFound = item.productName !== 'Not Found';
-                    const product = productsByBarcode.get(item.barcode);
+                {groupedItems.map((group, index) => {
+                    const { mainItem, totalQuantity, individualItems } = group;
+                    const isProductFound = mainItem.productName !== 'Not Found';
+                    const product = productsByBarcode.get(mainItem.barcode);
                     const costPrice = product?.costPrice;
-                    const totalValue = costPrice !== undefined ? costPrice * item.quantity : undefined;
+                    const totalValue = costPrice !== undefined ? costPrice * totalQuantity : undefined;
+
+                    const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
 
                     return (
-                    <TableRow key={item.id} data-state={selectedItemIds.has(item.id) ? "selected" : ""}>
+                    <TableRow key={mainItem.barcode} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""}>
                         {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
                             <Checkbox
-                            checked={selectedItemIds.has(item.id)}
-                            onCheckedChange={() => handleSelectRow(item.id)}
-                            aria-label={`Select row for ${item.productName}`}
+                            checked={selectedBarcodes.has(mainItem.barcode)}
+                            onCheckedChange={() => handleSelectRow(mainItem.barcode)}
+                            aria-label={`Select row for ${mainItem.productName}`}
                             />
                         </TableCell>
                         )}
                         <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
                         <TableCell className="text-center noprint">
-                        <div className="flex justify-center items-center gap-1 sm:gap-1.5">
-                            {isProductFound ? (
-                                <>
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8" aria-label="View Details">
+                            <div className='relative flex justify-center'>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenGroupDetails(group)} className="h-8 w-8" aria-label="View Details">
                                     <Eye className="h-4 w-4" />
-                                    </Button>
-                                    {role === 'admin' && (
-                                    <>
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(item)} className="h-8 w-8" aria-label="Edit Item">
-                                        <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleOpenReturnDialog(item)}
-                                        disabled={item.quantity === 0}
-                                        className="h-8 w-8"
-                                        aria-label="Return Item"
-                                        >
-                                        <Undo2 className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleOpenDeleteDialog(item)}
-                                        className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                        aria-label="Delete Item"
-                                        >
-                                        <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </>
-                                    )}
-                                </>
-                            ) : (
-                                role === 'admin' && (
-                                    <Button onClick={() => handleOpenCreateProductDialog(item.barcode)} variant="default" size="sm">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Create
-                                    </Button>
-                                )
-                            )}
-                        </div>
+                                </Button>
+                                {individualItems.length > 1 && (
+                                     <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                                        {individualItems.length}
+                                    </span>
+                                )}
+                            </div>
                         </TableCell>
-                        <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{item.productName}</TableCell>
-                        <TableCell className="text-muted-foreground hidden lg:table-cell">{item.barcode}</TableCell>
-                        <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
-                        <TableCell className="text-muted-foreground">{item.staffName || 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                        <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{mainItem.productName}</TableCell>
+                        <TableCell className="text-muted-foreground hidden lg:table-cell">{mainItem.barcode}</TableCell>
+                        <TableCell className="text-muted-foreground">{mainItem.supplierName || 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className={cn(isExpired && isValidExpiry ? 'text-destructive' : 'text-muted-foreground', "whitespace-nowrap")}>
-                        {formattedExpiryDate}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground hidden sm:table-cell">{item.location}</TableCell>
-                        <TableCell className={cn(item.itemType === 'Damage' ? 'text-orange-500 font-medium' : 'text-muted-foreground')}>
-                        {item.itemType === 'Damage' ? <AlertTriangle className="inline-block h-4 w-4 mr-1 text-orange-500" /> : <Tag className="inline-block h-4 w-4 mr-1 text-muted-foreground" />}
-                        {item.itemType}
+                        <TableCell className="text-muted-foreground">
+                            {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
                     </TableRow>
                     );
@@ -723,20 +688,18 @@ export function InventoryListClient() {
 
             {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {itemsToRender.map((item) => {
-                    const product = productsByBarcode.get(item.barcode);
+                {groupedItems.map((group) => {
+                    const product = productsByBarcode.get(group.mainItem.barcode);
                     return (
                         <InventoryItemCardMobile
-                            key={item.id}
-                            item={item}
+                            key={group.mainItem.barcode}
+                            item={group.mainItem}
                             product={product}
-                            onDetails={() => handleOpenDetailsDialog(item)}
-                            onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
-                            onReturn={role === 'admin' ? () => handleOpenReturnDialog(item) : undefined}
-                            onDelete={role === 'admin' ? () => handleOpenDeleteDialog(item) : undefined}
-                            onCreateProduct={role === 'admin' ? () => handleOpenCreateProductDialog(item.barcode) : undefined}
-                            isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
-                            onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(item.id) : undefined}
+                            totalQuantity={group.totalQuantity}
+                            individualItemCount={group.individualItems.length}
+                            onDetails={() => handleOpenGroupDetails(group)}
+                            isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
+                            onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(group.mainItem.barcode) : undefined}
                             context="inventory"
                         />
                     )
@@ -758,32 +721,34 @@ export function InventoryListClient() {
         </div>
       )}
 
-      {/* Single Item Dialogs */}
+      {/* Individual Item Action Dialogs (triggered from the group dialog) */}
+       <InventoryItemGroupDetailsDialog
+        group={selectedGroup}
+        isOpen={isGroupDetailsOpen}
+        onOpenChange={setIsGroupDetailsOpen}
+        onActionSuccess={handleActionSuccess}
+        onOpenReturnDialog={handleOpenReturnDialog}
+        onOpenEditDialog={handleOpenEditDialog}
+        onOpenDeleteDialog={handleOpenDeleteDialog}
+      />
       <ReturnQuantityDialog
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleReturnSuccess}
-      />
-      <InventoryItemDetailsDialog
-        item={selectedItemForDetails}
-        isOpen={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
-        displayContext="default"
+        onReturnSuccess={handleActionSuccess}
       />
       <EditInventoryItemDialog
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleEditSuccess}
+        onSuccess={handleActionSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onSuccess={() => handleDeleteSuccess(selectedItemForDeletion!.id)}
+        onSuccess={() => handleActionSuccess()}
       />
       
        {/* Create Product Dialog */}
@@ -792,7 +757,6 @@ export function InventoryListClient() {
           barcode={barcodeToCreate}
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
-          onOpenChange={setIsCreateProductDialogOpen}
           onSuccess={handleProductCreateSuccess}
         />
       )}
@@ -801,16 +765,16 @@ export function InventoryListClient() {
       <BulkReturnDialog 
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
-        itemIds={Array.from(selectedItemIds)}
+        itemIds={getItemsForBulkAction()}
         onSuccess={handleBulkSuccess}
-        itemCount={selectedItemIds.size}
+        itemCount={getItemsForBulkAction().length}
       />
       <BulkDeleteDialog
         isOpen={isBulkDeleteOpen}
         onOpenChange={setIsBulkDeleteOpen}
-        itemIds={Array.from(selectedItemIds)}
+        itemIds={getItemsForBulkAction()}
         onSuccess={handleBulkSuccess}
-        itemCount={selectedItemIds.size}
+        itemCount={getItemsForBulkAction().length}
       />
     </div>
   );
