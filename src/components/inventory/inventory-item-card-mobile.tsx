@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { InventoryItem, Product } from '@/lib/types';
@@ -163,7 +164,7 @@ export function InventoryItemCardMobile({
         {context === 'inventory' ? (
           isSingleItem ? (
             <>
-              {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+              <Button variant="outline" size="sm" onClick={onDetails}><Eye className="mr-2 h-4 w-4" />Details</Button>
               {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
               {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
             </>
