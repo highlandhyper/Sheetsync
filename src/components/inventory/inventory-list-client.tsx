@@ -190,7 +190,7 @@ export function InventoryListClient() {
 
     return items;
   }, [cachedItems, activeDashboardFilter, searchTerm, selectedSupplier, selectedDateRange, typeFilter]);
-
+  
   const groupedItems = useMemo(() => {
     const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();
 
@@ -800,3 +800,5 @@ export function InventoryListClient() {
     </div>
   );
 }
+
+    
