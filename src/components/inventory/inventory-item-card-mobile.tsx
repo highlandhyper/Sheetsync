@@ -4,8 +4,7 @@
 import type { InventoryItem, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
 import {
@@ -14,7 +13,6 @@ import {
   CalendarDays,
   Hash,
   MapPin,
-  Package,
   Tag,
   AlertTriangle,
   User,
@@ -30,6 +28,8 @@ import {
 interface InventoryItemCardMobileProps {
   item: InventoryItem;
   product?: Product;
+  totalQuantity?: number;
+  individualItemCount?: number;
   onDetails: () => void;
   onEdit?: () => void;
   onReturn?: () => void;
@@ -43,6 +43,8 @@ interface InventoryItemCardMobileProps {
 export function InventoryItemCardMobile({
   item,
   product,
+  totalQuantity,
+  individualItemCount,
   onDetails,
   onEdit,
   onReturn,
@@ -57,6 +59,8 @@ export function InventoryItemCardMobile({
   const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
   const isProductFound = item.productName !== 'Not Found';
   const costPrice = product?.costPrice;
+  const quantityToShow = totalQuantity ?? item.quantity;
+
 
   let formattedExpiryDate = 'N/A';
   if (item.expiryDate) {
@@ -68,27 +72,31 @@ export function InventoryItemCardMobile({
     }
   }
 
+  // For grouped view, if there are multiple expiry dates, show "Multiple"
+  if (context === 'inventory' && individualItemCount && individualItemCount > 1) {
+      formattedExpiryDate = "Multiple";
+  }
+
+
   return (
     <Card className={cn("w-full shadow-md", isSelected && 'ring-2 ring-primary ring-offset-2')}>
       <CardHeader className="flex flex-row items-start gap-4 pb-3">
         {onSelect && (
-            <Checkbox
-            checked={isSelected}
-            onCheckedChange={onSelect}
-            className="mt-1"
-            aria-label={`Select item ${item.productName}`}
-            />
+            <div
+            role="checkbox"
+            aria-checked={isSelected}
+            onClick={onSelect}
+            className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+          />
         )}
         <div className="flex-1">
-          <CardTitle className={cn("text-lg", !isProductFound && "text-muted-foreground italic")}>
+          <CardTitle className={cn("text-lg flex justify-between items-center", !isProductFound && "text-muted-foreground italic")}>
             {item.productName}
+            {individualItemCount && individualItemCount > 1 && <Badge variant="secondary">{individualItemCount} logs</Badge>}
           </CardTitle>
           <CardDescription className="flex items-center text-xs">
             <Barcode className="mr-1.5 h-3.5 w-3.5" /> {item.barcode}
           </CardDescription>
-        </div>
-        <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={onDetails} className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm pb-4">
@@ -102,7 +110,7 @@ export function InventoryItemCardMobile({
          
           <div className="flex items-start gap-2">
             <Hash className="h-4 w-4 mt-0.5 text-muted-foreground" />
-            <div><span className="font-medium">In Stock</span><p className="text-muted-foreground">{item.quantity}</p></div>
+            <div><span className="font-medium">In Stock</span><p className="text-muted-foreground font-semibold">{quantityToShow}</p></div>
           </div>
           {(context === 'supplier' || context === 'inventory' || context === 'staff') && costPrice !== undefined && (
              <>
@@ -112,7 +120,7 @@ export function InventoryItemCardMobile({
                 </div>
                 <div className="flex items-start gap-2">
                     <Wallet className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div><span className="font-medium">Total Value</span><p className="text-muted-foreground font-semibold">QAR {(costPrice * item.quantity).toFixed(2)}</p></div>
+                    <div><span className="font-medium">Total Value</span><p className="text-muted-foreground font-semibold">QAR {(costPrice * quantityToShow).toFixed(2)}</p></div>
                 </div>
              </>
           )}
@@ -152,7 +160,11 @@ export function InventoryItemCardMobile({
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
-         {isProductFound ? (
+         {context === 'inventory' ? (
+             <Button variant="outline" size="sm" onClick={onDetails} className="w-full">
+                <Eye className="mr-2 h-4 w-4" /> View {individualItemCount || 1} Log(s)
+            </Button>
+         ) : isProductFound ? (
              <>
                 {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
                 {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
