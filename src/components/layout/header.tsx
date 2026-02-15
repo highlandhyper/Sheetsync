@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Zap, LogOut, UserCircle, Command, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
@@ -25,6 +25,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 // New component for sync status
 function LastSyncStatus() {
   const { lastSync, isSyncing, isCacheReady, refreshData } = useDataCache();
+  // State to force re-render for the relative time display
+  const [_, setForceUpdate] = useState(0);
+
+  useEffect(() => {
+    // Set up an interval to update the component every 30 seconds
+    const timer = setInterval(() => {
+      setForceUpdate(Date.now());
+    }, 30000); // 30 seconds
+
+    // Clean up the interval on component unmount
+    return () => clearInterval(timer);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   if (isSyncing) {
      return (
