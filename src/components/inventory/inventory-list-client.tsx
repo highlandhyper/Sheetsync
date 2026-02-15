@@ -91,84 +91,6 @@ export function InventoryListClient() {
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
-  
-  const getItemsForBulkAction = (): string[] => {
-    if (selectedBarcodes.size === 0) return [];
-    
-    const itemIds: string[] = [];
-    groupedItems.forEach(group => {
-        if(selectedBarcodes.has(group.mainItem.barcode)) {
-            group.individualItems.forEach(item => itemIds.push(item.id));
-        }
-    });
-    return itemIds;
-  };
-
-  const totalValueOfSelectedItems = useMemo(() => {
-    if (selectedBarcodes.size === 0) return 0;
-
-    let totalValue = 0;
-    groupedItems.forEach(group => {
-      if (selectedBarcodes.has(group.mainItem.barcode)) {
-        const product = productsByBarcode.get(group.mainItem.barcode);
-        const costPrice = product?.costPrice ?? 0;
-        totalValue += costPrice * group.totalQuantity;
-      }
-    });
-    return totalValue;
-  }, [selectedBarcodes, groupedItems, productsByBarcode]);
-
-
-  useEffect(() => {
-    const filterTypeFromQuery = searchParams.get('filterType');
-    const suppliersFromQuery = searchParams.get('suppliers');
-    const fromDateQuery = searchParams.get('from');
-    const toDateQuery = searchParams.get('to');
-
-    let newPotentialFilter: DashboardFilterType = null;
-    let clearUrlParams = false;
-
-    if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
-      newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
-      clearUrlParams = true;
-    } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
-      newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
-    } else if (filterTypeFromQuery === 'damaged') {
-      newPotentialFilter = { type: 'damaged' };
-      clearUrlParams = true;
-    } else if (filterTypeFromQuery === 'expiringSoon') {
-      newPotentialFilter = { type: 'expiringSoon' };
-      clearUrlParams = true;
-    } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
-      const supplierNames = decodeURIComponent(suppliersFromQuery).split(',');
-      newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
-      clearUrlParams = true;
-    }
-
-    if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
-      setActiveDashboardFilter(newPotentialFilter);
-      if (newPotentialFilter) {
-        setSearchTerm('');
-        setSelectedSupplier('');
-        setSelectedDateRange(undefined);
-        if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
-            setSelectedSupplier(newPotentialFilter.suppliers[0]);
-        }
-      }
-    } 
-    
-    if (clearUrlParams) {
-        router.replace('/inventory', { shallow: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router]);
-
-  useEffect(() => {
-    if (!isMultiSelectEnabled) {
-      setSelectedBarcodes(new Set());
-    }
-  }, [isMultiSelectEnabled]);
-
 
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
@@ -305,6 +227,83 @@ export function InventoryListClient() {
 
     return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);
+  
+  const getItemsForBulkAction = (): string[] => {
+    if (selectedBarcodes.size === 0) return [];
+    
+    const itemIds: string[] = [];
+    groupedItems.forEach(group => {
+        if(selectedBarcodes.has(group.mainItem.barcode)) {
+            group.individualItems.forEach(item => itemIds.push(item.id));
+        }
+    });
+    return itemIds;
+  };
+
+  const totalValueOfSelectedItems = useMemo(() => {
+    if (selectedBarcodes.size === 0) return 0;
+
+    let totalValue = 0;
+    groupedItems.forEach(group => {
+      if (selectedBarcodes.has(group.mainItem.barcode)) {
+        const product = productsByBarcode.get(group.mainItem.barcode);
+        const costPrice = product?.costPrice ?? 0;
+        totalValue += costPrice * group.totalQuantity;
+      }
+    });
+    return totalValue;
+  }, [selectedBarcodes, groupedItems, productsByBarcode]);
+
+
+  useEffect(() => {
+    const filterTypeFromQuery = searchParams.get('filterType');
+    const suppliersFromQuery = searchParams.get('suppliers');
+    const fromDateQuery = searchParams.get('from');
+    const toDateQuery = searchParams.get('to');
+
+    let newPotentialFilter: DashboardFilterType = null;
+    let clearUrlParams = false;
+
+    if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
+      newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
+      clearUrlParams = true;
+    } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
+      newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
+    } else if (filterTypeFromQuery === 'damaged') {
+      newPotentialFilter = { type: 'damaged' };
+      clearUrlParams = true;
+    } else if (filterTypeFromQuery === 'expiringSoon') {
+      newPotentialFilter = { type: 'expiringSoon' };
+      clearUrlParams = true;
+    } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
+      const supplierNames = decodeURIComponent(suppliersFromQuery).split(',');
+      newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
+      clearUrlParams = true;
+    }
+
+    if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
+      setActiveDashboardFilter(newPotentialFilter);
+      if (newPotentialFilter) {
+        setSearchTerm('');
+        setSelectedSupplier('');
+        setSelectedDateRange(undefined);
+        if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
+            setSelectedSupplier(newPotentialFilter.suppliers[0]);
+        }
+      }
+    } 
+    
+    if (clearUrlParams) {
+        router.replace('/inventory', { shallow: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!isMultiSelectEnabled) {
+      setSelectedBarcodes(new Set());
+    }
+  }, [isMultiSelectEnabled]);
 
 
   const clearFilters = () => {
