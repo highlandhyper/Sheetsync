@@ -29,6 +29,8 @@ import { CreateProductFromInventoryDialog } from '../products/create-product-fro
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
+import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
+
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 
@@ -77,6 +79,10 @@ export function InventoryListClient() {
   // States for grouped item dialog
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupedInventoryItem | null>(null);
+  
+  // State for single item details dialog
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
 
 
   const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
@@ -380,6 +386,11 @@ export function InventoryListClient() {
     setIsGroupDetailsOpen(true);
   };
   
+  const handleOpenDetailsDialog = (item: InventoryItem) => {
+    setSelectedItemForDetails(item);
+    setIsDetailsDialogOpen(true);
+  };
+
   const handleOpenReturnDialog = (item: InventoryItem) => {
     if (role === 'viewer') return;
     setSelectedItemForReturn(item);
@@ -415,6 +426,7 @@ export function InventoryListClient() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
+    setIsDetailsDialogOpen(false);
 
     // If the group details dialog is open, we need to update its content
     // by finding the new state of the group and setting it.
@@ -661,11 +673,9 @@ export function InventoryListClient() {
                         <TableCell className="text-center noprint">
                            {isSingleItem ? (
                                 <div className="flex justify-center items-center gap-1">
-                                    {role === 'admin' && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(mainItem)} className="h-8 w-8" aria-label="Edit">
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                    )}
+                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
                                     {role !== 'viewer' && (
                                         <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
                                             <Undo2 className="h-4 w-4" />
@@ -704,6 +714,7 @@ export function InventoryListClient() {
             <div className="grid grid-cols-1 gap-4 md:hidden">
                 {groupedItems.map((group) => {
                     const product = productsByBarcode.get(group.mainItem.barcode);
+                    const isSingleItem = group.individualItems.length === 1;
                     return (
                         <InventoryItemCardMobile
                             key={group.mainItem.barcode}
@@ -711,8 +722,8 @@ export function InventoryListClient() {
                             product={product}
                             totalQuantity={group.totalQuantity}
                             individualItemCount={group.individualItems.length}
-                            onDetails={() => handleOpenGroupDetails(group)}
-                            onEdit={role === 'admin' ? () => handleOpenEditDialog(group.mainItem) : undefined}
+                            onDetails={isSingleItem ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)}
+                            onEdit={undefined}
                             onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
                             onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
                             isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
@@ -747,6 +758,12 @@ export function InventoryListClient() {
         onOpenReturnDialog={handleOpenReturnDialog}
         onOpenEditDialog={handleOpenEditDialog}
         onOpenDeleteDialog={handleOpenDeleteDialog}
+      />
+      <InventoryItemDetailsDialog
+        item={selectedItemForDetails}
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog
         item={selectedItemForReturn}
@@ -797,7 +814,3 @@ export function InventoryListClient() {
     </div>
   );
 }
-
-    
-
-    
