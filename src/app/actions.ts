@@ -31,8 +31,10 @@ import {
   getReturnedItems,
   getUniqueLocations,
   getUniqueStaffNames,
+  getAuditLogs,
+  logAuditEvent,
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
 
 
@@ -663,13 +665,15 @@ export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds:
     }
 
     if (failedDeletions > 0) {
+      await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY_ITEMS', `${successfulDeletions} items`, `Bulk delete partially failed. Succeeded: ${successfulDeletions}, Failed: ${failedDeletions}.`);
       revalidateRelevantPaths();
       return {
         success: false,
         message: `Deleted ${successfulDeletions} items, but failed to delete ${failedDeletions} items. The list has been refreshed.`,
       };
     }
-
+    
+    await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY_ITEMS', `${successfulDeletions} items`, `Successfully bulk deleted ${successfulDeletions} inventory log entries.`);
     revalidateRelevantPaths();
     return { success: true, message: `Successfully deleted all ${successfulDeletions} selected items.` };
 
@@ -718,6 +722,7 @@ export async function bulkReturnInventoryItemsAction(
     }
 
     if (failedReturns > 0) {
+      await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Bulk return partially failed. Succeeded: ${successfulReturns}, Failed: ${failedReturns}. Processed by ${staffName}.`);
       revalidateRelevantPaths();
       return {
         success: false,
@@ -725,6 +730,7 @@ export async function bulkReturnInventoryItemsAction(
       };
     }
 
+    await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Successfully processed bulk return for ${successfulReturns} items. Processed by ${staffName}.`);
     revalidateRelevantPaths();
     return { success: true, message: `Successfully processed return for all ${successfulReturns} selected items.` };
 
@@ -737,6 +743,18 @@ export async function bulkReturnInventoryItemsAction(
   }
 }
 
+export async function fetchAuditLogsAction(): Promise<ActionResponse<AuditLogEntry[]>> {
+  try {
+    const logs = await getAuditLogs();
+    return { success: true, data: logs };
+  } catch (error) {
+    console.error("Error in fetchAuditLogsAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching audit logs.";
+    return { success: false, message: errorMessage };
+  }
+}
+
+
 function revalidateRelevantPaths() {
     revalidatePath('/inventory');
     revalidatePath('/inventory/returns');
@@ -747,10 +765,12 @@ function revalidateRelevantPaths() {
     revalidatePath('/products/list');
     revalidatePath('/products/manage');
     revalidatePath('/suppliers');
+    revalidatePath('/audit-log');
 }
     
 
     
+
 
 
 

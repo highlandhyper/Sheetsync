@@ -1,6 +1,6 @@
 
 
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -9,6 +9,7 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
+const AUDIT_LOG_SHEET_NAME = "Audit Log"; // New sheet for audit logs
 
 // --- Column Indices (0-based - MUST MATCH YOUR ACTUAL SHEET STRUCTURE) ---
 // "Form responses 2" - Inventory Log (Assuming A-I, with J for app-generated Unique ID)
@@ -52,17 +53,27 @@ const RL_COL_RETURN_TIMESTAMP = 10; // K (Timestamp of when the return was proce
 const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
 const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
+// "Audit Log"
+const AUDIT_COL_TIMESTAMP = 0;    // A
+const AUDIT_COL_USER = 1;         // B
+const AUDIT_COL_ACTION = 2;       // C
+const AUDIT_COL_TARGET = 3;       // D
+const AUDIT_COL_DETAILS = 4;      // E
+
+
 // --- Read Ranges ---
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:E`;
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
+const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
 // --- Append Ranges (for adding new rows) ---
 const DB_APPEND_RANGE = `${DB_SHEET_NAME}!A:E`;
 const INVENTORY_APPEND_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A:J`;
 const RETURN_LOG_APPEND_RANGE = `${RETURNS_LOG_SHEET_NAME}!A:K`;
 const APP_SETTINGS_APPEND_RANGE = `${APP_SETTINGS_SHEET_NAME}!A:B`;
+const AUDIT_LOG_APPEND_RANGE = `${AUDIT_LOG_SHEET_NAME}!A:E`;
 
 function excelSerialDateToJSDate(serial: number): Date | null {
   if (isNaN(serial) || serial <= 0) return null;
@@ -456,6 +467,8 @@ export async function addProduct(userEmail: string, productData: { barcode: stri
       return null;
     }
     
+    await logAuditEvent(userEmail, 'CREATE_PRODUCT', productData.barcode.trim(), `Created product "${productData.productName.trim()}"`);
+    
     return {
       id: productData.barcode,
       barcode: productData.barcode.trim(),
@@ -490,6 +503,7 @@ export async function addSupplier(userEmail: string, supplierData: { name: strin
     const newRow = [placeholderBarcode, '', placeholderProduct, supplierData.name.trim()];
 
     if (await appendSheetData(DB_APPEND_RANGE, [newRow])) {
+      await logAuditEvent(userEmail, 'CREATE_SUPPLIER', supplierData.name.trim(), `Created supplier "${supplierData.name.trim()}"`);
       return { supplier: transformToSupplier(supplierData.name.trim(), dbSheet?.length || 0) };
     } else {
       console.error(`GS_Data: addSupplier - Failed to append new supplier "${supplierData.name.trim()}" to sheet.`);
@@ -578,6 +592,8 @@ export async function addInventoryItem(
       return null;
     }
     
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', clientSideUniqueId, `Logged ${itemFormValues.quantity} of "${resolvedProductDetails.productName.trim()}" (Barcode: ${itemFormValues.barcode.trim()}) to location ${itemFormValues.location.trim()}.`);
+    
     const parsedTimestamp = dateParse(newRowData[INV_COL_TIMESTAMP] as string, "dd/MM/yyyy HH:mm:ss", new Date());
     return {
       id: clientSideUniqueId, productName: resolvedProductDetails.productName.trim(), barcode: itemFormValues.barcode.trim(),
@@ -631,6 +647,7 @@ export async function processReturn(userEmail: string, itemId: string, quantityT
       resultMessage = operationSuccessful ? `Returned ${actualReturnedQty} of ${currentItem.productName}. New quantity: ${newQuantity}.` : `Failed to update quantity for ${itemId}.`;
     }
     if (operationSuccessful) {
+      await logAuditEvent(userEmail, 'PROCESS_RETURN', itemId, `Returned ${actualReturnedQty} of "${currentItem.productName}". Processed by ${staffNameProcessingReturn}.`);
       const logEntry = [
         itemId,
         currentItem.productName,
@@ -731,6 +748,9 @@ export async function updateSupplierNameAndReferences(userEmail: string, current
     }
     
     const success = await batchUpdateSheetCells(batchUpdates);
+    if(success) {
+        await logAuditEvent(userEmail, 'UPDATE_SUPPLIER', currentName, `Renamed supplier to "${newName.trim()}"`);
+    }
     console.log(`GS_Data: updateSupplierName - Batch update for "${currentName}" to "${newName}" ${success ? 'succeeded' : 'failed'}. Updates: ${dbRowsUpdated} in DB, ${invDataRowsUpdated} in Inventory Log, ${returnsLogRowsUpdated} in Returns Log.`);
     return success;
   } catch (error) {
@@ -793,7 +813,8 @@ export async function updateInventoryItemDetails(
     console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}. Changes: ${JSON.stringify(updates)}`);
     
     if (success) {
-        // Construct the updated item object to return for optimistic UI update
+        const changesSummary = Object.entries(updates).map(([key, value]) => `${key}: ${value}`).join(', ');
+        await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated item details: ${changesSummary}`);
         const updatedRowData = [...itemRowData[0]];
         if (updates.location !== undefined) updatedRowData[INV_COL_LOCATION] = updates.location;
         if (updates.quantity !== undefined) updatedRowData[INV_COL_QTY] = updates.quantity;
@@ -813,11 +834,6 @@ export async function updateInventoryItemDetails(
   }
 }
 
-/**
- * Finds the 1-based row number for a product by searching both barcode columns.
- * @param barcode The barcode to find.
- * @returns The 1-based row number or null if not found.
- */
 async function findProductRowByBarcode(barcode: string): Promise<number | null> {
     const searchRange = `${DB_SHEET_NAME}!A1:B`; // Read first two columns
     const barcodeData = await readSheetData(searchRange);
@@ -850,7 +866,6 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
 
       const batchUpdates: { range: string; values: any[][] }[] = [];
 
-      // Update product name, supplier name, and cost price in the DB sheet for the found row
       batchUpdates.push({
           range: `${DB_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + DB_COL_PRODUCT_NAME)}${rowNumber}`,
           values: [[newProductName.trim()]]
@@ -872,6 +887,9 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
       }
 
       const allSuccessful = await batchUpdateSheetCells(batchUpdates);
+      if(allSuccessful) {
+        await logAuditEvent(userEmail, 'UPDATE_PRODUCT', barcode, `Updated product details. Name: "${newProductName}", Supplier: "${newSupplierName}", Cost: ${newCostPrice ?? 'N/A'}`);
+      }
       console.log(`GS_Data: updateProductAndSupplierLinks - Processed updates for barcode ${barcode}. Success: ${allSuccessful}`);
       return allSuccessful;
 
@@ -1049,6 +1067,7 @@ export async function deleteInventoryItemById(userEmail: string, itemId: string)
     
     const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
+      await logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry.`);
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
     } else {
       console.error(`GS_Data: deleteInventoryItemById - Failed to delete row ${rowNumber} for item ID ${itemId}.`);
@@ -1066,9 +1085,6 @@ export async function deleteInventoryItemById(userEmail: string, itemId: string)
 
 const PERMISSIONS_KEY = 'accessPermissions';
 
-/**
- * Loads the permissions object from the APP_SETTINGS sheet.
- */
 export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
     try {
         const settingsData = await readSheetData(APP_SETTINGS_READ_RANGE);
@@ -1082,7 +1098,6 @@ export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
             try {
                 const permissionsJson = permissionsRow[SETTINGS_COL_VALUE];
                 const permissions = JSON.parse(permissionsJson);
-                // Basic validation
                 if (permissions.admin && permissions.viewer) {
                     console.log("GS_Data: loadPermissionsFromSheet - Successfully loaded and parsed permissions from sheet.");
                     return permissions;
@@ -1100,10 +1115,6 @@ export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
     }
 }
 
-/**
- * Saves the permissions object to the APP_SETTINGS sheet.
- * It will overwrite the existing permissions entry or create a new one.
- */
 export async function savePermissionsToSheet(permissions: Permissions): Promise<boolean> {
     const timeLabel = "GS_Data: savePermissionsToSheet total duration";
     console.time(timeLabel);
@@ -1120,12 +1131,10 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
         }
         
         if (rowNumberToUpdate) {
-            // Update existing row
             const range = `${APP_SETTINGS_SHEET_NAME}!B${rowNumberToUpdate}`;
             console.log(`GS_Data: savePermissionsToSheet - Updating permissions at range: ${range}`);
             return await updateSheetData(range, [[permissionsJson]]);
         } else {
-            // Append new row
             console.log("GS_Data: savePermissionsToSheet - No existing permissions found, appending new row.");
             return await appendSheetData(APP_SETTINGS_APPEND_RANGE, [[PERMISSIONS_KEY, permissionsJson]]);
         }
@@ -1136,12 +1145,63 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
         console.timeEnd(timeLabel);
     }
 }
+
+// --- New Functions for Audit Log ---
+
+function transformToAuditLogEntry(row: any[], rowIndex: number): AuditLogEntry | null {
+  const sheetRowNumber = rowIndex + 2;
+  try {
+    if (!row || row.length < 5) return null;
+    
+    const timestampValue = row[AUDIT_COL_TIMESTAMP];
+    const timestamp = parseFlexibleTimestamp(timestampValue)?.toISOString() || new Date().toISOString();
+
+    const entry: AuditLogEntry = {
+      id: `audit_${sheetRowNumber}_${timestamp}`,
+      timestamp: timestamp,
+      user: String(row[AUDIT_COL_USER] || 'Unknown'),
+      action: String(row[AUDIT_COL_ACTION] || 'UNKNOWN_ACTION'),
+      target: String(row[AUDIT_COL_TARGET] || 'N/A'),
+      details: String(row[AUDIT_COL_DETAILS] || ''),
+    };
+    return entry;
+  } catch (error) {
+    console.error(`GS_Data: Error transforming audit log row ${sheetRowNumber}:`, error, "Row data:", row);
+    return null;
+  }
+}
+
+export async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<boolean> {
+  try {
+    const timestamp = format(new Date(), "dd/MM/yyyy HH:mm:ss");
+    const newRow = [timestamp, user, action, target, details];
+    if (!await appendSheetData(AUDIT_LOG_APPEND_RANGE, [newRow])) {
+      console.error("GS_Data: logAuditEvent - Failed to append event to sheet.");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("GS_Data: Critical error in logAuditEvent:", error);
+    return false;
+  }
+}
+
+export async function getAuditLogs(): Promise<AuditLogEntry[]> {
+  try {
+    const sheetData = await readSheetData(AUDIT_LOG_READ_RANGE);
+    if (!sheetData) return [];
+
+    const logs = sheetData.map(transformToAuditLogEntry).filter(Boolean) as AuditLogEntry[];
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return logs;
+  } catch (error) {
+    console.error("GS_Data: Critical error in getAuditLogs:", error);
+    return [];
+  }
+}
     
 
     
-
-    
-
 
 
 
