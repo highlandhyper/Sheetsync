@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useState } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, MapPin, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil } from 'lucide-react';
+import { Package, User, CalendarDays, MapPin, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History } from 'lucide-react';
+import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 
 interface InventoryItemDetailsDialogProps {
   item: InventoryItem | null;
@@ -31,6 +32,8 @@ export function InventoryItemDetailsDialog({
   onStartEdit, // Will be undefined if not passed (e.g., for 'viewer' role)
   displayContext = 'default'
 }: InventoryItemDetailsDialogProps) {
+  const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
+  
   if (!item) return null;
 
   const isItemExpired = item.expiryDate ? isValid(parseISO(item.expiryDate)) && parseISO(item.expiryDate) < new Date() : false;
@@ -67,7 +70,11 @@ export function InventoryItemDetailsDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) setIsAuditLogOpen(false); // Reset on close
+        onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="mb-2">
           <DialogTitle className="flex items-center text-xl">
@@ -141,19 +148,33 @@ export function InventoryItemDetailsDialog({
 
         </div>
 
-        <DialogFooter className="mt-6 flex justify-end gap-2">
-          {onStartEdit && ( // Only render Edit button if onStartEdit is provided
-            <Button type="button" variant="outline" onClick={handleEditClick}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit Item
+        <DialogFooter className="mt-6 flex justify-between items-center gap-2">
+            <Button type="button" variant="ghost" onClick={() => setIsAuditLogOpen(true)}>
+                <History className="mr-2 h-4 w-4" /> View History
             </Button>
-          )}
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Close
-            </Button>
-          </DialogClose>
+            <div className="flex items-center gap-2">
+              {onStartEdit && ( // Only render Edit button if onStartEdit is provided
+                <Button type="button" variant="outline" onClick={handleEditClick}>
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </Button>
+              )}
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Close
+                </Button>
+              </DialogClose>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {item && (
+      <ItemAuditLogDialog
+        isOpen={isAuditLogOpen}
+        onOpenChange={setIsAuditLogOpen}
+        targetId={item.id}
+        productName={item.productName}
+      />
+    )}
+  </>
   );
 }
