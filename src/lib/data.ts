@@ -498,7 +498,7 @@ export async function addProduct(userEmail: string, productData: { barcode: stri
       return null;
     }
     
-    await logAuditEvent(userEmail, 'CREATE_PRODUCT', productData.barcode.trim(), `Created product "${productData.productName.trim()}"`);
+    await logAuditEvent(userEmail, 'CREATE_PRODUCT', productData.barcode.trim(), `Created product "${productData.productName.trim()}" (Barcode: ${productData.barcode.trim()})`);
     
     return {
       id: productData.barcode,
@@ -691,7 +691,7 @@ export async function processReturn(userEmail: string, itemId: string, quantityT
       resultMessage = operationSuccessful ? `Returned ${actualReturnedQty} of ${currentItem.productName}. New quantity: ${newQuantity}.` : `Failed to update quantity for ${itemId}.`;
     }
     if (operationSuccessful) {
-      await logAuditEvent(userEmail, 'PROCESS_RETURN', itemId, `Returned ${actualReturnedQty} of "${currentItem.productName}". Processed by ${staffNameProcessingReturn}.`);
+      await logAuditEvent(userEmail, 'PROCESS_RETURN', itemId, `Returned ${actualReturnedQty} of "${currentItem.productName}" (Barcode: ${currentItem.barcode}). Processed by ${staffNameProcessingReturn}.`);
       const logEntry = [
         itemId,
         currentItem.productName,
@@ -875,7 +875,7 @@ export async function updateInventoryItemDetails(
     
     if (success) {
         const changesSummary = changesForLog.join('; ');
-        await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated "${originalItem.productName}". Changes: ${changesSummary}`);
+        await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated "${originalItem.productName}" (Barcode: ${originalItem.barcode}). Changes: ${changesSummary}`);
         
         // Construct the updated item object locally to return it without another read
         const updatedItem = { ...originalItem };
@@ -949,7 +949,7 @@ export async function updateProductAndSupplierLinks(userEmail: string, barcode: 
 
       const allSuccessful = await batchUpdateSheetCells(batchUpdates);
       if(allSuccessful) {
-        await logAuditEvent(userEmail, 'UPDATE_PRODUCT', barcode, `Updated product details. Name: "${newProductName}", Supplier: "${newSupplierName}", Cost: ${newCostPrice ?? 'N/A'}`);
+        await logAuditEvent(userEmail, 'UPDATE_PRODUCT', barcode, `Updated product details for barcode ${barcode}. Name: "${newProductName}", Supplier: "${newSupplierName}", Cost: ${newCostPrice ?? 'N/A'}`);
       }
       console.log(`GS_Data: updateProductAndSupplierLinks - Processed updates for barcode ${barcode}. Success: ${allSuccessful}`);
       return allSuccessful;
@@ -1132,8 +1132,8 @@ export async function deleteInventoryItemById(userEmail: string, itemId: string)
 
     const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
-      const productNameForLog = itemToDelete ? `"${itemToDelete.productName}"` : `item with ID ${itemId}`;
-      await logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry for ${productNameForLog}.`);
+      const detailsForLog = itemToDelete ? `Permanently deleted inventory log entry for "${itemToDelete.productName}" (Barcode: ${itemToDelete.barcode}).` : `Permanently deleted inventory log entry for item with ID ${itemId}.`;
+      await logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, detailsForLog);
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
     } else {
       console.error(`GS_Data: deleteInventoryItemById - Failed to delete row ${rowNumber} for item ID ${itemId}.`);
@@ -1298,3 +1298,6 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
 
 
 
+
+
+    
