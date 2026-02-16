@@ -134,7 +134,14 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      formData.append('expiryDate', data.expiryDate.toISOString());
+      // Timezone-safe date formatting.
+      // Get the parts of the date in the user's local timezone.
+      const date = data.expiryDate;
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      formData.append('expiryDate', formattedDate);
     } else if (data.itemType === 'Expiry') {
         toast({title: "Validation Error", description: "Expiry date is required for 'Expiry' type items.", variant: "destructive"});
         return;
