@@ -518,7 +518,8 @@ export async function editInventoryItemAction(
       location,
       itemType,
       quantity,
-      expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : null, // Keep yyyy-MM-dd for data.ts function
+      // Use timezone-independent formatting to prevent accidental date changes
+      expiryDate: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
     };
 
     const updatedItem = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
@@ -774,6 +775,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 
