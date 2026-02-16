@@ -30,6 +30,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
+import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -60,7 +61,7 @@ export function InventoryListClient() {
   } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+  const [selectedSupplier, setSelectedSupplier] = useState('');
   
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -463,6 +464,30 @@ export function InventoryListClient() {
     window.print();
   };
 
+  const handleShareToWhatsApp = () => {
+    let reportText = '*Inventory Overview*\n\n';
+
+    groupedItems.forEach(group => {
+      const product = productsByBarcode.get(group.mainItem.barcode);
+      const costPrice = product?.costPrice;
+      const totalValue = costPrice !== undefined ? costPrice * group.totalQuantity : undefined;
+
+      reportText += `*${group.mainItem.productName}*\n`;
+      reportText += `  Barcode: ${group.mainItem.barcode}\n`;
+      if (group.mainItem.supplierName) {
+        reportText += `  Supplier: ${group.mainItem.supplierName}\n`;
+      }
+      reportText += `  Total Qty: ${group.totalQuantity}\n`;
+      if (totalValue !== undefined) {
+        reportText += `  Total Value: QAR ${totalValue.toFixed(2)}\n`;
+      }
+      reportText += '\n';
+    });
+
+    const encodedText = encodeURIComponent(reportText);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const allBarcodes = new Set(groupedItems.map(g => g.mainItem.barcode));
@@ -592,6 +617,9 @@ export function InventoryListClient() {
                         <FilterX className="mr-2 h-4 w-4" /> Clear
                     </Button>
                   )}
+                   <Button onClick={handleShareToWhatsApp} variant="outline" className="w-full" disabled={groupedItems.length === 0}>
+                       <WhatsAppIcon className="mr-2 h-4 w-4" /> WhatsApp
+                   </Button>
                    <div className="print-button-container w-full">
                     <Button onClick={handlePrint} variant="outline" className="w-full">
                     <Printer className="mr-2 h-4 w-4" /> Print

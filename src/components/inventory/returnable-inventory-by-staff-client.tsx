@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem, Product } from '@/lib/types';
 import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +16,7 @@ import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-i
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, format } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
@@ -24,6 +25,7 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -181,6 +183,7 @@ export function ReturnableInventoryByStaffClient() {
     }, 0);
   }, [filteredInventoryItemsByStaff, productsByBarcode]);
 
+
   useEffect(() => {
     setSelectedItemIds(new Set());
   }, [selectedStaffName]);
@@ -200,6 +203,34 @@ export function ReturnableInventoryByStaffClient() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleShareToWhatsApp = () => {
+    if (!selectedStaffName || itemsToRender.length === 0) return;
+
+    let reportText = `*Inventory Return List for Staff: ${selectedStaffName}*\n\n`;
+
+    itemsToRender.forEach(item => {
+      const product = productsByBarcode.get(item.barcode);
+      const costPrice = product?.costPrice;
+      const totalValue = costPrice !== undefined ? costPrice * item.quantity : undefined;
+
+      reportText += `*${item.productName}*\n`;
+      reportText += `  Barcode: ${item.barcode}\n`;
+      if(item.supplierName) reportText += `  Supplier: ${item.supplierName}\n`;
+      reportText += `  In Stock: ${item.quantity}\n`;
+      if (totalValue !== undefined) {
+        reportText += `  Total Value: QAR ${totalValue.toFixed(2)}\n`;
+      }
+      reportText += `  Location: ${item.location}\n`;
+      if (item.expiryDate && isValid(parseISO(item.expiryDate))) {
+        reportText += `  Expiry: ${format(parseISO(item.expiryDate), 'PP')}\n`;
+      }
+      reportText += '\n';
+    });
+
+    const encodedText = encodeURIComponent(reportText);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -326,10 +357,15 @@ export function ReturnableInventoryByStaffClient() {
                     <X className="mr-2 h-4 w-4" /> Clear Staff
                 </Button>
                 )}
-                <div className="print-button-container ml-auto md:ml-0">
-                    <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                        <Printer className="mr-2 h-4 w-4" /> Print List
+                <div className="flex items-center gap-2 ml-auto md:ml-0">
+                    <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
+                        <WhatsAppIcon className="mr-2 h-4 w-4" /> WhatsApp
                     </Button>
+                    <div className="print-button-container">
+                        <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
+                            <Printer className="mr-2 h-4 w-4" /> Print List
+                        </Button>
+                    </div>
                 </div>
                 {selectedStaffName && (
                 <div className="flex items-center text-sm text-muted-foreground md:ml-auto">
