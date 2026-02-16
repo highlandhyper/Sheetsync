@@ -593,7 +593,20 @@ export async function addInventoryItem(
     newRowData[INV_COL_TIMESTAMP] = format(now, "dd/MM/yyyy HH:mm:ss");
     newRowData[INV_COL_BARCODE] = itemFormValues.barcode.trim();
     newRowData[INV_COL_QTY] = itemFormValues.quantity;
-    newRowData[INV_COL_EXPIRY] = itemFormValues.expiryDate ? format(new Date(itemFormValues.expiryDate), 'dd/MM/yyyy') : '';
+
+    let expiryForSheet = '';
+    if (itemFormValues.expiryDate) {
+        const dateObj = new Date(itemFormValues.expiryDate);
+        if(isValid(dateObj)) {
+            // Manually format from UTC parts to avoid timezone conversion issues
+            const year = dateObj.getUTCFullYear();
+            const month = (dateObj.getUTCMonth() + 1).toString().padStart(2, '0');
+            const day = dateObj.getUTCDate().toString().padStart(2, '0');
+            expiryForSheet = `${day}/${month}/${year}`;
+        }
+    }
+    newRowData[INV_COL_EXPIRY] = expiryForSheet;
+    
     newRowData[INV_COL_LOCATION] = itemFormValues.location.trim();
     newRowData[INV_COL_STAFF] = itemFormValues.staffName.trim();
     newRowData[INV_COL_PRODUCT_NAME] = resolvedProductDetails.productName.trim();
@@ -805,17 +818,17 @@ export async function updateInventoryItemDetails(
     const changesForLog: string[] = [];
 
     // Compare and build updates & log messages
-    if (updates.location !== undefined && updates.location !== originalItem.location) {
+    if (updates.location !== undefined && updates.location.trim() !== originalItem.location) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_LOCATION)}${rowNumber}`, values: [[updates.location]] });
-      changesForLog.push(`location: from "${originalItem.location}" to "${updates.location}"`);
+      changesForLog.push(`location from "${originalItem.location}" to "${updates.location}"`);
     }
     if (updates.quantity !== undefined && updates.quantity !== originalItem.quantity) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_QTY)}${rowNumber}`, values: [[updates.quantity]] });
-      changesForLog.push(`quantity: from ${originalItem.quantity} to ${updates.quantity}`);
+      changesForLog.push(`quantity from ${originalItem.quantity} to ${updates.quantity}`);
     }
     if (updates.itemType !== undefined && updates.itemType !== originalItem.itemType) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_TYPE)}${rowNumber}`, values: [[updates.itemType]] });
-      changesForLog.push(`itemType: from "${originalItem.itemType}" to "${updates.itemType}"`);
+      changesForLog.push(`itemType from "${originalItem.itemType}" to "${updates.itemType}"`);
     }
 
     // Special handling for expiry date comparison
@@ -825,13 +838,17 @@ export async function updateInventoryItemDetails(
       if (updates.expiryDate) {
         const parsedForSheet = parseISO(updates.expiryDate);
         if (isValid(parsedForSheet)) {
-          expiryValueForSheet = format(parsedForSheet, 'dd/MM/yyyy');
+          // Manually format from UTC parts to avoid timezone conversion issues with format()
+          const year = parsedForSheet.getUTCFullYear();
+          const month = (parsedForSheet.getUTCMonth() + 1).toString().padStart(2, '0');
+          const day = parsedForSheet.getUTCDate().toString().padStart(2, '0');
+          expiryValueForSheet = `${day}/${month}/${year}`;
         } else {
           console.warn(`GS_Data: updateInventoryItemDetails - Invalid expiry date string received: ${updates.expiryDate}. Writing empty string.`);
         }
       }
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_EXPIRY)}${rowNumber}`, values: [[expiryValueForSheet]] });
-      changesForLog.push(`expiryDate: from "${originalExpiry || 'none'}" to "${updates.expiryDate || 'none'}"`);
+      changesForLog.push(`expiryDate from "${originalExpiry || 'none'}" to "${updates.expiryDate || 'none'}"`);
     }
 
     if (cellUpdates.length === 0) {
@@ -1245,6 +1262,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
