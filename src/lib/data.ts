@@ -9,7 +9,11 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
-const AUDIT_LOG_SHEET_NAME = "Audit Log"; // New sheet for audit logs
+
+// --- Audit Log Configuration ---
+// The following constants define the sheet and columns for storing audit trail data.
+// The app is configured to write to a sheet named "Audit Log" as specified below.
+const AUDIT_LOG_SHEET_NAME = "Audit Log";
 
 // --- Column Indices (0-based - MUST MATCH YOUR ACTUAL SHEET STRUCTURE) ---
 // "Form responses 2" - Inventory Log (Assuming A-I, with J for app-generated Unique ID)
@@ -53,7 +57,7 @@ const RL_COL_RETURN_TIMESTAMP = 10; // K (Timestamp of when the return was proce
 const SETTINGS_COL_KEY = 0;       // A - Key (e.g., 'permissions')
 const SETTINGS_COL_VALUE = 1;     // B - Value (e.g., a JSON string)
 
-// "Audit Log"
+// "Audit Log" Column Indices
 const AUDIT_COL_TIMESTAMP = 0;    // A
 const AUDIT_COL_USER = 1;         // B
 const AUDIT_COL_ACTION = 2;       // C
@@ -1202,6 +1206,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
