@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AuditLogEntry } from '@/lib/types';
-import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info } from 'lucide-react';
+import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info, FileText } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
@@ -17,6 +16,8 @@ import { Badge } from '../ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDataCache } from '@/context/data-cache-context';
 import { Calendar } from '../ui/calendar';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '../ui/separator';
 
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
@@ -38,17 +39,20 @@ export function AuditLogClient() {
   const [selectedAction, setSelectedAction] = useState<string>(ALL_ACTIONS_VALUE);
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  
   const isMobile = useIsMobile();
 
   const { uniqueUsers, uniqueActions } = useMemo(() => {
+    if (!allLogs) return { uniqueUsers: [], uniqueActions: [] };
     const users = new Set<string>();
     const actions = new Set<string>();
-    if (allLogs) {
-      allLogs.forEach(log => {
-        users.add(log.user);
-        actions.add(log.action);
-      });
-    }
+    allLogs.forEach(log => {
+      users.add(log.user);
+      actions.add(log.action);
+    });
     return {
       uniqueUsers: Array.from(users).sort(),
       uniqueActions: Array.from(actions).sort(),
@@ -97,6 +101,11 @@ export function AuditLogClient() {
     setSelectedUser(ALL_USERS_VALUE);
     setSelectedAction(ALL_ACTIONS_VALUE);
     setSelectedDateRange(undefined);
+  };
+  
+  const handleOpenDetails = (log: AuditLogEntry) => {
+    setSelectedLog(log);
+    setIsDetailsDialogOpen(true);
   };
   
   return (
@@ -181,12 +190,10 @@ export function AuditLogClient() {
                                   <p className="text-muted-foreground font-mono text-xs break-all">{log.target}</p>
                               </div>
                           </div>
-                          <div className="flex items-start gap-2">
-                              <Info className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                              <div>
-                                  <p className="font-medium">Details</p>
-                                  <p className="text-muted-foreground whitespace-pre-wrap">{log.details}</p>
-                              </div>
+                          <div className="mt-4 pt-4 border-t">
+                            <Button variant="secondary" className="w-full" onClick={() => handleOpenDetails(log)}>
+                                <Info className="mr-2 h-4 w-4" /> View Full Details
+                            </Button>
                           </div>
                       </div>
                   </CardContent>
@@ -217,7 +224,11 @@ export function AuditLogClient() {
                     <TableCell className="font-medium break-all">{log.user}</TableCell>
                     <TableCell><Badge variant="secondary">{formatActionString(log.action)}</Badge></TableCell>
                     <TableCell className="font-mono text-xs break-all">{log.target}</TableCell>
-                    <TableCell className="text-sm whitespace-pre-wrap">{log.details}</TableCell>
+                    <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(log)}>
+                            <Info className="mr-2 h-4 w-4" /> View Details
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -229,6 +240,50 @@ export function AuditLogClient() {
           </Table>
         )}
       </Card>
+      
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Audit Log Details
+                </DialogTitle>
+                <DialogDescription>
+                    Full details for the selected log entry.
+                </DialogDescription>
+            </DialogHeader>
+            {selectedLog && (
+                <div className="space-y-3 py-4 text-sm">
+                    <div className="flex items-center">
+                        <CalendarIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Timestamp:</span>
+                        <span className="ml-2 text-muted-foreground">{format(parseISO(selectedLog.timestamp), 'PPp')}</span>
+                    </div>
+                     <Separator />
+                    <div className="flex items-center">
+                        <Tag className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Action:</span>
+                        <span className="ml-2"><Badge variant="secondary">{formatActionString(selectedLog.action)}</Badge></span>
+                    </div>
+                     <div className="flex items-center">
+                        <User className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">User:</span>
+                        <span className="ml-2 text-muted-foreground break-all">{selectedLog.user}</span>
+                    </div>
+                     <div className="flex items-center">
+                        <Crosshair className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Target ID:</span>
+                        <span className="ml-2 text-muted-foreground font-mono text-xs break-all">{selectedLog.target}</span>
+                    </div>
+                     <Separator />
+                     <div>
+                        <h4 className="font-medium mb-2 flex items-center gap-3"><Info className="h-4 w-4 text-muted-foreground" />Details:</h4>
+                        <pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-md font-sans">{selectedLog.details}</pre>
+                    </div>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
