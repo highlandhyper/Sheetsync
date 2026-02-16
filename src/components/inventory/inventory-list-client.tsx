@@ -229,7 +229,11 @@ export function InventoryListClient() {
         });
     }
 
-    result.sort((a, b) => a.mainItem.productName.localeCompare(b.mainItem.productName));
+    result.sort((a, b) => {
+        const dateA = a.mainItem.timestamp ? parseISO(a.mainItem.timestamp).getTime() : 0;
+        const dateB = b.mainItem.timestamp ? parseISO(b.mainItem.timestamp).getTime() : 0;
+        return dateB - dateA;
+    });
 
     return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);

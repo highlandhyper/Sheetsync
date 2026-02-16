@@ -134,12 +134,11 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      // Timezone-safe date formatting.
-      // Get the parts of the date in the user's local timezone.
+      // Timezone-safe date formatting using UTC components.
       const date = data.expiryDate;
-      const year = date.getFullYear();
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getUTCFullYear();
+      const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+      const day = date.getUTCDate().toString().padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       formData.append('expiryDate', formattedDate);
     } else if (data.itemType === 'Expiry') {
