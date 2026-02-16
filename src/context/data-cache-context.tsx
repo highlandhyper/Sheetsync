@@ -5,7 +5,7 @@ import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction } from '@/app/actions';
-import type { Product, Supplier, InventoryItem, ReturnedItem } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry } from '@/lib/types';
 import { useAuth } from './auth-context';
 
 interface AppData {
@@ -15,6 +15,7 @@ interface AppData {
   returnedItems: ReturnedItem[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
+  auditLogs: AuditLogEntry[];
   lastSync: number | null;
 }
 
@@ -25,6 +26,7 @@ interface DataCacheContextType {
   returnedItems: ReturnedItem[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
+  auditLogs: AuditLogEntry[];
   isCacheReady: boolean;
   isSyncing: boolean;
   lastSync: number | null;
@@ -93,6 +95,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     returnedItems: [],
     uniqueLocations: [],
     uniqueStaffNames: [],
+    auditLogs: [],
     lastSync: null,
   });
   
@@ -119,7 +122,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
             const hasChanges = JSON.stringify(prevData.inventoryItems) !== JSON.stringify(newData.inventoryItems) ||
                 JSON.stringify(prevData.products) !== JSON.stringify(newData.products) ||
                 JSON.stringify(prevData.suppliers) !== JSON.stringify(newData.suppliers) ||
-                JSON.stringify(prevData.returnedItems) !== JSON.stringify(newData.returnedItems);
+                JSON.stringify(prevData.returnedItems) !== JSON.stringify(newData.returnedItems) ||
+                JSON.stringify(prevData.auditLogs) !== JSON.stringify(newData.auditLogs);
 
             if (hasChanges) {
                  if (isBackgroundUpdate && isInitializedRef.current) {
@@ -160,7 +164,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     if (authLoading) return;
 
     if (!user) {
-      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], lastSync: null });
+      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], lastSync: null });
       isInitializedRef.current = false;
       return;
     }
@@ -247,6 +251,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     returnedItems: data.returnedItems,
     uniqueLocations: data.uniqueLocations,
     uniqueStaffNames: data.uniqueStaffNames,
+    auditLogs: data.auditLogs,
     isCacheReady,
     isSyncing,
     lastSync: data.lastSync,

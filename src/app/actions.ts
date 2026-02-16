@@ -53,6 +53,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   returnedItems: ReturnedItem[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
+  auditLogs: AuditLogEntry[];
 }>> {
   try {
     const [
@@ -61,14 +62,16 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
       suppliers,
       returnedItems,
       uniqueLocations,
-      uniqueStaffNames
+      uniqueStaffNames,
+      auditLogs
     ] = await Promise.all([
       getInventoryItems(),
       getProducts(),
       getSuppliers(),
       getReturnedItems(),
       getUniqueLocations(),
-      getUniqueStaffNames()
+      getUniqueStaffNames(),
+      getAuditLogs()
     ]);
 
     return {
@@ -79,7 +82,8 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
         suppliers: suppliers || [],
         returnedItems: returnedItems || [],
         uniqueLocations: uniqueLocations || [],
-        uniqueStaffNames: uniqueStaffNames || []
+        uniqueStaffNames: uniqueStaffNames || [],
+        auditLogs: auditLogs || [],
       }
     };
   } catch (error) {
@@ -770,6 +774,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 

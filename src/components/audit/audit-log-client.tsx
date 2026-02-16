@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,20 +13,15 @@ import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } fro
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { useToast } from '@/hooks/use-toast';
-import { fetchAuditLogsAction } from '@/app/actions';
-import { Skeleton } from '../ui/skeleton';
 import { Badge } from '../ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDataCache } from '@/context/data-cache-context';
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
 
 export function AuditLogClient() {
-  const { toast } = useToast();
-  const [allLogs, setAllLogs] = useState<AuditLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { auditLogs: allLogs } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<string>(ALL_USERS_VALUE);
@@ -34,20 +29,6 @@ export function AuditLogClient() {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    async function loadLogs() {
-      setIsLoading(true);
-      const response = await fetchAuditLogsAction();
-      if (response.success && response.data) {
-        setAllLogs(response.data);
-      } else {
-        toast({ title: 'Error', description: 'Could not fetch audit logs.', variant: 'destructive' });
-      }
-      setIsLoading(false);
-    }
-    loadLogs();
-  }, [toast]);
 
   const { uniqueUsers, uniqueActions } = useMemo(() => {
     const users = new Set<string>();
@@ -106,43 +87,6 @@ export function AuditLogClient() {
     setSelectedDateRange(undefined);
   };
   
-  if (isLoading) {
-    return (
-        <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border rounded-lg shadow bg-card">
-            <Skeleton className="h-10 w-full sm:max-w-xs" />
-            <Skeleton className="h-10 w-full sm:max-w-[200px]" />
-            <Skeleton className="h-10 w-full sm:max-w-[200px]" />
-            <Skeleton className="h-10 w-full sm:max-w-[200px]" />
-        </div>
-        <Card className="shadow-md">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Details</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {Array.from({ length: 10 }).map((_, index) => (
-                <TableRow key={index}>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                </TableRow>
-                ))}
-            </TableBody>
-            </Table>
-        </Card>
-        </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <Card className="p-4 shadow-md">
