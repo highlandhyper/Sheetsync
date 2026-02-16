@@ -662,6 +662,23 @@ export function InventoryListClient() {
 
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
 
+                    let expiryContent: React.ReactNode = 'N/A';
+                    let expiryClassName = "text-muted-foreground";
+
+                    if (hasMultipleExpiry) {
+                        expiryContent = "Multiple";
+                    } else if (mainItem.expiryDate) {
+                        const parsedDate = parseISO(mainItem.expiryDate);
+                        if (isValid(parsedDate)) {
+                            expiryContent = format(parsedDate, 'PP');
+                            if (isBefore(startOfDay(parsedDate), startOfDay(new Date()))) {
+                                expiryClassName = "text-destructive font-semibold";
+                            }
+                        } else {
+                            expiryContent = "Invalid Date";
+                        }
+                    }
+
                     return (
                     <TableRow key={mainItem.barcode} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""}>
                         {role === 'admin' && isMultiSelectEnabled && (
@@ -704,8 +721,8 @@ export function InventoryListClient() {
                         <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                            {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
+                        <TableCell className={expiryClassName}>
+                            {expiryContent}
                         </TableCell>
                     </TableRow>
                     );

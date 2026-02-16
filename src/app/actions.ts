@@ -383,7 +383,7 @@ export async function addInventoryItemAction(
     const parsedData = {
       ...rawFormData,
       quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
-      expiryDate: rawFormData.expiryDate ? new Date(rawFormData.expiryDate as string) : undefined,
+      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00Z') : undefined,
     };
 
     const validationResult = addInventoryItemSchema.safeParse(parsedData);
@@ -494,7 +494,7 @@ export async function editInventoryItemAction(
       itemId: rawFormData.itemId as string,
       location: rawFormData.location as string,
       itemType: rawFormData.itemType as ItemType,
-      expiryDate: rawFormData.expiryDate ? new Date(rawFormData.expiryDate as string) : null,
+      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00Z') : null,
       quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
     };
 
@@ -518,7 +518,6 @@ export async function editInventoryItemAction(
       location,
       itemType,
       quantity,
-      // Use timezone-independent formatting to prevent accidental date changes
       expiryDate: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
     };
 
@@ -775,6 +774,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 
