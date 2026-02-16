@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +21,14 @@ import { Calendar } from '../ui/calendar';
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
+
+const formatActionString = (action: string) => {
+  if (!action) return '';
+  return action
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 export function AuditLogClient() {
   const { auditLogs: allLogs } = useDataCache();
@@ -122,7 +130,7 @@ export function AuditLogClient() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_ACTIONS_VALUE}>All Actions</SelectItem>
-                {uniqueActions.map(action => <SelectItem key={action} value={action}>{action}</SelectItem>)}
+                {uniqueActions.map(action => <SelectItem key={action} value={action}>{formatActionString(action)}</SelectItem>)}
               </SelectContent>
             </Select>
 
@@ -153,7 +161,7 @@ export function AuditLogClient() {
                 <Card key={log.id} className="w-full">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        <Badge variant="secondary">{log.action}</Badge>
+                        <Badge variant="secondary">{formatActionString(log.action)}</Badge>
                     </CardTitle>
                     <span className="text-xs text-muted-foreground">{format(parseISO(log.timestamp), 'PPp')}</span>
                   </CardHeader>
@@ -163,7 +171,7 @@ export function AuditLogClient() {
                               <User className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                               <div>
                                   <p className="font-medium">User</p>
-                                  <p className="text-muted-foreground">{log.user}</p>
+                                  <p className="text-muted-foreground break-all">{log.user}</p>
                               </div>
                           </div>
                           <div className="flex items-start gap-2">
@@ -177,7 +185,7 @@ export function AuditLogClient() {
                               <Info className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                               <div>
                                   <p className="font-medium">Details</p>
-                                  <p className="text-muted-foreground">{log.details}</p>
+                                  <p className="text-muted-foreground whitespace-pre-wrap">{log.details}</p>
                               </div>
                           </div>
                       </div>
@@ -194,10 +202,10 @@ export function AuditLogClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Target ID</TableHead>
+                <TableHead className="w-[200px]">Timestamp</TableHead>
+                <TableHead className="w-[220px]">User</TableHead>
+                <TableHead className="w-[200px]">Action</TableHead>
+                <TableHead className="w-[200px]">Target ID</TableHead>
                 <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
@@ -206,10 +214,10 @@ export function AuditLogClient() {
                 filteredLogs.map(log => (
                   <TableRow key={log.id}>
                     <TableCell className="text-xs whitespace-nowrap">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
-                    <TableCell className="font-medium">{log.user}</TableCell>
-                    <TableCell><Badge variant="secondary">{log.action}</Badge></TableCell>
-                    <TableCell className="font-mono text-xs">{log.target}</TableCell>
-                    <TableCell>{log.details}</TableCell>
+                    <TableCell className="font-medium break-all">{log.user}</TableCell>
+                    <TableCell><Badge variant="secondary">{formatActionString(log.action)}</Badge></TableCell>
+                    <TableCell className="font-mono text-xs break-all">{log.target}</TableCell>
+                    <TableCell className="text-sm whitespace-pre-wrap">{log.details}</TableCell>
                   </TableRow>
                 ))
               ) : (
