@@ -133,7 +133,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       formData.append('staffName', data.staffName);
       formData.append('itemType', data.itemType);
       formData.append('quantity', data.quantity.toString());
-      formData.append('expiryDate', data.expiryDate ? data.expiryDate.toISOString() : '');
+      
+      if (data.expiryDate) {
+        // Timezone-safe date formatting.
+        const date = data.expiryDate;
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        formData.append('expiryDate', formattedDate);
+      } else {
+        formData.append('expiryDate', '');
+      }
+
       formData.append('location', data.location);
 
       const response = await addInventoryItemAction(undefined, formData);
