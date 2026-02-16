@@ -795,48 +795,64 @@ export async function updateInventoryItemDetails(
       return null;
     }
     
+    const originalItem = transformToInventoryItem(itemRowData[0], rowNumber - 2);
+    if (!originalItem) {
+      console.error(`GS_Data: Could not parse original item ${itemId} from sheet row data.`);
+      return null;
+    }
+
     const cellUpdates: { range: string; values: any[][] }[] = [];
-    if (updates.location !== undefined) {
+    const changesForLog: string[] = [];
+
+    // Compare and build updates & log messages
+    if (updates.location !== undefined && updates.location !== originalItem.location) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_LOCATION)}${rowNumber}`, values: [[updates.location]] });
+      changesForLog.push(`location: from "${originalItem.location}" to "${updates.location}"`);
     }
-    if (updates.quantity !== undefined) {
+    if (updates.quantity !== undefined && updates.quantity !== originalItem.quantity) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_QTY)}${rowNumber}`, values: [[updates.quantity]] });
+      changesForLog.push(`quantity: from ${originalItem.quantity} to ${updates.quantity}`);
     }
-    if (updates.expiryDate !== undefined) {
+    if (updates.itemType !== undefined && updates.itemType !== originalItem.itemType) {
+      cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_TYPE)}${rowNumber}`, values: [[updates.itemType]] });
+      changesForLog.push(`itemType: from "${originalItem.itemType}" to "${updates.itemType}"`);
+    }
+
+    // Special handling for expiry date comparison
+    const originalExpiry = originalItem.expiryDate || null; // Normalize undefined to null
+    if (updates.expiryDate !== undefined && updates.expiryDate !== originalExpiry) {
       let expiryValueForSheet = '';
       if (updates.expiryDate) {
         const parsedForSheet = parseISO(updates.expiryDate);
         if (isValid(parsedForSheet)) {
           expiryValueForSheet = format(parsedForSheet, 'dd/MM/yyyy');
         } else {
-          console.warn(`GS_Data: updateInventoryItemDetails - Invalid expiry date string received for item ${itemId}: ${updates.expiryDate}. Writing empty string.`);
+          console.warn(`GS_Data: updateInventoryItemDetails - Invalid expiry date string received: ${updates.expiryDate}. Writing empty string.`);
         }
       }
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_EXPIRY)}${rowNumber}`, values: [[expiryValueForSheet]] });
+      changesForLog.push(`expiryDate: from "${originalExpiry || 'none'}" to "${updates.expiryDate || 'none'}"`);
     }
-    if (updates.itemType) {
-      cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_TYPE)}${rowNumber}`, values: [[updates.itemType]] });
-    }
+
     if (cellUpdates.length === 0) {
       console.log(`GS_Data: updateInventoryItemDetails - No actual changes to update for item ${itemId}.`);
-       const existingItem = transformToInventoryItem(itemRowData[0], rowNumber - 2);
-       return existingItem;
+      return originalItem;
     }
 
     const success = await batchUpdateSheetCells(cellUpdates);
-    console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}. Changes: ${JSON.stringify(updates)}`);
+    console.log(`GS_Data: updateInventoryItemDetails - Batch update for item ${itemId} ${success ? 'succeeded' : 'failed'}.`);
     
     if (success) {
-        const changesSummary = Object.entries(updates).map(([key, value]) => `${key}: ${value}`).join(', ');
+        const changesSummary = changesForLog.join('; ');
         await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated item details: ${changesSummary}`);
-        const updatedRowData = [...itemRowData[0]];
-        if (updates.location !== undefined) updatedRowData[INV_COL_LOCATION] = updates.location;
-        if (updates.quantity !== undefined) updatedRowData[INV_COL_QTY] = updates.quantity;
-        if (updates.itemType !== undefined) updatedRowData[INV_COL_TYPE] = updates.itemType;
-        if (updates.expiryDate !== undefined) {
-            updatedRowData[INV_COL_EXPIRY] = updates.expiryDate ? format(parseISO(updates.expiryDate), 'dd/MM/yyyy') : '';
-        }
-        return transformToInventoryItem(updatedRowData, rowNumber - 2);
+        
+        // Construct the updated item object locally to return it without another read
+        const updatedItem = { ...originalItem };
+        if (updates.location !== undefined) updatedItem.location = updates.location;
+        if (updates.quantity !== undefined) updatedItem.quantity = updates.quantity;
+        if (updates.itemType !== undefined) updatedItem.itemType = updates.itemType;
+        if (updates.expiryDate !== undefined) updatedItem.expiryDate = updates.expiryDate || undefined;
+        return updatedItem;
     }
 
     return null;
@@ -1229,6 +1245,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
