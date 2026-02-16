@@ -99,26 +99,32 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
   if (typeof timestampValue === 'string') {
     const trimmedTimestampValue = timestampValue.trim();
 
-    // Try parsing as ISO 8601 first, as it's the most reliable format
+    // Try parsing as ISO 8601 first (most reliable)
+    // This handles 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ'
     const isoDate = parseISO(trimmedTimestampValue);
     if (isValid(isoDate)) return isoDate;
 
-    // Special handling for "dd/MM/yyyy HH:mm:ss" to avoid locale issues
+    // Manually parse DD/MM/YYYY HH:mm:ss format to avoid timezone issues
     const dmyHmsMatch = trimmedTimestampValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
     if (dmyHmsMatch) {
       const [_, day, month, year, hours, minutes, seconds] = dmyHmsMatch;
-      // Reconstruct into a format that parseISO can handle without ambiguity
-      const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
-      const d = parseISO(isoString);
+      const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10)));
       if (isValid(d)) return d;
     }
 
-    // Fallback for other potential formats, though less preferred
+    // Manually parse DD/MM/YYYY format to avoid timezone issues
+    const dmyMatch = trimmedTimestampValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmyMatch) {
+        const [_, day, month, year] = dmyMatch;
+        const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
+        if (isValid(d)) return d;
+    }
+    
+    // Fallback for other potential formats (e.g., from US locales)
     const formatsToTry: string[] = [
-      "yyyy-MM-dd HH:mm:ss",
       "M/d/yyyy H:mm:ss",
-      "dd/MM/yyyy", "d/M/yyyy", "MM/dd/yyyy", "M/d/yyyy",
-      "yyyy-MM-dd"
+      "MM/dd/yyyy", 
+      "M/d/yyyy",
     ];
     for (const fmt of formatsToTry) {
       const d = dateParse(trimmedTimestampValue, fmt, new Date());
@@ -1262,6 +1268,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
