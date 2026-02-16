@@ -6,11 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AuditLogEntry } from '@/lib/types';
-import { Search, FilterX, CalendarIcon, User, Tag } from 'lucide-react';
+import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -19,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchAuditLogsAction } from '@/app/actions';
 import { Skeleton } from '../ui/skeleton';
 import { Badge } from '../ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
@@ -33,6 +33,7 @@ export function AuditLogClient() {
   const [selectedAction, setSelectedAction] = useState<string>(ALL_ACTIONS_VALUE);
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function loadLogs() {
@@ -197,34 +198,80 @@ export function AuditLogClient() {
       </Card>
 
       <Card className="shadow-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Target ID</TableHead>
-              <TableHead>Details</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        {isMobile ? (
+           <div className="space-y-4 p-4">
             {filteredLogs.length > 0 ? (
               filteredLogs.map(log => (
-                <TableRow key={log.id}>
-                  <TableCell className="text-xs whitespace-nowrap">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
-                  <TableCell className="font-medium">{log.user}</TableCell>
-                  <TableCell><Badge variant="secondary">{log.action}</Badge></TableCell>
-                  <TableCell className="font-mono text-xs">{log.target}</TableCell>
-                  <TableCell>{log.details}</TableCell>
-                </TableRow>
+                <Card key={log.id} className="w-full">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        <Badge variant="secondary">{log.action}</Badge>
+                    </CardTitle>
+                    <span className="text-xs text-muted-foreground">{format(parseISO(log.timestamp), 'PPp')}</span>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                      <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                              <User className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                              <div>
+                                  <p className="font-medium">User</p>
+                                  <p className="text-muted-foreground">{log.user}</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                              <Crosshair className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                              <div>
+                                  <p className="font-medium">Target ID</p>
+                                  <p className="text-muted-foreground font-mono text-xs break-all">{log.target}</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                              <Info className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                              <div>
+                                  <p className="font-medium">Details</p>
+                                  <p className="text-muted-foreground">{log.details}</p>
+                              </div>
+                          </div>
+                      </div>
+                  </CardContent>
+                </Card>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">No audit logs match your filters.</TableCell>
-              </TableRow>
+              <div className="h-24 text-center flex flex-col justify-center items-center">
+                <p>No audit logs match your filters.</p>
+              </div>
             )}
-          </TableBody>
-        </Table>
+           </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Target ID</TableHead>
+                <TableHead>Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLogs.length > 0 ? (
+                filteredLogs.map(log => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-xs whitespace-nowrap">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
+                    <TableCell className="font-medium">{log.user}</TableCell>
+                    <TableCell><Badge variant="secondary">{log.action}</Badge></TableCell>
+                    <TableCell className="font-mono text-xs">{log.target}</TableCell>
+                    <TableCell>{log.details}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">No audit logs match your filters.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Card>
     </div>
   );
