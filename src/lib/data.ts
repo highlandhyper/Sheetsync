@@ -197,7 +197,10 @@ function transformToInventoryItem(row: any[], rowIndex: number): InventoryItem |
      if (expiryValue !== undefined && expiryValue !== null && String(expiryValue).trim() !== '') {
         const parsedDate = parseFlexibleTimestamp(expiryValue);
         if (parsedDate && isValid(parsedDate)) {
-            expiryDateStr = format(parsedDate, 'yyyy-MM-dd');
+            const year = parsedDate.getUTCFullYear();
+            const month = (parsedDate.getUTCMonth() + 1).toString().padStart(2, '0');
+            const day = parsedDate.getUTCDate().toString().padStart(2, '0');
+            expiryDateStr = `${year}-${month}-${day}`;
         }
     }
 
@@ -1268,6 +1271,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
