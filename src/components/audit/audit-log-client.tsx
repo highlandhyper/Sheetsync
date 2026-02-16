@@ -16,6 +16,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Badge } from '../ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDataCache } from '@/context/data-cache-context';
+import { Calendar } from '../ui/calendar';
+
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
@@ -33,10 +35,12 @@ export function AuditLogClient() {
   const { uniqueUsers, uniqueActions } = useMemo(() => {
     const users = new Set<string>();
     const actions = new Set<string>();
-    allLogs.forEach(log => {
-      users.add(log.user);
-      actions.add(log.action);
-    });
+    if (allLogs) {
+      allLogs.forEach(log => {
+        users.add(log.user);
+        actions.add(log.action);
+      });
+    }
     return {
       uniqueUsers: Array.from(users).sort(),
       uniqueActions: Array.from(actions).sort(),
@@ -44,7 +48,7 @@ export function AuditLogClient() {
   }, [allLogs]);
 
   const filteredLogs = useMemo(() => {
-    let logs = allLogs;
+    let logs = allLogs || [];
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
