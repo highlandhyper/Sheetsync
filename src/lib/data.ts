@@ -99,11 +99,6 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
   if (typeof timestampValue === 'string') {
     const trimmedTimestampValue = timestampValue.trim();
 
-    // Try parsing as ISO 8601 first (most reliable)
-    // This handles 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ'
-    const isoDate = parseISO(trimmedTimestampValue);
-    if (isValid(isoDate)) return isoDate;
-
     // Manually parse DD/MM/YYYY HH:mm:ss format to avoid timezone issues
     const dmyHmsMatch = trimmedTimestampValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
     if (dmyHmsMatch) {
@@ -111,6 +106,19 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
       const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10)));
       if (isValid(d)) return d;
     }
+    
+    // Manually parse YYYY-MM-DD HH:mm:ss
+    const ymdHmsMatch = trimmedTimestampValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (ymdHmsMatch) {
+        const [_, year, month, day, hours, minutes, seconds] = ymdHmsMatch;
+        const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10)));
+        if(isValid(d)) return d;
+    }
+
+    // Try parsing as ISO 8601 first (most reliable after manual checks)
+    const isoDate = parseISO(trimmedTimestampValue);
+    if (isValid(isoDate)) return isoDate;
+
 
     // Manually parse DD/MM/YYYY format to avoid timezone issues
     const dmyMatch = trimmedTimestampValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -599,7 +607,7 @@ export async function addInventoryItem(
 
     const newRowData = new Array(INVENTORY_TOTAL_COLUMNS_FOR_WRITE).fill('');
 
-    newRowData[INV_COL_TIMESTAMP] = format(now, "dd/MM/yyyy HH:mm:ss");
+    newRowData[INV_COL_TIMESTAMP] = format(now, "yyyy-MM-dd HH:mm:ss");
     newRowData[INV_COL_BARCODE] = itemFormValues.barcode.trim();
     newRowData[INV_COL_QTY] = itemFormValues.quantity;
 
@@ -630,7 +638,7 @@ export async function addInventoryItem(
     
     await logAuditEvent(userEmail, 'LOG_INVENTORY', clientSideUniqueId, `Logged ${itemFormValues.quantity} of "${resolvedProductDetails.productName.trim()}" (Barcode: ${itemFormValues.barcode.trim()}) to location ${itemFormValues.location.trim()}.`);
     
-    const parsedTimestamp = dateParse(newRowData[INV_COL_TIMESTAMP] as string, "dd/MM/yyyy HH:mm:ss", new Date());
+    const parsedTimestamp = dateParse(newRowData[INV_COL_TIMESTAMP] as string, "yyyy-MM-dd HH:mm:ss", new Date());
     return {
       id: clientSideUniqueId, productName: resolvedProductDetails.productName.trim(), barcode: itemFormValues.barcode.trim(),
       supplierName: resolvedProductDetails.supplierName.trim(), quantity: Number(itemFormValues.quantity),
@@ -695,7 +703,7 @@ export async function processReturn(userEmail: string, itemId: string, quantityT
         currentItem.staffName,
         currentItem.itemType,
         staffNameProcessingReturn.trim(),
-        format(new Date(), "dd/MM/yyyy HH:mm:ss")
+        format(new Date(), "yyyy-MM-dd HH:mm:ss")
       ];
       if (!await appendSheetData(RETURN_LOG_APPEND_RANGE, [logEntry])) {
         resultMessage += ` WARNING: Failed to log return.`;
@@ -829,15 +837,15 @@ export async function updateInventoryItemDetails(
     // Compare and build updates & log messages
     if (updates.location !== undefined && updates.location.trim() !== originalItem.location) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_LOCATION)}${rowNumber}`, values: [[updates.location]] });
-      changesForLog.push(`location from "${originalItem.location}" to "${updates.location}"`);
+      changesForLog.push(`location to "${updates.location}"`);
     }
     if (updates.quantity !== undefined && updates.quantity !== originalItem.quantity) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_QTY)}${rowNumber}`, values: [[updates.quantity]] });
-      changesForLog.push(`quantity from ${originalItem.quantity} to ${updates.quantity}`);
+      changesForLog.push(`quantity to ${updates.quantity}`);
     }
     if (updates.itemType !== undefined && updates.itemType !== originalItem.itemType) {
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_TYPE)}${rowNumber}`, values: [[updates.itemType]] });
-      changesForLog.push(`itemType from "${originalItem.itemType}" to "${updates.itemType}"`);
+      changesForLog.push(`itemType to "${updates.itemType}"`);
     }
 
     // Special handling for expiry date comparison
@@ -845,19 +853,16 @@ export async function updateInventoryItemDetails(
     if (updates.expiryDate !== undefined && updates.expiryDate !== originalExpiry) {
       let expiryValueForSheet = '';
       if (updates.expiryDate) {
-        const parsedForSheet = parseISO(updates.expiryDate);
+        // Manually re-parse here to be safe
+        const parsedForSheet = dateParse(updates.expiryDate, 'yyyy-MM-dd', new Date());
         if (isValid(parsedForSheet)) {
-          // Manually format from UTC parts to avoid timezone conversion issues with format()
-          const year = parsedForSheet.getUTCFullYear();
-          const month = (parsedForSheet.getUTCMonth() + 1).toString().padStart(2, '0');
-          const day = parsedForSheet.getUTCDate().toString().padStart(2, '0');
-          expiryValueForSheet = `${day}/${month}/${year}`;
+          expiryValueForSheet = format(parsedForSheet, 'dd/MM/yyyy');
         } else {
           console.warn(`GS_Data: updateInventoryItemDetails - Invalid expiry date string received: ${updates.expiryDate}. Writing empty string.`);
         }
       }
       cellUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!${String.fromCharCode('A'.charCodeAt(0) + INV_COL_EXPIRY)}${rowNumber}`, values: [[expiryValueForSheet]] });
-      changesForLog.push(`expiryDate from "${originalExpiry || 'none'}" to "${updates.expiryDate || 'none'}"`);
+      changesForLog.push(`expiryDate to "${updates.expiryDate || 'none'}"`);
     }
 
     if (cellUpdates.length === 0) {
@@ -870,7 +875,7 @@ export async function updateInventoryItemDetails(
     
     if (success) {
         const changesSummary = changesForLog.join('; ');
-        await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated item details: ${changesSummary}`);
+        await logAuditEvent(userEmail, 'UPDATE_INVENTORY_ITEM', itemId, `Updated "${originalItem.productName}". Changes: ${changesSummary}`);
         
         // Construct the updated item object locally to return it without another read
         const updatedItem = { ...originalItem };
@@ -1121,9 +1126,14 @@ export async function deleteInventoryItemById(userEmail: string, itemId: string)
       return false; // Or throw an error to be caught by the action
     }
     
+    // Read the row data BEFORE deleting it to get details for the audit log.
+    const itemRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:${String.fromCharCode('A'.charCodeAt(0) + INVENTORY_TOTAL_COLUMNS_FOR_WRITE - 1)}${rowNumber}`);
+    const itemToDelete = itemRowData?.[0] ? transformToInventoryItem(itemRowData[0], rowNumber - 2) : null;
+
     const success = await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
     if (success) {
-      await logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry.`);
+      const productNameForLog = itemToDelete ? `"${itemToDelete.productName}"` : `item with ID ${itemId}`;
+      await logAuditEvent(userEmail, 'DELETE_INVENTORY_ITEM', itemId, `Permanently deleted inventory log entry for ${productNameForLog}.`);
       console.log(`GS_Data: deleteInventoryItemById - Successfully deleted row ${rowNumber} for item ID ${itemId}.`);
     } else {
       console.error(`GS_Data: deleteInventoryItemById - Failed to delete row ${rowNumber} for item ID ${itemId}.`);
@@ -1271,6 +1281,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
