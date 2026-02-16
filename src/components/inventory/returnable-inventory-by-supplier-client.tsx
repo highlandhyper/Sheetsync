@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, format } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
@@ -33,6 +33,7 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
+import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -210,6 +211,33 @@ export function ReturnableInventoryBySupplierClient() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleShareToWhatsApp = () => {
+    if (selectedSupplierNames.length === 0 || itemsToRender.length === 0) return;
+
+    let reportText = `*Inventory Return List for Supplier(s): ${selectedSupplierNames.join(', ')}*\n\n`;
+
+    itemsToRender.forEach(item => {
+      const product = productsByBarcode.get(item.barcode);
+      const costPrice = product?.costPrice;
+      const totalValue = costPrice !== undefined ? costPrice * item.quantity : undefined;
+
+      reportText += `*${item.productName}*\n`;
+      reportText += `  Barcode: ${item.barcode}\n`;
+      reportText += `  In Stock: ${item.quantity}\n`;
+      if (totalValue !== undefined) {
+        reportText += `  Total Value: QAR ${totalValue.toFixed(2)}\n`;
+      }
+      reportText += `  Location: ${item.location}\n`;
+      if (item.expiryDate && isValid(parseISO(item.expiryDate))) {
+        reportText += `  Expiry: ${format(parseISO(item.expiryDate), 'PP')}\n`;
+      }
+      reportText += '\n';
+    });
+
+    const encodedText = encodeURIComponent(reportText);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   };
 
   const suppliersForCombobox = useMemo(() => {
@@ -425,10 +453,15 @@ export function ReturnableInventoryBySupplierClient() {
                     <span>Found: {totalItemsForSelectedSuppliers} item(s)</span>
                 </div>
             )}
-             <div className="print-button-container ml-auto md:ml-0 md:pl-2">
-                <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                    <Printer className="mr-2 h-4 w-4" /> Print List
-                </Button>
+             <div className="flex items-center gap-2 ml-auto md:ml-0 md:pl-2">
+                 <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
+                    <WhatsAppIcon className="mr-2 h-4 w-4" /> WhatsApp
+                 </Button>
+                <div className="print-button-container">
+                    <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
+                        <Printer className="mr-2 h-4 w-4" /> Print List
+                    </Button>
+                </div>
             </div>
           </div>
           )}
