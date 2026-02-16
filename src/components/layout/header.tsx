@@ -40,7 +40,7 @@ function LastSyncStatus() {
 
   if (isSyncing) {
      return (
-        <Button variant="ghost" size="sm" disabled className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+        <Button variant="ghost" size="sm" disabled className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
             <RefreshCw className="h-3 w-3 animate-spin" />
             <span>Syncing...</span>
         </Button>
@@ -52,7 +52,7 @@ function LastSyncStatus() {
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={refreshData} className="hidden md:flex items-center gap-1.5 text-xs text-yellow-600 mr-2">
+                    <Button variant="ghost" size="sm" onClick={refreshData} className="flex items-center gap-1.5 text-xs text-yellow-600 mr-2">
                         <RefreshCw className="h-3 w-3" />
                         <span>Sync now</span>
                     </Button>
@@ -71,7 +71,7 @@ function LastSyncStatus() {
             variant="ghost"
             size="sm"
             onClick={refreshData}
-            className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground mr-2"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2"
           >
             <RefreshCw className="h-3 w-3" />
             <span>
