@@ -98,25 +98,35 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
   }
   if (typeof timestampValue === 'string') {
     const trimmedTimestampValue = timestampValue.trim();
+
+    // Try parsing as ISO 8601 first, as it's the most reliable format
+    const isoDate = parseISO(trimmedTimestampValue);
+    if (isValid(isoDate)) return isoDate;
+
+    // Special handling for "dd/MM/yyyy HH:mm:ss" to avoid locale issues
+    const dmyHmsMatch = trimmedTimestampValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (dmyHmsMatch) {
+      const [_, day, month, year, hours, minutes, seconds] = dmyHmsMatch;
+      // Reconstruct into a format that parseISO can handle without ambiguity
+      const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+      const d = parseISO(isoString);
+      if (isValid(d)) return d;
+    }
+
+    // Fallback for other potential formats, though less preferred
     const formatsToTry: string[] = [
-      "dd/MM/yyyy HH:mm:ss", "d/M/yyyy HH:mm:ss",
-      "dd/MM/yyyy H:mm:ss", "d/M/yyyy H:mm:ss",
-      "dd/MM/yyyy HH:mm", "d/M/yyyy HH:mm",
-      "dd/MM/yyyy H:mm", "d/M/yyyy H:mm",
-      "M/d/yyyy HH:mm:ss", "MM/dd/yyyy HH:mm:ss",
-      "M/d/yyyy H:mm:ss", "MM/dd/yyyy H:mm:ss",
-      "M/d/yyyy H:mm", "MM/dd/yyyy H:mm",
-      "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'",
-      "dd/MM/yyyy", "d/M/yyyy", "MM/dd/yyyy", "M/d/yyyy", // Date only formats
+      "yyyy-MM-dd HH:mm:ss",
+      "M/d/yyyy H:mm:ss",
+      "dd/MM/yyyy", "d/M/yyyy", "MM/dd/yyyy", "M/d/yyyy",
       "yyyy-MM-dd"
     ];
     for (const fmt of formatsToTry) {
       const d = dateParse(trimmedTimestampValue, fmt, new Date());
       if (isValid(d)) return d;
     }
-    const isoDate = parseISO(trimmedTimestampValue);
-    if (isValid(isoDate)) return isoDate;
   }
+  
+  console.warn(`GS_Data: parseFlexibleTimestamp was unable to parse the date value:`, timestampValue);
   return null;
 }
 
@@ -1152,13 +1162,21 @@ export async function savePermissionsToSheet(permissions: Permissions): Promise<
 
 // --- New Functions for Audit Log ---
 
+/**
+ * This helper function transforms a row from the 'Audit Log' sheet into a structured AuditLogEntry object.
+ * It's designed to be robust against common sheet data issues like missing values.
+ */
 function transformToAuditLogEntry(row: any[], rowIndex: number): AuditLogEntry | null {
-  const sheetRowNumber = rowIndex + 2;
+  const sheetRowNumber = rowIndex + 2; // Assuming data starts at row 2
   try {
     if (!row || row.length < 5) return null;
     
     const timestampValue = row[AUDIT_COL_TIMESTAMP];
+    // Use the robust flexible parser. If it fails, fallback to now, but log it.
     const timestamp = parseFlexibleTimestamp(timestampValue)?.toISOString() || new Date().toISOString();
+    if (!parseFlexibleTimestamp(timestampValue)) {
+        console.warn(`GS_Data: Could not parse timestamp "${timestampValue}" on row ${sheetRowNumber} of Audit Log. Using current time as fallback.`);
+    }
 
     const entry: AuditLogEntry = {
       id: `audit_${sheetRowNumber}_${timestamp}`,
@@ -1175,9 +1193,13 @@ function transformToAuditLogEntry(row: any[], rowIndex: number): AuditLogEntry |
   }
 }
 
+/**
+ * This function appends a new event to the 'Audit Log' sheet.
+ * It now writes timestamps in an unambiguous "yyyy-MM-dd HH:mm:ss" format.
+ */
 export async function logAuditEvent(user: string, action: string, target: string, details: string): Promise<boolean> {
   try {
-    const timestamp = format(new Date(), "dd/MM/yyyy HH:mm:ss");
+    const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss"); // Use unambiguous format
     const newRow = [timestamp, user, action, target, details];
     if (!await appendSheetData(AUDIT_LOG_APPEND_RANGE, [newRow])) {
       console.error("GS_Data: logAuditEvent - Failed to append event to sheet.");
@@ -1196,6 +1218,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     if (!sheetData) return [];
 
     const logs = sheetData.map(transformToAuditLogEntry).filter(Boolean) as AuditLogEntry[];
+    // Sort logs by timestamp descending (most recent first)
     logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return logs;
   } catch (error) {
@@ -1206,6 +1229,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
 
     
+
 
 
 
