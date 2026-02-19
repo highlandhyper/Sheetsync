@@ -466,10 +466,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             Please confirm the details below are correct before logging the item.
                         </AlertDescription>
                     </Alert>
-                    <div className="p-6 rounded-lg bg-muted/50 border border-muted space-y-4">
+                    <div className="p-4 md:p-6 rounded-lg bg-muted/50 border border-muted space-y-4">
                         <h3 className="font-semibold text-xl mb-2">{productName}</h3>
                         <Separator />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                             <div className="flex items-start gap-3">
                                 <Barcode className="h-5 w-5 text-primary mt-0.5" />
                                 <div><span className="font-medium text-muted-foreground block">Barcode</span>{allFormValues.barcode}</div>
