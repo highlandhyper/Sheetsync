@@ -1,3 +1,4 @@
+
 'use server';
 
 import nodemailer from 'nodemailer';
@@ -16,6 +17,7 @@ interface ExpiredItemDetails {
 //    EMAIL_SERVER_USER=user@example.com
 //    EMAIL_SERVER_PASSWORD=your_password
 //    EMAIL_SENDER=sender_address@example.com
+//    EMAIL_RECIPIENT=recipient_address@example.com
 //
 // 2. You might need to generate an "App Password" for services like Gmail if 2-Factor Auth is enabled.
 
@@ -29,9 +31,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// IMPORTANT: SET THE RECIPIENT EMAIL ADDRESS HERE
-// You can also move this to an environment variable, e.g., process.env.EXPIRED_ITEM_RECIPIENT
-const RECIPIENT_EMAIL = 'your-email@example.com'; 
+// The recipient email is now fetched from an environment variable
+const RECIPIENT_EMAIL = process.env.EMAIL_RECIPIENT; 
 
 export async function sendExpiredItemNotification(details: ExpiredItemDetails) {
   const { productName, barcode, staffName, expiryDate } = details;
@@ -59,13 +60,16 @@ export async function sendExpiredItemNotification(details: ExpiredItemDetails) {
   };
 
   // For development, we can log to console if email server is not configured
-  if (!process.env.EMAIL_SERVER_HOST) {
+  if (!process.env.EMAIL_SERVER_HOST || !RECIPIENT_EMAIL) {
     console.log('--- EMAIL SIMULATION ---');
-    console.log(`To: ${RECIPIENT_EMAIL}`);
+    if (!RECIPIENT_EMAIL) {
+        console.log("WARNING: EMAIL_RECIPIENT is not set in .env.local. No email will be sent.");
+    }
+    console.log(`To: ${RECIPIENT_EMAIL || 'not configured'}`);
     console.log(`Subject: ${mailOptions.subject}`);
     console.log('Body:', mailOptions.html.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n/g, '\n'));
     console.log('------------------------');
-    console.log('NOTE: Email service is not configured. Please set EMAIL_SERVER... variables in .env.local to send real emails.');
+    console.log('NOTE: Email service is not configured. Please set EMAIL_... variables in .env.local to send real emails.');
     return;
   }
 
