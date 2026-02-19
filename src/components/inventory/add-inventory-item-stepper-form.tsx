@@ -415,7 +415,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     mode="single"
                                     selected={allFormValues.expiryDate}
                                     onSelect={(date) => setValue('expiryDate', date || new Date())}
-                                    disabled={(date) => date < new Date()}
                                     initialFocus
                                   />
                                 </PopoverContent>
