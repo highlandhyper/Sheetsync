@@ -35,7 +35,8 @@ import {
   logAuditEvent,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, isBefore, startOfDay } from 'date-fns';
+import { sendExpiredItemNotification } from '@/lib/email-service';
 
 
 export interface ActionResponse<T = any> {
@@ -406,6 +407,20 @@ export async function addInventoryItemAction(
         errors: [{ path: ['barcode'], message: `Product with barcode ${validatedItemData.barcode} not found.`, code: z.ZodIssueCode.custom }]
       };
     }
+    
+    // --- CHECK FOR EXPIRED ITEM ---
+    const today = startOfDay(new Date());
+    if (validatedItemData.expiryDate && isBefore(validatedItemData.expiryDate, today)) {
+        console.log(`Item ${validatedItemData.barcode} is expired. Triggering email notification.`);
+        // Fire-and-forget, don't block the response for this
+        sendExpiredItemNotification({
+            productName: productDetails.productName,
+            barcode: validatedItemData.barcode,
+            staffName: validatedItemData.staffName,
+            expiryDate: validatedItemData.expiryDate,
+        }).catch(console.error);
+    }
+    // --- END CHECK ---
 
     const itemToAdd = {
         staffName: validatedItemData.staffName,
@@ -774,6 +789,7 @@ function revalidateRelevantPaths() {
     
 
     
+
 
 
 
