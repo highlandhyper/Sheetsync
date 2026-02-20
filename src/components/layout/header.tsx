@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Zap, LogOut, UserCircle, Command, RefreshCw } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -88,8 +87,8 @@ function LastSyncStatus() {
 }
 
 
-export function Header({ className }: { className?: string }) {
-  const { user, logout, loading } = useAuth();
+export function Header({ className, onManualLock }: { className?: string; onManualLock?: () => void; }) {
+  const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const getInitials = (email?: string | null) => {
@@ -127,8 +126,27 @@ export function Header({ className }: { className?: string }) {
                 className="text-muted-foreground"
                 aria-label="Open command palette"
             >
-                <Zap className="h-4 w-4" />
+                <Command className="h-4 w-4" />
             </Button>
+
+            {role === 'admin' && onManualLock && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={onManualLock}
+                      className="text-muted-foreground"
+                      aria-label="Lock session"
+                    >
+                      <Lock className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Lock Session</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             
             {loading ? (
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
