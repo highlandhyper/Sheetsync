@@ -117,27 +117,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         const now = Date.now();
         const newData: AppData = { ...response.data, lastSync: now };
         
-        let shouldToast = false;
-        setData(prevData => {
-            const hasChanges = JSON.stringify(prevData.inventoryItems) !== JSON.stringify(newData.inventoryItems) ||
-                JSON.stringify(prevData.products) !== JSON.stringify(newData.products) ||
-                JSON.stringify(prevData.suppliers) !== JSON.stringify(newData.suppliers) ||
-                JSON.stringify(prevData.returnedItems) !== JSON.stringify(newData.returnedItems) ||
-                JSON.stringify(prevData.auditLogs) !== JSON.stringify(newData.auditLogs);
-
-            if (hasChanges) {
-                 if (isBackgroundUpdate && isInitializedRef.current) {
-                    shouldToast = true;
-                }
-                return newData;
-            }
-            return { ...prevData, lastSync: now };
-        });
-
-        if (shouldToast) {
-            toast({ title: 'Data Updated' });
+        // Only show toast on background updates, not the initial load.
+        if (isBackgroundUpdate && isInitializedRef.current) {
+             toast({ title: 'Data Synced' });
         }
-
+        
+        setData(newData);
 
         isInitializedRef.current = true;
 
