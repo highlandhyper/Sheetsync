@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
-import { Separator } from '../ui/separator';
+import { Separator } from '@/components/ui/separator';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 
 export default function SettingsPage() {
@@ -39,7 +39,7 @@ export default function SettingsPage() {
                 {triggerText}
             </Button>
           </DialogTrigger>
-          <DialogContent className={dialogClassName || "sm:max-w-[525px]"}>
+          <DialogContent className={dialogClassName || "sm:max-w-2xl"}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
@@ -112,6 +112,7 @@ export default function SettingsPage() {
           title="Local Credentials"
           description="Set the local username and password needed for critical inventory changes."
           triggerText="Manage Credentials"
+          dialogClassName="sm:max-w-md"
         >
           <LocalCredentialsForm />
         </DialogCard>
