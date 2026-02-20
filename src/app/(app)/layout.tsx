@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -10,17 +9,19 @@ import { Header } from '@/components/layout/header';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
 import { Loader2, ShieldCheck } from 'lucide-react';
+import { useGeneralSettings } from '@/context/general-settings-context';
 
 const VIEWER_DEFAULT_PATH = '/products';
 
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
   const { isAllowed, isInitialized: permissionsInitialized } = useAccessControl();
+  const { settings: generalSettings, isInitialized: settingsInitialized } = useGeneralSettings();
   const router = useRouter();
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
 
-  const loading = authLoading || !permissionsInitialized;
+  const loading = authLoading || !permissionsInitialized || !settingsInitialized;
 
   useEffect(() => {
     if (loading) {
@@ -48,7 +49,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
 
-    if (!loading && role === 'admin') {
+    if (!loading && role === 'admin' && generalSettings.showAdminWelcome) {
       const welcomeShownSession = sessionStorage.getItem('adminWelcomeShown');
       if (!welcomeShownSession) {
         setShowAdminWelcomeScreen(true);
@@ -68,7 +69,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
         clearTimeout(timerId);
       }
     };
-  }, [loading, role]); 
+  }, [loading, role, generalSettings.showAdminWelcome]); 
 
 
   if (loading) {
