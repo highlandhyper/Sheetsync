@@ -26,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-fit items-center justify-between space-x-4 overflow-hidden rounded-full border p-3 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:slide-in-from-top-full data-[state=closed]:slide-out-to-top-full",
+  "group pointer-events-auto relative flex w-full max-w-sm items-start space-x-4 overflow-hidden rounded-md border p-4 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=open]:slide-in-from-top-full data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top-full",
   {
     variants: {
       variant: {
@@ -78,7 +78,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
       className
     )}
     toast-close=""
@@ -91,17 +91,16 @@ ToastClose.displayName = ToastPrimitives.Close.displayName
 
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
->(({ className, children, ...props }, ref) => {
-  const variant = (props as any).variant || 'default';
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & VariantProps<typeof toastVariants>
+>(({ className, children, variant, ...props }, ref) => {
   let Icon = Info;
   if(variant === 'destructive') Icon = AlertCircle;
-  else if (variant === 'success') Icon = CheckCircle;
+  else if ((props as any).variant === 'success') Icon = CheckCircle;
   
   return (
     <ToastPrimitives.Title
       ref={ref}
-      className={cn("text-sm font-semibold flex items-center gap-2", className)}
+      className={cn("text-sm font-semibold flex items-center gap-3", className)}
       {...props}
     >
       <Icon className={cn(
