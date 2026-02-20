@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '../ui/separator';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 
 export default function SettingsPage() {
@@ -64,7 +64,7 @@ export default function SettingsPage() {
           title="General Settings"
           description="Manage theme, interface preferences, and other general application settings."
           triggerText="Manage General Settings"
-          dialogClassName="sm:max-w-lg"
+          dialogClassName="sm:max-w-2xl"
         >
           <div className="space-y-6">
             <div>
