@@ -1,7 +1,7 @@
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
@@ -10,8 +10,10 @@ import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
+import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 
 const VIEWER_DEFAULT_PATH = '/products';
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
@@ -20,8 +22,48 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
   const loading = authLoading || !permissionsInitialized || !settingsInitialized;
+
+  // --- Inactivity Lock Logic ---
+  const handleLock = useCallback(() => {
+    setIsLocked(true);
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    inactivityTimerRef.current = setTimeout(handleLock, INACTIVITY_TIMEOUT_MS);
+  }, [handleLock]);
+  
+  const handleUnlock = () => {
+    setIsLocked(false);
+    resetInactivityTimer();
+  };
+
+  useEffect(() => {
+    if (user && !loading && !isLocked) {
+      const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
+      
+      const handleActivity = () => {
+        resetInactivityTimer();
+      };
+
+      events.forEach(event => window.addEventListener(event, handleActivity));
+      resetInactivityTimer(); // Start the timer initially
+
+      return () => {
+        events.forEach(event => window.removeEventListener(event, handleActivity));
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
+        }
+      };
+    }
+  }, [user, loading, isLocked, resetInactivityTimer]);
+  // --- End Inactivity Lock Logic ---
 
   useEffect(() => {
     if (loading) {
@@ -102,14 +144,17 @@ export default function AppLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <AppSidebar className="noprint" />
-      <SidebarInset className="flex min-w-0 flex-col">
-        <Header className="noprint" />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      <SidebarProvider defaultOpen={true}>
+        <AppSidebar className="noprint" />
+        <SidebarInset className="flex min-w-0 flex-col">
+          <Header className="noprint" />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+      {isLocked && <InactivityLockScreen onUnlock={handleUnlock} />}
+    </>
   );
 }
