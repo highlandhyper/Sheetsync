@@ -44,7 +44,7 @@ export default function SettingsPage() {
               <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
-            <div className="py-4">{children}</div>
+            <div className="py-4 overflow-y-auto pr-6">{children}</div>
           </DialogContent>
         </Dialog>
       </CardContent>
