@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -64,43 +63,49 @@ export default function SettingsPage() {
           title="General Settings"
           description="Manage theme, interface preferences, and other general application settings."
           triggerText="Manage General Settings"
-          dialogClassName="sm:max-w-2xl"
+          dialogClassName="sm:max-w-3xl"
         >
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Theme</h3>
-              <p className="text-muted-foreground mb-3 text-sm">
-                Choose a light, dark, or system-default theme.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-lg border p-4 flex flex-col">
+              <div className="flex-grow">
+                <h3 className="text-lg font-semibold mb-1">Theme</h3>
+                <p className="text-muted-foreground mb-4 text-sm">
+                  Choose a light, dark, or system-default theme.
+                </p>
+              </div>
               <ThemeToggle />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Multi-Select Mode</h3>
-               <p className="text-muted-foreground mb-3 text-sm">
-                Enable or disable checkboxes for bulk actions on inventory lists.
-              </p>
+
+            <div className="rounded-lg border p-4 flex flex-col">
+              <div className="flex-grow">
+                <h3 className="text-lg font-semibold mb-1">Multi-Select Mode</h3>
+                <p className="text-muted-foreground mb-4 text-sm">
+                  Enable or disable checkboxes for bulk actions on inventory lists.
+                </p>
+              </div>
               <MultiSelectToggle />
             </div>
+            
             {role === 'admin' && (
               <>
-                <Separator />
-                <div className="space-y-4 rounded-lg border border-dashed p-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/> Admin Settings</h3>
-                  <div>
-                    <h4 className="font-medium mb-1">Admin Welcome Screen</h4>
-                    <p className="text-muted-foreground mb-3 text-sm">
+                <div className="rounded-lg border p-4 flex flex-col">
+                  <div className="flex-grow">
+                    <h3 className="text-lg font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/> Admin Welcome</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">
                       Show the "Welcome back, Chief!" screen on login.
                     </p>
-                    <AdminWelcomeToggle />
                   </div>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-1">Session Lock</h4>
-                    <p className="text-muted-foreground mb-3 text-sm">
+                  <AdminWelcomeToggle />
+                </div>
+                
+                <div className="rounded-lg border p-4 flex flex-col">
+                  <div className="flex-grow">
+                    <h3 className="text-lg font-semibold mb-1 flex items-center gap-2"><Lock className="h-5 w-5 text-primary"/> Session Lock</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">
                       Manage automatic session locking for inactivity.
                     </p>
-                    <InactivityTimeoutInput />
                   </div>
+                  <InactivityTimeoutInput />
                 </div>
               </>
             )}
