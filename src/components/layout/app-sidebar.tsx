@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
-import { allNavItems, accountNavItems } from '@/lib/nav-config';
+import { allNavItems, accountNavItems, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -43,27 +43,11 @@ export function AppSidebar({ className }: { className?: string }) {
     return email.substring(0, 2).toUpperCase();
   };
 
-  const isNavItemActive = (itemHref: string, currentPathname: string): boolean => {
-    if (currentPathname === itemHref) {
-      return true;
+  const isNavItemActive = (item: NavItem, currentPathname: string): boolean => {
+    if (item.exact) {
+      return currentPathname === item.href;
     }
-    if (itemHref !== '/' && currentPathname.startsWith(itemHref)) {
-        if (itemHref === '/products' && (currentPathname.startsWith('/products/by-supplier') || currentPathname.startsWith('/products/manage'))) {
-            return false;
-        }
-        if (itemHref === '/inventory' && (currentPathname.startsWith('/inventory/add') || currentPathname.startsWith('/inventory/lookup') || currentPathname.startsWith('/inventory/returns'))) {
-            return false;
-        }
-        return true;
-    }
-    return false;
-  };
-  
-  const isAccountNavItemActive = (itemHref: string, currentPathname: string): boolean => {
-    if (itemHref === '/products/manage' && currentPathname.startsWith('/products/manage')) {
-        return true;
-    }
-    return currentPathname === itemHref;
+    return currentPathname.startsWith(item.href);
   };
 
   const getDefaultHomePage = () => {
@@ -95,7 +79,7 @@ export function AppSidebar({ className }: { className?: string }) {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
-                isActive={isNavItemActive(item.href, pathname)}
+                isActive={isNavItemActive(item, pathname)}
                 tooltip={{ children: item.label, className: "group-data-[state=expanded]/sidebar:hidden" }}
               >
                 <Link href={item.href} onClick={() => setOpenMobile(false)}>
@@ -114,7 +98,7 @@ export function AppSidebar({ className }: { className?: string }) {
                <SidebarMenuItem key={item.href}>
                  <SidebarMenuButton
                    asChild
-                   isActive={isAccountNavItemActive(item.href, pathname)}
+                   isActive={isNavItemActive(item, pathname)}
                    tooltip={{ children: item.label, className: "group-data-[state=expanded]/sidebar:hidden" }}
                  >
                    <Link href={item.href} onClick={() => setOpenMobile(false)}>
