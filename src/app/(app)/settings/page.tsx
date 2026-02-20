@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -11,6 +10,7 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
+import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -59,7 +59,7 @@ export default function SettingsPage() {
         <DialogCard
           icon={Palette}
           title="General Settings"
-          description="Manage theme and interface preferences like multi-item selection."
+          description="Manage theme, interface preferences, and other general application settings."
           triggerText="Manage General Settings"
         >
           <div className="space-y-6">
@@ -77,6 +77,15 @@ export default function SettingsPage() {
               </p>
               <MultiSelectToggle />
             </div>
+            {role === 'admin' && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Admin Welcome Screen</h3>
+                <p className="text-muted-foreground mb-3 text-sm">
+                  Show the "Welcome back, Chief!" screen on login. This is shown once per session.
+                </p>
+                <AdminWelcomeToggle />
+              </div>
+            )}
           </div>
         </DialogCard>
 
