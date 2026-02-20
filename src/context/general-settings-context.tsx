@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -6,6 +7,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 interface GeneralSettings {
   showAdminWelcome: boolean;
   inactivityTimeout: number; // in minutes
+  isLockOnInactivityEnabled: boolean;
 }
 
 interface GeneralSettingsContextType {
@@ -21,6 +23,7 @@ const SETTINGS_STORAGE_KEY = 'sheetSyncGeneralSettings';
 const defaultSettings: GeneralSettings = {
   showAdminWelcome: true,
   inactivityTimeout: 5, // Default to 5 minutes
+  isLockOnInactivityEnabled: true,
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {
@@ -32,7 +35,9 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
       const storedValue = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedValue) {
         const storedSettings = JSON.parse(storedValue);
-        setSettings({ ...defaultSettings, ...storedSettings });
+        // Merge stored settings with defaults to ensure new settings are applied
+        const mergedSettings = { ...defaultSettings, ...storedSettings };
+        setSettings(mergedSettings);
       }
     } catch (error) {
       console.warn('Could not access localStorage for general settings.', error);

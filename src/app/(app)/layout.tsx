@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -45,7 +46,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
-    if (user && !loading && !isLocked && role === 'admin') {
+    // If feature is enabled for admin, set up listeners
+    if (user && !loading && !isLocked && role === 'admin' && generalSettings.isLockOnInactivityEnabled) {
       const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
       
       const handleActivity = () => {
@@ -61,8 +63,13 @@ export default function AppLayout({ children }: PropsWithChildren) {
           clearTimeout(inactivityTimerRef.current);
         }
       };
+    } else {
+      // If feature is disabled or not applicable, ensure timer is cleared.
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
     }
-  }, [user, loading, isLocked, resetInactivityTimer, role]);
+  }, [user, loading, isLocked, resetInactivityTimer, role, generalSettings.isLockOnInactivityEnabled]);
   // --- End Inactivity Lock Logic ---
 
   useEffect(() => {

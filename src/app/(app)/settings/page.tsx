@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -63,6 +64,7 @@ export default function SettingsPage() {
           title="General Settings"
           description="Manage theme, interface preferences, and other general application settings."
           triggerText="Manage General Settings"
+          dialogClassName="sm:max-w-lg"
         >
           <div className="space-y-6">
             <div>
@@ -93,9 +95,9 @@ export default function SettingsPage() {
                   </div>
                   <Separator />
                   <div>
-                    <h4 className="font-medium mb-1">Session Lock Timeout</h4>
+                    <h4 className="font-medium mb-1">Session Lock</h4>
                     <p className="text-muted-foreground mb-3 text-sm">
-                      Set the automatic lock time due to inactivity (min. 1).
+                      Manage automatic session locking for inactivity.
                     </p>
                     <InactivityTimeoutInput />
                   </div>
