@@ -44,7 +44,7 @@ export default function SettingsPage() {
               <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto py-4 pr-1 -mr-6">{children}</div>
+            <div className="py-4">{children}</div>
           </DialogContent>
         </Dialog>
       </CardContent>
@@ -66,7 +66,7 @@ export default function SettingsPage() {
           triggerText="Manage General Settings"
           dialogClassName="sm:max-w-2xl"
         >
-          <div className="space-y-6 pr-5">
+          <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Theme</h3>
               <p className="text-muted-foreground mb-3 text-sm">
@@ -84,7 +84,7 @@ export default function SettingsPage() {
             {role === 'admin' && (
               <>
                 <Separator />
-                <div className="space-y-6 rounded-lg border border-dashed p-4">
+                <div className="space-y-4 rounded-lg border border-dashed p-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/> Admin Settings</h3>
                   <div>
                     <h4 className="font-medium mb-1">Admin Welcome Screen</h4>
