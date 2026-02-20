@@ -13,7 +13,6 @@ import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 
 const VIEWER_DEFAULT_PATH = '/products';
-const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
@@ -26,6 +25,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
   const loading = authLoading || !permissionsInitialized || !settingsInitialized;
+  const INACTIVITY_TIMEOUT_MS = (generalSettings.inactivityTimeout || 5) * 60 * 1000;
 
   // --- Inactivity Lock Logic ---
   const handleLock = useCallback(() => {
@@ -37,7 +37,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       clearTimeout(inactivityTimerRef.current);
     }
     inactivityTimerRef.current = setTimeout(handleLock, INACTIVITY_TIMEOUT_MS);
-  }, [handleLock]);
+  }, [handleLock, INACTIVITY_TIMEOUT_MS]);
   
   const handleUnlock = () => {
     setIsLocked(false);
@@ -148,7 +148,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <SidebarProvider defaultOpen={true}>
         <AppSidebar className="noprint" />
         <SidebarInset className="flex min-w-0 flex-col">
-          <Header className="noprint" />
+          <Header className="noprint" onManualLock={handleLock} />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             {children}
           </main>

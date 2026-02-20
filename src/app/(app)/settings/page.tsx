@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2 } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
+import { Separator } from '@/components/ui/separator';
+import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -78,13 +80,27 @@ export default function SettingsPage() {
               <MultiSelectToggle />
             </div>
             {role === 'admin' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Admin Welcome Screen</h3>
-                <p className="text-muted-foreground mb-3 text-sm">
-                  Show the "Welcome back, Chief!" screen on login. This is shown once per session.
-                </p>
-                <AdminWelcomeToggle />
-              </div>
+              <>
+                <Separator />
+                <div className="space-y-6 rounded-lg border border-dashed p-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/> Admin Settings</h3>
+                  <div>
+                    <h4 className="font-medium mb-1">Admin Welcome Screen</h4>
+                    <p className="text-muted-foreground mb-3 text-sm">
+                      Show the "Welcome back, Chief!" screen on login.
+                    </p>
+                    <AdminWelcomeToggle />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-1">Session Lock Timeout</h4>
+                    <p className="text-muted-foreground mb-3 text-sm">
+                      Set the automatic lock time due to inactivity (min. 1).
+                    </p>
+                    <InactivityTimeoutInput />
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </DialogCard>

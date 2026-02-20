@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 interface GeneralSettings {
   showAdminWelcome: boolean;
+  inactivityTimeout: number; // in minutes
 }
 
 interface GeneralSettingsContextType {
@@ -19,6 +20,7 @@ const SETTINGS_STORAGE_KEY = 'sheetSyncGeneralSettings';
 
 const defaultSettings: GeneralSettings = {
   showAdminWelcome: true,
+  inactivityTimeout: 5, // Default to 5 minutes
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {
