@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
 import { AddProductDialog } from './add-product-dialog';
@@ -49,6 +50,7 @@ function ProductListSkeleton() {
 
 export function ProductListClient() {
   const { products: allProducts } = useDataCache();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'>('name-asc');
   
@@ -88,6 +90,10 @@ export function ProductListClient() {
     return filteredAndSortedProducts;
   }, [filteredAndSortedProducts]);
 
+  const handleProductClick = (barcode: string) => {
+    router.push(`/products/manage?barcode=${barcode}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -122,7 +128,7 @@ export function ProductListClient() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {itemsToRender.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product.barcode)} />
             ))}
           </div>
           {filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY && (

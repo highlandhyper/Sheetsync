@@ -5,12 +5,23 @@ import { memo } from 'react';
 
 interface ProductCardProps {
   product: Product;
+  onClick: () => void;
 }
 
-const ProductCardComponent = ({ product }: ProductCardProps) => {
+const ProductCardComponent = ({ product, onClick }: ProductCardProps) => {
 
   return (
-    <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <Card 
+        className="w-full shadow-lg hover:shadow-xl transition-all duration-300 hover:ring-2 hover:ring-primary/50 cursor-pointer"
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
       <CardHeader className="pb-2">
         <div className="flex items-start gap-4">
            <div className="p-3 bg-muted rounded-lg">
