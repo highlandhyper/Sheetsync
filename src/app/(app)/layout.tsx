@@ -45,7 +45,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
-    if (user && !loading && !isLocked) {
+    if (user && !loading && !isLocked && role === 'admin') {
       const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
       
       const handleActivity = () => {
@@ -62,7 +62,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
         }
       };
     }
-  }, [user, loading, isLocked, resetInactivityTimer]);
+  }, [user, loading, isLocked, resetInactivityTimer, role]);
   // --- End Inactivity Lock Logic ---
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
           </main>
         </SidebarInset>
       </SidebarProvider>
-      {isLocked && <InactivityLockScreen onUnlock={handleUnlock} />}
+      {isLocked && role === 'admin' && <InactivityLockScreen onUnlock={handleUnlock} />}
     </>
   );
 }
