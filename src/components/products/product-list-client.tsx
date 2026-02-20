@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
 import { AddProductDialog } from './add-product-dialog';
@@ -13,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useDataCache } from '@/context/data-cache-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
+import { EditProductDialog } from './edit-product-dialog';
 
 const MAX_ITEMS_TO_DISPLAY = 100;
 
@@ -49,11 +49,13 @@ function ProductListSkeleton() {
 
 
 export function ProductListClient() {
-  const { products: allProducts } = useDataCache();
-  const router = useRouter();
+  const { products: allProducts, suppliers, updateProduct } = useDataCache();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'>('name-asc');
   
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const filteredAndSortedProducts = useMemo(() => {
     let items = [...allProducts];
 
@@ -90,9 +92,15 @@ export function ProductListClient() {
     return filteredAndSortedProducts;
   }, [filteredAndSortedProducts]);
 
-  const handleProductClick = (barcode: string) => {
-    router.push(`/products/manage?barcode=${barcode}`);
+  const handleProductClick = (product: Product) => {
+    setEditingProduct(product);
+    setIsEditDialogOpen(true);
   };
+  
+  const handleEditSuccess = useCallback((updatedProduct: Product) => {
+    updateProduct(updatedProduct);
+    setIsEditDialogOpen(false);
+  }, [updateProduct]);
 
   return (
     <div className="space-y-6">
@@ -128,7 +136,7 @@ export function ProductListClient() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {itemsToRender.map((product) => (
-              <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product.barcode)} />
+              <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
             ))}
           </div>
           {filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY && (
@@ -151,6 +159,14 @@ export function ProductListClient() {
           )}
         </div>
       )}
+
+      <EditProductDialog
+        product={editingProduct}
+        allSuppliers={suppliers}
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 }
