@@ -94,8 +94,9 @@ const ToastTitle = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & VariantProps<typeof toastVariants>
 >(({ className, children, variant, ...props }, ref) => {
   let Icon = Info;
-  if(variant === 'destructive') Icon = AlertCircle;
-  else if ((props as any).variant === 'success') Icon = CheckCircle;
+  if (variant === 'destructive') {
+    Icon = AlertCircle;
+  }
   
   return (
     <ToastPrimitives.Title
