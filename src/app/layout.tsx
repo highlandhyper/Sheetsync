@@ -1,14 +1,7 @@
 import type {Metadata} from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/context/auth-context';
-import { LocalSettingsAuthProvider } from '@/context/local-settings-auth-context';
-import { ThemeProvider } from 'next-themes';
-import { AccessControlProvider } from '@/context/access-control-context';
-import { MultiSelectProvider } from '@/context/multi-select-context';
-import { DataCacheProvider } from '@/context/data-cache-context';
-import { GeneralSettingsProvider } from '@/context/general-settings-context';
+import { Providers } from './providers';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -55,27 +48,9 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <LocalSettingsAuthProvider>
-            <AuthProvider>
-              <AccessControlProvider>
-                <GeneralSettingsProvider>
-                  <MultiSelectProvider>
-                    <DataCacheProvider>
-                      {children}
-                    </DataCacheProvider>
-                    <Toaster />
-                  </MultiSelectProvider>
-                </GeneralSettingsProvider>
-              </AccessControlProvider>
-            </AuthProvider>
-          </LocalSettingsAuthProvider>
-        </ThemeProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
