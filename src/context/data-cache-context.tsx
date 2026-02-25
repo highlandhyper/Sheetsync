@@ -149,45 +149,31 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     if (authLoading) return;
 
     if (!user) {
+      // Clear data and state on logout
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], lastSync: null });
       isInitializedRef.current = false;
       return;
     }
+
+    // This check ensures we only run the initial, non-background fetch once per app load.
+    // isInitializedRef is set to true inside fetchDataAndCache upon success.
+    if (!isInitializedRef.current) {
+        fetchDataAndCache(false);
+    }
     
-    let isMounted = true;
-
-    const initialize = async () => {
-      try {
-        const db = await openDB();
-        const cachedData = await getFromDB(db);
-        db.close();
-        if (isMounted && cachedData) {
-          setData(cachedData);
-        }
-      } catch (error) {
-        console.warn("DataCache: Could not load from IndexedDB.", error);
-      }
-      
-      await fetchDataAndCache(false);
-    };
-
-    initialize();
-
-    const handleFocus = () => {
-      fetchDataAndCache(true);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', () => {
+    const handleDataRefresh = () => {
+        // The visibility check prevents fetching data when the tab is in the background.
         if (document.visibilityState === 'visible') {
-            handleFocus();
+            fetchDataAndCache(true);
         }
-    });
+    };
+
+    window.addEventListener('focus', handleDataRefresh);
+    window.addEventListener('visibilitychange', handleDataRefresh);
 
     return () => {
-      isMounted = false;
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('focus', handleDataRefresh);
+      window.removeEventListener('visibilitychange', handleDataRefresh);
     };
   }, [user, authLoading, fetchDataAndCache]);
 
@@ -268,4 +254,6 @@ export function useDataCache() {
   }
   return context;
 }
+    
+
     
