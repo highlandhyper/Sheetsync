@@ -43,45 +43,7 @@ interface DataCacheContextType {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const DB_NAME = 'SheetSyncDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'appDataCache';
-const CACHE_KEY = 'sheetSyncDataCache';
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-  });
-}
-
-async function getFromDB(db: IDBDatabase): Promise<AppData | null> {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(CACHE_KEY);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result || null);
-  });
-}
-
-async function setToDB(db: IDBDatabase, data: AppData): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(data, CACHE_KEY);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-  });
-}
-
+const SYNC_INTERVAL_MS = 60000; // Background sync every 60 seconds
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
@@ -119,15 +81,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         isInitializedRef.current = true;
 
         if (isBackgroundUpdate) {
-          toast({ title: 'Sync Complete', description: 'Data is now up to date.' });
-        }
-
-        try {
-          const db = await openDB();
-          await setToDB(db, newData);
-          db.close();
-        } catch (dbError) {
-          console.error("Failed to save to IndexedDB:", dbError);
+          toast({ 
+            title: 'Sync Complete', 
+            description: `Last synced: ${new Date().toLocaleTimeString()}`
+          });
         }
       }
     } catch (fetchError) {
@@ -138,33 +95,44 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, [toast]);
 
+  // Initial Load
   useEffect(() => {
     if (authLoading) return;
-
     if (!user) {
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], lastSync: null });
       isInitializedRef.current = false;
       return;
     }
-
     if (!isInitializedRef.current) {
         fetchDataAndCache(false);
     }
-    
+  }, [user, authLoading, fetchDataAndCache]);
+
+  // Background Polling & Visibility Sync
+  useEffect(() => {
+    if (!user || authLoading) return;
+
     const handleDataRefresh = () => {
         if (document.visibilityState === 'visible') {
             fetchDataAndCache(true);
         }
     };
 
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isSyncing) {
+        fetchDataAndCache(true);
+      }
+    }, SYNC_INTERVAL_MS);
+
     window.addEventListener('focus', handleDataRefresh);
     window.addEventListener('visibilitychange', handleDataRefresh);
 
     return () => {
+      clearInterval(intervalId);
       window.removeEventListener('focus', handleDataRefresh);
       window.removeEventListener('visibilitychange', handleDataRefresh);
     };
-  }, [user, authLoading, fetchDataAndCache]);
+  }, [user, authLoading, fetchDataAndCache, isSyncing]);
 
   const manualRefreshData = useCallback(async () => {
     toast({ title: 'Syncing Data...', description: 'Refreshing from Google Sheets.' });
