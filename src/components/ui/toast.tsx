@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { AlertCircle, Info, X } from "lucide-react"
+import { AlertCircle, Info, X, CheckCircle2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -16,7 +17,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-4 z-[100] flex w-full flex-col items-center p-4 sm:top-4 pointer-events-none",
+      "fixed top-4 z-[100] flex w-full flex-col items-center p-4 pointer-events-none",
       className
     )}
     {...props}
@@ -25,13 +26,13 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-fit min-w-[240px] max-w-[450px] items-center justify-between space-x-4 overflow-hidden rounded-full border p-2.5 px-6 shadow-2xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-fit min-w-[280px] max-w-[400px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800 bg-zinc-950/95 p-3 px-6 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
-        default: "bg-zinc-900/95 border-zinc-800 text-zinc-100 backdrop-blur-md",
+        default: "text-zinc-100",
         destructive:
-          "border-destructive bg-destructive text-destructive-foreground",
+          "border-destructive/50 bg-destructive/95 text-destructive-foreground",
       },
     },
     defaultVariants: {
@@ -62,7 +63,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-full border bg-transparent px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-transparent px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
       className
     )}
     {...props}
@@ -92,11 +93,18 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { variant?: 'default' | 'destructive' }
 >(({ className, variant, ...props }, ref) => {
-  const { onOpenChange, ...cleanProps } = props as any;
+  // Use a clean version of props to avoid passing non-DOM attributes like 'onOpenChange'
+  const { children, ...cleanProps } = props as any;
   
   let Icon = Info;
   if (variant === 'destructive') {
     Icon = AlertCircle;
+  } else {
+    // Check if the title text implies success
+    const text = String(children).toLowerCase();
+    if (text.includes('success') || text.includes('unlocked') || text.includes('saved')) {
+      Icon = CheckCircle2;
+    }
   }
   
   return (
@@ -109,7 +117,7 @@ const ToastTitle = React.forwardRef<
         "h-4 w-4 shrink-0",
         variant === 'destructive' ? "text-white" : "text-primary"
       )} />
-      {props.children}
+      {children}
     </ToastPrimitives.Title>
   )
 })
@@ -119,15 +127,14 @@ const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
 >(({ className, ...props }, ref) => {
-  const { onOpenChange, ...cleanProps } = props as any;
-  
+  const { children, ...cleanProps } = props as any;
   return (
     <ToastPrimitives.Description
       ref={ref}
-      className={cn("text-xs opacity-80 leading-tight", className)}
+      className={cn("text-xs opacity-80 leading-tight mt-0.5", className)}
       {...cleanProps}
     >
-      {props.children}
+      {children}
     </ToastPrimitives.Description>
   )
 })

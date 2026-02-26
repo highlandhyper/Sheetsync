@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock, CloudSync } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -20,69 +21,53 @@ import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
 import { useDataCache } from '@/context/data-cache-context';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
-// New component for sync status
+// New component for sync status with tagline
 function LastSyncStatus() {
   const { lastSync, isSyncing, isCacheReady, refreshData } = useDataCache();
-  // State to force re-render for the relative time display
   const [_, setForceUpdate] = useState(0);
 
   useEffect(() => {
-    // Set up an interval to update the component every 30 seconds
     const timer = setInterval(() => {
       setForceUpdate(Date.now());
-    }, 30000); // 30 seconds
-
-    // Clean up the interval on component unmount
+    }, 30000);
     return () => clearInterval(timer);
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  if (isSyncing) {
-     return (
-        <Button variant="ghost" size="sm" disabled className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
-            <RefreshCw className="h-3 w-3 animate-spin" />
-            <span>Syncing...</span>
-        </Button>
-     );
-  }
-
-  if (!isCacheReady) {
-    return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={refreshData} className="flex items-center gap-1.5 text-xs text-yellow-600 mr-2">
-                        <RefreshCw className="h-3 w-3" />
-                        <span>Sync now</span>
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Data has not been synced yet. Click to sync.</p></TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-  }
+  }, []);
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={refreshData}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2"
-          >
-            <RefreshCw className="h-3 w-3" />
-            <span>
-              {lastSync ? `Synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Sync now'}
-            </span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to refresh.` : 'Click to sync data now.'}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="flex items-center gap-2">
+      <div className="hidden lg:flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
+        <span className={cn("transition-colors", isSyncing ? "text-primary animate-pulse" : "")}>
+          {isSyncing ? "Syncing..." : "Cloud Connected"}
+        </span>
+        <span>
+          {lastSync ? `Last: ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Not Synced'}
+        </span>
+      </div>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={refreshData}
+              disabled={isSyncing}
+              className={cn(
+                "h-8 w-8 rounded-full transition-all duration-500",
+                isSyncing ? "bg-primary/10 text-primary rotate-180" : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to refresh.` : 'Click to sync data now.'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
   );
 }
 
@@ -90,6 +75,7 @@ function LastSyncStatus() {
 export function Header({ className, onManualLock }: { className?: string; onManualLock?: () => void; }) {
   const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const { isSyncing } = useDataCache();
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -102,31 +88,39 @@ export function Header({ className, onManualLock }: { className?: string; onManu
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 gap-4">
+      <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-4 md:px-6 gap-4 overflow-hidden">
+        {/* Sync Timeline Progress Bar */}
+        <div 
+          className={cn(
+            "absolute top-0 left-0 h-[2px] bg-primary transition-all duration-1000 ease-in-out",
+            isSyncing ? "w-full opacity-100" : "w-0 opacity-0"
+          )} 
+        />
+
         <div className="flex items-center gap-2">
             <SidebarTrigger className="md:hidden" />
         </div>
         
-        {/* Container for search and actions, aligned right */}
         <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
-          {/* Search bar takes up available space */}
           <div className="hidden md:flex flex-1 justify-center px-4">
              <div className="w-full max-w-sm">
                 <HeaderBarcodeLookup />
             </div>
           </div>
 
-          {/* Action buttons have fixed size */}
           <div className="flex items-center gap-2">
             <LastSyncStatus />
+            
+            <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
+
             <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setIsCommandPaletteOpen(true)}
-                className="text-muted-foreground"
+                className="h-8 w-8 text-muted-foreground"
                 aria-label="Open command palette"
             >
-                <Command className="h-4 w-4" />
+                <Command className="h-3.5 w-3.5" />
             </Button>
 
             {role === 'admin' && onManualLock && (
@@ -137,10 +131,10 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                       variant="outline"
                       size="icon"
                       onClick={onManualLock}
-                      className="text-muted-foreground"
+                      className="h-8 w-8 text-muted-foreground"
                       aria-label="Lock session"
                     >
-                      <Lock className="h-4 w-4" />
+                      <Lock className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p>Lock Session</p></TooltipContent>
@@ -149,12 +143,12 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             )}
             
             {loading ? (
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full animate-pulse bg-muted" disabled />
+                <div className="h-8 w-8 rounded-full animate-pulse bg-muted" />
             ) : user ? (
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
                         <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" />
                         <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
                     </Avatar>
@@ -174,14 +168,14 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                     </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout}>
+                    <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" size="sm">
                     <Link href="/login">
                     <UserCircle className="mr-2 h-4 w-4" /> Login
                     </Link>
