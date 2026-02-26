@@ -48,8 +48,6 @@ const DB_VERSION = 1;
 const STORE_NAME = 'appDataCache';
 const CACHE_KEY = 'sheetSyncDataCache';
 
-// --- IndexedDB Helper Functions ---
-
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -101,7 +99,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   
   const [isSyncing, setIsSyncing] = useState(false);
   const isInitializedRef = useRef(false);
-  const isFetchingRef = useRef(false); // Ref to prevent concurrent fetches
+  const isFetchingRef = useRef(false);
   const isCacheReady = data.lastSync !== null;
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
@@ -117,14 +115,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         const now = Date.now();
         const newData: AppData = { ...response.data, lastSync: now };
         
-        // Only show toast on background updates, not the initial load.
-        if (isBackgroundUpdate && isInitializedRef.current) {
-             toast({ title: 'Data Synced' });
-        }
-        
         setData(newData);
-
         isInitializedRef.current = true;
+
+        if (isBackgroundUpdate) {
+          toast({ title: 'Sync Complete', description: 'Data is now up to date.' });
+        }
 
         try {
           const db = await openDB();
@@ -132,10 +128,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           db.close();
         } catch (dbError) {
           console.error("Failed to save to IndexedDB:", dbError);
-          toast({ title: 'Cache Write Warning', variant: 'destructive' });
         }
-      } else {
-        console.warn("DataCache: Fetch all data action failed.", response.message);
       }
     } catch (fetchError) {
       console.error("DataCacheProvider: An error occurred during fetch", fetchError);
@@ -149,20 +142,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     if (authLoading) return;
 
     if (!user) {
-      // Clear data and state on logout
       setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], lastSync: null });
       isInitializedRef.current = false;
       return;
     }
 
-    // This check ensures we only run the initial, non-background fetch once per app load.
-    // isInitializedRef is set to true inside fetchDataAndCache upon success.
     if (!isInitializedRef.current) {
         fetchDataAndCache(false);
     }
     
     const handleDataRefresh = () => {
-        // The visibility check prevents fetching data when the tab is in the background.
         if (document.visibilityState === 'visible') {
             fetchDataAndCache(true);
         }
@@ -178,9 +167,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [user, authLoading, fetchDataAndCache]);
 
   const manualRefreshData = useCallback(async () => {
-    toast({ title: 'Syncing Data...' });
+    toast({ title: 'Syncing Data...', description: 'Refreshing from Google Sheets.' });
     await fetchDataAndCache(true);
-    toast({ title: 'Sync Complete' });
   }, [fetchDataAndCache, toast]);
 
   const addInventoryItem = useCallback((item: InventoryItem) => {
@@ -254,6 +242,3 @@ export function useDataCache() {
   }
   return context;
 }
-    
-
-    

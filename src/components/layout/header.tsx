@@ -23,9 +23,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-// New component for sync status with tagline
 function LastSyncStatus() {
-  const { lastSync, isSyncing, isCacheReady, refreshData } = useDataCache();
+  const { lastSync, isSyncing, refreshData } = useDataCache();
   const [_, setForceUpdate] = useState(0);
 
   useEffect(() => {
@@ -39,7 +38,7 @@ function LastSyncStatus() {
     <div className="flex items-center gap-2">
       <div className="hidden lg:flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
         <span className={cn("transition-colors", isSyncing ? "text-primary animate-pulse" : "")}>
-          {isSyncing ? "Syncing..." : "Cloud Connected"}
+          {isSyncing ? "Refreshing Data..." : "Cloud Connected"}
         </span>
         <span>
           {lastSync ? `Last: ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Not Synced'}
@@ -89,7 +88,6 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   return (
     <>
       <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-4 md:px-6 gap-4 overflow-hidden">
-        {/* Sync Timeline Progress Bar */}
         <div 
           className={cn(
             "absolute top-0 left-0 h-[2px] bg-primary transition-all duration-1000 ease-in-out",

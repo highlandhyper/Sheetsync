@@ -26,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-fit min-w-[280px] max-w-[400px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800 bg-zinc-950/95 p-3 px-6 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-fit min-w-[240px] max-w-[380px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800 bg-zinc-950/95 p-3 px-6 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
@@ -93,16 +93,14 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { variant?: 'default' | 'destructive' }
 >(({ className, variant, ...props }, ref) => {
-  // Use a clean version of props to avoid passing non-DOM attributes like 'onOpenChange'
   const { children, ...cleanProps } = props as any;
   
   let Icon = Info;
   if (variant === 'destructive') {
     Icon = AlertCircle;
   } else {
-    // Check if the title text implies success
     const text = String(children).toLowerCase();
-    if (text.includes('success') || text.includes('unlocked') || text.includes('saved')) {
+    if (text.includes('success') || text.includes('unlocked') || text.includes('saved') || text.includes('complete')) {
       Icon = CheckCircle2;
     }
   }
