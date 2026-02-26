@@ -30,7 +30,6 @@ import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
-import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -527,8 +526,8 @@ export function InventoryListClient() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return All</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return All</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete All</Button>
                 </div>
              </div>
           ) : (
@@ -618,7 +617,7 @@ export function InventoryListClient() {
                     </Button>
                   )}
                    <Button onClick={handleShareToWhatsApp} variant="outline" className="w-full" disabled={groupedItems.length === 0}>
-                       <WhatsAppIcon className="mr-2 h-4 w-4" /> WhatsApp
+                       WhatsApp
                    </Button>
                    <div className="print-button-container w-full">
                     <Button onClick={handlePrint} variant="outline" className="w-full">
