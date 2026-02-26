@@ -1,11 +1,9 @@
-
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
-  addProductSchema, // Re-using for validation, consider renaming to productSchema
+  addProductSchema,
   addInventoryItemSchema,
   addSupplierSchema,
   editInventoryItemSchema,
@@ -35,8 +33,9 @@ import {
   logAuditEvent,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
-import { format, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 
+const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -45,7 +44,6 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
-// --- New Action for fetching all cached data ---
 export async function fetchAllDataAction(): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products: Product[];
@@ -93,7 +91,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   }
 }
 
-// Action specifically for the real-time inventory list page
 export async function fetchInventoryListDataAction(): Promise<ActionResponse<{
     inventoryItems: InventoryItem[];
     suppliers: Supplier[];
@@ -120,8 +117,6 @@ export async function fetchInventoryListDataAction(): Promise<ActionResponse<{
     }
 }
 
-
-// This action might be deprecated or merged into saveProductAction
 export async function addProductAction(
   prevState: ActionResponse | undefined,
   formData: FormData
@@ -143,7 +138,6 @@ export async function addProductAction(
 
     const { barcode, productName, supplierName, costPrice } = validationResult.data;
 
-    // Using the more comprehensive dbAddProduct which handles BAR DATA and SUP DATA
     const newProduct = await dbAddProduct(userEmail, {
       barcode,
       productName,
@@ -152,7 +146,7 @@ export async function addProductAction(
     });
 
     if (!newProduct) {
-        throw new Error("Failed to create product. Check server logs (Google Sheets API or other data source).");
+        throw new Error("Failed to create product. Check server logs.");
     }
 
     revalidateRelevantPaths();
@@ -181,15 +175,14 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
     if (!barcode || barcode.trim() === '') {
       return { success: false, message: "Barcode is required for search." };
     }
-    // getProductDetailsByBarcode returns an InventoryItem-like structure, adapting for Product
     const productDetails = await getProductDetailsByBarcode(barcode.trim());
 
-    if (productDetails && productDetails.productName) { // Check productName as a sign of existence
+    if (productDetails && productDetails.productName) {
       const product: Product = {
-        id: productDetails.barcode, // Assuming id is barcode for products
+        id: productDetails.barcode,
         barcode: productDetails.barcode,
         productName: productDetails.productName,
-        supplierName: productDetails.supplierName || '', // Ensure supplierName is a string
+        supplierName: productDetails.supplierName || '',
         costPrice: productDetails.costPrice,
       };
       return { success: true, data: product };
@@ -216,7 +209,7 @@ export async function saveProductAction(
     const editMode = rawFormData.editMode as 'create' | 'edit';
     const userEmail = formData.get('userEmail') as string || 'Unknown User';
 
-    const validationResult = addProductSchema.safeParse(rawFormData); // Using addProductSchema for now
+    const validationResult = addProductSchema.safeParse(rawFormData);
 
     if (!validationResult.success) {
       return {
@@ -232,14 +225,14 @@ export async function saveProductAction(
     if (editMode === 'create') {
       savedProduct = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
       if (!savedProduct) {
-        throw new Error("Failed to create new product. Check server logs.");
+        throw new Error("Failed to create new product.");
       }
     } else if (editMode === 'edit') {
       const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
       if (!success) {
-        throw new Error("Failed to update existing product. Check server logs.");
+        throw new Error("Failed to update existing product.");
       }
-      savedProduct = { id: barcode, barcode, productName, supplierName, costPrice, createdAt: new Date().toISOString() }; // Construct a representative Product object
+      savedProduct = { id: barcode, barcode, productName, supplierName, costPrice, createdAt: new Date().toISOString() };
     } else {
       throw new Error("Invalid edit mode specified.");
     }
@@ -262,7 +255,6 @@ export async function saveProductAction(
     console.timeEnd(timeLabel);
   }
 }
-
 
 export async function addSupplierAction(
   prevState: ActionResponse | undefined,
@@ -290,7 +282,7 @@ export async function addSupplierAction(
     if (result.error || !result.supplier) {
       return {
         success: false,
-        message: result.error || 'Failed to add supplier for an unknown reason. Check server logs.',
+        message: result.error || 'Failed to add supplier.',
         errors: result.error ? [{ path: ['supplierName'], message: result.error, code: z.ZodIssueCode.custom }] : []
       };
     }
@@ -304,7 +296,7 @@ export async function addSupplierAction(
     };
   } catch (error) {
     console.error("Error in addSupplierAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while adding the supplier.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       success: false,
       message: `Failed to add supplier: ${errorMessage}`,
@@ -337,8 +329,8 @@ export async function editSupplierAction(
 
     if (currentSupplierName.trim().toLowerCase() === newSupplierName.trim().toLowerCase()) {
        return {
-        success: true, // Or false if you consider it an "action not taken"
-        message: "Supplier name is already the same. No update performed.",
+        success: true,
+        message: "Supplier name is already the same.",
         data: { id: supplierId, name: newSupplierName.trim() }
       };
     }
@@ -346,8 +338,7 @@ export async function editSupplierAction(
     const success = await dbUpdateSupplierName(userEmail, currentSupplierName, newSupplierName);
 
     if (!success) {
-      // dbUpdateSupplierName logs specific errors, but we can generalize here
-      throw new Error(`Failed to update supplier name in the data source. Check server logs. It's possible no supplier named "${currentSupplierName}" was found or an API error occurred.`);
+      throw new Error(`Failed to update supplier name.`);
     }
     
     revalidateRelevantPaths();
@@ -355,11 +346,11 @@ export async function editSupplierAction(
     return {
       success: true,
       message: `Supplier "${currentSupplierName}" updated to "${newSupplierName}" successfully!`,
-      data: { id: supplierId, name: newSupplierName.trim() }, // Return a representative Supplier object
+      data: { id: supplierId, name: newSupplierName.trim() },
     };
   } catch (error) {
     console.error("Error in editSupplierAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while updating the supplier.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       success: false,
       message: `Failed to update supplier: ${errorMessage}`,
@@ -368,7 +359,6 @@ export async function editSupplierAction(
     console.timeEnd(timeLabel);
   }
 }
-
 
 export async function addInventoryItemAction(
   prevState: ActionResponse | undefined,
@@ -402,7 +392,7 @@ export async function addInventoryItemAction(
     if (!productDetails || !productDetails.productName) {
       return {
         success: false,
-        message: `Product with barcode ${validatedItemData.barcode} not found in BAR DATA. Please add it via the Manage Products page first.`,
+        message: `Product with barcode ${validatedItemData.barcode} not found in catalog.`,
         errors: [{ path: ['barcode'], message: `Product with barcode ${validatedItemData.barcode} not found.`, code: z.ZodIssueCode.custom }]
       };
     }
@@ -423,7 +413,29 @@ export async function addInventoryItemAction(
     );
 
     if (!newInventoryItem) {
-        throw new Error("Failed to log inventory item. Check server logs.");
+        throw new Error("Failed to log inventory item.");
+    }
+
+    // --- INTEGRATION: Notify external AppScript API for email alerts ---
+    try {
+        const appScriptPayload = {
+            isSpecial: false,
+            barcode: validatedItemData.barcode,
+            identity: validatedItemData.staffName,
+            type: validatedItemData.itemType,
+            quantity: validatedItemData.quantity,
+            expiryDate: rawFormData.expiryDate,
+            location: validatedItemData.location,
+            productName: productDetails.productName,
+            timestamp: new Date().toISOString()
+        };
+
+        fetch(EXTERNAL_LOGGER_API, {
+            method: 'POST',
+            body: JSON.stringify(appScriptPayload)
+        }).catch(e => console.warn("AppScript fetch caught:", e));
+    } catch (err) {
+        console.warn("External API notification skipped:", err);
     }
 
     revalidateRelevantPaths();
@@ -435,7 +447,7 @@ export async function addInventoryItemAction(
     };
   } catch (error) {
     console.error("Error in addInventoryItemAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while logging the inventory item.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       success: false,
       message: `Failed to log inventory item: ${errorMessage}`,
@@ -454,26 +466,20 @@ export async function returnInventoryItemAction(
   const timeLabel = "Action: returnInventoryItemAction";
   console.time(timeLabel);
   try {
-    if (!itemId) {
-      return { success: false, message: 'Item ID is required.' };
-    }
-    if (quantityToReturn <= 0) {
-      return { success: false, message: 'Quantity to return must be a positive number.' };
-    }
-    if (!staffName || staffName.trim() === '') {
-      return { success: false, message: 'Staff name for processing the return is required.' };
-    }
+    if (!itemId) return { success: false, message: 'Item ID is required.' };
+    if (quantityToReturn <= 0) return { success: false, message: 'Quantity must be positive.' };
+    if (!staffName || staffName.trim() === '') return { success: false, message: 'Staff name is required.' };
 
     const result = await dbProcessReturn(userEmail, itemId, quantityToReturn, staffName);
     if (result.success) {
       revalidateRelevantPaths();
       return { success: true, message: result.message || 'Item processed for return.' };
     } else {
-      return { success: false, message: result.message || 'Failed to process return. Check server logs.' };
+      return { success: false, message: result.message || 'Failed to process return.' };
     }
   } catch (error) {
     console.error('Error in returnInventoryItemAction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while processing the return.';
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to process return: ${errorMessage}` };
   } finally {
     console.timeEnd(timeLabel);
@@ -524,7 +530,7 @@ export async function editInventoryItemAction(
     const updatedItem = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
 
     if (!updatedItem) {
-      throw new Error("Failed to update inventory item details. Check server logs.");
+      throw new Error("Failed to update inventory item details.");
     }
 
     revalidateRelevantPaths();
@@ -536,7 +542,7 @@ export async function editInventoryItemAction(
     };
   } catch (error) {
     console.error("Error in editInventoryItemAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while updating the item.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       success: false,
       message: `Failed to update item: ${errorMessage}`,
@@ -557,7 +563,7 @@ export async function fetchInventoryLogEntriesByBarcodeAction(barcode: string): 
     if (items.length > 0) {
       return { success: true, data: items };
     } else {
-      return { success: true, message: `No inventory log entries found for barcode ${barcode}.`, data: [] };
+      return { success: true, message: `No entries found for barcode ${barcode}.`, data: [] };
     }
   } catch (error) {
     console.error(`Error in fetchInventoryLogEntriesByBarcodeAction for ${barcode}:`, error);
@@ -576,21 +582,18 @@ export async function fetchDashboardMetricsAction(): Promise<ActionResponse<Dash
         return { success: true, data: metrics };
     } catch (error) {
         console.error("Error in fetchDashboardMetricsAction:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching dashboard metrics.";
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         return { success: false, message: `Failed to fetch dashboard metrics: ${errorMessage}`, data: undefined };
     } finally {
         console.timeEnd(timeLabel);
     }
 }
 
-
 export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
   const timeLabel = `Action: deleteInventoryItemAction for item ${itemId}`;
   console.time(timeLabel);
   try {
-    if (!itemId) {
-      return { success: false, message: 'Item ID is required for deletion.' };
-    }
+    if (!itemId) return { success: false, message: 'Item ID is required.' };
 
     const success = await dbDeleteInventoryItemById(userEmail, itemId);
 
@@ -598,19 +601,16 @@ export async function deleteInventoryItemAction(userEmail: string, itemId: strin
       revalidateRelevantPaths();
       return { success: true, message: 'Inventory log entry permanently deleted.' };
     } else {
-      return { success: false, message: 'Failed to delete inventory log entry from the data source.' };
+      return { success: false, message: 'Failed to delete inventory log entry.' };
     }
   } catch (error) {
     console.error('Error in deleteInventoryItemAction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during deletion.';
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to delete item: ${errorMessage}` };
   } finally {
     console.timeEnd(timeLabel);
   }
 }
-
-
-// --- New Actions for Centralized Permissions ---
 
 export async function getPermissionsAction(): Promise<ActionResponse<Permissions>> {
   try {
@@ -618,9 +618,7 @@ export async function getPermissionsAction(): Promise<ActionResponse<Permissions
     if (permissions) {
       return { success: true, data: permissions };
     }
-    // If null, it could be that the sheet/entry doesn't exist yet, which is not a hard error.
-    // The client-side context will handle creating default permissions.
-    return { success: true, data: null, message: "No permissions configured in sheet yet. Defaults will be used." };
+    return { success: true, data: null, message: "No permissions configured." };
   } catch (error) {
     console.error('Error in getPermissionsAction:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -632,10 +630,10 @@ export async function setPermissionsAction(permissions: Permissions): Promise<Ac
   try {
     const success = await savePermissionsToSheet(permissions);
     if (success) {
-      revalidatePath('/settings'); // Revalidate to ensure all clients get the new settings
+      revalidatePath('/settings');
       return { success: true, message: 'Permissions updated successfully.' };
     } else {
-      return { success: false, message: 'Failed to save permissions to the data source.' };
+      return { success: false, message: 'Failed to save permissions.' };
     }
   } catch (error) {
     console.error('Error in setPermissionsAction:', error);
@@ -643,29 +641,20 @@ export async function setPermissionsAction(permissions: Permissions): Promise<Ac
     return { success: false, message: `Failed to save permissions: ${errorMessage}` };
   }
 }
-    
-// --- Bulk Actions ---
 
 export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds: string[]): Promise<ActionResponse> {
   const timeLabel = `Action: bulkDeleteInventoryItemsAction for ${itemIds.length} items`;
   console.time(timeLabel);
   try {
-    if (!itemIds || itemIds.length === 0) {
-      return { success: false, message: 'No item IDs provided for deletion.' };
-    }
+    if (!itemIds || itemIds.length === 0) return { success: false, message: 'No item IDs provided.' };
 
     let successfulDeletions = 0;
     let failedDeletions = 0;
     
-    // Process deletions sequentially to avoid rate-limiting issues.
-    // For higher throughput, a batch-delete function in google-sheets-client.ts would be better.
     for (const itemId of itemIds) {
       const success = await dbDeleteInventoryItemById(userEmail, itemId);
-      if (success) {
-        successfulDeletions++;
-      } else {
-        failedDeletions++;
-      }
+      if (success) successfulDeletions++;
+      else failedDeletions++;
     }
 
     if (failedDeletions > 0) {
@@ -673,17 +662,17 @@ export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds:
       revalidateRelevantPaths();
       return {
         success: false,
-        message: `Deleted ${successfulDeletions} items, but failed to delete ${failedDeletions} items. The list has been refreshed.`,
+        message: `Deleted ${successfulDeletions} items, but failed to delete ${failedDeletions} items.`,
       };
     }
     
-    await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY_ITEMS', `${successfulDeletions} items`, `Successfully bulk deleted ${successfulDeletions} inventory log entries.`);
+    await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY_ITEMS', `${successfulDeletions} items`, `Successfully bulk deleted ${successfulDeletions} entries.`);
     revalidateRelevantPaths();
     return { success: true, message: `Successfully deleted all ${successfulDeletions} selected items.` };
 
   } catch (error) {
     console.error('Error in bulkDeleteInventoryItemsAction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during bulk deletion.';
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to bulk delete items: ${errorMessage}` };
   } finally {
     console.timeEnd(timeLabel);
@@ -700,12 +689,8 @@ export async function bulkReturnInventoryItemsAction(
   const timeLabel = `Action: bulkReturnInventoryItemsAction for ${itemIds.length} items`;
   console.time(timeLabel);
   try {
-    if (!itemIds || itemIds.length === 0) {
-      return { success: false, message: 'No item IDs provided for return.' };
-    }
-    if (!staffName) {
-      return { success: false, message: 'Processing staff name is required.' };
-    }
+    if (!itemIds || itemIds.length === 0) return { success: false, message: 'No item IDs provided.' };
+    if (!staffName) return { success: false, message: 'Staff name is required.' };
     if (returnType === 'specific' && (!quantity || quantity < 1)) {
         return { success: false, message: 'A specific quantity of at least 1 is required.' };
     }
@@ -713,34 +698,29 @@ export async function bulkReturnInventoryItemsAction(
     let successfulReturns = 0;
     let failedReturns = 0;
 
-    // Process sequentially to be safe with the sheet API.
     for (const itemId of itemIds) {
-        // For 'all', we pass a very large number; the backend logic will cap it at the available quantity.
         const quantityToReturn = returnType === 'all' ? Number.MAX_SAFE_INTEGER : quantity!;
         const result = await dbProcessReturn(userEmail, itemId, quantityToReturn, staffName);
-      if (result.success) {
-        successfulReturns++;
-      } else {
-        failedReturns++;
-      }
+      if (result.success) successfulReturns++;
+      else failedReturns++;
     }
 
     if (failedReturns > 0) {
-      await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Bulk return partially failed. Succeeded: ${successfulReturns}, Failed: ${failedReturns}. Processed by ${staffName}.`);
+      await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Bulk return partially failed. Succeeded: ${successfulReturns}, Failed: ${failedReturns}.`);
       revalidateRelevantPaths();
       return {
         success: false,
-        message: `Processed ${successfulReturns} returns, but failed on ${failedReturns} items. The list has been refreshed.`,
+        message: `Processed ${successfulReturns} returns, but failed on ${failedReturns} items.`,
       };
     }
 
-    await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Successfully processed bulk return for ${successfulReturns} items. Processed by ${staffName}.`);
+    await logAuditEvent(userEmail, 'BULK_PROCESS_RETURN', `${successfulReturns} items`, `Successfully processed bulk return for ${successfulReturns} items.`);
     revalidateRelevantPaths();
     return { success: true, message: `Successfully processed return for all ${successfulReturns} selected items.` };
 
   } catch (error) {
     console.error('Error in bulkReturnInventoryItemsAction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during bulk return.';
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to bulk return items: ${errorMessage}` };
   } finally {
     console.timeEnd(timeLabel);
@@ -753,11 +733,10 @@ export async function fetchAuditLogsAction(): Promise<ActionResponse<AuditLogEnt
     return { success: true, data: logs };
   } catch (error) {
     console.error("Error in fetchAuditLogsAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching audit logs.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return { success: false, message: errorMessage };
   }
 }
-
 
 function revalidateRelevantPaths() {
     revalidatePath('/inventory');
@@ -771,22 +750,3 @@ function revalidateRelevantPaths() {
     revalidatePath('/suppliers');
     revalidatePath('/audit-log');
 }
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
