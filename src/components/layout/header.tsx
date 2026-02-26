@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock, CloudSync } from 'lucide-react';
+import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,7 @@ function LastSyncStatus() {
         <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : "text-green-500")}>
           {isSyncing ? (
             <>
-              <CloudSync className="h-3 w-3 animate-bounce" />
+              <RefreshCw className="h-3 w-3 animate-spin" />
               <span className="hidden sm:inline">Refreshing Data...</span>
               <span className="sm:hidden">Syncing...</span>
             </>
