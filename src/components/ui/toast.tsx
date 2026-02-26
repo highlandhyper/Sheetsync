@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { AlertCircle, AlertTriangle, CheckCircle, Info, X } from "lucide-react"
+import { AlertCircle, Info, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -16,7 +16,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-4 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:top-4 sm:left-1/2 sm:-translate-x-1/2 sm:flex-col md:max-w-[380px]",
+      "fixed top-4 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:top-4 sm:left-1/2 sm:-translate-x-1/2 sm:flex-col md:max-w-[320px]",
       className
     )}
     {...props}
@@ -25,7 +25,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-full border p-3 px-6 shadow-2xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-3 overflow-hidden rounded-full border p-2 px-4 shadow-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
@@ -62,7 +62,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-full border bg-transparent px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "inline-flex h-7 shrink-0 items-center justify-center rounded-full border bg-transparent px-2.5 text-[10px] font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
       className
     )}
     {...props}
@@ -102,11 +102,11 @@ const ToastTitle = React.forwardRef<
   return (
     <ToastPrimitives.Title
       ref={ref}
-      className={cn("text-xs font-semibold flex items-center gap-2", className)}
+      className={cn("text-[11px] font-semibold flex items-center gap-1.5 leading-none", className)}
       {...cleanProps}
     >
       <Icon className={cn(
-        "h-4 w-4",
+        "h-3 w-3 shrink-0",
         variant === 'destructive' ? "text-destructive-foreground" : "text-primary"
       )} />
       {props.children}
@@ -124,7 +124,7 @@ const ToastDescription = React.forwardRef<
   return (
     <ToastPrimitives.Description
       ref={ref}
-      className={cn("text-[10px] opacity-90 leading-tight", className)}
+      className={cn("text-[9px] opacity-90 leading-tight", className)}
       {...cleanProps}
     >
       {props.children}
