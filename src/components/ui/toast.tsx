@@ -4,7 +4,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { AlertCircle, Info, X, CheckCircle2 } from "lucide-react"
+import { AlertCircle, Info, X, CheckCircle2, CloudSync } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -26,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-fit min-w-[240px] max-w-[380px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800 bg-zinc-950/95 p-3 px-6 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-fit min-w-[200px] max-w-[320px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800/50 bg-zinc-950/95 p-3 px-5 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
@@ -101,18 +101,18 @@ const ToastTitle = React.forwardRef<
   } else {
     const text = String(children).toLowerCase();
     if (text.includes('success') || text.includes('unlocked') || text.includes('saved') || text.includes('complete')) {
-      Icon = CheckCircle2;
+      Icon = text.includes('complete') ? CloudSync : CheckCircle2;
     }
   }
   
   return (
     <ToastPrimitives.Title
       ref={ref}
-      className={cn("text-sm font-semibold flex items-center gap-2 leading-none", className)}
+      className={cn("text-xs font-bold flex items-center gap-2 leading-none whitespace-nowrap", className)}
       {...cleanProps}
     >
       <Icon className={cn(
-        "h-4 w-4 shrink-0",
+        "h-3.5 w-3.5 shrink-0",
         variant === 'destructive' ? "text-white" : "text-primary"
       )} />
       {children}
@@ -129,7 +129,7 @@ const ToastDescription = React.forwardRef<
   return (
     <ToastPrimitives.Description
       ref={ref}
-      className={cn("text-xs opacity-80 leading-tight mt-0.5", className)}
+      className={cn("text-[10px] opacity-70 leading-tight mt-0.5 truncate max-w-[180px]", className)}
       {...cleanProps}
     >
       {children}

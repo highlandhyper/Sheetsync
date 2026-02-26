@@ -36,11 +36,22 @@ function LastSyncStatus() {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="hidden lg:flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
-        <span className={cn("transition-colors", isSyncing ? "text-primary animate-pulse" : "")}>
-          {isSyncing ? "Refreshing Data..." : "Cloud Connected"}
+      <div className="flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
+        <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : "text-green-500")}>
+          {isSyncing ? (
+            <>
+              <CloudSync className="h-3 w-3 animate-bounce" />
+              <span className="hidden sm:inline">Refreshing Data...</span>
+              <span className="sm:hidden">Syncing...</span>
+            </>
+          ) : (
+            <>
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              <span>Realtime Active</span>
+            </>
+          )}
         </span>
-        <span>
+        <span className="opacity-60">
           {lastSync ? `Last: ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Not Synced'}
         </span>
       </div>
@@ -62,7 +73,7 @@ function LastSyncStatus() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to refresh.` : 'Click to sync data now.'}</p>
+            <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to force refresh.` : 'Click to sync data now.'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
