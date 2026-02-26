@@ -33,7 +33,6 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
-import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -359,8 +358,8 @@ export function ReturnableInventoryBySupplierClient() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}><Undo2 className="mr-2 h-4 w-4" /> Return Selected</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return Selected</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete Selected</Button>
                 </div>
              </div>
           ) : (
@@ -455,7 +454,7 @@ export function ReturnableInventoryBySupplierClient() {
             )}
              <div className="flex items-center gap-2 ml-auto md:ml-0 md:pl-2">
                  <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                    <WhatsAppIcon className="mr-2 h-4 w-4" /> WhatsApp
+                    WhatsApp
                  </Button>
                 <div className="print-button-container">
                     <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
@@ -616,7 +615,7 @@ export function ReturnableInventoryBySupplierClient() {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
-        uniqueLocationsFromDb={uniqueDbLocations}
+        uniqueDbLocations={uniqueLocations}
       />
       
       {/* Bulk Action Dialogs */}
