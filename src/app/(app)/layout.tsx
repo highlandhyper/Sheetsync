@@ -13,7 +13,7 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 
-const VIEWER_DEFAULT_PATH = '/products';
+const VIEWER_DEFAULT_PATH = '/inventory/add';
 
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
