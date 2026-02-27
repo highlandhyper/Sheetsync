@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useToast } from "@/hooks/use-toast"
@@ -16,6 +15,7 @@ export function Toaster() {
 
   return (
     <ToastProvider swipeDirection="up">
+      <ToastViewport />
       {toasts.map(function ({ id, title, description, action, onOpenChange, ...props }) {
         return (
           <Toast key={id} onOpenChange={onOpenChange} {...props} duration={3000}>
@@ -28,7 +28,6 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport />
     </ToastProvider>
   )
 }
