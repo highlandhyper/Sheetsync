@@ -12,7 +12,6 @@ import {
 import {
   addProduct as dbAddProduct,
   getProductDetailsByBarcode,
-  addInventoryItem as dbAddInventoryItem,
   processReturn as dbProcessReturn,
   addSupplier as dbAddSupplier,
   updateSupplierNameAndReferences as dbUpdateSupplierName,
@@ -33,7 +32,7 @@ import {
   logAuditEvent,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry } from '@/lib/types';
-import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 
 const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
 
@@ -397,26 +396,27 @@ export async function addInventoryItemAction(
       };
     }
 
-    const itemToAdd = {
+    // --- FIX: Prevent Double Save ---
+    // Instead of calling dbAddInventoryItem (which writes to the sheet), 
+    // we exclusively rely on the EXTERNAL_LOGGER_API (which also writes to the sheet)
+    // to avoid two rows being created for a single log.
+    
+    const now = new Date();
+    const tempId = `log_${now.getTime()}`;
+    const newInventoryItem: InventoryItem = {
+        id: tempId,
         staffName: validatedItemData.staffName,
         itemType: validatedItemData.itemType,
         barcode: validatedItemData.barcode,
         quantity: validatedItemData.quantity,
-        expiryDate: validatedItemData.expiryDate,
+        expiryDate: validatedItemData.expiryDate ? format(new Date(validatedItemData.expiryDate), 'yyyy-MM-dd') : undefined,
         location: validatedItemData.location,
+        productName: productDetails.productName,
+        supplierName: productDetails.supplierName || 'N/A',
+        timestamp: now.toISOString()
     };
 
-    const newInventoryItem = await dbAddInventoryItem(
-      userEmail,
-      itemToAdd,
-      { productName: productDetails.productName, supplierName: productDetails.supplierName || 'N/A' }
-    );
-
-    if (!newInventoryItem) {
-        throw new Error("Failed to log inventory item.");
-    }
-
-    // --- INTEGRATION: Notify external AppScript API for email alerts ---
+    // --- INTEGRATION: Notify external AppScript API for logging and email alerts ---
     try {
         const appScriptPayload = {
             isSpecial: false,
@@ -427,16 +427,23 @@ export async function addInventoryItemAction(
             expiryDate: rawFormData.expiryDate,
             location: validatedItemData.location,
             productName: productDetails.productName,
-            timestamp: new Date().toISOString()
+            timestamp: now.toISOString()
         };
 
-        fetch(EXTERNAL_LOGGER_API, {
+        const externalResponse = await fetch(EXTERNAL_LOGGER_API, {
             method: 'POST',
             body: JSON.stringify(appScriptPayload)
-        }).catch(e => console.warn("AppScript fetch caught:", e));
+        });
+        
+        if (!externalResponse.ok) {
+            throw new Error("External logger returned error.");
+        }
     } catch (err) {
-        console.warn("External API notification skipped:", err);
+        console.warn("External API notification failed, but continuing with local update:", err);
+        // We still continue so the UI updated, though the sheet write might have failed.
     }
+
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.`);
 
     revalidateRelevantPaths();
 

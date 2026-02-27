@@ -215,6 +215,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   type FieldName = keyof AddInventoryItemFormValues;
 
   const nextStep = async () => {
+    if (isFetchingProduct || isSubmitting) return; // Prevent double trigger
+
     const fields = steps[currentStep].fields;
     
     if (currentStep >= steps.length - 1) {
@@ -240,6 +242,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   };
   
   const handleFormSubmit = () => {
+    if (isSubmitting) return;
     formRef.current?.requestSubmit();
   };
 
@@ -499,7 +502,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     </Button>
                 ) : (
                     <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
-                        {isPending || isSubmitting ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 h-4 sm:w-4" />}
+                        {isPending || isSubmitting ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}
                         Complete Log
                     </Button>
                 )}
