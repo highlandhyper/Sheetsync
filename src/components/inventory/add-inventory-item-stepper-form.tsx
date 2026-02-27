@@ -82,7 +82,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     addInventoryItem,
     refreshData,
   } = useDataCache();
-  const { activeSession, useSpecialEntry } = useSpecialEntry();
+  const { activeSession, consumeSpecialEntry } = useSpecialEntry(); // Corrected naming
   
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -171,7 +171,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
           addInventoryItem(response.data);
           
           if (activeSession) {
-              useSpecialEntry(); // Consume the session
+              consumeSpecialEntry(); // Updated function call
           }
 
           setSubmittedStaffName(data.staffName);
