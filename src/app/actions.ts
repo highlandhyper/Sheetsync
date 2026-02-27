@@ -416,10 +416,25 @@ export async function addInventoryItemAction(
         timestamp: now.toISOString()
     };
 
+    // --- Logic for Email Alert ---
+    // Mark as "Special" (Alert) if expiry date is today or has already passed.
+    let isSpecialEntry = false;
+    const expiryStr = rawFormData.expiryDate as string;
+    if (expiryStr) {
+        const [year, month, day] = expiryStr.split('-').map(Number);
+        const expiryDate = new Date(year, month - 1, day); // Local midnight
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Local midnight
+        
+        if (expiryDate <= today) {
+            isSpecialEntry = true;
+        }
+    }
+
     // --- INTEGRATION: Notify external AppScript API for logging and email alerts ---
     try {
         const appScriptPayload = {
-            isSpecial: false,
+            isSpecial: isSpecialEntry, // Dynamic alert trigger
             barcode: validatedItemData.barcode,
             identity: validatedItemData.staffName,
             type: validatedItemData.itemType,
@@ -440,10 +455,9 @@ export async function addInventoryItemAction(
         }
     } catch (err) {
         console.warn("External API notification failed, but continuing with local update:", err);
-        // We still continue so the UI updated, though the sheet write might have failed.
     }
 
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.`);
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.${isSpecialEntry ? ' (Same-day/Past expiry alert triggered)' : ''}`);
 
     revalidateRelevantPaths();
 
