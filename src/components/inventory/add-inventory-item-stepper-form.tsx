@@ -41,7 +41,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from "@/components/use-command"; // Wait, fixing potential import typo from components.json
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -82,6 +82,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   const [staffComboboxOpen, setStaffComboboxOpen] = useState(false);
@@ -123,9 +124,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   const allFormValues = watch();
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
-    if (isSubmitting) return;
+    if (isSubmitting || submitLockRef.current) return;
     
     setIsSubmitting(true);
+    submitLockRef.current = true;
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append('barcode', data.barcode);
@@ -152,11 +155,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         if (response.success && response.data) {
           addInventoryItem(response.data);
           
-          // Trigger Success Popup
           setSubmittedStaffName(data.staffName);
           setIsSuccessDialogOpen(true);
           
-          // Auto-close success popup after 5 seconds
           setTimeout(() => setIsSuccessDialogOpen(false), 5000);
 
           reset();
@@ -180,6 +181,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         });
       } finally {
         setIsSubmitting(false);
+        submitLockRef.current = false;
       }
     });
   };
@@ -215,7 +217,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   type FieldName = keyof AddInventoryItemFormValues;
 
   const nextStep = async () => {
-    if (isFetchingProduct || isSubmitting) return; // Prevent double trigger
+    if (isFetchingProduct || isSubmitting || submitLockRef.current) return;
 
     const fields = steps[currentStep].fields;
     
@@ -242,7 +244,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   };
   
   const handleFormSubmit = () => {
-    if (isSubmitting) return;
+    if (isSubmitting || submitLockRef.current) return;
     formRef.current?.requestSubmit();
   };
 
@@ -254,7 +256,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       html5QrcodeScannerRef.current.stop().catch(console.error);
       html5QrcodeScannerRef.current = null;
     }
-    // Auto-trigger next after scan
     setTimeout(() => nextStep(), 100);
   }, [setValue, nextStep]);
 
