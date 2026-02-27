@@ -90,30 +90,117 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   }
 }
 
-export async function fetchInventoryListDataAction(): Promise<ActionResponse<{
-    inventoryItems: InventoryItem[];
-    suppliers: Supplier[];
-    uniqueLocations: string[];
-}>> {
-    try {
-        const [inventoryItems, suppliers, uniqueLocations] = await Promise.all([
-            getInventoryItems(),
-            getSuppliers(),
-            getUniqueLocations()
-        ]);
-        return {
-            success: true,
-            data: {
-                inventoryItems: inventoryItems || [],
-                suppliers: suppliers || [],
-                uniqueLocations: uniqueLocations || [],
-            }
-        };
-    } catch (error) {
-        console.error("Error in fetchInventoryListDataAction:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while fetching inventory list data.";
-        return { success: false, message: errorMessage };
+export async function addInventoryItemAction(
+  prevState: ActionResponse | undefined,
+  formData: FormData
+): Promise<ActionResponse<InventoryItem>> {
+  const timeLabel = "Action: addInventoryItemAction";
+  console.time(timeLabel);
+  try {
+    const rawFormData = Object.fromEntries(formData.entries());
+    const userEmail = formData.get('userEmail') as string || 'Unknown User';
+
+    const parsedData = {
+      ...rawFormData,
+      quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
+      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00') : undefined,
+    };
+
+    const validationResult = addInventoryItemSchema.safeParse(parsedData);
+
+    if (!validationResult.success) {
+      return {
+        success: false,
+        message: "Validation failed for inventory item.",
+        errors: validationResult.error.issues,
+      };
     }
+    const validatedItemData = validationResult.data;
+
+    const productDetails = await getProductDetailsByBarcode(validatedItemData.barcode);
+
+    if (!productDetails || !productDetails.productName) {
+      return {
+        success: false,
+        message: `Product with barcode ${validatedItemData.barcode} not found in catalog.`,
+        errors: [{ path: ['barcode'], message: `Product with barcode ${validatedItemData.barcode} not found.`, code: z.ZodIssueCode.custom }]
+      };
+    }
+
+    // --- Logic for Email Alert ---
+    // Mark as "Special" (Alert) if expiry date is today or has already passed.
+    let isSpecialEntry = false;
+    if (validatedItemData.expiryDate) {
+        const expiryDate = new Date(validatedItemData.expiryDate);
+        expiryDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (expiryDate.getTime() <= today.getTime()) {
+            isSpecialEntry = true;
+        }
+    }
+    
+    const now = new Date();
+    const tempId = `log_${now.getTime()}`;
+    const newInventoryItem: InventoryItem = {
+        id: tempId,
+        staffName: validatedItemData.staffName,
+        itemType: validatedItemData.itemType,
+        barcode: validatedItemData.barcode,
+        quantity: validatedItemData.quantity,
+        expiryDate: validatedItemData.expiryDate ? format(new Date(validatedItemData.expiryDate), 'yyyy-MM-dd') : undefined,
+        location: validatedItemData.location,
+        productName: productDetails.productName,
+        supplierName: productDetails.supplierName || 'N/A',
+        timestamp: now.toISOString()
+    };
+
+    // --- INTEGRATION: Notify external AppScript API for logging and email alerts ---
+    try {
+        const appScriptPayload = {
+            isSpecial: isSpecialEntry, // Dynamic alert trigger
+            barcode: validatedItemData.barcode,
+            identity: validatedItemData.staffName,
+            type: validatedItemData.itemType,
+            quantity: validatedItemData.quantity,
+            expiryDate: rawFormData.expiryDate, // Pass original string
+            location: validatedItemData.location,
+            productName: productDetails.productName,
+            timestamp: now.toISOString()
+        };
+
+        const externalResponse = await fetch(EXTERNAL_LOGGER_API, {
+            method: 'POST',
+            body: JSON.stringify(appScriptPayload)
+        });
+        
+        if (!externalResponse.ok) {
+            throw new Error("External logger returned error.");
+        }
+    } catch (err) {
+        console.warn("External API notification failed, but continuing with local update:", err);
+    }
+
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.${isSpecialEntry ? ' (Same-day/Past expiry alert triggered)' : ''}`);
+
+    revalidateRelevantPaths();
+
+    return {
+      success: true,
+      message: 'Inventory item logged successfully!',
+      data: newInventoryItem,
+    };
+  } catch (error) {
+    console.error("Error in addInventoryItemAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return {
+      success: false,
+      message: `Failed to log inventory item: ${errorMessage}`,
+    };
+  } finally {
+    console.timeEnd(timeLabel);
+  }
 }
 
 export async function addProductAction(
@@ -359,125 +446,6 @@ export async function editSupplierAction(
   }
 }
 
-export async function addInventoryItemAction(
-  prevState: ActionResponse | undefined,
-  formData: FormData
-): Promise<ActionResponse<InventoryItem>> {
-  const timeLabel = "Action: addInventoryItemAction";
-  console.time(timeLabel);
-  try {
-    const rawFormData = Object.fromEntries(formData.entries());
-    const userEmail = formData.get('userEmail') as string || 'Unknown User';
-
-    const parsedData = {
-      ...rawFormData,
-      quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
-      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00Z') : undefined,
-    };
-
-    const validationResult = addInventoryItemSchema.safeParse(parsedData);
-
-    if (!validationResult.success) {
-      return {
-        success: false,
-        message: "Validation failed for inventory item.",
-        errors: validationResult.error.issues,
-      };
-    }
-    const validatedItemData = validationResult.data;
-
-    const productDetails = await getProductDetailsByBarcode(validatedItemData.barcode);
-
-    if (!productDetails || !productDetails.productName) {
-      return {
-        success: false,
-        message: `Product with barcode ${validatedItemData.barcode} not found in catalog.`,
-        errors: [{ path: ['barcode'], message: `Product with barcode ${validatedItemData.barcode} not found.`, code: z.ZodIssueCode.custom }]
-      };
-    }
-
-    // --- FIX: Prevent Double Save ---
-    // Instead of calling dbAddInventoryItem (which writes to the sheet), 
-    // we exclusively rely on the EXTERNAL_LOGGER_API (which also writes to the sheet)
-    // to avoid two rows being created for a single log.
-    
-    const now = new Date();
-    const tempId = `log_${now.getTime()}`;
-    const newInventoryItem: InventoryItem = {
-        id: tempId,
-        staffName: validatedItemData.staffName,
-        itemType: validatedItemData.itemType,
-        barcode: validatedItemData.barcode,
-        quantity: validatedItemData.quantity,
-        expiryDate: validatedItemData.expiryDate ? format(new Date(validatedItemData.expiryDate), 'yyyy-MM-dd') : undefined,
-        location: validatedItemData.location,
-        productName: productDetails.productName,
-        supplierName: productDetails.supplierName || 'N/A',
-        timestamp: now.toISOString()
-    };
-
-    // --- Logic for Email Alert ---
-    // Mark as "Special" (Alert) if expiry date is today or has already passed.
-    let isSpecialEntry = false;
-    const expiryStr = rawFormData.expiryDate as string;
-    if (expiryStr) {
-        const [year, month, day] = expiryStr.split('-').map(Number);
-        const expiryDate = new Date(year, month - 1, day); // Local midnight
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Local midnight
-        
-        if (expiryDate <= today) {
-            isSpecialEntry = true;
-        }
-    }
-
-    // --- INTEGRATION: Notify external AppScript API for logging and email alerts ---
-    try {
-        const appScriptPayload = {
-            isSpecial: isSpecialEntry, // Dynamic alert trigger
-            barcode: validatedItemData.barcode,
-            identity: validatedItemData.staffName,
-            type: validatedItemData.itemType,
-            quantity: validatedItemData.quantity,
-            expiryDate: rawFormData.expiryDate,
-            location: validatedItemData.location,
-            productName: productDetails.productName,
-            timestamp: now.toISOString()
-        };
-
-        const externalResponse = await fetch(EXTERNAL_LOGGER_API, {
-            method: 'POST',
-            body: JSON.stringify(appScriptPayload)
-        });
-        
-        if (!externalResponse.ok) {
-            throw new Error("External logger returned error.");
-        }
-    } catch (err) {
-        console.warn("External API notification failed, but continuing with local update:", err);
-    }
-
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.${isSpecialEntry ? ' (Same-day/Past expiry alert triggered)' : ''}`);
-
-    revalidateRelevantPaths();
-
-    return {
-      success: true,
-      message: 'Inventory item logged successfully!',
-      data: newInventoryItem,
-    };
-  } catch (error) {
-    console.error("Error in addInventoryItemAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    return {
-      success: false,
-      message: `Failed to log inventory item: ${errorMessage}`,
-    };
-  } finally {
-    console.timeEnd(timeLabel);
-  }
-}
-
 export async function returnInventoryItemAction(
   userEmail: string, 
   itemId: string, 
@@ -521,7 +489,7 @@ export async function editInventoryItemAction(
       itemId: rawFormData.itemId as string,
       location: rawFormData.location as string,
       itemType: rawFormData.itemType as ItemType,
-      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00Z') : null,
+      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00') : null,
       quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
     };
 
