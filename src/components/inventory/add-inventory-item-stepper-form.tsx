@@ -21,7 +21,9 @@ import {
     MapPin,
     AlertTriangle,
     PartyPopper,
-    Heart
+    Heart,
+    ShieldCheck,
+    BellOff
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -46,12 +48,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
 import { addInventoryItemAction, fetchProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
+import { useSpecialEntry } from '@/context/special-entry-context';
 
 const STAFF_NAMES = [
   "ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", 
@@ -78,6 +82,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     addInventoryItem,
     refreshData,
   } = useDataCache();
+  const { activeSession, useSpecialEntry } = useSpecialEntry();
+  
   const [currentStep, setCurrentStep] = useState(0);
   
   const [isPending, startTransition] = useTransition();
@@ -111,7 +117,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   } = useForm<AddInventoryItemFormValues>({
     resolver: zodResolver(addInventoryItemSchema),
     defaultValues: {
-      staffName: '',
+      staffName: activeSession?.staffName || '',
       itemType: 'Expiry',
       barcode: '',
       quantity: 1,
@@ -121,6 +127,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   });
   
   const allFormValues = watch();
+
+  useEffect(() => {
+    if (activeSession?.staffName && !allFormValues.staffName) {
+        setValue('staffName', activeSession.staffName);
+    }
+  }, [activeSession, setValue, allFormValues.staffName]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
@@ -135,6 +147,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       formData.append('itemType', data.itemType);
       formData.append('quantity', data.quantity.toString());
       
+      if (activeSession) {
+          formData.append('disableNotification', 'true');
+      }
+
       if (data.expiryDate) {
         const date = data.expiryDate;
         const year = date.getFullYear();
@@ -154,6 +170,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         if (response.success && response.data) {
           addInventoryItem(response.data);
           
+          if (activeSession) {
+              useSpecialEntry(); // Consume the session
+          }
+
           setSubmittedStaffName(data.staffName);
           setIsSuccessDialogOpen(true);
           
@@ -288,10 +308,20 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     <>
     <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle className="text-2xl">Log New Inventory Item</CardTitle>
-        <CardDescription>
-          Follow the steps to log a new item into the inventory system.
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <CardTitle className="text-2xl">Log New Inventory Item</CardTitle>
+                <CardDescription>
+                Follow the steps to log a new item into the inventory system.
+                </CardDescription>
+            </div>
+            {activeSession && (
+                <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
+                    <BellOff className="h-3.5 w-3.5" />
+                    Authorized Silent Mode
+                </Badge>
+            )}
+        </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <div className="space-y-8">
@@ -482,6 +512,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                 </div>
                             }
                         </div>
+                        {activeSession && (
+                            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-tight">
+                                <ShieldCheck className="h-4 w-4" />
+                                <span>Silent Entry Authorized - No Email Alert</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
