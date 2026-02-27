@@ -212,10 +212,8 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
-  const items = await getInventoryItems();
-  const locations = new Set<string>(["Warehouse A", "Zone B", "Cold Storage", "Display"]);
-  items.forEach(i => { if (i.location) locations.add(i.location); });
-  return Array.from(locations).sort();
+  // Restricted list as requested: "Back side", "On Display" and "Front Side"
+  return ["Back side", "On Display", "Front Side"];
 }
 
 export async function getUniqueStaffNames(): Promise<string[]> {
