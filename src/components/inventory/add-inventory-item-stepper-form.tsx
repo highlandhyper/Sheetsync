@@ -19,7 +19,9 @@ import {
     Tag,
     Hash,
     MapPin,
-    AlertTriangle
+    AlertTriangle,
+    PartyPopper,
+    Heart
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -43,12 +45,10 @@ import {
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
-import type { ItemType } from '@/lib/types';
 import { addInventoryItemAction, fetchProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -90,6 +90,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
 
+  // Success Dialog State
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [submittedStaffName, setSubmittedStaffName] = useState('');
+
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   const SCANNER_REGION_ID = 'scanner';
@@ -103,7 +107,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     watch,
     setValue,
     trigger,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<AddInventoryItemFormValues>({
     resolver: zodResolver(addInventoryItemSchema),
     defaultValues: {
@@ -143,16 +147,20 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       
       if (response.success && response.data) {
         addInventoryItem(response.data);
-        toast({
-          title: `Thank you, ${data.staffName}!`,
-          description: 'Inventory item added successfully.'
-        });
+        
+        // Trigger Success Popup
+        setSubmittedStaffName(data.staffName);
+        setIsSuccessDialogOpen(true);
+        
+        // Auto-close success popup after 5 seconds
+        setTimeout(() => setIsSuccessDialogOpen(false), 5000);
+
         reset();
         setProductName('');
         setProductSupplier('');
         setProductLookupError('');
         setCurrentStep(0);
-        refreshData(); // Sync to ensure all views are up to date
+        refreshData(); 
       } else {
         toast({
           variant: 'destructive',
@@ -489,6 +497,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       </CardContent>
     </Card>
 
+    {/* Scanner Dialog */}
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl sm:rounded-lg border-0">
             <div className="relative h-16 sm:h-14 flex items-center justify-center border-b bg-muted/30">
@@ -500,6 +509,30 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                   Cancel Scanning
                 </Button>
             </div>
+        </DialogContent>
+    </Dialog>
+
+    {/* Success "Thank You" Popup */}
+    <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+        <DialogContent className="max-w-sm w-[90%] p-8 overflow-hidden rounded-3xl sm:rounded-2xl border-0 shadow-2xl bg-slate-950 text-white flex flex-col items-center text-center animate-fade-in">
+            <div className="bg-primary/20 p-4 rounded-full mb-6 animate-bounce">
+                <PartyPopper className="h-12 w-12 text-primary" />
+            </div>
+            <DialogHeader className="space-y-2">
+                <DialogTitle className="text-3xl font-black tracking-tighter text-primary uppercase">Logged Successfully!</DialogTitle>
+                <DialogDescription className="text-slate-400 text-lg font-medium">
+                    Inventory data has been saved to the cloud.
+                </DialogDescription>
+            </DialogHeader>
+            <Separator className="my-6 bg-slate-800" />
+            <div className="flex flex-col items-center gap-2">
+                <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+                <p className="text-xl font-bold">Thank you, <span className="text-primary">{submittedStaffName}</span>!</p>
+                <p className="text-slate-500 text-sm italic">You're doing a great job.</p>
+            </div>
+            <Button onClick={() => setIsSuccessDialogOpen(false)} className="mt-8 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl h-12">
+                Got it!
+            </Button>
         </DialogContent>
     </Dialog>
     </>
