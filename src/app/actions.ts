@@ -31,7 +31,8 @@ import {
   logAuditEvent,
   loadSpecialRequestsFromSheet,
   saveSpecialRequestsToSheet,
-  getInventoryLogEntriesByBarcode
+  getInventoryLogEntriesByBarcode,
+  addInventoryItemToSheet
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -127,29 +128,44 @@ export async function addInventoryItemAction(
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
 
-    // AppScript Notification
-    try {
-        await fetch(EXTERNAL_LOGGER_API, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                isSpecial: isSpecialEntry,
-                disableNotification: disableNotification,
-                barcode: validatedItemData.barcode,
-                identity: validatedItemData.staffName,
-                type: validatedItemData.itemType,
-                quantity: validatedItemData.quantity,
-                expiryDate: rawFormData.expiryDate,
-                location: validatedItemData.location,
-                productName: productDetails.productName,
-                timestamp: now.toISOString()
-            })
-        });
-    } catch (err) {
-        console.warn("External logger failed:", err);
+    const itemData: InventoryItem = {
+        id: tempId,
+        barcode: validatedItemData.barcode,
+        quantity: validatedItemData.quantity,
+        expiryDate: validatedItemData.expiryDate ? format(validatedItemData.expiryDate, 'yyyy-MM-dd') : undefined,
+        location: validatedItemData.location,
+        staffName: validatedItemData.staffName,
+        productName: productDetails.productName,
+        supplierName: productDetails.supplierName,
+        itemType: validatedItemData.itemType,
+        timestamp: now.toISOString()
+    };
+
+    // 1. Write to Google Sheet directly
+    const sheetWriteSuccess = await addInventoryItemToSheet(itemData);
+    if (!sheetWriteSuccess) {
+        return { success: false, message: "Failed to write data to Google Sheet." };
     }
+
+    // 2. Notify AppScript (Email/External Logger) - Fire and forget
+    fetch(EXTERNAL_LOGGER_API, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            isSpecial: isSpecialEntry,
+            disableNotification: disableNotification,
+            barcode: validatedItemData.barcode,
+            identity: validatedItemData.staffName,
+            type: validatedItemData.itemType,
+            quantity: validatedItemData.quantity,
+            expiryDate: rawFormData.expiryDate,
+            location: validatedItemData.location,
+            productName: productDetails.productName,
+            timestamp: now.toISOString()
+        })
+    }).catch(err => console.warn("External logger failed:", err));
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}".${disableNotification ? ' (Silent Entry)' : ''}`);
     revalidatePath('/inventory');
@@ -157,14 +173,7 @@ export async function addInventoryItemAction(
     return {
       success: true,
       message: 'Inventory item logged successfully!',
-      data: {
-          id: tempId,
-          ...validatedItemData,
-          expiryDate: validatedItemData.expiryDate ? format(validatedItemData.expiryDate, 'yyyy-MM-dd') : undefined,
-          productName: productDetails.productName,
-          supplierName: productDetails.supplierName,
-          timestamp: now.toISOString()
-      },
+      data: itemData,
     };
   } catch (error) {
     console.error("Action error:", error);

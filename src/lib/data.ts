@@ -214,7 +214,7 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 export async function getUniqueLocations(): Promise<string[]> {
   const items = await getInventoryItems();
   const locations = new Set<string>(["Warehouse A", "Zone B", "Cold Storage", "Display"]);
-  items.forEach(i => { if (item.location) locations.add(item.location); });
+  items.forEach(i => { if (i.location) locations.add(i.location); });
   return Array.from(locations).sort();
 }
 
@@ -237,6 +237,23 @@ export async function addSupplier(email: string, s: any) {
   await appendSheetData(`${DB_SHEET_NAME}!A:E`, [`S_${Date.now()}`, '', `[Supplier: ${s.name}]`, s.name]);
   await logAuditEvent(email, 'CREATE_SUPPLIER', s.name, `Added supplier ${s.name}`);
   return { id: `s_${Date.now()}`, ...s };
+}
+
+export async function addInventoryItemToSheet(item: InventoryItem) {
+  const ts = item.timestamp ? format(parseISO(item.timestamp), "d/M/yyyy HH:mm:ss") : format(new Date(), "d/M/yyyy HH:mm:ss");
+  const row = [
+    ts,
+    item.barcode,
+    item.quantity,
+    item.expiryDate ? format(parseISO(item.expiryDate), "d/M/yyyy") : '',
+    item.location,
+    item.staffName,
+    item.productName,
+    item.supplierName || '',
+    item.itemType,
+    item.id
+  ];
+  return appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [row]);
 }
 
 export async function updateSupplierNameAndReferences(email: string, oldN: string, newN: string) {
