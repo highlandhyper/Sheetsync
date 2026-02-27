@@ -16,7 +16,7 @@ export default function HomePage() {
         if (role === 'admin') {
           router.replace('/dashboard'); // Admin users go to dashboard
         } else if (role === 'viewer') {
-          router.replace('/products'); // Viewer users go to return by staff page
+          router.replace('/inventory/add'); // Viewer users now go to Log New Item page first
         } else {
           router.replace('/login'); // Fallback if role is somehow null for an authenticated user
         }
@@ -33,4 +33,3 @@ export default function HomePage() {
     </div>
   );
 }
-
