@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -34,7 +35,7 @@ import {
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 
 const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
 
@@ -131,6 +132,9 @@ export async function addInventoryItemAction(
     try {
         await fetch(EXTERNAL_LOGGER_API, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 isSpecial: isSpecialEntry,
                 disableNotification: disableNotification,
@@ -164,6 +168,7 @@ export async function addInventoryItemAction(
       },
     };
   } catch (error) {
+    console.error("Action error:", error);
     return { success: false, message: "Failed to log item." };
   }
 }
