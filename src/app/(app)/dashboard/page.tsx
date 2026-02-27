@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
   const cardInnerContent = (
@@ -159,10 +160,28 @@ function SpecialEntryApprovalPanel() {
     const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
     const { role } = useAuth();
     const [customMins, setCustomMins] = useState<string>("15");
+    
+    // Authorization states
+    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+    const [stagedApproval, setStagedApproval] = useState<{id: string, mins?: number} | null>(null);
 
     if (role !== 'admin' || pendingRequests.length === 0) return null;
 
+    const handleInitiateApproval = (id: string, mins?: number) => {
+        setStagedApproval({ id, mins });
+        setIsAuthDialogOpen(true);
+    };
+
+    const handleAuthSuccess = () => {
+        if (stagedApproval) {
+            approveRequest(stagedApproval.id, stagedApproval.mins);
+            setStagedApproval(null);
+        }
+        setIsAuthDialogOpen(false);
+    };
+
     return (
+        <>
         <Card className="mb-8 border-primary/20 bg-primary/5 shadow-md">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -172,7 +191,7 @@ function SpecialEntryApprovalPanel() {
                     </CardTitle>
                     <Badge variant="secondary" className="animate-pulse">{pendingRequests.length} Pending</Badge>
                 </div>
-                <CardDescription>Authorize staff to log items without email alerts.</CardDescription>
+                <CardDescription>Authorize staff to log items without email alerts. Local password required.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 {pendingRequests.map((req) => (
@@ -193,15 +212,15 @@ function SpecialEntryApprovalPanel() {
                             
                             <div className="h-8 w-px bg-border hidden lg:block mx-1" />
 
-                            <Button size="sm" variant="secondary" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id)}>
+                            <Button size="sm" variant="secondary" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id)}>
                                 <Check className="mr-1 h-3 w-3" /> 1 Entry
                             </Button>
                             
-                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id, 10)}>
+                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id, 10)}>
                                 <Clock className="mr-1 h-3 w-3" /> 10 Mins
                             </Button>
 
-                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id, 30)}>
+                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id, 30)}>
                                 <Clock className="mr-1 h-3 w-3" /> 30 Mins
                             </Button>
 
@@ -211,10 +230,10 @@ function SpecialEntryApprovalPanel() {
                                         <Plus className="mr-1 h-3 w-3" /> Custom
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-48">
+                                <PopoverContent className="w-40 p-3" align="end">
                                     <div className="space-y-3">
                                         <div className="space-y-1">
-                                            <p className="text-xs font-bold uppercase">Duration (Mins)</p>
+                                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Mins</p>
                                             <Input 
                                                 type="number" 
                                                 value={customMins} 
@@ -224,11 +243,11 @@ function SpecialEntryApprovalPanel() {
                                         </div>
                                         <Button 
                                             size="sm" 
-                                            className="w-full" 
+                                            className="w-full text-xs h-8" 
                                             disabled={!customMins || parseInt(customMins) < 1}
-                                            onClick={() => approveRequest(req.id, parseInt(customMins))}
+                                            onClick={() => handleInitiateApproval(req.id, parseInt(customMins))}
                                         >
-                                            Set Time Access
+                                            Set Time
                                         </Button>
                                     </div>
                                 </PopoverContent>
@@ -238,6 +257,13 @@ function SpecialEntryApprovalPanel() {
                 ))}
             </CardContent>
         </Card>
+        <AuthorizeActionDialog
+            isOpen={isAuthDialogOpen}
+            onOpenChange={setIsAuthDialogOpen}
+            onAuthorizationSuccess={handleAuthSuccess}
+            actionDescription="You are authorizing a Special Entry (Silent Mode) session. Please verify your local admin credentials."
+        />
+        </>
     );
 }
 
