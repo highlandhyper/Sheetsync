@@ -22,20 +22,20 @@ export function Providers({ children }: PropsWithChildren) {
     >
       <LocalSettingsAuthProvider>
         <AuthProvider>
-          <AccessControlProvider>
-            <GeneralSettingsProvider>
-              <MultiSelectProvider>
-                <NotificationProvider>
-                  <SpecialEntryProvider>
-                    <DataCacheProvider>
+          <DataCacheProvider>
+            <AccessControlProvider>
+              <GeneralSettingsProvider>
+                <MultiSelectProvider>
+                  <NotificationProvider>
+                    <SpecialEntryProvider>
                       {children}
                       <Toaster />
-                    </DataCacheProvider>
-                  </SpecialEntryProvider>
-                </NotificationProvider>
-              </MultiSelectProvider>
-            </GeneralSettingsProvider>
-          </AccessControlProvider>
+                    </SpecialEntryProvider>
+                  </NotificationProvider>
+                </MultiSelectProvider>
+              </GeneralSettingsProvider>
+            </AccessControlProvider>
+          </DataCacheProvider>
         </AuthProvider>
       </LocalSettingsAuthProvider>
     </ThemeProvider>

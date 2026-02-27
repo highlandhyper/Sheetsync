@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo } from 'react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { useNotifications } from './notification-context';
@@ -12,7 +12,7 @@ interface SpecialEntryContextType {
   requestSpecialEntry: (staffName: string, type: 'single' | 'timed', reason?: string) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
-  useSpecialEntry: () => void;
+  consumeSpecialEntry: () => void;
 }
 
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
@@ -25,19 +25,22 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const [requests, setRequests] = useState<SpecialEntryRequest[]>([]);
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
 
-  // Sync with local storage for demo purposes (usually this would be in the Sheets DB)
+  // Sync with local storage for demo purposes
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
-      setRequests(parsed);
+      try {
+        const parsed = JSON.parse(stored);
+        setRequests(parsed);
+      } catch (e) {
+        console.warn('SpecialEntryContext: Failed to parse stored requests.');
+      }
     }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     
-    // Check for an approved session for the current user
     if (user && !activeSession) {
       const approved = requests.find(r => 
         r.userEmail === user.email && 
@@ -63,12 +66,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     };
 
     setRequests(prev => [newRequest, ...prev]);
-    
-    // Notify admins (if we had a real-time admin broadcast)
-    if (role !== 'admin') {
-        // In a real app, this would hit an API
-    }
-  }, [user, role]);
+  }, [user]);
 
   const approveRequest = useCallback(async (id: string, durationMinutes: number = 5) => {
     const now = new Date();
@@ -83,7 +81,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
           expiresAt: r.type === 'timed' ? expiresAt : undefined,
         };
         
-        // Push notification to the requester
         addNotification({
           title: 'Special Entry Approved',
           message: `Your request for a ${r.type === 'single' ? 'single log' : '5-minute session'} has been approved.`,
@@ -111,7 +108,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }));
   }, [addNotification]);
 
-  const useSpecialEntry = useCallback(() => {
+  const consumeSpecialEntry = useCallback(() => {
     if (!activeSession) return;
 
     if (activeSession.type === 'single') {
@@ -120,17 +117,19 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [activeSession]);
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
+
+  const value = useMemo(() => ({ 
+    pendingRequests, 
+    activeSession, 
+    requestSpecialEntry, 
+    approveRequest, 
+    rejectRequest,
+    consumeSpecialEntry 
+  }), [pendingRequests, activeSession, requestSpecialEntry, approveRequest, rejectRequest, consumeSpecialEntry]);
 
   return (
-    <SpecialEntryContext.Provider value={{ 
-      pendingRequests, 
-      activeSession, 
-      requestSpecialEntry, 
-      approveRequest, 
-      rejectRequest,
-      useSpecialEntry 
-    }}>
+    <SpecialEntryContext.Provider value={value}>
       {children}
     </SpecialEntryContext.Provider>
   );
