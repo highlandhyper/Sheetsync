@@ -12,6 +12,8 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 
+const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
+
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
   const { isAllowed, isInitialized: permissionsInitialized, permissions } = useAccessControl();
@@ -28,6 +30,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   // --- Inactivity Lock Logic ---
   const handleLock = useCallback(() => {
     setIsLocked(true);
+    localStorage.setItem(LOCK_STORAGE_KEY, 'true');
   }, []);
 
   const resetInactivityTimer = useCallback(() => {
@@ -39,8 +42,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
   
   const handleUnlock = () => {
     setIsLocked(false);
+    localStorage.setItem(LOCK_STORAGE_KEY, 'false');
     resetInactivityTimer();
   };
+
+  // Initialize lock state from storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLockState = localStorage.getItem(LOCK_STORAGE_KEY);
+      if (savedLockState === 'true' && role === 'admin') {
+        setIsLocked(true);
+      }
+    }
+  }, [role]);
 
   useEffect(() => {
     if (user && !loading && !isLocked && role === 'admin' && generalSettings.isLockOnInactivityEnabled) {
