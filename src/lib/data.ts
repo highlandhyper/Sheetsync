@@ -49,7 +49,7 @@ const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
 // --- Read Ranges ---
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A1:E`;
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; // Start at A2 to skip header
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
@@ -72,8 +72,10 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
     if (isValid(isoDate)) return isoDate;
     const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy"];
     for (const f of formats) {
-      const d = dateParse(trimmed, f, new Date());
-      if (isValid(d)) return d;
+      try {
+        const d = dateParse(trimmed, f, new Date());
+        if (isValid(d)) return d;
+      } catch { continue; }
     }
   }
   return null;
@@ -212,7 +214,6 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
-  // Restricted list: "Back side", "On Display" and "Front Side"
   return ["Back side", "On Display", "Front Side"];
 }
 
@@ -281,19 +282,64 @@ export async function deleteInventoryItemById(email: string, id: string) {
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const [inv, prods, supps] = await Promise.all([getInventoryItems(), getProducts(), getSuppliers()]);
+  
+  const today = startOfDay(new Date());
+  const sevenDaysFromNow = endOfDay(addDays(today, 7));
   const prodsMap = new Map(prods.map(p => [p.barcode, p]));
-  const totalVal = inv.reduce((s, i) => s + (i.quantity * (prodsMap.get(i.barcode)?.costPrice || 0)), 0);
+  
+  let totalVal = 0;
+  let netItemsAddedToday = 0;
+  let itemsExpiringSoonCount = 0;
   const stockBySupp: Record<string, number> = {};
-  inv.forEach(i => { const n = i.supplierName || 'Unknown'; stockBySupp[n] = (stockBySupp[n] || 0) + i.quantity; });
+
+  inv.forEach(i => {
+    // Total Value Calculation
+    const product = prodsMap.get(i.barcode);
+    if (product && product.costPrice) {
+      totalVal += (i.quantity * product.costPrice);
+    }
+
+    // Stock distribution by Supplier
+    const n = i.supplierName || 'Unknown';
+    stockBySupp[n] = (stockBySupp[n] || 0) + i.quantity;
+
+    // Items added today (based on log timestamp)
+    if (i.timestamp) {
+      try {
+        const logDate = parseISO(i.timestamp);
+        if (isValid(logDate) && isSameDay(startOfDay(logDate), today)) {
+          netItemsAddedToday += i.quantity;
+        }
+      } catch (e) { /* ignore parse error */ }
+    }
+
+    // Expiring soon logic (Next 7 days, excluding already expired)
+    if (i.itemType === 'Expiry' && i.expiryDate) {
+      try {
+        const expiryDate = startOfDay(parseISO(i.expiryDate));
+        if (isValid(expiryDate)) {
+          if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 8))) {
+            itemsExpiringSoonCount++;
+          }
+        }
+      } catch (e) { /* ignore parse error */ }
+    }
+  });
+
+  const stockBySupplier: StockBySupplier[] = Object.entries(stockBySupp)
+    .map(([name, totalStock]) => ({ name, totalStock }))
+    .sort((a,b) => b.totalStock - a.totalStock);
   
   return {
     totalProducts: prods.length,
     totalStockQuantity: inv.reduce((s, i) => s + i.quantity, 0),
-    itemsExpiringSoon: inv.filter(i => i.expiryDate && isBefore(parseISO(i.expiryDate), addDays(new Date(), 7))).length,
+    itemsExpiringSoon: itemsExpiringSoonCount,
     damagedItemsCount: inv.filter(i => i.itemType === 'Damage').length,
     totalSuppliers: supps.length,
     totalStockValue: totalVal,
-    stockBySupplier: Object.entries(stockBySupp).map(([name, totalStock]) => ({ name, totalStock })).sort((a,b) => b.totalStock - a.totalStock),
+    stockBySupplier,
+    netItemsAddedToday,
+    dailyStockChangeDirection: netItemsAddedToday > 0 ? 'increase' : 'none',
   };
 }
 
