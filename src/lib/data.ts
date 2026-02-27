@@ -214,6 +214,7 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
+  // STRICTLY only these three locations as requested.
   return ["Back side", "On Display", "Front Side"];
 }
 
@@ -284,7 +285,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const [inv, prods, supps] = await Promise.all([getInventoryItems(), getProducts(), getSuppliers()]);
   
   const today = startOfDay(new Date());
-  const sevenDaysFromNow = endOfDay(addDays(today, 7));
   const prodsMap = new Map(prods.map(p => [p.barcode, p]));
   
   let totalVal = 0;
@@ -318,6 +318,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       try {
         const expiryDate = startOfDay(parseISO(i.expiryDate));
         if (isValid(expiryDate)) {
+          // Items expiring within next 7 days, excluding already expired
           if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 8))) {
             itemsExpiringSoonCount++;
           }
