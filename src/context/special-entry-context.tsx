@@ -57,7 +57,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       if (!processedApprovalIdsRef.current.has(myApproved.id)) {
         addNotification({
           title: 'Special Entry Approved',
-          message: `Authorization granted for ${myApproved.type === 'single' ? '1 entry' : '5 mins'}. Silent mode active.`,
+          message: `Authorization granted for ${myApproved.type === 'single' ? '1 entry' : 'the requested duration'}. Silent mode active.`,
           type: 'success',
           link: '/inventory/add'
         });
@@ -84,12 +84,21 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
 
-  const approveRequest = useCallback(async (id: string, durationMinutes: number = 5) => {
+  const approveRequest = useCallback(async (id: string, durationMinutes?: number) => {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + durationMinutes * 60000).toISOString();
-    const updated = specialRequests.map(r => r.id === id ? {
-      ...r, status: 'approved' as const, approvedAt: now.toISOString(), expiresAt: r.type === 'timed' ? expiresAt : undefined
-    } : r);
+    const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
+    const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
+    
+    const updated = specialRequests.map(r => {
+      if (r.id !== id) return r;
+      return {
+        ...r, 
+        status: 'approved' as const, 
+        approvedAt: now.toISOString(), 
+        type: isTimed ? 'timed' : 'single', // Force type based on admin selection
+        expiresAt: expiresAt
+      };
+    });
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 
