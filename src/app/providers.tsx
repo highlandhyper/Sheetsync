@@ -9,6 +9,7 @@ import { MultiSelectProvider } from '@/context/multi-select-context';
 import { DataCacheProvider } from '@/context/data-cache-context';
 import { GeneralSettingsProvider } from '@/context/general-settings-context';
 import { NotificationProvider } from '@/context/notification-context';
+import { SpecialEntryProvider } from '@/context/special-entry-context';
 import { Toaster } from "@/components/ui/toaster";
 
 export function Providers({ children }: PropsWithChildren) {
@@ -25,10 +26,12 @@ export function Providers({ children }: PropsWithChildren) {
             <GeneralSettingsProvider>
               <MultiSelectProvider>
                 <NotificationProvider>
-                  <DataCacheProvider>
-                    {children}
-                    <Toaster />
-                  </DataCacheProvider>
+                  <SpecialEntryProvider>
+                    <DataCacheProvider>
+                      {children}
+                      <Toaster />
+                    </DataCacheProvider>
+                  </SpecialEntryProvider>
                 </NotificationProvider>
               </MultiSelectProvider>
             </GeneralSettingsProvider>

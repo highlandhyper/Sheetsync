@@ -1,10 +1,8 @@
-
-
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -14,6 +12,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSpecialEntry } from '@/context/special-entry-context';
+import { useAuth } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
@@ -152,6 +155,54 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   );
 }
 
+function SpecialEntryApprovalPanel() {
+    const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
+    const { role } = useAuth();
+
+    if (role !== 'admin' || pendingRequests.length === 0) return null;
+
+    return (
+        <Card className="mb-8 border-primary/20 bg-primary/5 shadow-md">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        Pending Special Entry Requests
+                    </CardTitle>
+                    <Badge variant="secondary" className="animate-pulse">{pendingRequests.length} Pending</Badge>
+                </div>
+                <CardDescription>Authorize staff to log items without email alerts.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg bg-background border gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 p-2 rounded-full">
+                                <MessageSquare className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-sm">{req.staffName}</p>
+                                <p className="text-xs text-muted-foreground">{req.userEmail}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => rejectRequest(req.id)}>
+                                <X className="mr-1 h-3 w-3" /> Reject
+                            </Button>
+                            <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" onClick={() => approveRequest(req.id)}>
+                                <Check className="mr-1 h-3 w-3" /> 1 Entry
+                            </Button>
+                            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => approveRequest(req.id, 5)}>
+                                <Clock className="mr-1 h-3 w-3" /> 5 Mins
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
@@ -198,7 +249,6 @@ export default function DashboardPage() {
       if (response.success && response.data) {
         setMetrics(response.data);
       } else {
-        // Handle error, maybe show a toast
         console.error("Failed to fetch dashboard metrics:", response.message);
       }
       setIsLoading(false);
@@ -253,6 +303,9 @@ export default function DashboardPage() {
         <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
         Inventory Dashboard
       </h1>
+
+      <SpecialEntryApprovalPanel />
+
       <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
         <MetricCard 
           title="Total Stock Quantity" 

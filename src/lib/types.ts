@@ -56,6 +56,7 @@ export interface AddInventoryItemFormValues {
   quantity: number; // Will be parsed from string
   expiryDate?: Date; // From form, convert to string for Sheets/DB
   location: string;
+  disableNotification?: boolean; // NEW: For special entries
 }
 
 export interface EditInventoryItemFormValues {
@@ -81,12 +82,11 @@ export interface StockTrendData {
 export interface DashboardMetrics {
   totalProducts: number;
   totalStockQuantity: number;
-_totalStockValue?: number;
   itemsExpiringSoon: number;
   damagedItemsCount: number;
   stockBySupplier: StockBySupplier[];
   totalSuppliers: number;
-  totalStockValue?: number;
+  totalStockValue: number;
   dailyStockChangePercent?: number;
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
   netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
@@ -118,4 +118,17 @@ export interface AppNotification {
   type: 'info' | 'success' | 'warning' | 'error' | 'request';
   isRead: boolean;
   link?: string;
+}
+
+export interface SpecialEntryRequest {
+  id: string;
+  userEmail: string;
+  staffName: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
+  type: 'single' | 'timed';
+  durationMinutes?: number;
+  requestedAt: string;
+  approvedAt?: string;
+  expiresAt?: string;
 }

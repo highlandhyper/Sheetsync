@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
+import { LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/Avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
