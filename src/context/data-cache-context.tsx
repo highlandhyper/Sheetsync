@@ -1,11 +1,10 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction } from '@/app/actions';
-import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry } from '@/lib/types';
+import { fetchAllDataAction, updateSpecialRequestsAction } from '@/app/actions';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
 
 interface AppData {
@@ -16,20 +15,13 @@ interface AppData {
   uniqueLocations: string[];
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
+  specialRequests: SpecialEntryRequest[];
   lastSync: number | null;
 }
 
-interface DataCacheContextType {
-  inventoryItems: InventoryItem[];
-  products: Product[];
-  suppliers: Supplier[];
-  returnedItems: ReturnedItem[];
-  uniqueLocations: string[];
-  uniqueStaffNames: string[];
-  auditLogs: AuditLogEntry[];
+interface DataCacheContextType extends AppData {
   isCacheReady: boolean;
   isSyncing: boolean;
-  lastSync: number | null;
   updateInventoryItem: (item: InventoryItem) => void;
   addInventoryItem: (item: InventoryItem) => void;
   removeInventoryItem: (itemId: string) => void;
@@ -38,12 +30,13 @@ interface DataCacheContextType {
   addProduct: (product: Product) => void;
   updateProduct: (updatedProduct: Product) => void;
   addReturnedItem: (item: ReturnedItem) => void;
+  updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 600000; // Background sync every 10 minutes (600,000ms)
+const SYNC_INTERVAL_MS = 30000; // Poll every 30 seconds for real-time requests
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
@@ -56,155 +49,71 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueLocations: [],
     uniqueStaffNames: [],
     auditLogs: [],
+    specialRequests: [],
     lastSync: null,
   });
   
   const [isSyncing, setIsSyncing] = useState(false);
-  const isInitializedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const isCacheReady = data.lastSync !== null;
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
-    if (isFetchingRef.current) {
-        return;
-    }
+    if (isFetchingRef.current) return;
     isFetchingRef.current = true;
     setIsSyncing(true);
 
     try {
       const response = await fetchAllDataAction();
       if (response.success && response.data) {
-        const now = Date.now();
-        const newData: AppData = { ...response.data, lastSync: now };
-        
-        setData(newData);
-        isInitializedRef.current = true;
-
-        if (isBackgroundUpdate) {
-          toast({ 
-            title: 'Sync Complete', 
-            description: `Data updated at ${new Date().toLocaleTimeString()}`
-          });
-        }
+        setData(prev => ({ ...response.data!, lastSync: Date.now() }));
       }
-    } catch (fetchError) {
-      console.error("DataCacheProvider: An error occurred during fetch", fetchError);
+    } catch (e) {
+      console.error("Sync failed:", e);
     } finally {
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [toast]);
+  }, []);
 
-  // Initial Load & Hard Refresh Tip
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], lastSync: null });
-      isInitializedRef.current = false;
+      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], lastSync: null });
       return;
     }
-    if (!isInitializedRef.current) {
-        fetchDataAndCache(false);
-        // Hint for hard refresh to bypass initial sync issues
-        setTimeout(() => {
-          toast({
-            title: "System Ready",
-            description: "Tip: Use Ctrl+R (or Cmd+R) for a hard refresh if data looks old.",
-          });
-        }, 3000);
-    }
-  }, [user, authLoading, fetchDataAndCache, toast]);
+    fetchDataAndCache(false);
+    const interval = setInterval(() => fetchDataAndCache(true), SYNC_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [user, authLoading, fetchDataAndCache]);
 
-  // Background Polling & Visibility Sync
-  useEffect(() => {
-    if (!user || authLoading) return;
-
-    const handleDataRefresh = () => {
-        if (document.visibilityState === 'visible') {
-            fetchDataAndCache(true);
-        }
-    };
-
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible' && !isSyncing) {
-        fetchDataAndCache(true);
-      }
-    }, SYNC_INTERVAL_MS);
-
-    window.addEventListener('focus', handleDataRefresh);
-    window.addEventListener('visibilitychange', handleDataRefresh);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener('focus', handleDataRefresh);
-      window.removeEventListener('visibilitychange', handleDataRefresh);
-    };
-  }, [user, authLoading, fetchDataAndCache, isSyncing]);
-
-  const manualRefreshData = useCallback(async () => {
-    toast({ title: 'Syncing...', description: 'Refreshing data from Google Sheets.' });
+  const refreshData = useCallback(async () => {
+    toast({ title: 'Syncing...', description: 'Fetching latest data.' });
     await fetchDataAndCache(true);
   }, [fetchDataAndCache, toast]);
 
-  const addInventoryItem = useCallback((item: InventoryItem) => {
-    setData(prev => ({ ...prev, inventoryItems: [item, ...prev.inventoryItems] }));
+  const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
+      setData(prev => ({ ...prev, specialRequests: requests }));
+      await updateSpecialRequestsAction(requests);
   }, []);
 
-  const updateInventoryItem = useCallback((updatedItem: InventoryItem) => {
-    setData(prev => ({ ...prev, inventoryItems: prev.inventoryItems.map(item => item.id === updatedItem.id ? updatedItem : item) }));
-  }, []);
-
-  const removeInventoryItem = useCallback((itemId: string) => {
-    setData(prev => ({ ...prev, inventoryItems: prev.inventoryItems.filter(item => item.id !== itemId) }));
-  }, []);
-
-  const addSupplier = useCallback((supplier: Supplier) => {
-    setData(prev => ({ ...prev, suppliers: [...prev.suppliers, supplier].sort((a,b) => a.name.localeCompare(b.name)) }));
-  }, []);
-
-  const updateSupplier = useCallback((updatedSupplier: Supplier) => {
-    manualRefreshData();
-  }, [manualRefreshData]);
-  
-  const addProduct = useCallback((product: Product) => {
-      setData(prev => ({ ...prev, products: [product, ...prev.products] }));
-  }, [])
-  
-  const updateProduct = useCallback((updatedProduct: Product) => {
-      setData(prev => ({ ...prev, products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p) }));
-  }, [])
-
-  const addReturnedItem = useCallback((item: ReturnedItem) => {
-    setData(prev => ({ ...prev, returnedItems: [item, ...prev.returnedItems] }));
-  }, []);
-
-  const contextValue = useMemo(() => ({
-    inventoryItems: data.inventoryItems,
-    products: data.products,
-    suppliers: data.suppliers,
-    returnedItems: data.returnedItems,
-    uniqueLocations: data.uniqueLocations,
-    uniqueStaffNames: data.uniqueStaffNames,
-    auditLogs: data.auditLogs,
+  const value = useMemo(() => ({
+    ...data,
     isCacheReady,
     isSyncing,
-    lastSync: data.lastSync,
-    refreshData: manualRefreshData,
-    updateInventoryItem,
-    addInventoryItem,
-    removeInventoryItem,
-    addSupplier,
-    updateSupplier,
-    addProduct,
-    updateProduct,
-    addReturnedItem,
-  }), [
-      data, isCacheReady, isSyncing, manualRefreshData, updateInventoryItem, addInventoryItem, 
-      removeInventoryItem, addSupplier, updateSupplier, addProduct, updateProduct, addReturnedItem
-  ]);
+    refreshData,
+    updateSpecialRequests,
+    updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? i : x) })),
+    addInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: [i, ...p.inventoryItems] })),
+    removeInventoryItem: (id: string) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.filter(x => x.id !== id) })),
+    addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
+    updateSupplier: (s: any) => refreshData(),
+    addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
+    updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? pr : x) })),
+    addReturnedItem: (r: any) => setData(p => ({ ...p, returnedItems: [r, ...p.returnedItems] })),
+  }), [data, isCacheReady, isSyncing, refreshData, updateSpecialRequests]);
 
   return (
-    <DataCacheContext.Provider value={contextValue}>
+    <DataCacheContext.Provider value={value}>
       {children}
     </DataCacheContext.Provider>
   );
@@ -212,8 +121,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
 export function useDataCache() {
   const context = useContext(DataCacheContext);
-  if (context === undefined) {
-    throw new Error('useDataCache must be used within a DataCacheProvider');
-  }
+  if (context === undefined) throw new Error('useDataCache must be used within a DataCacheProvider');
   return context;
 }
