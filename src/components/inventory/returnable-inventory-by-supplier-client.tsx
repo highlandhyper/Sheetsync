@@ -128,7 +128,6 @@ export function ReturnableInventoryBySupplierClient() {
   };
 
   const handleEditSuccess = useCallback(() => {
-    // Local state is updated by the context, no full refresh needed
     setIsEditDialogOpen(false);
     setSelectedItemIds(new Set());
   }, []);
@@ -266,7 +265,6 @@ export function ReturnableInventoryBySupplierClient() {
   };
   
   const handleBulkSuccess = useCallback(() => {
-      // This action affects multiple items, so a full refresh is acceptable here
       refreshData();
       setSelectedItemIds(new Set());
       setIsBulkReturnOpen(false);
@@ -615,7 +613,7 @@ export function ReturnableInventoryBySupplierClient() {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
-        uniqueDbLocations={uniqueLocations}
+        uniqueLocationsFromDb={uniqueLocations}
       />
       
       {/* Bulk Action Dialogs */}
