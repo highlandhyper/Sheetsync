@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AuthorizeActionDialogProps {
   isOpen: boolean;
@@ -96,43 +94,43 @@ export function AuthorizeActionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[360px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center text-primary">
+          <DialogTitle className="flex items-center text-primary text-lg">
             <ShieldQuestion className="mr-2 h-5 w-5" />
-            Authorization Required
+            Authorization
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             {actionDescription}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-            <div className="space-y-2">
-                <Label htmlFor="authUsername">Local Admin Username</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+                <Label htmlFor="authUsername" className="text-xs font-bold uppercase text-muted-foreground">Admin Username</Label>
                 <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authUsername" {...register('username')} className={cn('pl-8', errors.username && 'border-destructive')} placeholder="Username" />
+                    <Input id="authUsername" {...register('username')} className={cn('pl-9 h-9 text-sm', errors.username && 'border-destructive')} placeholder="Username" />
                 </div>
-                {errors.username && <p className="text-sm text-destructive mt-1">{errors.username.message}</p>}
+                {errors.username && <p className="text-[10px] text-destructive font-medium">{errors.username.message}</p>}
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="authPassword">Local Admin Password</Label>
+             <div className="space-y-1.5">
+                <Label htmlFor="authPassword" className="text-xs font-bold uppercase text-muted-foreground">Admin Password</Label>
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authPassword" type="password" {...register('password')} className={cn('pl-8', errors.password && 'border-destructive')} placeholder="Password" />
+                    <Input id="authPassword" type="password" {...register('password')} className={cn('pl-9 h-9 text-sm', errors.password && 'border-destructive')} placeholder="Password" />
                 </div>
-                {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+                {errors.password && <p className="text-[10px] text-destructive font-medium">{errors.password.message}</p>}
             </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isSubmitting}>
+              <Button type="button" variant="outline" size="sm" disabled={isSubmitting}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+            <Button type="submit" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-2 h-3 w-3" />}
               Authorize
             </Button>
           </DialogFooter>

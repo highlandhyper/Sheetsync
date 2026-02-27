@@ -114,28 +114,29 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     </CommandDialog>
 
     <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[360px]">
             <DialogHeader>
-                <DialogTitle>Request Special Entry</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-lg">Request Special Entry</DialogTitle>
+                <DialogDescription className="text-xs">
                     Request permission to log an item without triggering an email notification.
                 </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="staffNameReq">Your Name</Label>
+            <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                    <Label htmlFor="staffNameReq" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
                     <Input 
                         id="staffNameReq" 
                         placeholder="Enter your name" 
                         value={staffName} 
                         onChange={(e) => setStaffName(e.target.value)}
+                        className="h-9 text-sm"
                     />
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleRequestSpecial} disabled={isSubmitting || !staffName.trim()}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Request"}
+            <DialogFooter className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsRequestDialogOpen(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName.trim()}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : "Send Request"}
                 </Button>
             </DialogFooter>
         </DialogContent>
