@@ -5,7 +5,7 @@ import { Zap, LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react'
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/Avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
 import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
+import { NotificationCenter } from './notification-center';
 import { useDataCache } from '@/context/data-cache-context';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -130,6 +131,8 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             >
                 <Command className="h-3.5 w-3.5" />
             </Button>
+
+            <NotificationCenter />
 
             {role === 'admin' && onManualLock && (
               <TooltipProvider>
