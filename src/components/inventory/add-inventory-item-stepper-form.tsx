@@ -23,9 +23,10 @@ import {
     PartyPopper,
     Heart,
     ShieldCheck,
-    BellOff
+    BellOff,
+    Clock
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
 
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,38 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
+
+function SessionTimer({ expiresAt }: { expiresAt: string }) {
+    const [timeLeft, setTimeLeft] = useState<string>('');
+
+    useEffect(() => {
+        const calculate = () => {
+            const now = new Date();
+            const end = new Date(expiresAt);
+            const seconds = differenceInSeconds(end, now);
+            
+            if (seconds <= 0) {
+                setTimeLeft('00:00');
+                return;
+            }
+
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            setTimeLeft(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+        };
+
+        calculate();
+        const timer = setInterval(calculate, 1000);
+        return () => clearInterval(timer);
+    }, [expiresAt]);
+
+    return (
+        <div className="flex items-center gap-1.5 font-mono text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
+            <Clock className="h-3 w-3" />
+            <span>{timeLeft}</span>
+        </div>
+    );
+}
 
 const steps = [
   { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
@@ -317,10 +350,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 </CardDescription>
             </div>
             {activeSession && (
-                <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
-                    <BellOff className="h-3.5 w-3.5" />
-                    Authorized Silent Mode
-                </Badge>
+                <div className="flex items-center gap-2">
+                    {activeSession.type === 'timed' && activeSession.expiresAt && (
+                        <SessionTimer expiresAt={activeSession.expiresAt} />
+                    )}
+                    <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
+                        <BellOff className="h-3.5 w-3.5" />
+                        Authorized Silent Mode
+                    </Badge>
+                </div>
             )}
         </div>
       </CardHeader>
