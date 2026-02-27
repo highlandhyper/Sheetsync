@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -16,7 +17,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-4 z-[100] flex w-full flex-col items-center p-4 pointer-events-none",
+      "fixed top-4 z-[100] flex w-full flex-col items-center p-4 gap-2 pointer-events-none",
       className
     )}
     {...props}
@@ -25,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-fit min-w-[280px] max-w-[420px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800/50 bg-black/90 p-4 px-8 shadow-2xl backdrop-blur-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-fit min-w-[280px] max-w-[420px] items-center justify-between space-x-4 overflow-hidden rounded-full border border-zinc-800/50 bg-black/90 p-4 px-8 shadow-2xl backdrop-blur-xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
@@ -99,7 +100,7 @@ const ToastTitle = React.forwardRef<
     Icon = AlertCircle;
   } else {
     const text = String(children).toLowerCase();
-    if (text.includes('success') || text.includes('unlocked') || text.includes('saved')) {
+    if (text.includes('success') || text.includes('unlocked') || text.includes('saved') || text.includes('ready')) {
       Icon = CheckCircle2;
     } else if (text.includes('sync')) {
       Icon = RefreshCw;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -42,7 +43,7 @@ interface DataCacheContextType {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 600000; // Background sync every 10 minutes
+const SYNC_INTERVAL_MS = 600000; // Background sync every 10 minutes (600,000ms)
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         if (isBackgroundUpdate) {
           toast({ 
             title: 'Sync Complete', 
-            description: `Last synced: ${new Date().toLocaleTimeString()}`
+            description: `Data updated at ${new Date().toLocaleTimeString()}`
           });
         }
       }
@@ -107,8 +108,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         // Hint for hard refresh to bypass initial sync issues
         setTimeout(() => {
           toast({
-            title: "Data Tip",
-            description: "If data looks outdated, use Ctrl+R (or Cmd+R) for a hard refresh.",
+            title: "System Ready",
+            description: "Tip: Use Ctrl+R (or Cmd+R) for a hard refresh if data looks old.",
           });
         }, 3000);
     }
@@ -141,7 +142,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [user, authLoading, fetchDataAndCache, isSyncing]);
 
   const manualRefreshData = useCallback(async () => {
-    toast({ title: 'Syncing Data...', description: 'Refreshing from Google Sheets.' });
+    toast({ title: 'Syncing...', description: 'Refreshing data from Google Sheets.' });
     await fetchDataAndCache(true);
   }, [fetchDataAndCache, toast]);
 
