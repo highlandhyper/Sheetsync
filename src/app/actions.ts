@@ -127,8 +127,8 @@ export async function addInventoryItemAction(
       };
     }
 
-    // --- Logic for Email Alert ---
-    // Mark as "Special" (Alert) if expiry date is today or has already passed.
+    // --- LOGIC FOR ALERT TRIGGER ---
+    // Trigger if expiry is TODAY or in the PAST
     let isSpecialEntry = false;
     if (validatedItemData.expiryDate) {
         const expiryDate = new Date(validatedItemData.expiryDate);
@@ -156,15 +156,17 @@ export async function addInventoryItemAction(
         timestamp: now.toISOString()
     };
 
-    // --- INTEGRATION: Notify external AppScript API for logging and email alerts ---
+    // --- INTEGRATION: Notify external AppScript API ---
+    // NOTE: We only notify the external API. The AppScript handles the write to 'Form responses 2'.
+    // This prevents double-logging.
     try {
         const appScriptPayload = {
-            isSpecial: isSpecialEntry, // Dynamic alert trigger
+            isSpecial: isSpecialEntry,
             barcode: validatedItemData.barcode,
             identity: validatedItemData.staffName,
             type: validatedItemData.itemType,
             quantity: validatedItemData.quantity,
-            expiryDate: rawFormData.expiryDate, // Pass original string
+            expiryDate: rawFormData.expiryDate, // "YYYY-MM-DD"
             location: validatedItemData.location,
             productName: productDetails.productName,
             timestamp: now.toISOString()
@@ -179,10 +181,11 @@ export async function addInventoryItemAction(
             throw new Error("External logger returned error.");
         }
     } catch (err) {
-        console.warn("External API notification failed, but continuing with local update:", err);
+        console.warn("External API notification failed:", err);
+        return { success: false, message: "Communication with database failed. Please try again." };
     }
 
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript integration.${isSpecialEntry ? ' (Same-day/Past expiry alert triggered)' : ''}`);
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}" via AppScript.${isSpecialEntry ? ' (Expiry alert triggered)' : ''}`);
 
     revalidateRelevantPaths();
 
