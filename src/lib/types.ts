@@ -109,3 +109,13 @@ export interface AuditLogEntry {
     target: string; // The primary identifier of the item affected (e.g., barcode, item ID, supplier name)
     details: string; // A human-readable description of the change
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'request';
+  isRead: boolean;
+  link?: string;
+}
