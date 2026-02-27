@@ -78,6 +78,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     products: cachedProducts, 
     uniqueLocations, 
     addInventoryItem,
+    refreshData,
   } = useDataCache();
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -152,6 +153,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         setProductSupplier('');
         setProductLookupError('');
         setCurrentStep(0);
+        refreshData(); // Sync to ensure all views are up to date
       } else {
         toast({
           variant: 'destructive',
@@ -300,12 +302,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                         nextStep();
                                     }
                                 }}
-                                className={cn("h-14 text-lg font-semibold", errors.barcode && 'border-destructive')}
+                                className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')}
                             />
                             {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
                         </div>
-                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 shrink-0 bg-primary/5 border-primary/20">
-                           <ScanBarcode className="h-6 w-6 text-primary" />
+                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-10 sm:w-10 shrink-0 bg-primary/5 border-primary/20">
+                           <ScanBarcode className="h-6 w-6 sm:h-5 sm:w-5 text-primary" />
                         </Button>
                     </div>
                     
@@ -317,7 +319,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                 {/* Step 2: Details */}
                 <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                        <h3 className="font-bold text-lg text-primary">{productName || "Unknown Item"}</h3>
+                        <h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p>
                         <p className="text-xs font-mono text-muted-foreground mt-1">SKU: {allFormValues.barcode}</p>
                     </div>
@@ -326,9 +328,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                         <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
                         <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen}>
                             <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className={cn("h-14 w-full justify-between font-semibold text-lg px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
+                                <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
                                      <div className="flex items-center gap-2">
-                                        <User className="h-5 w-5 text-primary" />
+                                        <User className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                                         <span>{allFormValues.staffName || "Select Staff Member..."}</span>
                                      </div>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -341,7 +343,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                         <CommandEmpty>No staff member found.</CommandEmpty>
                                         <CommandGroup>
                                             {STAFF_NAMES.map((staff) => (
-                                                <CommandItem key={staff} value={staff} onSelect={() => { setValue("staffName", staff, { shouldValidate: true }); setStaffComboboxOpen(false); }} className="h-12 text-base font-medium">
+                                                <CommandItem key={staff} value={staff} onSelect={() => { setValue("staffName", staff, { shouldValidate: true }); setStaffComboboxOpen(false); }} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
                                                     <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>{staff}
                                                 </CommandItem>
                                             ))}
@@ -359,18 +361,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                             <Button 
                                 type="button" 
                                 variant={allFormValues.itemType === 'Expiry' ? 'default' : 'outline'}
-                                className={cn("h-14 text-base font-bold rounded-xl border-2", allFormValues.itemType === 'Expiry' ? "border-primary" : "border-muted")}
+                                className={cn("h-14 sm:h-10 text-base sm:text-sm font-bold rounded-xl sm:rounded-md border-2", allFormValues.itemType === 'Expiry' ? "border-primary" : "border-muted")}
                                 onClick={() => setValue('itemType', 'Expiry', { shouldValidate: true })}
                             >
-                                <Tag className="mr-2 h-5 w-5" /> Expiry
+                                <Tag className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Expiry
                             </Button>
                             <Button 
                                 type="button" 
                                 variant={allFormValues.itemType === 'Damage' ? 'destructive' : 'outline'}
-                                className={cn("h-14 text-base font-bold rounded-xl border-2", allFormValues.itemType === 'Damage' ? "border-destructive" : "border-muted")}
+                                className={cn("h-14 sm:h-10 text-base sm:text-sm font-bold rounded-xl sm:rounded-md border-2", allFormValues.itemType === 'Damage' ? "border-destructive" : "border-muted")}
                                 onClick={() => setValue('itemType', 'Damage', { shouldValidate: true })}
                             >
-                                <AlertTriangle className="mr-2 h-5 w-5" /> Damage
+                                <AlertTriangle className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Damage
                             </Button>
                         </div>
                     </div>
@@ -379,16 +381,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                         <div className="w-1/3 space-y-2">
                             <Label className="text-xs font-bold text-muted-foreground uppercase">Qty</Label>
                             <div className="relative">
-                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                <Input id="qty" type="number" {...register('quantity')} className={cn('h-14 pl-11 text-lg font-bold', errors.quantity && 'border-destructive')}/>
+                                <Hash className="absolute left-4 sm:left-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-4 sm:w-4 text-muted-foreground" />
+                                <Input id="qty" type="number" {...register('quantity')} className={cn('h-14 sm:h-10 pl-11 text-lg sm:text-base font-bold', errors.quantity && 'border-destructive')}/>
                             </div>
                         </div>
                         <div className="flex-1 space-y-2">
                             <Label className="text-xs font-bold text-muted-foreground uppercase">Date</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant={'outline'} className={cn('h-14 w-full pl-4 text-left font-semibold text-lg', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}>
-                                      <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
+                                    <Button variant={'outline'} className={cn('h-14 sm:h-10 w-full pl-4 text-left font-semibold text-lg sm:text-sm', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}>
+                                      <CalendarIcon className="mr-3 h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                                       {allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : <span>Pick Date</span>}
                                     </Button>
                                 </PopoverTrigger>
@@ -407,9 +409,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     </Label>
                     <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className={cn("h-14 w-full justify-between font-semibold text-lg px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
+                            <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
                              <div className="flex items-center gap-2">
-                                <MapPin className="h-5 w-5 text-primary" />
+                                <MapPin className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                                 <span>{allFormValues.location || "Select Zone..."}</span>
                              </div>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -422,7 +424,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                     <CommandEmpty>No location found. Type to create.</CommandEmpty>
                                     <CommandGroup>
                                         {uniqueLocations.map((loc) => (
-                                            <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 text-base font-medium">
+                                            <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
                                                 <Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}
                                             </CommandItem>
                                         ))}
@@ -436,13 +438,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                 
                 {/* Step 4: Review */}
                 <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
-                    <div className="p-6 rounded-2xl bg-primary/5 border-2 border-primary/20 space-y-4 shadow-inner">
-                        <h3 className="font-extrabold text-2xl text-primary text-center">{productName}</h3>
+                    <div className="p-6 rounded-2xl sm:rounded-lg bg-primary/5 border-2 border-primary/20 space-y-4 shadow-inner">
+                        <h3 className="font-extrabold text-2xl sm:text-lg text-primary text-center">{productName}</h3>
                         <Separator className="bg-primary/10" />
-                        <div className="grid grid-cols-1 gap-4 text-base">
+                        <div className="grid grid-cols-1 gap-4 text-base sm:text-sm">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Quantity</span>
-                                <span className="font-black text-xl">{allFormValues.quantity} units</span>
+                                <span className="font-black text-xl sm:text-lg">{allFormValues.quantity} units</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Logged By</span>
@@ -450,7 +452,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Type</span>
-                                <span className={cn("font-black px-3 py-1 rounded-lg text-sm", allFormValues.itemType === 'Damage' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{allFormValues.itemType}</span>
+                                <span className={cn("font-black px-3 py-1 rounded-lg text-sm sm:text-xs", allFormValues.itemType === 'Damage' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{allFormValues.itemType}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Location</span>
@@ -468,18 +470,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
 
             </form>
             <div className="flex gap-3 pt-4">
-                <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || currentStep === 0} className="h-14 px-6 font-bold">
-                    <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold">
+                    <ArrowLeft className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Back
                 </Button>
 
                 {currentStep < steps.length - 1 ? (
-                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending} className="h-14 flex-1 text-lg font-black rounded-xl">
-                        {isFetchingProduct ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : null}
-                        Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md">
+                        {isFetchingProduct ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin"/> : null}
+                        Continue <ArrowRight className="ml-2 h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                 ) : (
-                    <Button type="button" onClick={handleFormSubmit} disabled={isPending} className="h-14 flex-1 text-lg font-black rounded-xl shadow-lg shadow-primary/20">
-                        {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                    <Button type="button" onClick={handleFormSubmit} disabled={isPending} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
+                        {isPending ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}
                         Complete Log
                     </Button>
                 )}
@@ -489,13 +491,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
     </Card>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-0">
-            <div className="relative h-16 flex items-center justify-center border-b bg-muted/30">
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl sm:rounded-lg border-0">
+            <div className="relative h-16 sm:h-14 flex items-center justify-center border-b bg-muted/30">
                 <DialogTitle className="font-black uppercase tracking-tighter">Scan Product</DialogTitle>
             </div>
             <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <div className="p-4 bg-muted/30 flex justify-center">
-                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl font-bold">
+                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl sm:rounded-md font-bold">
                   Cancel Scanning
                 </Button>
             </div>
