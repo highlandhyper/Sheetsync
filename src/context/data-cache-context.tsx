@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -43,7 +42,7 @@ interface DataCacheContextType {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 60000; // Background sync every 60 seconds
+const SYNC_INTERVAL_MS = 600000; // Background sync every 10 minutes
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
@@ -95,7 +94,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, [toast]);
 
-  // Initial Load
+  // Initial Load & Hard Refresh Tip
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -105,8 +104,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
     if (!isInitializedRef.current) {
         fetchDataAndCache(false);
+        // Hint for hard refresh to bypass initial sync issues
+        setTimeout(() => {
+          toast({
+            title: "Data Tip",
+            description: "If data looks outdated, use Ctrl+R (or Cmd+R) for a hard refresh.",
+          });
+        }, 3000);
     }
-  }, [user, authLoading, fetchDataAndCache]);
+  }, [user, authLoading, fetchDataAndCache, toast]);
 
   // Background Polling & Visibility Sync
   useEffect(() => {
