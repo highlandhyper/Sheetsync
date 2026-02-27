@@ -41,6 +41,7 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -56,11 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
-
-const STAFF_NAMES = [
-  "ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", 
-  "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"
-];
+import { useAuth } from '@/context/auth-context';
 
 const steps = [
   { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
@@ -74,15 +71,16 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
-export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations }: AddInventoryItemStepperFormProps) {
+export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: AddInventoryItemStepperFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { 
     products: cachedProducts, 
-    uniqueLocations, 
+    uniqueLocations: dynamicLocations, 
     addInventoryItem,
     refreshData,
   } = useDataCache();
-  const { activeSession, consumeSpecialEntry } = useSpecialEntry(); // Corrected naming
+  const { activeSession, consumeSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -146,7 +144,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       formData.append('staffName', data.staffName);
       formData.append('itemType', data.itemType);
       formData.append('quantity', data.quantity.toString());
+      formData.append('location', data.location);
       
+      if (user?.email) {
+          formData.append('userEmail', user.email);
+      }
+
       if (activeSession) {
           formData.append('disableNotification', 'true');
       }
@@ -162,8 +165,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         formData.append('expiryDate', '');
       }
 
-      formData.append('location', data.location);
-
       try {
         const response = await addInventoryItemAction(undefined, formData);
         
@@ -171,7 +172,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
           addInventoryItem(response.data);
           
           if (activeSession) {
-              consumeSpecialEntry(); // Updated function call
+              consumeSpecialEntry(); 
           }
 
           setSubmittedStaffName(data.staffName);
@@ -228,7 +229,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
           setProductSupplier(response.data.supplierName || 'N/A');
           return true;
       } else {
-          setProductLookupError(response.message || 'Product not found.');
+          setProductLookupError(response.message || 'Product not found in system.');
           return false;
       }
   }, [cachedProducts]);
@@ -392,7 +393,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                     <CommandList>
                                         <CommandEmpty>No staff member found.</CommandEmpty>
                                         <CommandGroup>
-                                            {STAFF_NAMES.map((staff) => (
+                                            {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
                                                 <CommandItem key={staff} value={staff} onSelect={() => { setValue("staffName", staff, { shouldValidate: true }); setStaffComboboxOpen(false); }} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
                                                     <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>{staff}
                                                 </CommandItem>
@@ -471,7 +472,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                                 <CommandList>
                                     <CommandEmpty>No location found.</CommandEmpty>
                                     <CommandGroup>
-                                        {uniqueLocations.map((loc) => (
+                                        {(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (
                                             <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
                                                 <Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}
                                             </CommandItem>

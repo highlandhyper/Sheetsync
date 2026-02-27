@@ -2,13 +2,11 @@ import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFo
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
-// --- Sheet Names (MUST MATCH YOUR ACTUAL SHEET NAMES) ---
+// --- Sheet Names ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
-const DB_SHEET_NAME = "DB"; // Consolidated sheet for products and suppliers
+const DB_SHEET_NAME = "DB"; 
 const RETURNS_LOG_SHEET_NAME = "Returns Log";
-const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; // New sheet for settings
-
-// --- Audit Log Configuration ---
+const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; 
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
 
 // --- Column Indices (0-based) ---
@@ -208,7 +206,26 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs)]]);
 }
 
-// Optimized stubs for rest of data functions to maintain functionality
+export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
+  const products = await getProducts();
+  return products.find(p => p.barcode === barcode) || null;
+}
+
+export async function getUniqueLocations(): Promise<string[]> {
+  const items = await getInventoryItems();
+  const locations = new Set<string>(["Warehouse A", "Zone B", "Cold Storage", "Display"]);
+  items.forEach(i => { if (item.location) locations.add(item.location); });
+  return Array.from(locations).sort();
+}
+
+export async function getUniqueStaffNames(): Promise<string[]> {
+  const predefined = ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"];
+  const items = await getInventoryItems();
+  const names = new Set<string>(predefined);
+  items.forEach(i => { if (i.staffName) names.add(i.staffName); });
+  return Array.from(names).sort();
+}
+
 export async function addProduct(email: string, p: any) {
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || ''];
   await appendSheetData(`${DB_SHEET_NAME}!A:E`, [row]);
@@ -268,6 +285,3 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 export async function getInventoryLogEntriesByBarcode(b: string) {
   return (await getInventoryItems()).filter(i => i.barcode === b);
 }
-
-export function getUniqueLocations() { return ["Warehouse A", "Zone B", "Cold Storage", "Display"]; }
-export function getUniqueStaffNames() { return ["ASLAM", "SALAM", "MOIDU", "ANAS", "SATTAR"]; }
