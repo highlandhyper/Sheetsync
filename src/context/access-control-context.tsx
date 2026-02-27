@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren } from 'react';
@@ -14,6 +12,7 @@ interface AccessControlContextType {
   permissions: Permissions;
   isInitialized: boolean;
   setPermission: (role: 'viewer', path: string, isEnabled: boolean) => void;
+  setViewerDefaultPath: (path: string) => void;
   isAllowed: (role: 'admin' | 'viewer', path: string) => boolean;
 }
 
@@ -31,6 +30,7 @@ const getDefaultPermissions = (): Permissions => {
   return {
     admin: [...new Set(adminPaths)],
     viewer: [...new Set(viewerPaths)],
+    viewerDefaultPath: '/inventory/add',
   };
 };
 
@@ -38,7 +38,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   const [permissions, setPermissions] = useState<Permissions>(getDefaultPermissions());
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
-  const { role } = useAuth(); // We need the user's role to decide if we should save changes
+  const { role } = useAuth();
 
   useEffect(() => {
     async function loadPermissions() {
@@ -46,8 +46,6 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       if (response.success && response.data) {
         setPermissions(response.data);
       } else {
-        // This is expected on first run. The default permissions will be used
-        // and saved on the first change by an admin.
         console.log(response.message || "Using default permissions.");
         setPermissions(getDefaultPermissions());
       }
@@ -70,12 +68,21 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     setPermissions(prevPermissions => {
       const currentPaths = prevPermissions[roleToSet] || [];
       const newPaths = isEnabled
-        ? [...new Set([...currentPaths, path])] // Add path if it doesn't exist
-        : currentPaths.filter(p => p !== path); // Remove path
+        ? [...new Set([...currentPaths, path])] 
+        : currentPaths.filter(p => p !== path); 
 
-      const updatedPermissions = { ...prevPermissions, [roleToSet]: newPaths };
+      // If the path being removed was the default path, reset it
+      let newDefaultPath = prevPermissions.viewerDefaultPath;
+      if (!isEnabled && path === newDefaultPath) {
+          newDefaultPath = newPaths.length > 0 ? newPaths[0] : '/inventory/add';
+      }
+
+      const updatedPermissions = { 
+          ...prevPermissions, 
+          [roleToSet]: newPaths,
+          viewerDefaultPath: newDefaultPath
+      };
       
-      // Asynchronously save to the backend without waiting
       setPermissionsAction(updatedPermissions).then(response => {
         if (response.success) {
           toast({ title: "Permissions Saved", description: `Access for 'viewer' role to ${path} has been updated.` });
@@ -85,11 +92,37 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
             description: response.message || "Could not save permissions to the server.",
             variant: "destructive",
           });
-          // Note: We are not reverting the state optimistically. The UI reflects the change instantly.
         }
       });
 
       return updatedPermissions;
+    });
+  }, [role, toast]);
+
+  const setViewerDefaultPath = useCallback((path: string) => {
+    if (role !== 'admin') {
+      toast({
+        title: "Permission Denied",
+        description: "Only admins can set the default landing page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPermissions(prev => {
+        const updated = { ...prev, viewerDefaultPath: path };
+        setPermissionsAction(updated).then(response => {
+            if (response.success) {
+                toast({ title: "Default Page Updated", description: `Viewers will now land on ${path} by default.` });
+            } else {
+                toast({
+                    title: "Save Failed",
+                    description: response.message || "Could not save settings.",
+                    variant: "destructive",
+                });
+            }
+        });
+        return updated;
     });
   }, [role, toast]);
 
@@ -99,15 +132,13 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     if (!isInitialized) return false;
 
     const userPermissions = permissions[userRole] || [];
-
-    // Check for exact path match only.
     return userPermissions.includes(path);
     
   }, [permissions, isInitialized]);
 
 
   return (
-    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, isAllowed }}>
+    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setViewerDefaultPath, isAllowed }}>
       {children}
     </AccessControlContext.Provider>
   );

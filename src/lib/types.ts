@@ -1,5 +1,3 @@
-
-
 // Firebase uses string IDs for documents/nodes
 export interface Product {
   id: string; 
@@ -98,7 +96,9 @@ _totalStockValue?: number;
 export type Role = 'admin' | 'viewer';
 
 export type Permissions = {
-  [key in Role]: string[];
+  admin: string[];
+  viewer: string[];
+  viewerDefaultPath?: string;
 };
 
 export interface AuditLogEntry {
