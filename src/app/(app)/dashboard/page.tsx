@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -16,8 +16,8 @@ import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
   const cardInnerContent = (
@@ -158,6 +158,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 function SpecialEntryApprovalPanel() {
     const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
     const { role } = useAuth();
+    const [customMins, setCustomMins] = useState<string>("15");
 
     if (role !== 'admin' || pendingRequests.length === 0) return null;
 
@@ -175,7 +176,7 @@ function SpecialEntryApprovalPanel() {
             </CardHeader>
             <CardContent className="space-y-3">
                 {pendingRequests.map((req) => (
-                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg bg-background border gap-3">
+                    <div key={req.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 rounded-lg bg-background border gap-3">
                         <div className="flex items-center gap-3">
                             <div className="bg-primary/10 p-2 rounded-full">
                                 <MessageSquare className="h-4 w-4 text-primary" />
@@ -185,16 +186,53 @@ function SpecialEntryApprovalPanel() {
                                 <p className="text-xs text-muted-foreground">{req.userEmail}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => rejectRequest(req.id)}>
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <Button size="sm" variant="outline" className="flex-1 lg:flex-none order-last lg:order-none" onClick={() => rejectRequest(req.id)}>
                                 <X className="mr-1 h-3 w-3" /> Reject
                             </Button>
-                            <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" onClick={() => approveRequest(req.id)}>
+                            
+                            <div className="h-8 w-px bg-border hidden lg:block mx-1" />
+
+                            <Button size="sm" variant="secondary" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id)}>
                                 <Check className="mr-1 h-3 w-3" /> 1 Entry
                             </Button>
-                            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => approveRequest(req.id, 5)}>
-                                <Clock className="mr-1 h-3 w-3" /> 5 Mins
+                            
+                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id, 10)}>
+                                <Clock className="mr-1 h-3 w-3" /> 10 Mins
                             </Button>
+
+                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => approveRequest(req.id, 30)}>
+                                <Clock className="mr-1 h-3 w-3" /> 30 Mins
+                            </Button>
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button size="sm" variant="ghost" className="flex-1 lg:flex-none border-dashed border-2">
+                                        <Plus className="mr-1 h-3 w-3" /> Custom
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48">
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-bold uppercase">Duration (Mins)</p>
+                                            <Input 
+                                                type="number" 
+                                                value={customMins} 
+                                                onChange={(e) => setCustomMins(e.target.value)} 
+                                                className="h-8"
+                                            />
+                                        </div>
+                                        <Button 
+                                            size="sm" 
+                                            className="w-full" 
+                                            disabled={!customMins || parseInt(customMins) < 1}
+                                            onClick={() => approveRequest(req.id, parseInt(customMins))}
+                                        >
+                                            Set Time Access
+                                        </Button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
                 ))}
