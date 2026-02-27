@@ -39,7 +39,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -82,6 +81,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   const [currentStep, setCurrentStep] = useState(0);
   
   const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   const [staffComboboxOpen, setStaffComboboxOpen] = useState(false);
@@ -123,6 +123,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   const allFormValues = watch();
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     startTransition(async () => {
       const formData = new FormData();
       formData.append('barcode', data.barcode);
@@ -143,30 +146,40 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
 
       formData.append('location', data.location);
 
-      const response = await addInventoryItemAction(undefined, formData);
-      
-      if (response.success && response.data) {
-        addInventoryItem(response.data);
+      try {
+        const response = await addInventoryItemAction(undefined, formData);
         
-        // Trigger Success Popup
-        setSubmittedStaffName(data.staffName);
-        setIsSuccessDialogOpen(true);
-        
-        // Auto-close success popup after 5 seconds
-        setTimeout(() => setIsSuccessDialogOpen(false), 5000);
+        if (response.success && response.data) {
+          addInventoryItem(response.data);
+          
+          // Trigger Success Popup
+          setSubmittedStaffName(data.staffName);
+          setIsSuccessDialogOpen(true);
+          
+          // Auto-close success popup after 5 seconds
+          setTimeout(() => setIsSuccessDialogOpen(false), 5000);
 
-        reset();
-        setProductName('');
-        setProductSupplier('');
-        setProductLookupError('');
-        setCurrentStep(0);
-        refreshData(); 
-      } else {
+          reset();
+          setProductName('');
+          setProductSupplier('');
+          setProductLookupError('');
+          setCurrentStep(0);
+          refreshData(); 
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error Logging Item',
+            description: response.message || 'Failed to add inventory item.'
+          });
+        }
+      } catch (err) {
         toast({
           variant: 'destructive',
-          title: 'Error Logging Item',
-          description: response.message || 'Failed to add inventory item.'
+          title: 'System Error',
+          description: 'An unexpected error occurred during submission.'
         });
+      } finally {
+        setIsSubmitting(false);
       }
     });
   };
@@ -345,7 +358,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                                 <Command>
-                                    <CommandInput placeholder="Search staff..." />
                                     <CommandList>
                                         <CommandEmpty>No staff member found.</CommandEmpty>
                                         <CommandGroup>
@@ -426,9 +438,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
-                                <CommandInput placeholder="Search location..." />
                                 <CommandList>
-                                    <CommandEmpty>No location found. Type to create.</CommandEmpty>
+                                    <CommandEmpty>No location found.</CommandEmpty>
                                     <CommandGroup>
                                         {uniqueLocations.map((loc) => (
                                             <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
@@ -477,18 +488,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
 
             </form>
             <div className="flex gap-3 pt-4">
-                <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold">
+                <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold">
                     <ArrowLeft className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Back
                 </Button>
 
                 {currentStep < steps.length - 1 ? (
-                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md">
+                    <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md">
                         {isFetchingProduct ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin"/> : null}
                         Continue <ArrowRight className="ml-2 h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                 ) : (
-                    <Button type="button" onClick={handleFormSubmit} disabled={isPending} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
-                        {isPending ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 h-4 sm:w-4" />}
+                    <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
+                        {isPending || isSubmitting ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 h-4 sm:w-4" />}
                         Complete Log
                     </Button>
                 )}
