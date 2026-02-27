@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -29,12 +28,12 @@ interface ReturnQuantityDialogProps {
   item: InventoryItem | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onReturnSuccess: (returnedItemId: string, returnedQuantity: number) => void; // Callback for when return is successful
+  onReturnSuccess: (returnedItemId: string, returnedQuantity: number) => void;
 }
 
 const returnSchema = z.object({
   quantityToReturn: z.coerce.number().min(1, "Quantity must be at least 1."),
-  staffName: z.string().min(1, "Your name is required to process the return."), // Added staff name
+  staffName: z.string().min(1, "Your name is required."),
 });
 type ReturnFormValues = z.infer<typeof returnSchema>;
 
@@ -69,12 +68,12 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     if (data.quantityToReturn > item.quantity) {
       setError('quantityToReturn', {
         type: 'manual',
-        message: `Cannot return more than available (${item.quantity}).`,
+        message: `Max allowed: ${item.quantity}.`,
       });
       return;
     }
     if (!user?.email) {
-      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
 
@@ -83,72 +82,63 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     setIsSubmitting(false);
 
     if (response.success) {
-      toast({
-        title: 'Return Processed',
-        description: response.message,
-      });
-      onReturnSuccess(item.id, data.quantityToReturn); // Call success callback
-      onOpenChange(false); // Close dialog
+      toast({ title: 'Return Processed', description: response.message });
+      onReturnSuccess(item.id, data.quantityToReturn);
+      onOpenChange(false);
     } else {
-      toast({
-        title: 'Return Failed',
-        description: response.message || 'Could not process the return.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Return Failed', description: response.message || 'Could not process return.', variant: 'destructive' });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[360px]">
         <DialogHeader>
-          <DialogTitle>Return Item: {item.productName}</DialogTitle>
-          <DialogDescription>
-            Enter the quantity you are returning and your name. Available: {item.quantity}
+          <DialogTitle className="text-lg">Return: {item.productName}</DialogTitle>
+          <DialogDescription className="text-xs">
+            Available stock: {item.quantity} units.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="quantityToReturn">Quantity to Return</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="quantityToReturn" className="text-xs font-bold uppercase text-muted-foreground">Quantity to Return</Label>
                <div className="relative">
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="quantityToReturn"
                   type="number"
                   {...register('quantityToReturn')}
-                  className={cn('pl-8', errors.quantityToReturn && 'border-destructive')}
+                  className={cn('pl-9 h-9 text-sm', errors.quantityToReturn && 'border-destructive')}
                 />
               </div>
               {errors.quantityToReturn && (
-                <p className="text-sm text-destructive mt-1">{errors.quantityToReturn.message}</p>
+                <p className="text-[10px] text-destructive font-medium">{errors.quantityToReturn.message}</p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="staffName">Your Name (Processing Return)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="staffName" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
                <div className="relative">
                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="staffName"
-                  placeholder="Enter your name"
+                  placeholder="Enter name"
                   {...register('staffName')}
-                  className={cn('pl-8', errors.staffName && 'border-destructive')}
+                  className={cn('pl-9 h-9 text-sm', errors.staffName && 'border-destructive')}
                 />
               </div>
               {errors.staffName && (
-                <p className="text-sm text-destructive mt-1">{errors.staffName.message}</p>
+                <p className="text-[10px] text-destructive font-medium">{errors.staffName.message}</p>
               )}
             </div>
-          </div>
-          <DialogFooter>
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" onClick={() => reset()}>
+              <Button type="button" variant="outline" size="sm" onClick={() => reset()}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Process Return
+            <Button type="submit" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
+              Process
             </Button>
           </DialogFooter>
         </form>

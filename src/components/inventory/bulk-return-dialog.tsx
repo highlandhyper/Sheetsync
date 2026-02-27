@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +21,6 @@ import { useToast } from '@/hooks/use-toast';
 import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { useAuth } from '@/context/auth-context';
 
 interface BulkReturnDialogProps {
@@ -36,14 +34,14 @@ interface BulkReturnDialogProps {
 const returnSchema = z.object({
   returnType: z.enum(['all', 'specific']),
   quantity: z.coerce.number().optional(),
-  staffName: z.string().min(1, "Your name is required."),
+  staffName: z.string().min(1, "Name is required."),
 }).refine(data => {
     if (data.returnType === 'specific' && (data.quantity === undefined || data.quantity < 1)) {
         return false;
     }
     return true;
 }, {
-    message: "A quantity of at least 1 is required for 'Specific Quantity'.",
+    message: "Quantity >= 1 required.",
     path: ['quantity'],
 });
 
@@ -59,7 +57,6 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     register,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<ReturnFormValues>({
     resolver: zodResolver(returnSchema),
@@ -80,62 +77,44 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
   };
 
   const onSubmit = async (data: ReturnFormValues) => {
-    if (!user?.email) {
-      toast({ title: 'Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
-      return;
-    }
+    if (!user?.email) return;
     setIsSubmitting(true);
     const response = await bulkReturnInventoryItemsAction(user.email, itemIds, data.staffName, data.returnType, data.quantity);
     setIsSubmitting(false);
 
     if (response.success) {
-      toast({
-        title: 'Bulk Return Processed',
-        description: response.message,
-      });
+      toast({ title: 'Success', description: response.message });
       onSuccess();
       handleOpenChange(false);
     } else {
-      toast({
-        title: 'Bulk Return Failed',
-        description: response.message || 'Could not process the bulk return.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed', description: response.message || 'Error processing returns.', variant: 'destructive' });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[360px]">
         <DialogHeader>
-          <DialogTitle>Bulk Return Confirmation</DialogTitle>
-          <DialogDescription>
-            You are about to process a return for {itemCount} selected item(s).
+          <DialogTitle className="text-lg">Bulk Return ({itemCount})</DialogTitle>
+          <DialogDescription className="text-xs">
+            Process returns for all selected items.
           </DialogDescription>
         </DialogHeader>
         
-        <Alert variant="default" className="bg-primary/10">
-          <Package className="h-4 w-4" />
-          <AlertTitle>How many to return?</AlertTitle>
-          <AlertDescription>
-            Choose to return all stock for each selected item, or return a specific quantity from each.
-          </AlertDescription>
-        </Alert>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           <RadioGroup
             value={returnType}
             onValueChange={(value: 'all' | 'specific') => setReturnType(value)}
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-2 gap-2"
           >
             <div>
                 <RadioGroupItem value="all" id="returnAll" className="peer sr-only" />
                 <Label
                     htmlFor="returnAll"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    className="flex flex-col items-center justify-center rounded-md border border-muted bg-popover p-2 text-[10px] font-bold uppercase hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                    <Package className="mb-3 h-6 w-6" />
-                    Return ALL Stock
+                    <Package className="mb-1 h-4 w-4" />
+                    All Stock
                 </Label>
             </div>
 
@@ -143,49 +122,48 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
                 <RadioGroupItem value="specific" id="returnSpecific" className="peer sr-only" />
                 <Label
                      htmlFor="returnSpecific"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    className="flex flex-col items-center justify-center rounded-md border border-muted bg-popover p-2 text-[10px] font-bold uppercase hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                    <Hash className="mb-3 h-6 w-6" />
-                    Specific Quantity
+                    <Hash className="mb-1 h-4 w-4" />
+                    Quantity
                 </Label>
             </div>
           </RadioGroup>
           <input type="hidden" {...register('returnType')} value={returnType} />
 
           {returnType === 'specific' && (
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity to Return from Each Item</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="quantity" className="text-xs font-bold uppercase text-muted-foreground">Qty per Item</Label>
               <Input
                 id="quantity"
                 type="number"
-                placeholder="e.g., 5"
                 {...register('quantity')}
-                className={cn(errors.quantity && 'border-destructive')}
+                className={cn('h-9 text-sm', errors.quantity && 'border-destructive')}
               />
-              {errors.quantity && <p className="text-sm text-destructive mt-1">{errors.quantity.message}</p>}
+              {errors.quantity && <p className="text-[10px] text-destructive font-medium">{errors.quantity.message}</p>}
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="staffName">Your Name (Processing Return)</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="staffName" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
             <Input
               id="staffName"
-              placeholder="Enter your full name"
+              placeholder="Full name"
               {...register('staffName')}
-              className={cn(errors.staffName && 'border-destructive')}
+              className={cn('h-9 text-sm', errors.staffName && 'border-destructive')}
             />
-            {errors.staffName && <p className="text-sm text-destructive mt-1">{errors.staffName.message}</p>}
+            {errors.staffName && <p className="text-[10px] text-destructive font-medium">{errors.staffName.message}</p>}
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" size="sm" disabled={isSubmitting}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Process Return
+            <Button type="submit" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
+              Process
             </Button>
           </DialogFooter>
         </form>
