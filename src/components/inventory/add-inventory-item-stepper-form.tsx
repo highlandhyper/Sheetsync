@@ -41,7 +41,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-} from "@/components/use-command"; // Wait, fixing potential import typo from components.json
+} from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -91,7 +91,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
 
-  // Success Dialog State
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [submittedStaffName, setSubmittedStaffName] = useState('');
 
@@ -309,7 +308,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                 onSubmit={handleSubmit(onSubmit)}
                 className="space-y-6"
             >
-                {/* Step 1: Barcode */}
                 <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
                     <Label htmlFor="barcode" className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase">
                         <Barcode className="h-4 w-4" /> Product Barcode
@@ -340,7 +338,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     </div>
                 </div>
 
-                {/* Step 2: Details */}
                 <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
                         <h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3>
@@ -425,7 +422,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     </div>
                 </div>
 
-                {/* Step 3: Location */}
                  <div className={cn(currentStep !== 2 && "hidden", "space-y-4")}>
                     <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Storage Zone
@@ -458,7 +454,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
                 </div>
                 
-                {/* Step 4: Review */}
                 <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
                     <div className="p-6 rounded-2xl sm:rounded-lg bg-primary/5 border-2 border-primary/20 space-y-4 shadow-inner">
                         <h3 className="font-extrabold text-2xl sm:text-lg text-primary text-center">{productName}</h3>
@@ -512,7 +507,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       </CardContent>
     </Card>
 
-    {/* Scanner Dialog */}
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl sm:rounded-lg border-0">
             <div className="relative h-16 sm:h-14 flex items-center justify-center border-b bg-muted/30">
@@ -527,7 +521,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
         </DialogContent>
     </Dialog>
 
-    {/* Success "Thank You" Popup */}
     <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent className="max-w-sm w-[90%] p-8 overflow-hidden rounded-3xl sm:rounded-2xl border-0 shadow-2xl bg-slate-950 text-white flex flex-col items-center text-center animate-fade-in">
             <div className="bg-primary/20 p-4 rounded-full mb-6 animate-bounce">
