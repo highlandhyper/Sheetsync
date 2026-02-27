@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -13,11 +12,9 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 
-const VIEWER_DEFAULT_PATH = '/inventory/add';
-
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
-  const { isAllowed, isInitialized: permissionsInitialized } = useAccessControl();
+  const { isAllowed, isInitialized: permissionsInitialized, permissions } = useAccessControl();
   const { settings: generalSettings, isInitialized: settingsInitialized } = useGeneralSettings();
   const router = useRouter();
   const pathname = usePathname();
@@ -46,7 +43,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
-    // If feature is enabled for admin, set up listeners
     if (user && !loading && !isLocked && role === 'admin' && generalSettings.isLockOnInactivityEnabled) {
       const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
       
@@ -55,7 +51,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       };
 
       events.forEach(event => window.addEventListener(event, handleActivity));
-      resetInactivityTimer(); // Start the timer initially
+      resetInactivityTimer(); 
 
       return () => {
         events.forEach(event => window.removeEventListener(event, handleActivity));
@@ -64,13 +60,11 @@ export default function AppLayout({ children }: PropsWithChildren) {
         }
       };
     } else {
-      // If feature is disabled or not applicable, ensure timer is cleared.
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
       }
     }
   }, [user, loading, isLocked, resetInactivityTimer, role, generalSettings.isLockOnInactivityEnabled]);
-  // --- End Inactivity Lock Logic ---
 
   useEffect(() => {
     if (loading) {
@@ -87,13 +81,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
     if (role === 'viewer') {
       const canAccessCurrentPath = isAllowed(role, pathname);
       if (!canAccessCurrentPath) {
-        const defaultPathForViewer = isAllowed(role, VIEWER_DEFAULT_PATH) ? VIEWER_DEFAULT_PATH : '/login';
+        // Redirect to dynamic default path if current path is restricted
+        const defaultPathForViewer = permissions.viewerDefaultPath || '/inventory/add';
         router.replace(defaultPathForViewer);
       }
       sessionStorage.removeItem('adminWelcomeShown');
       setShowAdminWelcomeScreen(false);
     }
-  }, [loading, user, role, router, pathname, isAllowed]);
+  }, [loading, user, role, router, pathname, isAllowed, permissions]);
 
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
@@ -105,7 +100,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
         sessionStorage.setItem('adminWelcomeShown', 'true');
         timerId = setTimeout(() => {
           setShowAdminWelcomeScreen(false);
-        }, 3500); // Show for 3.5 seconds
+        }, 3500); 
       } else {
         setShowAdminWelcomeScreen(false);
       }
