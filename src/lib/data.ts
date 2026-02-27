@@ -212,7 +212,7 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
-  // Restricted list as requested: "Back side", "On Display" and "Front Side"
+  // Restricted list: "Back side", "On Display" and "Front Side"
   return ["Back side", "On Display", "Front Side"];
 }
 
