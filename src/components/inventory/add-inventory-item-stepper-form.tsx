@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -145,7 +144,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
       if (response.success && response.data) {
         addInventoryItem(response.data);
         toast({
-          title: 'Success!',
+          title: `Thank you, ${data.staffName}!`,
           description: 'Inventory item added successfully.'
         });
         reset();
@@ -481,7 +480,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations 
                     </Button>
                 ) : (
                     <Button type="button" onClick={handleFormSubmit} disabled={isPending} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
-                        {isPending ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}
+                        {isPending ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 h-4 sm:w-4" />}
                         Complete Log
                     </Button>
                 )}
