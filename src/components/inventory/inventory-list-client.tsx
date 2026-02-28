@@ -736,7 +736,7 @@ export function InventoryListClient() {
                     }
 
                     return (
-                    <TableRow key={mainItem.barcode} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""}>
+                    <TableRow key={mainItem.id} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""}>
                         {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
                             <Checkbox
@@ -794,7 +794,7 @@ export function InventoryListClient() {
                     const isSingleItem = group.individualItems.length === 1;
                     return (
                         <InventoryItemCardMobile
-                            key={group.mainItem.barcode}
+                            key={group.mainItem.id}
                             item={group.mainItem}
                             product={product}
                             totalQuantity={group.totalQuantity}
