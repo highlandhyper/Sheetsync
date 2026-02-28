@@ -57,6 +57,7 @@ const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
 const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
+const STAFF_LIST_KEY = 'staffList';
 
 function parseFlexibleTimestamp(timestampValue: any): Date | null {
   if (!timestampValue || String(timestampValue).trim() === '') return null;
@@ -208,6 +209,21 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs)]]);
 }
 
+export async function loadStaffListFromSheet(): Promise<string[]> {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  const row = data?.find(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
+  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"];
+}
+
+export async function saveStaffListToSheet(staff: string[]) {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
+  if (idx !== undefined && idx !== -1) {
+    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(staff)]]);
+  }
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
+}
+
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
   const products = await getProducts();
   return products.find(p => p.barcode === barcode) || null;
@@ -219,11 +235,7 @@ export async function getUniqueLocations(): Promise<string[]> {
 }
 
 export async function getUniqueStaffNames(): Promise<string[]> {
-  const predefined = ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"];
-  const items = await getInventoryItems();
-  const names = new Set<string>(predefined);
-  items.forEach(i => { if (i.staffName) names.add(i.staffName); });
-  return Array.from(names).sort();
+  return loadStaffListFromSheet();
 }
 
 export async function addProduct(email: string, p: any) {

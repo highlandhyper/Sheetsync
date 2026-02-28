@@ -32,7 +32,9 @@ import {
   loadSpecialRequestsFromSheet,
   saveSpecialRequestsToSheet,
   getInventoryLogEntriesByBarcode,
-  addInventoryItemToSheet
+  addInventoryItemToSheet,
+  saveStaffListToSheet,
+  loadStaffListFromSheet
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -224,6 +226,16 @@ export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[
         return { success: false, message: "Failed to save requests to sheet." };
     } catch (e) {
         return { success: false, message: "Error updating requests." };
+    }
+}
+
+export async function saveStaffListAction(staff: string[]) {
+    try {
+        await saveStaffListToSheet(staff);
+        revalidatePath('/settings');
+        return { success: true };
+    } catch (e) {
+        return { success: false, message: "Failed to save staff list." };
     }
 }
 

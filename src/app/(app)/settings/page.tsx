@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -13,6 +13,7 @@ import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { Separator } from '@/components/ui/separator';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
+import { StaffManager } from '@/components/settings/staff-manager';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -111,6 +112,18 @@ export default function SettingsPage() {
             )}
           </div>
         </DialogCard>
+
+        {role === 'admin' && (
+          <DialogCard
+            icon={Users}
+            title="Staff Management"
+            description="Add, edit, or remove staff members from the active registry used for logging items."
+            triggerText="Manage Staff Registry"
+            dialogClassName="sm:max-w-md"
+          >
+            <StaffManager />
+          </DialogCard>
+        )}
 
         <DialogCard
           icon={KeyRound}

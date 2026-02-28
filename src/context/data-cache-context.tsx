@@ -3,7 +3,7 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction, updateSpecialRequestsAction } from '@/app/actions';
+import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
 
@@ -31,6 +31,7 @@ interface DataCacheContextType extends AppData {
   updateProduct: (updatedProduct: Product) => void;
   addReturnedItem: (item: ReturnedItem) => void;
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
+  updateStaffList: (staff: string[]) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -96,12 +97,23 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       await updateSpecialRequestsAction(requests);
   }, []);
 
+  const updateStaffList = useCallback(async (staff: string[]) => {
+      setData(prev => ({ ...prev, uniqueStaffNames: staff }));
+      const response = await saveStaffListAction(staff);
+      if (response.success) {
+          toast({ title: 'Success', description: 'Staff list updated successfully.' });
+      } else {
+          toast({ title: 'Error', description: response.message || 'Failed to update staff list.', variant: 'destructive' });
+      }
+  }, [toast]);
+
   const value = useMemo(() => ({
     ...data,
     isCacheReady,
     isSyncing,
     refreshData,
     updateSpecialRequests,
+    updateStaffList,
     updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? i : x) })),
     addInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: [i, ...p.inventoryItems] })),
     removeInventoryItem: (id: string) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.filter(x => x.id !== id) })),
@@ -110,10 +122,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? pr : x) })),
     addReturnedItem: (r: any) => setData(p => ({ ...p, returnedItems: [r, ...p.returnedItems] })),
-  }), [data, isCacheReady, isSyncing, refreshData, updateSpecialRequests]);
+  }), [data, isCacheReady, isSyncing, refreshData, updateSpecialRequests, updateStaffList]);
 
   return (
-    <DataCacheContext.Provider value={value}>
+    <DataCacheContext.Provider value={{...value, uniqueStaffNames: data.uniqueStaffNames}}>
       {children}
     </DataCacheContext.Provider>
   );
