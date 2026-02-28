@@ -179,10 +179,6 @@ export async function logAuditEvent(user: string, action: string, target: string
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);
 }
 
-/**
- * Consolidated fetch for all metadata stored in the APP_SETTINGS sheet.
- * Reduces redundant API calls during fetchAllDataAction.
- */
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const findJson = (key: string) => {
@@ -331,7 +327,6 @@ export async function deleteInventoryItemById(email: string, id: string) {
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  // Fetch DB and Inventory exactly once
   const [inv, prods] = await Promise.all([getInventoryItems(), getProducts()]);
   
   const today = startOfDay(new Date());
@@ -342,7 +337,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   let itemsExpiringSoonCount = 0;
   const stockBySupp: Record<string, number> = {};
 
-  // Derive suppliers from products list to avoid a redundant 54k read
   const suppNamesSet = new Set<string>();
   prods.forEach(p => { if (p.supplierName) suppNamesSet.add(p.supplierName.trim()); });
 

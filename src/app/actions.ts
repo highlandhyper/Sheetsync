@@ -61,8 +61,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   specialRequests: SpecialEntryRequest[];
 }>> {
   try {
-    // Perform data-heavy reads surgically.
-    // getAppMetaData retrieves locations, staff, perms, and requests in ONE read.
     const [
       inventoryItems,
       products,
@@ -77,7 +75,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
       getAppMetaData()
     ]);
 
-    // Derive suppliers from products to avoid another 54k read
     const suppliers = await getSuppliers(products);
 
     return {
@@ -277,7 +274,6 @@ export async function fetchInventoryLogEntriesByBarcodeAction(b: string) {
     return { success: true, data: await getInventoryLogEntriesByBarcode(b) }; 
 }
 
-// Simplified placeholders for remaining actions to keep imports valid
 export async function addProductAction(p: any, f: FormData) { return saveProductAction(p, f); }
 export async function addSupplierAction(p: any, f: FormData) { return { success: true }; }
 export async function editSupplierAction(p: any, f: FormData) { return { success: true }; }
