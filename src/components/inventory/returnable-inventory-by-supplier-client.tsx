@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2, Wallet } from 'lucide-react';
+import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2, Wallet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -33,6 +33,7 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
+import { generateInventoryPDF } from '@/lib/pdf-reports';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -209,6 +210,34 @@ export function ReturnableInventoryBySupplierClient() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportPDF = () => {
+    if (selectedSupplierNames.length === 0 || itemsToRender.length === 0) return;
+    
+    const cols = ['No.', 'Product Name', 'Barcode', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
+    const dataMapper = (item: InventoryItem, idx: number) => {
+        const product = productsByBarcode.get(item.barcode);
+        const cost = product?.costPrice ?? 0;
+        return [
+            (idx + 1).toString(),
+            item.productName,
+            item.barcode,
+            item.quantity.toString(),
+            `QAR ${cost.toFixed(2)}`,
+            `QAR ${(cost * item.quantity).toFixed(2)}`,
+            item.expiryDate || 'N/A',
+            item.location
+        ];
+    };
+
+    generateInventoryPDF(
+        `Supplier Return Summary: ${selectedSupplierNames.join(', ')}`, 
+        itemsToRender, 
+        cols, 
+        (item) => dataMapper(item, itemsToRender.indexOf(item)), 
+        totalValueForSelectedSuppliers
+    );
   };
 
   const handleShareToWhatsApp = () => {
@@ -451,12 +480,15 @@ export function ReturnableInventoryBySupplierClient() {
                 </div>
             )}
              <div className="flex items-center gap-2 ml-auto md:ml-0 md:pl-2">
+                 <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
+                    <FileText className="mr-2 h-4 w-4" /> PDF Report
+                 </Button>
                  <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
                     WhatsApp
                  </Button>
                 <div className="print-button-container">
                     <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                        <Printer className="mr-2 h-4 w-4" /> Print List
+                        <Printer className="mr-2 h-4 w-4" /> Print
                     </Button>
                 </div>
             </div>
