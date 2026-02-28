@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText, ChevronDown } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -30,6 +30,8 @@ import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
 import { generateInventoryPDF } from '@/lib/pdf-reports';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -642,12 +644,24 @@ export function InventoryListClient() {
                         <FilterX className="mr-2 h-4 w-4" /> Clear
                     </Button>
                   )}
-                   <Button onClick={handleExportPDF} variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
-                       <FileText className="mr-2 h-4 w-4" /> PDF Report
-                   </Button>
-                   <Button onClick={handleShareToWhatsApp} variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
-                       WhatsApp
-                   </Button>
+                   <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
+                          <FileText className="mr-2 h-4 w-4" /> Reports <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
+                          <FileText className="mr-2 h-4 w-4 text-primary" />
+                          Download PDF Report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareToWhatsApp} className="cursor-pointer">
+                          <WhatsAppIcon className="mr-2 h-4 w-4 text-green-500" />
+                          Share via WhatsApp
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                   </DropdownMenu>
+                   
                    <div className="print-button-container flex-1 sm:flex-none">
                     <Button onClick={handlePrint} variant="outline" className="w-full">
                     <Printer className="mr-2 h-4 w-4" /> Print
@@ -703,7 +717,7 @@ export function InventoryListClient() {
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Total Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right">Total Value</TableHead>
+                    <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Expiry</TableHead>
                 </TableRow>
                 </TableHeader>
