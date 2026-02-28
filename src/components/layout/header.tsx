@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, UserCircle, Command, RefreshCw, Lock } from 'lucide-react';
+import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,10 @@ import { useDataCache } from '@/context/data-cache-context';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 function LastSyncStatus() {
-  const { lastSync, isSyncing, refreshData } = useDataCache();
+  const { lastSync, isSyncing, refreshData, pendingActions } = useDataCache();
   const [_, setForceUpdate] = useState(0);
 
   useEffect(() => {
@@ -36,6 +37,22 @@ function LastSyncStatus() {
 
   return (
     <div className="flex items-center gap-2">
+      {pendingActions.length > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="animate-pulse flex items-center gap-1 cursor-help">
+                        <CloudOff className="h-3 w-3" />
+                        {pendingActions.length} Offline
+                    </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{pendingActions.length} changes waiting to sync from this device.</p>
+                </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+      )}
+
       <div className="flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
         <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : "text-green-500")}>
           {isSyncing ? (

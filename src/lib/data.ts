@@ -58,6 +58,7 @@ const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
+const LOCATION_LIST_KEY = 'locationList';
 
 function parseFlexibleTimestamp(timestampValue: any): Date | null {
   if (!timestampValue || String(timestampValue).trim() === '') return null;
@@ -224,14 +225,28 @@ export async function saveStaffListToSheet(staff: string[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
 }
 
+export async function loadLocationListFromSheet(): Promise<string[]> {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  const row = data?.find(r => r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY);
+  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : ["Back side", "On Display", "Front Side"];
+}
+
+export async function saveLocationListToSheet(locations: string[]) {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY);
+  if (idx !== undefined && idx !== -1) {
+    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(locations)]]);
+  }
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
+}
+
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
   const products = await getProducts();
   return products.find(p => p.barcode === barcode) || null;
 }
 
 export async function getUniqueLocations(): Promise<string[]> {
-  // STRICTLY only these three locations as requested.
-  return ["Back side", "On Display", "Front Side"];
+  return loadLocationListFromSheet();
 }
 
 export async function getUniqueStaffNames(): Promise<string[]> {
@@ -241,7 +256,7 @@ export async function getUniqueStaffNames(): Promise<string[]> {
 export async function addProduct(email: string, p: any) {
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || ''];
   await appendSheetData(`${DB_SHEET_NAME}!A:E`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Created ${p.productName}`);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Details: [Product: ${p.productName}], [Supplier: ${p.supplierName}], [Cost: ${p.costPrice || 'N/A'}]`);
   return { id: p.barcode, ...p };
 }
 
@@ -279,7 +294,15 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
 }
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
-  await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Updated fields: ${Object.keys(u).join(', ')}`);
+  const items = await getInventoryItems();
+  const old = items.find(i => i.id === id);
+  const diffs: string[] = [];
+  if (old) {
+    if (u.quantity !== undefined && Number(u.quantity) !== old.quantity) diffs.push(`Qty: ${old.quantity} -> ${u.quantity}`);
+    if (u.location && u.location !== old.location) diffs.push(`Loc: ${old.location} -> ${u.location}`);
+    if (u.itemType && u.itemType !== old.itemType) diffs.push(`Type: ${old.itemType} -> ${u.itemType}`);
+  }
+  await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Changes: ${diffs.join(', ') || 'None'}`);
   return { id, ...u };
 }
 

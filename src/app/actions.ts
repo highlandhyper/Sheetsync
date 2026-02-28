@@ -34,7 +34,8 @@ import {
   getInventoryLogEntriesByBarcode,
   addInventoryItemToSheet,
   saveStaffListToSheet,
-  loadStaffListFromSheet
+  loadStaffListFromSheet,
+  saveLocationListToSheet
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -143,13 +144,11 @@ export async function addInventoryItemAction(
         timestamp: now.toISOString()
     };
 
-    // 1. Write to Google Sheet directly
     const sheetWriteSuccess = await addInventoryItemToSheet(itemData);
     if (!sheetWriteSuccess) {
         return { success: false, message: "Failed to write data to Google Sheet." };
     }
 
-    // 2. Notify AppScript (Email/External Logger) - Fire and forget
     fetch(EXTERNAL_LOGGER_API, {
         method: 'POST',
         headers: {
@@ -169,7 +168,7 @@ export async function addInventoryItemAction(
         })
     }).catch(err => console.warn("External logger failed:", err));
 
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Logged ${validatedItemData.quantity} of "${productDetails.productName}".${disableNotification ? ' (Silent Entry)' : ''}`);
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Details: [Product: ${productDetails.productName}], [Qty: ${validatedItemData.quantity}], [Loc: ${validatedItemData.location}]${disableNotification ? ' (Silent Entry)' : ''}`);
     revalidatePath('/inventory');
 
     return {
@@ -206,13 +205,34 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             revalidatePath('/products/list');
             return { success: true, message: "Product created successfully.", data: product as Product };
         } else {
+            const oldProduct = await getProductDetailsByBarcode(data.barcode as string);
+            const diffs: string[] = [];
+            if (oldProduct) {
+                if (data.productName !== oldProduct.productName) diffs.push(`Name: ${oldProduct.productName} -> ${data.productName}`);
+                if (data.supplierName !== oldProduct.supplierName) diffs.push(`Supplier: ${oldProduct.supplierName} -> ${data.supplierName}`);
+                if (data.costPrice && Number(data.costPrice) !== oldProduct.costPrice) diffs.push(`Cost: ${oldProduct.costPrice} -> ${data.costPrice}`);
+            }
             await dbUpdateProductAndSupplierLinks(userEmail, data.barcode as string, data.productName as string, data.supplierName as string, data.costPrice ? parseFloat(data.costPrice as string) : undefined);
+            await logAuditEvent(userEmail, 'UPDATE_PRODUCT', data.barcode as string, `Changes: ${diffs.join(', ')}`);
             revalidatePath('/products/list');
             const product = await getProductDetailsByBarcode(data.barcode as string);
             return { success: true, message: "Product updated successfully.", data: product as Product };
         }
     } catch (e) {
         return { success: false, message: "Failed to save product." };
+    }
+}
+
+export async function updateInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
+    try {
+        const userEmail = formData.get('userEmail') as string || 'Admin';
+        const itemId = formData.get('itemId') as string;
+        const rawData = Object.fromEntries(formData.entries());
+        const result = await dbUpdateInventoryItemDetails(userEmail, itemId, rawData);
+        revalidatePath('/inventory');
+        return { success: true, message: "Item updated successfully.", data: result as InventoryItem };
+    } catch (e) {
+        return { success: false, message: "Failed to update item." };
     }
 }
 
@@ -239,6 +259,16 @@ export async function saveStaffListAction(staff: string[]) {
     }
 }
 
+export async function saveLocationListAction(locations: string[]) {
+    try {
+        await saveLocationListToSheet(locations);
+        revalidatePath('/settings');
+        return { success: true };
+    } catch (e) {
+        return { success: false, message: "Failed to save location list." };
+    }
+}
+
 export async function fetchDashboardMetricsAction() { return { success: true, data: await getDashboardMetrics() }; }
 export async function getPermissionsAction() { return { success: true, data: await loadPermissionsFromSheet() }; }
 export async function setPermissionsAction(p: any) { await savePermissionsToSheet(p); return { success: true }; }
@@ -251,8 +281,24 @@ export async function fetchInventoryLogEntriesByBarcodeAction(b: string) {
 export async function addProductAction(p: any, f: FormData) { return saveProductAction(p, f); }
 export async function addSupplierAction(p: any, f: FormData) { return { success: true }; }
 export async function editSupplierAction(p: any, f: FormData) { return { success: true }; }
-export async function returnInventoryItemAction(e: string, i: string, q: number, s: string) { return { success: true }; }
-export async function editInventoryItemAction(p: any, f: FormData) { return { success: true }; }
-export async function deleteInventoryItemAction(e: string, i: string) { return { success: true }; }
-export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { return { success: true }; }
-export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { return { success: true }; }
+export async function returnInventoryItemAction(e: string, i: string, q: number, s: string) { 
+    await dbProcessReturn(e, i, q, s);
+    revalidatePath('/inventory');
+    return { success: true, message: "Return processed." }; 
+}
+export async function editInventoryItemAction(p: any, f: FormData) { return updateInventoryItemAction(p, f); }
+export async function deleteInventoryItemAction(e: string, i: string) { 
+    await dbDeleteInventoryItemById(e, i);
+    revalidatePath('/inventory');
+    return { success: true, message: "Item deleted." }; 
+}
+export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
+    for (const id of ids) await dbDeleteInventoryItemById(e, id);
+    revalidatePath('/inventory');
+    return { success: true, message: `${ids.length} items deleted.` }; 
+}
+export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
+    for (const id of ids) await dbProcessReturn(e, id, q || 1, s);
+    revalidatePath('/inventory');
+    return { success: true, message: `${ids.length} returns processed.` }; 
+}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -30,6 +29,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
+import { generateInventoryPDF } from '@/lib/pdf-reports';
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -463,6 +463,32 @@ export function InventoryListClient() {
     window.print();
   };
 
+  const handleExportPDF = () => {
+    const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry'];
+    const dataMapper = (group: GroupedInventoryItem, idx: number) => {
+        const product = productsByBarcode.get(group.mainItem.barcode);
+        const cost = product?.costPrice ?? 0;
+        return [
+            (idx + 1).toString(),
+            group.mainItem.productName,
+            group.mainItem.barcode,
+            group.mainItem.supplierName || 'N/A',
+            group.totalQuantity.toString(),
+            `QAR ${cost.toFixed(2)}`,
+            `QAR ${(cost * group.totalQuantity).toFixed(2)}`,
+            group.mainItem.expiryDate || 'N/A'
+        ];
+    };
+
+    let totalVal = 0;
+    groupedItems.forEach(g => {
+        const cost = productsByBarcode.get(g.mainItem.barcode)?.costPrice ?? 0;
+        totalVal += (cost * g.totalQuantity);
+    });
+
+    generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal);
+  };
+
   const handleShareToWhatsApp = () => {
     let reportText = '*Inventory Overview*\n\n';
 
@@ -610,16 +636,19 @@ export function InventoryListClient() {
                 </PopoverContent>
               </Popover>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters} className="w-full">
+                    <Button variant="ghost" onClick={clearFilters} className="flex-1 sm:flex-none">
                         <FilterX className="mr-2 h-4 w-4" /> Clear
                     </Button>
                   )}
-                   <Button onClick={handleShareToWhatsApp} variant="outline" className="w-full" disabled={groupedItems.length === 0}>
+                   <Button onClick={handleExportPDF} variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
+                       <FileText className="mr-2 h-4 w-4" /> PDF Report
+                   </Button>
+                   <Button onClick={handleShareToWhatsApp} variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
                        WhatsApp
                    </Button>
-                   <div className="print-button-container w-full">
+                   <div className="print-button-container flex-1 sm:flex-none">
                     <Button onClick={handlePrint} variant="outline" className="w-full">
                     <Printer className="mr-2 h-4 w-4" /> Print
                     </Button>

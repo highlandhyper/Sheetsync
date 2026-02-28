@@ -132,3 +132,10 @@ export interface SpecialEntryRequest {
   approvedAt?: string;
   expiresAt?: string;
 }
+
+export interface OfflineAction {
+  id: string;
+  type: 'LOG_INVENTORY' | 'PROCESS_RETURN';
+  data: any;
+  timestamp: string;
+}
