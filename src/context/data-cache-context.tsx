@@ -23,13 +23,13 @@ interface DataCacheContextType extends AppData {
   isCacheReady: boolean;
   isSyncing: boolean;
   pendingActions: OfflineAction[];
-  updateInventoryItem: (item: InventoryItem) => void;
+  updateInventoryItem: (item: Partial<InventoryItem> & { id: string }) => void;
   addInventoryItem: (item: InventoryItem) => void;
   removeInventoryItem: (itemId: string) => void;
   addSupplier: (supplier: Supplier) => void;
   updateSupplier: (updatedSupplier: Supplier) => void;
-  addProduct: (product: Product) => void;
-  updateProduct: (updatedProduct: Product) => void;
+  addProduct: (product: Partial<Product> & { id: string }) => void;
+  updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
   addReturnedItem: (item: ReturnedItem) => void;
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
   updateStaffList: (staff: string[]) => Promise<void>;
@@ -182,13 +182,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateStaffList,
     updateLocationList,
     queueAction,
-    updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? i : x) })),
+    updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? { ...x, ...i } : x) })),
     addInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: [i, ...p.inventoryItems] })),
     removeInventoryItem: (id: string) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.filter(x => x.id !== id) })),
     addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
     updateSupplier: (s: any) => refreshData(),
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
-    updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? pr : x) })),
+    updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) })),
     addReturnedItem: (r: any) => setData(p => ({ ...p, returnedItems: [r, ...p.returnedItems] })),
   }), [data, isCacheReady, isSyncing, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
