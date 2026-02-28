@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2,
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -350,61 +349,66 @@ export function ReturnableInventoryByStaffClient() {
                 </div>
              </div>
           ) : (
-            <div className="flex flex-col md:flex-row items-center gap-4">
-                <Select
-                value={selectedStaffName}
-                onValueChange={(value) => {
-                    setSelectedStaffName(value === "__EMPTY_STAFF_VALUE__" ? "" : value);
-                }}
-                >
-                <SelectTrigger className="w-full md:max-w-lg">
-                    <div className="flex items-center">
-                    <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Filter by staff member..." />
-                    </div>
-                </SelectTrigger>
-                <SelectContent>
-                    <ScrollArea className="h-72">
-                    <SelectItem value="__EMPTY_STAFF_VALUE__">
-                        <em>Show All / Clear Filter</em>
-                    </SelectItem>
-                    {allStaffNames.length > 0 ? (
-                        allStaffNames.map((staffName) => (
-                        <SelectItem key={staffName} value={staffName}>
-                            {staffName}
-                        </SelectItem>
-                        ))
-                    ) : (
-                        <div className="p-2 text-sm text-muted-foreground text-center">No staff names available.</div>
-                    )}
-                    </ScrollArea>
-                </SelectContent>
-                </Select>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                    <Select
+                        value={selectedStaffName}
+                        onValueChange={(value) => {
+                            setSelectedStaffName(value === "__EMPTY_STAFF_VALUE__" ? "" : value);
+                        }}
+                    >
+                        <SelectTrigger className="w-full md:w-[320px]">
+                            <div className="flex items-center">
+                                <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                                <SelectValue placeholder="Filter by staff member..." />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <ScrollArea className="h-72">
+                                <SelectItem value="__EMPTY_STAFF_VALUE__">
+                                    <em>Show All / Clear Filter</em>
+                                </SelectItem>
+                                {allStaffNames.length > 0 ? (
+                                    allStaffNames.map((staffName) => (
+                                        <SelectItem key={staffName} value={staffName}>
+                                            {staffName}
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">No staff names available.</div>
+                                )}
+                            </ScrollArea>
+                        </SelectContent>
+                    </Select>
 
-                {selectedStaffName && (
-                <Button variant="ghost" onClick={clearStaffSearch} className="w-full md:w-auto">
-                    <X className="mr-2 h-4 w-4" /> Clear Staff
-                </Button>
-                )}
-                <div className="flex items-center gap-2 ml-auto md:ml-0">
-                    <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                        <FileText className="mr-2 h-4 w-4" /> PDF Report
-                    </Button>
-                    <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                        WhatsApp
-                    </Button>
-                    <div className="print-button-container">
-                        <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                            <Printer className="mr-2 h-4 w-4" /> Print
+                    {selectedStaffName && (
+                        <Button variant="ghost" onClick={clearStaffSearch} className="w-full sm:w-auto">
+                            <X className="mr-2 h-4 w-4" /> Clear
                         </Button>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                    {selectedStaffName && (
+                        <div className="hidden lg:flex items-center text-xs text-muted-foreground mr-2 whitespace-nowrap">
+                            <ListFilter className="mr-1.5 h-3.5 w-3.5" />
+                            <span>{totalItemsForSelectedStaff} logs found</span>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Button onClick={handleExportPDF} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                            <FileText className="mr-2 h-4 w-4" /> PDF
+                        </Button>
+                        <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                            WhatsApp
+                        </Button>
+                        <div className="print-button-container flex-1 sm:flex-none">
+                            <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
+                                <Printer className="mr-2 h-4 w-4" /> Print
+                            </Button>
+                        </div>
                     </div>
                 </div>
-                {selectedStaffName && (
-                <div className="flex items-center text-sm text-muted-foreground md:ml-auto">
-                    <ListFilter className="mr-2 h-4 w-4" />
-                    <span>Found: {totalItemsForSelectedStaff} item(s) by {selectedStaffName}</span>
-                </div>
-                )}
             </div>
           )}
         </CardContent>
