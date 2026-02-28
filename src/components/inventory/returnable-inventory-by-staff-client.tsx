@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem, Product } from '@/lib/types';
-import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet } from 'lucide-react';
+import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -25,6 +25,7 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { generateInventoryPDF } from '@/lib/pdf-reports';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -204,6 +205,35 @@ export function ReturnableInventoryByStaffClient() {
     window.print();
   };
 
+  const handleExportPDF = () => {
+    if (!selectedStaffName || itemsToRender.length === 0) return;
+    
+    const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
+    const dataMapper = (item: InventoryItem, idx: number) => {
+        const product = productsByBarcode.get(item.barcode);
+        const cost = product?.costPrice ?? 0;
+        return [
+            (idx + 1).toString(),
+            item.productName,
+            item.barcode,
+            item.supplierName || 'N/A',
+            item.quantity.toString(),
+            `QAR ${cost.toFixed(2)}`,
+            `QAR ${(cost * item.quantity).toFixed(2)}`,
+            item.expiryDate || 'N/A',
+            item.location
+        ];
+    };
+
+    generateInventoryPDF(
+        `Staff Return Summary: ${selectedStaffName}`, 
+        itemsToRender, 
+        cols, 
+        (item) => dataMapper(item, itemsToRender.indexOf(item)), 
+        totalValueForSelectedStaff
+    );
+  };
+
   const handleShareToWhatsApp = () => {
     if (!selectedStaffName || itemsToRender.length === 0) return;
 
@@ -357,12 +387,15 @@ export function ReturnableInventoryByStaffClient() {
                 </Button>
                 )}
                 <div className="flex items-center gap-2 ml-auto md:ml-0">
+                    <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
+                        <FileText className="mr-2 h-4 w-4" /> PDF Report
+                    </Button>
                     <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
                         WhatsApp
                     </Button>
                     <div className="print-button-container">
                         <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && !selectedStaffName.trim()}>
-                            <Printer className="mr-2 h-4 w-4" /> Print List
+                            <Printer className="mr-2 h-4 w-4" /> Print
                         </Button>
                     </div>
                 </div>
