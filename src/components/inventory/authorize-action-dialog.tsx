@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,6 +45,7 @@ export function AuthorizeActionDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -92,6 +93,8 @@ export function AuthorizeActionDialog({
     }
   };
 
+  const { ref: passwordHookRef, ...passwordProps } = register('password');
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[360px]">
@@ -110,7 +113,18 @@ export function AuthorizeActionDialog({
                 <Label htmlFor="authUsername" className="text-xs font-bold uppercase text-muted-foreground">Admin Username</Label>
                 <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authUsername" {...register('username')} className={cn('pl-9 h-9 text-sm', errors.username && 'border-destructive')} placeholder="Username" />
+                    <Input 
+                        id="authUsername" 
+                        {...register('username')} 
+                        className={cn('pl-9 h-9 text-sm', errors.username && 'border-destructive')} 
+                        placeholder="Username" 
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                passwordInputRef.current?.focus();
+                            }
+                        }}
+                    />
                 </div>
                 {errors.username && <p className="text-[10px] text-destructive font-medium">{errors.username.message}</p>}
             </div>
@@ -118,7 +132,17 @@ export function AuthorizeActionDialog({
                 <Label htmlFor="authPassword" className="text-xs font-bold uppercase text-muted-foreground">Admin Password</Label>
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authPassword" type="password" {...register('password')} className={cn('pl-9 h-9 text-sm', errors.password && 'border-destructive')} placeholder="Password" />
+                    <Input 
+                        id="authPassword" 
+                        type="password" 
+                        {...passwordProps}
+                        ref={(e) => {
+                            passwordHookRef(e);
+                            (passwordInputRef as any).current = e;
+                        }}
+                        className={cn('pl-9 h-9 text-sm', errors.password && 'border-destructive')} 
+                        placeholder="Password" 
+                    />
                 </div>
                 {errors.password && <p className="text-[10px] text-destructive font-medium">{errors.password.message}</p>}
             </div>
