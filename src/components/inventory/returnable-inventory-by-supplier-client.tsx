@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -7,7 +6,7 @@ import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Ey
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -252,6 +251,7 @@ export function ReturnableInventoryBySupplierClient() {
 
       reportText += `*${item.productName}*\n`;
       reportText += `  Barcode: ${item.barcode}\n`;
+      if(item.supplierName) reportText += `  Supplier: ${item.supplierName}\n`;
       reportText += `  In Stock: ${item.quantity}\n`;
       if (totalValue !== undefined) {
         reportText += `  Total Value: QAR ${totalValue.toFixed(2)}\n`;
@@ -390,106 +390,111 @@ export function ReturnableInventoryBySupplierClient() {
                 </div>
              </div>
           ) : (
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <DropdownMenu open={isSupplierDropdownOpen} onOpenChange={handleSupplierDropdownOpenChange}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full md:max-w-lg justify-between items-center"
-                >
-                  <div className="flex items-center flex-grow overflow-hidden">
-                    <Building className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="flex-grow text-center truncate px-1">
-                      {getSupplierButtonText()}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width]"
-                align="start"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-              >
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  Filter by Supplier
-                  {selectedSupplierNames.length > 0 && (
-                     <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                            e.stopPropagation(); 
-                            setSelectedSupplierNames([]);
-                            setSupplierFilterInput('');
-                        }}
-                        className="h-auto p-1 text-xs"
-                      >
-                        Clear All ({selectedSupplierNames.length})
-                      </Button>
-                  )}
-                </DropdownMenuLabel>
-                <div className="p-2">
-                  <Input
-                    ref={supplierSearchInputRef}
-                    placeholder="Search suppliers..."
-                    value={supplierFilterInput}
-                    onChange={(e) => {
-                      setSupplierFilterInput(e.target.value);
-                    }}
-                    onClick={(e) => e.stopPropagation()} 
-                    onKeyDown={(e) => e.stopPropagation()} 
-                    className="w-full h-8"
-                  />
-                </div>
-                <DropdownMenuSeparator />
-                <ScrollArea className="h-72">
-                  {suppliersForCombobox.length === 0 && (
-                    <div className="p-2 text-sm text-muted-foreground text-center">
-                      {supplierFilterInput ? `No suppliers found for "${supplierFilterInput}"` : (allSortedSuppliers.length > 0 ? "Type to search suppliers..." : "No suppliers available.")}
-                    </div>
-                  )}
-                  {suppliersForCombobox.map((supplier) => (
-                    <DropdownMenuCheckboxItem
-                      key={supplier.id}
-                      checked={selectedSupplierNames.includes(supplier.name)}
-                      onCheckedChange={(checked) => {
-                        setSelectedSupplierNames((prev) =>
-                          checked
-                            ? [...prev, supplier.name]
-                            : prev.filter((name) => name !== supplier.name)
-                        );
-                      }}
-                      onSelect={(e) => e.preventDefault()} 
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                <DropdownMenu open={isSupplierDropdownOpen} onOpenChange={handleSupplierDropdownOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                    variant="outline"
+                    className="w-full md:w-[320px] justify-between items-center"
                     >
-                      {supplier.name}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </ScrollArea>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {selectedSupplierNames.length > 0 && (
-              <Button variant="ghost" onClick={clearSupplierSelection} className="w-full md:w-auto">
-                 <X className="mr-2 h-4 w-4" /> Clear Selection
-              </Button>
-            )}
-            {selectedSupplierNames.length > 0 && (
-                <div className="flex items-center text-sm text-muted-foreground md:ml-auto whitespace-nowrap">
-                    <ListFilter className="mr-2 h-4 w-4" />
-                    <span>Found: {totalItemsForSelectedSuppliers} item(s)</span>
-                </div>
-            )}
-             <div className="flex items-center gap-2 ml-auto md:ml-0 md:pl-2">
-                 <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                    <FileText className="mr-2 h-4 w-4" /> PDF Report
-                 </Button>
-                 <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                    WhatsApp
-                 </Button>
-                <div className="print-button-container">
-                    <Button onClick={handlePrint} variant="outline" size="sm" disabled={itemsToRender.length === 0 && selectedSupplierNames.length === 0}>
-                        <Printer className="mr-2 h-4 w-4" /> Print
+                    <div className="flex items-center flex-grow overflow-hidden">
+                        <Building className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="flex-grow text-center truncate px-1 text-sm">
+                        {getSupplierButtonText()}
+                        </span>
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
                     </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                    className="w-[320px]"
+                    align="start"
+                    onCloseAutoFocus={(e) => e.preventDefault()}
+                >
+                    <DropdownMenuLabel className="flex items-center justify-between">
+                    Filter by Supplier
+                    {selectedSupplierNames.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                                e.stopPropagation(); 
+                                setSelectedSupplierNames([]);
+                                setSupplierFilterInput('');
+                            }}
+                            className="h-auto p-1 text-xs"
+                        >
+                            Clear All ({selectedSupplierNames.length})
+                        </Button>
+                    )}
+                    </DropdownMenuLabel>
+                    <div className="p-2">
+                    <Input
+                        ref={supplierSearchInputRef}
+                        placeholder="Search suppliers..."
+                        value={supplierFilterInput}
+                        onChange={(e) => {
+                        setSupplierFilterInput(e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()} 
+                        onKeyDown={(e) => e.stopPropagation()} 
+                        className="w-full h-8 text-sm"
+                    />
+                    </div>
+                    <DropdownMenuSeparator />
+                    <ScrollArea className="h-72">
+                    {suppliersForCombobox.length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                        {supplierFilterInput ? `No suppliers found for "${supplierFilterInput}"` : (allSortedSuppliers.length > 0 ? "Type to search suppliers..." : "No suppliers available.")}
+                        </div>
+                    )}
+                    {suppliersForCombobox.map((supplier) => (
+                        <DropdownMenuCheckboxItem
+                        key={supplier.id}
+                        checked={selectedSupplierNames.includes(supplier.name)}
+                        onCheckedChange={(checked) => {
+                            setSelectedSupplierNames((prev) =>
+                            checked
+                                ? [...prev, supplier.name]
+                                : prev.filter((name) => name !== supplier.name)
+                            );
+                        }}
+                        onSelect={(e) => e.preventDefault()} 
+                        >
+                        {supplier.name}
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                    </ScrollArea>
+                </DropdownMenuContent>
+                </DropdownMenu>
+
+                {selectedSupplierNames.length > 0 && (
+                <Button variant="ghost" onClick={clearSupplierSelection} className="w-full sm:w-auto">
+                    <X className="mr-2 h-4 w-4" /> Clear
+                </Button>
+                )}
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                {selectedSupplierNames.length > 0 && (
+                    <div className="hidden lg:flex items-center text-xs text-muted-foreground mr-2 whitespace-nowrap">
+                        <ListFilter className="mr-1.5 h-3.5 w-3.5" />
+                        <span>{totalItemsForSelectedSuppliers} items found</span>
+                    </div>
+                )}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button onClick={handleExportPDF} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                        <FileText className="mr-2 h-4 w-4" /> PDF
+                    </Button>
+                    <Button onClick={handleShareToWhatsApp} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                        WhatsApp
+                    </Button>
+                    <div className="print-button-container flex-1 sm:flex-none">
+                        <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
+                            <Printer className="mr-2 h-4 w-4" /> Print
+                        </Button>
+                    </div>
                 </div>
             </div>
           </div>
@@ -645,7 +650,7 @@ export function ReturnableInventoryBySupplierClient() {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
-        uniqueLocationsFromDb={uniqueLocations}
+        uniqueLocationsFromDb={uniqueDbLocations}
       />
       
       {/* Bulk Action Dialogs */}
