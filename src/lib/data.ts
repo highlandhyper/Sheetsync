@@ -49,7 +49,7 @@ const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
 // --- Read Ranges ---
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; // Start at A2 to skip header
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
@@ -144,11 +144,10 @@ export async function getProducts(): Promise<Product[]> {
   return data ? data.map(transformToProduct).filter((p): p is Product => p !== null) : [];
 }
 
-export async function getSuppliers(): Promise<Supplier[]> {
-  const data = await readSheetData(DB_READ_RANGE);
-  if (!data) return [];
+export async function getSuppliers(existingProducts?: Product[]): Promise<Supplier[]> {
+  const products = existingProducts || await getProducts();
   const names = new Set<string>();
-  data.forEach(row => { if (row[DB_COL_SUPPLIER_NAME]) names.add(String(row[DB_COL_SUPPLIER_NAME]).trim()); });
+  products.forEach(p => { if (p.supplierName) names.add(p.supplierName.trim()); });
   return Array.from(names).map((name, i) => ({ id: `s_${i}`, name, createdAt: new Date().toISOString() }));
 }
 
@@ -180,10 +179,28 @@ export async function logAuditEvent(user: string, action: string, target: string
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);
 }
 
-export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
+/**
+ * Consolidated fetch for all metadata stored in the APP_SETTINGS sheet.
+ * Reduces redundant API calls during fetchAllDataAction.
+ */
+export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const row = data?.find(r => r[SETTINGS_COL_KEY] === PERMISSIONS_KEY);
-  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
+  const findJson = (key: string) => {
+    const row = data?.find(r => r[SETTINGS_COL_KEY] === key);
+    return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
+  };
+
+  return {
+    permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
+    specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
+    staff: (findJson(STAFF_LIST_KEY) as string[]) || ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"],
+    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"],
+  };
+}
+
+export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
+  const meta = await getAppMetaData();
+  return meta.permissions;
 }
 
 export async function savePermissionsToSheet(perms: Permissions) {
@@ -196,9 +213,8 @@ export async function savePermissionsToSheet(perms: Permissions) {
 }
 
 export async function loadSpecialRequestsFromSheet(): Promise<SpecialEntryRequest[]> {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const row = data?.find(r => r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY);
-  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : [];
+  const meta = await getAppMetaData();
+  return meta.specialRequests;
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
@@ -211,9 +227,8 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
 }
 
 export async function loadStaffListFromSheet(): Promise<string[]> {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const row = data?.find(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
-  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"];
+  const meta = await getAppMetaData();
+  return meta.staff;
 }
 
 export async function saveStaffListToSheet(staff: string[]) {
@@ -226,9 +241,8 @@ export async function saveStaffListToSheet(staff: string[]) {
 }
 
 export async function loadLocationListFromSheet(): Promise<string[]> {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const row = data?.find(r => r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY);
-  return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : ["Back side", "On Display", "Front Side"];
+  const meta = await getAppMetaData();
+  return meta.locations;
 }
 
 export async function saveLocationListToSheet(locations: string[]) {
@@ -317,7 +331,8 @@ export async function deleteInventoryItemById(email: string, id: string) {
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  const [inv, prods, supps] = await Promise.all([getInventoryItems(), getProducts(), getSuppliers()]);
+  // Fetch DB and Inventory exactly once
+  const [inv, prods] = await Promise.all([getInventoryItems(), getProducts()]);
   
   const today = startOfDay(new Date());
   const prodsMap = new Map(prods.map(p => [p.barcode, p]));
@@ -327,38 +342,37 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   let itemsExpiringSoonCount = 0;
   const stockBySupp: Record<string, number> = {};
 
+  // Derive suppliers from products list to avoid a redundant 54k read
+  const suppNamesSet = new Set<string>();
+  prods.forEach(p => { if (p.supplierName) suppNamesSet.add(p.supplierName.trim()); });
+
   inv.forEach(i => {
-    // Total Value Calculation
     const product = prodsMap.get(i.barcode);
     if (product && product.costPrice) {
       totalVal += (i.quantity * product.costPrice);
     }
 
-    // Stock distribution by Supplier
     const n = i.supplierName || 'Unknown';
     stockBySupp[n] = (stockBySupp[n] || 0) + i.quantity;
 
-    // Items added today (based on log timestamp)
     if (i.timestamp) {
       try {
         const logDate = parseISO(i.timestamp);
         if (isValid(logDate) && isSameDay(startOfDay(logDate), today)) {
           netItemsAddedToday += i.quantity;
         }
-      } catch (e) { /* ignore parse error */ }
+      } catch (e) { }
     }
 
-    // Expiring soon logic (Next 7 days, excluding already expired)
     if (i.itemType === 'Expiry' && i.expiryDate) {
       try {
         const expiryDate = startOfDay(parseISO(i.expiryDate));
         if (isValid(expiryDate)) {
-          // Items expiring within next 7 days, excluding already expired
           if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 8))) {
             itemsExpiringSoonCount++;
           }
         }
-      } catch (e) { /* ignore parse error */ }
+      } catch (e) { }
     }
   });
 
@@ -371,7 +385,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     totalStockQuantity: inv.reduce((s, i) => s + i.quantity, 0),
     itemsExpiringSoon: itemsExpiringSoonCount,
     damagedItemsCount: inv.filter(i => i.itemType === 'Damage').length,
-    totalSuppliers: supps.length,
+    totalSuppliers: suppNamesSet.size,
     totalStockValue: totalVal,
     stockBySupplier,
     netItemsAddedToday,

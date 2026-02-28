@@ -35,7 +35,8 @@ import {
   addInventoryItemToSheet,
   saveStaffListToSheet,
   loadStaffListFromSheet,
-  saveLocationListToSheet
+  saveLocationListToSheet,
+  getAppMetaData
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -60,25 +61,24 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   specialRequests: SpecialEntryRequest[];
 }>> {
   try {
+    // Perform data-heavy reads surgically.
+    // getAppMetaData retrieves locations, staff, perms, and requests in ONE read.
     const [
       inventoryItems,
       products,
-      suppliers,
       returnedItems,
-      uniqueLocations,
-      uniqueStaffNames,
       auditLogs,
-      specialRequests
+      meta
     ] = await Promise.all([
       getInventoryItems(),
       getProducts(),
-      getSuppliers(),
       getReturnedItems(),
-      getUniqueLocations(),
-      getUniqueStaffNames(),
       getAuditLogs(),
-      loadSpecialRequestsFromSheet()
+      getAppMetaData()
     ]);
+
+    // Derive suppliers from products to avoid another 54k read
+    const suppliers = await getSuppliers(products);
 
     return {
       success: true,
@@ -87,10 +87,10 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
         products: products || [],
         suppliers: suppliers || [],
         returnedItems: returnedItems || [],
-        uniqueLocations: uniqueLocations || [],
-        uniqueStaffNames: uniqueStaffNames || [],
+        uniqueLocations: meta.locations || [],
+        uniqueStaffNames: meta.staff || [],
         auditLogs: auditLogs || [],
-        specialRequests: specialRequests || [],
+        specialRequests: meta.specialRequests || [],
       }
     };
   } catch (error) {
