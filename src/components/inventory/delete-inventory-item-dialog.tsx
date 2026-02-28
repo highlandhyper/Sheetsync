@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -42,6 +42,7 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -78,6 +79,8 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
     }
   };
 
+  const { ref: passwordHookRef, ...passwordProps } = register('authPassword');
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!isSubmitting) { onOpenChange(open); reset(); } }}>
       <DialogContent className="sm:max-w-[360px]">
@@ -96,7 +99,18 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
                 <Label htmlFor="authUsername" className="text-xs font-bold uppercase text-muted-foreground">Admin Username</Label>
                 <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authUsername" {...register('authUsername')} className={cn('pl-9 h-9 text-sm', errors.authUsername && 'border-destructive')} placeholder="Username" />
+                    <Input 
+                        id="authUsername" 
+                        {...register('authUsername')} 
+                        className={cn('pl-9 h-9 text-sm', errors.authUsername && 'border-destructive')} 
+                        placeholder="Username" 
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                passwordInputRef.current?.focus();
+                            }
+                        }}
+                    />
                 </div>
                 {errors.authUsername && <p className="text-[10px] text-destructive font-medium">{errors.authUsername.message}</p>}
             </div>
@@ -104,7 +118,17 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
                 <Label htmlFor="authPassword" className="text-xs font-bold uppercase text-muted-foreground">Admin Password</Label>
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="authPassword" type="password" {...register('authPassword')} className={cn('pl-9 h-9 text-sm', errors.authPassword && 'border-destructive')} placeholder="Password" />
+                    <Input 
+                        id="authPassword" 
+                        type="password" 
+                        {...passwordProps} 
+                        ref={(e) => {
+                            passwordHookRef(e);
+                            (passwordInputRef as any).current = e;
+                        }}
+                        className={cn('pl-9 h-9 text-sm', errors.authPassword && 'border-destructive')} 
+                        placeholder="Password" 
+                    />
                 </div>
                 {errors.authPassword && <p className="text-[10px] text-destructive font-medium">{errors.authPassword.message}</p>}
             </div>
