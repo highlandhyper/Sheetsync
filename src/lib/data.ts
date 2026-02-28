@@ -208,11 +208,6 @@ export async function savePermissionsToSheet(perms: Permissions) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[PERMISSIONS_KEY, JSON.stringify(perms)]]);
 }
 
-export async function loadSpecialRequestsFromSheet(): Promise<SpecialEntryRequest[]> {
-  const meta = await getAppMetaData();
-  return meta.specialRequests;
-}
-
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY);
@@ -222,11 +217,6 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs)]]);
 }
 
-export async function loadStaffListFromSheet(): Promise<string[]> {
-  const meta = await getAppMetaData();
-  return meta.staff;
-}
-
 export async function saveStaffListToSheet(staff: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
@@ -234,11 +224,6 @@ export async function saveStaffListToSheet(staff: string[]) {
     return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(staff)]]);
   }
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
-}
-
-export async function loadLocationListFromSheet(): Promise<string[]> {
-  const meta = await getAppMetaData();
-  return meta.locations;
 }
 
 export async function saveLocationListToSheet(locations: string[]) {
@@ -255,25 +240,11 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
   return products.find(p => p.barcode === barcode) || null;
 }
 
-export async function getUniqueLocations(): Promise<string[]> {
-  return loadLocationListFromSheet();
-}
-
-export async function getUniqueStaffNames(): Promise<string[]> {
-  return loadStaffListFromSheet();
-}
-
 export async function addProduct(email: string, p: any) {
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || ''];
   await appendSheetData(`${DB_SHEET_NAME}!A:E`, [row]);
   await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Details: [Product: ${p.productName}], [Supplier: ${p.supplierName}], [Cost: ${p.costPrice || 'N/A'}]`);
   return { id: p.barcode, ...p };
-}
-
-export async function addSupplier(email: string, s: any) {
-  await appendSheetData(`${DB_SHEET_NAME}!A:E`, [`S_${Date.now()}`, '', `[Supplier: ${s.name}]`, s.name]);
-  await logAuditEvent(email, 'CREATE_SUPPLIER', s.name, `Added supplier ${s.name}`);
-  return { id: `s_${Date.now()}`, ...s };
 }
 
 export async function addInventoryItemToSheet(item: InventoryItem) {
@@ -294,36 +265,120 @@ export async function addInventoryItemToSheet(item: InventoryItem) {
 }
 
 export async function updateSupplierNameAndReferences(email: string, oldN: string, newN: string) {
-  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldN, `Renamed to ${newN}`);
+  // 1. Update DB Sheet
+  const products = await readSheetData(DB_READ_RANGE);
+  if (products) {
+    const updates = [];
+    for (let i = 0; i < products.length; i++) {
+      if (String(products[i][DB_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase()) {
+        updates.push({
+          range: `${DB_SHEET_NAME}!D${i + 2}`,
+          values: [[newN]]
+        });
+      }
+    }
+    if (updates.length > 0) await batchUpdateSheetCells(updates);
+  }
+
+  // 2. Update Inventory Logs
+  const inv = await readSheetData(INVENTORY_READ_RANGE);
+  if (inv) {
+    const updates = [];
+    for (let i = 0; i < inv.length; i++) {
+      if (String(inv[i][INV_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase()) {
+        updates.push({
+          range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`,
+          values: [[newN]]
+        });
+      }
+    }
+    if (updates.length > 0) await batchUpdateSheetCells(updates);
+  }
+
+  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldN, `Renamed to ${newN}. Updated records.`);
   return true;
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
-  await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated product ${n}`);
-  return true;
+  const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A);
+  if (rowNumber) {
+    const updates = [
+      { range: `${DB_SHEET_NAME}!C${rowNumber}`, values: [[n]] },
+      { range: `${DB_SHEET_NAME}!D${rowNumber}`, values: [[s]] },
+      { range: `${DB_SHEET_NAME}!E${rowNumber}`, values: [[c || '']] }
+    ];
+    await batchUpdateSheetCells(updates);
+    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated: [Name: ${n}], [Supplier: ${s}], [Cost: ${c || 'N/A'}]`);
+    return true;
+  }
+  return false;
 }
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
-  const items = await getInventoryItems();
-  const old = items.find(i => i.id === id);
+  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (!rowNumber) throw new Error("Item not found in sheet.");
+
+  const updates = [];
   const diffs: string[] = [];
-  if (old) {
-    if (u.quantity !== undefined && Number(u.quantity) !== old.quantity) diffs.push(`Qty: ${old.quantity} -> ${u.quantity}`);
-    if (u.location && u.location !== old.location) diffs.push(`Loc: ${old.location} -> ${u.location}`);
-    if (u.itemType && u.itemType !== old.itemType) diffs.push(`Type: ${old.itemType} -> ${u.itemType}`);
+  
+  if (u.quantity !== undefined) {
+    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, values: [[Number(u.quantity)]] });
+    diffs.push(`Qty: ${u.quantity}`);
   }
-  await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Changes: ${diffs.join(', ') || 'None'}`);
+  if (u.location) {
+    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!E${rowNumber}`, values: [[u.location]] });
+    diffs.push(`Loc: ${u.location}`);
+  }
+  if (u.itemType) {
+    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!I${rowNumber}`, values: [[u.itemType]] });
+    diffs.push(`Type: ${u.itemType}`);
+  }
+  if (u.expiryDate) {
+    const formatted = format(parseISO(u.expiryDate), "d/M/yyyy");
+    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!D${rowNumber}`, values: [[formatted]] });
+    diffs.push(`Exp: ${formatted}`);
+  }
+
+  if (updates.length > 0) {
+    await batchUpdateSheetCells(updates);
+    await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Changes: ${diffs.join(', ')}`);
+  }
   return { id, ...u };
 }
 
 export async function processReturn(email: string, id: string, q: number, staff: string) {
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${q} units via ${staff}`);
+  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (!rowNumber) throw new Error("Original log not found.");
+
+  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:J${rowNumber}`);
+  if (!data || !data[0]) throw new Error("Read failed.");
+  const originalRow = data[0];
+  const newQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10) - q;
+
+  // 1. Update Qty
+  await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
+
+  // 2. Log Return
+  const returnRow = [
+    id, originalRow[INV_COL_PRODUCT_NAME], originalRow[INV_COL_BARCODE], 
+    originalRow[INV_COL_SUPPLIER_NAME], q, originalRow[INV_COL_EXPIRY],
+    originalRow[INV_COL_LOCATION], originalRow[INV_COL_STAFF], 
+    originalRow[INV_COL_TYPE], staff, format(new Date(), "d/M/yyyy HH:mm:ss")
+  ];
+  await appendSheetData(`${RETURNS_LOG_SHEET_NAME}!A:K`, [returnRow]);
+
+  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${q} units. New Qty: ${newQty}`);
   return { success: true };
 }
 
 export async function deleteInventoryItemById(email: string, id: string) {
-  await logAuditEvent(email, 'DELETE_INVENTORY', id, `Permanently deleted log entry.`);
-  return true;
+  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (rowNumber) {
+    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
+    await logAuditEvent(email, 'DELETE_INVENTORY', id, `Permanently deleted row.`);
+    return true;
+  }
+  return false;
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
