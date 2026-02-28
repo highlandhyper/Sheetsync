@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2, Wallet, FileText, ChevronDown } from 'lucide-react';
+import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Eye, Printer, Filter, Undo2, ListChecks, Pencil, Trash2, Wallet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -19,7 +19,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,7 +33,6 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { generateInventoryPDF } from '@/lib/pdf-reports';
-import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -238,34 +236,6 @@ export function ReturnableInventoryBySupplierClient() {
         (item) => dataMapper(item, itemsToRender.indexOf(item)), 
         totalValueForSelectedSuppliers
     );
-  };
-
-  const handleShareToWhatsApp = () => {
-    if (selectedSupplierNames.length === 0 || itemsToRender.length === 0) return;
-
-    let reportText = `*Inventory Return List for Supplier(s): ${selectedSupplierNames.join(', ')}*\n\n`;
-
-    itemsToRender.forEach(item => {
-      const product = productsByBarcode.get(item.barcode);
-      const costPrice = product?.costPrice;
-      const totalValue = costPrice !== undefined ? costPrice * item.quantity : undefined;
-
-      reportText += `*${item.productName}*\n`;
-      reportText += `  Barcode: ${item.barcode}\n`;
-      if(item.supplierName) reportText += `  Supplier: ${item.supplierName}\n`;
-      reportText += `  In Stock: ${item.quantity}\n`;
-      if (totalValue !== undefined) {
-        reportText += `  Total Value: QAR ${totalValue.toFixed(2)}\n`;
-      }
-      reportText += `  Location: ${item.location}\n`;
-      if (item.expiryDate && isValid(parseISO(item.expiryDate))) {
-        reportText += `  Expiry: ${format(parseISO(item.expiryDate), 'PP')}\n`;
-      }
-      reportText += '\n';
-    });
-
-    const encodedText = encodeURIComponent(reportText);
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   };
 
   const suppliersForCombobox = useMemo(() => {
@@ -484,23 +454,9 @@ export function ReturnableInventoryBySupplierClient() {
                     </div>
                 )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
-                          <FileText className="mr-2 h-4 w-4" /> Reports <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
-                          <FileText className="mr-2 h-4 w-4 text-primary" />
-                          Download PDF Report
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleShareToWhatsApp} className="cursor-pointer">
-                          <WhatsAppIcon className="mr-2 h-4 w-4 text-green-500" />
-                          Share via WhatsApp
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handleExportPDF} disabled={itemsToRender.length === 0}>
+                      <FileText className="mr-2 h-4 w-4" /> Export PDF
+                    </Button>
 
                     <div className="print-button-container flex-1 sm:flex-none">
                         <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
