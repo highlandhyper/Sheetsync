@@ -72,7 +72,6 @@ export function ReturnableInventoryBySupplierClient() {
 
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
-  // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
@@ -286,7 +285,6 @@ export function ReturnableInventoryBySupplierClient() {
   const handleSupplierDropdownOpenChange = (open: boolean) => {
     setIsSupplierDropdownOpen(open);
     if (open) {
-      // Delay focus slightly to ensure input is rendered
       setTimeout(() => {
         supplierSearchInputRef.current?.focus();
       }, 50);
@@ -539,7 +537,6 @@ export function ReturnableInventoryBySupplierClient() {
         </div>
       ) : itemsToRender.length > 0 ? (
         <>
-            {/* Desktop Table View */}
             <Card className="shadow-md hidden md:block">
             <Table>
                 <TableHeader>
@@ -599,7 +596,6 @@ export function ReturnableInventoryBySupplierClient() {
             )}
             </Card>
 
-            {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
                 {itemsToRender.map((item) => {
                     const product = productsByBarcode.get(item.barcode);
@@ -631,7 +627,6 @@ export function ReturnableInventoryBySupplierClient() {
         </div>
       )}
 
-      {/* Single Item Dialogs */}
       <ReturnQuantityDialog
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
@@ -653,7 +648,6 @@ export function ReturnableInventoryBySupplierClient() {
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       
-      {/* Bulk Action Dialogs */}
       <BulkReturnDialog 
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
