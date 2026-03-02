@@ -1,8 +1,9 @@
+
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, AreaChart as AreaChartIcon } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -19,6 +20,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
+import { useDataCache } from '@/context/data-cache-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
@@ -303,6 +308,96 @@ function SpecialEntryApprovalPanel() {
     );
 }
 
+function QuickAuthorizeCard() {
+    const { uniqueStaffNames } = useDataCache();
+    const { grantProactiveEntry } = useSpecialEntry();
+    const { credentials } = useLocalSettingsAuth();
+    const { toast } = useToast();
+    const [selectedStaff, setSelectedStaff] = useState<string>("");
+    const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+    const [pin, setPin] = useState("");
+
+    const handleGrant = () => {
+        if (!selectedStaff) return;
+        setIsPinDialogOpen(true);
+    };
+
+    const confirmWithPin = () => {
+        if (pin === (credentials.quickAuthPin || "1234")) {
+            grantProactiveEntry(selectedStaff);
+            toast({
+                title: "Authorization Granted",
+                description: `Silent mode active for ${selectedStaff} (1 entry).`,
+            });
+            setSelectedStaff("");
+            setPin("");
+            setIsPinDialogOpen(false);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Invalid PIN",
+                description: "The 4-digit authorization PIN is incorrect.",
+            });
+            setPin("");
+        }
+    };
+
+    return (
+        <>
+        <Card className="shadow-lg rounded-xl bg-gradient-to-br from-card to-card/95 border-border/50 h-full flex flex-col">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Quick Authorize</CardTitle>
+                <CardDescription className="text-[10px]">Grant silent entry proactively</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                    <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Select Staff Member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {uniqueStaffNames.map(name => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Button 
+                    className="w-full h-9 text-xs font-bold" 
+                    disabled={!selectedStaff}
+                    onClick={handleGrant}
+                >
+                    <UserPlus className="mr-2 h-3.5 w-3.5" />
+                    Give Silent Mode
+                </Button>
+            </CardContent>
+        </Card>
+
+        <Popover open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+            <PopoverTrigger asChild><div className="hidden" /></PopoverTrigger>
+            <PopoverContent className="w-64 p-4" align="center">
+                <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                        <h4 className="font-bold text-sm">Enter Admin PIN</h4>
+                        <p className="text-[10px] text-muted-foreground">Verify 4-digit code to grant access.</p>
+                    </div>
+                    <Input 
+                        type="password" 
+                        maxLength={4} 
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value)}
+                        className="text-center text-2xl tracking-[1em] font-mono h-12"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && confirmWithPin()}
+                    />
+                    <Button className="w-full font-bold" onClick={confirmWithPin} disabled={pin.length < 4}>
+                        Confirm Access
+                    </Button>
+                </div>
+            </PopoverContent>
+        </Popover>
+        </>
+    );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
@@ -434,6 +529,8 @@ export default function DashboardPage() {
             className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
             isLoading={isLoading}
         />
+
+        <QuickAuthorizeCard />
       </div>
 
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
@@ -451,7 +548,7 @@ export default function DashboardPage() {
                     <Badge variant="outline" className="bg-background">Live Data</Badge>
                 </div>
             </div>
-          </CardHeader>
+          </Header>
           <CardContent className="p-0 sm:p-6">
             <div className="h-[400px] w-full mt-4">
                 {isLoading ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
