@@ -417,7 +417,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       try {
         const expiryDate = startOfDay(parseISO(i.expiryDate));
         if (isValid(expiryDate)) {
-          // Changed to strictly check within the next 7 days (including today)
           if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 7))) {
             itemsExpiringSoonCount++;
           }
@@ -429,6 +428,24 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const stockBySupplier: StockBySupplier[] = Object.entries(stockBySupp)
     .map(([name, totalStock]) => ({ name, totalStock }))
     .sort((a,b) => b.totalStock - a.totalStock);
+
+  // Generate mock trend data for the last 7 days for the dashboard visualization
+  const stockTrend: StockTrendData[] = [];
+  for (let d = 6; d >= 0; d--) {
+    const date = subDays(today, d);
+    const dateStr = format(date, 'MMM dd');
+    let totalStockOnDate = 0;
+    
+    // Simplistic simulation: current total stock minus items added after that day
+    const currentTotal = inv.reduce((s, i) => s + i.quantity, 0);
+    const addedSince = inv.filter(i => i.timestamp && isAfter(parseISO(i.timestamp), endOfDay(date)))
+                          .reduce((s, i) => s + i.quantity, 0);
+    
+    stockTrend.push({
+      date: dateStr,
+      totalStock: Math.max(0, currentTotal - addedSince)
+    });
+  }
   
   return {
     totalProducts: prods.length,
@@ -440,6 +457,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     stockBySupplier,
     netItemsAddedToday,
     dailyStockChangeDirection: netItemsAddedToday > 0 ? 'increase' : 'none',
+    stockTrend
   };
 }
 
