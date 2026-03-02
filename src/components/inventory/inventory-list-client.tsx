@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText, MapPin } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -453,10 +453,13 @@ export function InventoryListClient() {
   };
 
   const handleExportPDF = () => {
-    const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry'];
+    const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
     const dataMapper = (group: GroupedInventoryItem, idx: number) => {
         const product = productsByBarcode.get(group.mainItem.barcode);
         const cost = product?.costPrice ?? 0;
+        const hasMultipleLocations = new Set(group.individualItems.map(i => i.location)).size > 1;
+        const displayLocation = hasMultipleLocations ? "Multiple" : group.mainItem.location;
+
         return [
             (idx + 1).toString(),
             group.mainItem.productName,
@@ -465,7 +468,8 @@ export function InventoryListClient() {
             group.totalQuantity.toString(),
             `QAR ${cost.toFixed(2)}`,
             `QAR ${(cost * group.totalQuantity).toFixed(2)}`,
-            group.mainItem.expiryDate || 'N/A'
+            group.mainItem.expiryDate || 'N/A',
+            displayLocation
         ];
     };
 
@@ -527,7 +531,7 @@ export function InventoryListClient() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search product, barcode, staff..."
+                placeholder="Search product, barcode, staff, location..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 className="pl-10 w-full"
@@ -668,6 +672,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right">Total Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
+                    <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
                 </TableRow>
                 </TableHeader>
@@ -681,6 +686,8 @@ export function InventoryListClient() {
                     const isSingleItem = individualItems.length === 1;
 
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
+                    const hasMultipleLocations = new Set(individualItems.map(i => i.location)).size > 1;
+                    const displayLocation = hasMultipleLocations ? "Multiple" : mainItem.location;
 
                     let expiryContent: React.ReactNode = 'N/A';
                     let expiryClassName = "text-muted-foreground";
@@ -741,6 +748,12 @@ export function InventoryListClient() {
                         <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-primary/60" />
+                                <span>{displayLocation}</span>
+                            </div>
+                        </TableCell>
                         <TableCell className={expiryClassName}>
                             {expiryContent}
                         </TableCell>
