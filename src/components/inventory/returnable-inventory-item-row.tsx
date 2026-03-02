@@ -85,39 +85,47 @@ const ReturnableInventoryItemRowComponent = ({
       <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500 font-medium" : "text-muted-foreground")}>
         {item.itemType}
       </TableCell>
-      <TableCell className="text-center noprint">
-        <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onInitiateReturn?.(item)}
-                disabled={isProcessing || item.quantity === 0 || disableReturnButton || !onInitiateReturn}
-                aria-label={`Return ${item.productName}`}
-                className="h-8 w-8"
-            >
-                <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onViewDetails(item)}
-                aria-label={`View details for ${item.productName}`}
-                className="h-8 w-8"
-            >
-                <Eye className="h-4 w-4" />
-            </Button>
-            {onEditItem && (
+      <TableCell className="text-right noprint">
+        <div className="relative h-8 flex items-center justify-end">
+            {/* Date/Time shown when not hovering */}
+            <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">
+                {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+            </span>
+
+            {/* Actions hidden by default, shown on hover */}
+            <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onInitiateReturn?.(item)}
+                    disabled={isProcessing || item.quantity === 0 || disableReturnButton || !onInitiateReturn}
+                    aria-label={`Return ${item.productName}`}
+                    className="h-8 w-8"
+                >
+                    <Undo2 className="h-4 w-4" />
+                </Button>
                 <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onEditItem(item)}
-                    aria-label={`Edit ${item.productName}`}
+                    onClick={() => onViewDetails(item)}
+                    aria-label={`View details for ${item.productName}`}
                     className="h-8 w-8"
-                    disabled={isProcessing}
                 >
-                    <Pencil className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                 </Button>
-            )}
+                {onEditItem && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEditItem(item)}
+                        aria-label={`Edit ${item.productName}`}
+                        className="h-8 w-8"
+                        disabled={isProcessing}
+                    >
+                        <Pencil className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
         </div>
       </TableCell>
     </TableRow>
