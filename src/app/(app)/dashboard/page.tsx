@@ -32,7 +32,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
         {isLoading ? (
             <Skeleton className="h-8 w-1/2" />
         ) : (
-            <div className="text-3xl font-bold">{value}</div>
+            <div className="text-3xl font-bold tracking-tight">{value}</div>
         )}
         {description && !isLoading && <div className="text-xs text-muted-foreground pt-1 flex items-center font-medium">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-1" />}
@@ -41,15 +41,15 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 
   const cardContainerClassName = cn(
-    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full flex flex-col relative overflow-hidden",
-    "bg-gradient-to-tr from-card to-card/90",
-    href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/50" : "",
+    "shadow-lg transition-all duration-300 rounded-xl hover:shadow-xl h-full flex flex-col relative overflow-hidden",
+    "bg-gradient-to-br from-card to-card/95 border-border/50",
+    href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/30" : "",
     className
   );
   
   if (href) {
     return (
-      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg block h-full">
+      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl block h-full">
         <Card className={cardContainerClassName}>
           {cardInnerContent}
         </Card>
@@ -63,16 +63,15 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 }
 
-const MAX_SUPPLIERS_IN_CHART = 7;
+const MAX_SUPPLIERS_IN_CHART = 10;
 
 function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   const router = useRouter();
-  const isMobile = useIsMobile();
 
   const chartConfig = {
     totalStock: {
       label: "Total Stock",
-      color: "hsl(var(--chart-1))",
+      color: "hsl(var(--primary))",
     },
   } satisfies ChartConfig;
 
@@ -84,7 +83,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   let otherSuppliersData: StockBySupplier[] | null = null;
 
   if (data.length > MAX_SUPPLIERS_IN_CHART) {
-    const topSuppliers = data.slice(0, MAX_SUPPLIERS_IN_CHART -1);
+    const topSuppliers = data.slice(0, MAX_SUPPLIERS_IN_CHART - 1);
     otherSuppliersData = data.slice(MAX_SUPPLIERS_IN_CHART - 1);
     const otherStock = otherSuppliersData.reduce((sum, s) => sum + s.totalStock, 0);
 
@@ -106,8 +105,6 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
       router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.payload.name)}`);
     }
   };
-  
-  const charMargin = { top: 30, right: 10, left: 10, bottom: 10 };
 
   return (
     <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
@@ -115,10 +112,9 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
       <BarChart
         accessibilityLayer
         data={chartDisplayData}
-        margin={charMargin}
-        layout="horizontal"
+        margin={{ top: 40, right: 10, left: 10, bottom: 10 }}
       >
-        <CartesianGrid horizontal={true} vertical={false} strokeDasharray="3 3" />
+        <CartesianGrid horizontal={true} vertical={false} strokeDasharray="3 3" opacity={0.3} />
         <XAxis 
           dataKey="name" 
           hide 
@@ -128,16 +124,16 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           tickLine={false} 
           axisLine={false} 
           tickMargin={8} 
-          className="text-[10px]"
+          className="text-[10px] font-medium"
         />
         <ChartTooltip
-            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-            content={<ChartTooltipContent className="bg-background shadow-lg rounded-md p-2" />}
+            cursor={{ fill: 'hsl(var(--primary))', opacity: 0.05 }}
+            content={<ChartTooltipContent className="bg-background shadow-xl rounded-lg p-3 border-border/50" />}
         />
         <Bar 
           dataKey="totalStock" 
-          fill="var(--color-totalStock)" 
-          radius={[4, 4, 0, 0]}
+          fill="hsl(var(--primary))" 
+          radius={[6, 6, 0, 0]}
           onClick={(payload) => handleBarClick(payload)} 
           onMouseEnter={(props, e: any) => { 
             if (e && e.target) e.target.style.cursor = 'pointer';
@@ -145,8 +141,14 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           onMouseLeave={(props, e: any) => {
              if (e && e.target) e.target.style.cursor = 'default';
           }}
+          animationDuration={1500}
         >
-           <LabelList dataKey="totalStock" position="top" offset={8} className="fill-foreground text-[10px] font-bold" />
+           <LabelList 
+            dataKey="totalStock" 
+            position="top" 
+            offset={12} 
+            className="fill-foreground text-[11px] font-black" 
+           />
         </Bar>
       </BarChart>
       </ResponsiveContainer>
@@ -165,24 +167,25 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-30 pointer-events-none">
+    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.6}/>
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <XAxis dataKey="date" hide />
-          <YAxis hide domain={['dataMin - 10', 'auto']} />
+          <YAxis hide domain={['dataMin - 5', 'auto']} />
           <Area 
             type="monotone" 
             dataKey="totalStock" 
             stroke="hsl(var(--primary))" 
-            strokeWidth={2}
+            strokeWidth={3}
             fillOpacity={1} 
             fill="url(#colorStock)" 
+            animationDuration={2000}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -195,7 +198,6 @@ function SpecialEntryApprovalPanel() {
     const { role } = useAuth();
     const [customMins, setCustomMins] = useState<string>("15");
     
-    // Authorization states
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [stagedApproval, setStagedApproval] = useState<{id: string, mins?: number} | null>(null);
 
@@ -216,7 +218,7 @@ function SpecialEntryApprovalPanel() {
 
     return (
         <>
-        <Card className="mb-8 border-primary/20 bg-primary/5 shadow-md">
+        <Card className="mb-8 border-primary/20 bg-primary/5 shadow-md rounded-xl">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -304,17 +306,14 @@ function SpecialEntryApprovalPanel() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-       <Skeleton className="h-10 w-2/3 mb-4" />
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> 
-        <MetricCard title="Total Stock Quantity" value="" iconNode={<Warehouse className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
-        <MetricCard title="Total Stock Value" value="" iconNode={<Wallet className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
-        <MetricCard title="Total Suppliers" value="" iconNode={<Users className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
-        <MetricCard title="Items Expiring Soon" value="" iconNode={<CalendarClock className="h-5 w-5" />} isLoading={true} description={<Skeleton className="h-4 w-3/4 mt-1" />} />
+        <div className="lg:col-span-2 h-32"><Skeleton className="h-full w-full rounded-xl" /></div>
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Skeleton className="h-[400px] w-full rounded-lg" />
-        <Skeleton className="h-[400px] w-full rounded-lg" />
-      </div>
+      <Skeleton className="h-[450px] w-full rounded-xl" />
     </div>
   );
 }
@@ -339,10 +338,10 @@ export default function DashboardPage() {
 
   if (isLoading || !metrics) {
     return (
-      <div className="container mx-auto p-4 md:p-6">
-         <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
-          <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
-          Inventory Dashboard
+      <div className="container mx-auto p-4 md:p-6 lg:p-8">
+         <h1 className="text-3xl sm:text-4xl font-black mb-8 text-primary flex items-center tracking-tight uppercase">
+          <Activity className="mr-3 h-8 w-8 sm:h-10 sm:w-10" />
+          Command Center
         </h1>
         <DashboardSkeleton />
       </div>
@@ -367,7 +366,7 @@ export default function DashboardPage() {
     if (trendText) {
       totalStockDescription = (
         <div className="flex items-center flex-wrap">
-          <span>Sum of all items in stock</span>
+          <span>Total stock levels</span>
           <span className={cn("ml-2 font-bold flex items-center", colorClass)}>
             <ArrowIcon className="h-4 w-4 mr-0.5" />
             {trendText}
@@ -379,10 +378,10 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <h1 className="text-3xl sm:text-4xl font-extrabold mb-6 sm:mb-8 text-primary flex items-center tracking-tight">
-        <Activity className="mr-3 h-7 w-7 sm:h-8 sm:w-8" />
-        Inventory Dashboard
+    <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+      <h1 className="text-3xl sm:text-4xl font-black mb-2 text-primary flex items-center tracking-tighter uppercase">
+        <Activity className="mr-3 h-8 w-8 sm:h-10 sm:w-10" />
+        Command Center
       </h1>
 
       <SpecialEntryApprovalPanel />
@@ -403,26 +402,25 @@ export default function DashboardPage() {
           title="Total Stock Value" 
           value={metrics.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
           iconNode={<Wallet className="h-5 w-5" />}
-          description="Total cost of all items in stock"
+          description="Valuation of current assets"
           isLoading={isLoading}
         />
          <MetricCard 
           title="Total Suppliers" 
           value={metrics.totalSuppliers} 
           iconNode={<Users className="h-5 w-5" />}
-          description="Unique suppliers registered"
+          description="Active vendor relationships"
           isLoading={isLoading}
         />
         
-        {/* Restored items */}
         <MetricCard 
             title="Items Expiring Soon" 
             value={metrics.itemsExpiringSoon} 
             iconNode={<CalendarClock className="h-5 w-5" />}
-            description="Next 7 days"
+            description="High priority (7 days)"
             href="/inventory?filterType=expiringSoon"
             className={cn(
-                !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
+                !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 bg-yellow-500/5 dark:border-yellow-400/50 hover:border-yellow-500"
             )}
             isLoading={isLoading}
         />
@@ -431,25 +429,33 @@ export default function DashboardPage() {
             title="Damaged Items" 
             value={metrics.damagedItemsCount} 
             iconNode={<AlertTriangle className="h-5 w-5" />}
-            description="Items marked as damage"
+            description="Loss prevention review"
             href="/inventory?filterType=damaged"
-            className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : "")} 
+            className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
             isLoading={isLoading}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        {/* Stock by Supplier Vertical Bar Chart */}
-        <Card className="shadow-lg rounded-lg border-0 bg-card/50 lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-              Stock by Supplier
-            </CardTitle>
-            <CardDescription>Hover over a bar to see the supplier name. Click to filter inventory.</CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-3 overflow-hidden">
+          <CardHeader className="border-b bg-muted/20 pb-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle className="text-xl font-bold flex items-center tracking-tight">
+                    <TrendingUp className="mr-2 h-5 w-5 text-primary" />
+                    Stock Volume by Supplier
+                    </CardTitle>
+                    <CardDescription className="font-medium">Total unit distribution across registered vendors</CardDescription>
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
+                    <Badge variant="outline" className="bg-background">Live Data</Badge>
+                </div>
+            </div>
           </CardHeader>
-          <CardContent className="pl-0 pr-4 pb-6 h-[350px]">
-            {isLoading ? <Skeleton className="h-full w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
+          <CardContent className="p-0 sm:p-6">
+            <div className="h-[400px] w-full mt-4">
+                {isLoading ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
+            </div>
           </CardContent>
         </Card>
       </div>
