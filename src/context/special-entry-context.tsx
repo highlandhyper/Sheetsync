@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
@@ -11,7 +10,7 @@ interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
   activeSession: SpecialEntryRequest | null;
   requestSpecialEntry: (staffName: string, type: 'single' | 'timed', reason?: string) => Promise<void>;
-  grantProactiveEntry: (staffName: string) => Promise<void>;
+  grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
@@ -49,11 +48,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!user) return;
 
-    // A session is active if it's approved and either not timed (single entry) or within expiry
     const myApproved = specialRequests.find(r => 
-      // Proactive grants don't have userEmail initially or it's set by admin. 
-      // For viewer to see it, it must match their staffName context or explicit email.
-      // Assuming for MVP that proactive grants are matched by staffName if email is missing.
       (r.userEmail === user.email) && 
       r.status === 'approved' && 
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
@@ -90,24 +85,26 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
 
-  const grantProactiveEntry = useCallback(async (staffName: string) => {
+  const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
     if (!user) return;
-    // For proactive grants, we create an already approved 'single' request.
-    // Note: In this MVP, we map this to the staff member's email if possible, 
-    // or just store the staff name. Since viewer users login with email, 
-    // we ideally need the target email. 
-    // We'll search for existing requests with this staffName to find the email.
+    
     const existingReq = specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase());
-    const targetEmail = existingReq?.userEmail || "viewer@example.com"; // Fallback for simulation
+    const targetEmail = existingReq?.userEmail || "viewer@example.com"; 
+
+    const now = new Date();
+    const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
+    const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
 
     const newRequest: SpecialEntryRequest = {
       id: `grant_${Date.now()}`,
       userEmail: targetEmail,
       staffName: staffName.toUpperCase(),
       status: 'approved',
-      type: 'single',
-      requestedAt: new Date().toISOString(),
-      approvedAt: new Date().toISOString(),
+      type: isTimed ? 'timed' : 'single',
+      durationMinutes: durationMinutes,
+      requestedAt: now.toISOString(),
+      approvedAt: now.toISOString(),
+      expiresAt: expiresAt,
       grantedByAdmin: true,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
