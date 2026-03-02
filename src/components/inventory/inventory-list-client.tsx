@@ -665,7 +665,6 @@ export function InventoryListClient() {
                     </TableHead>
                     )}
                     <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
-                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                     <TableHead>Product Name</TableHead>
                     <TableHead className="hidden lg:table-cell">Barcode</TableHead>
                     <TableHead>Supplier</TableHead>
@@ -674,6 +673,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
+                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -707,7 +707,7 @@ export function InventoryListClient() {
                     }
 
                     return (
-                    <TableRow key={mainItem.id} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""}>
+                    <TableRow key={mainItem.id} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
                         {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
                             <Checkbox
@@ -718,30 +718,6 @@ export function InventoryListClient() {
                         </TableCell>
                         )}
                         <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                        <TableCell className="text-center noprint">
-                           {isSingleItem ? (
-                                <div className="flex justify-center items-center gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
-                                    {role !== 'viewer' && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
-                                            <Undo2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                    {role === 'admin' && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            ) : (
-                                <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View {individualItems.length} Logs
-                                </Button>
-                            )}
-                        </TableCell>
                         <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{mainItem.productName}</TableCell>
                         <TableCell className="text-muted-foreground hidden lg:table-cell">{mainItem.barcode}</TableCell>
                         <TableCell className="text-muted-foreground">{mainItem.supplierName || 'N/A'}</TableCell>
@@ -753,6 +729,32 @@ export function InventoryListClient() {
                         </TableCell>
                         <TableCell className={expiryClassName}>
                             {expiryContent}
+                        </TableCell>
+                        <TableCell className="text-center noprint">
+                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-center items-center gap-1">
+                                {isSingleItem ? (
+                                    <>
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                        {role !== 'viewer' && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
+                                                <Undo2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {role === 'admin' && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold">
+                                        <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                        {individualItems.length} Logs
+                                    </Button>
+                                )}
+                           </div>
                         </TableCell>
                     </TableRow>
                     );

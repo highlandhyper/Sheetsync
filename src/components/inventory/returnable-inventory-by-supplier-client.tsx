@@ -303,8 +303,6 @@ export function ReturnableInventoryBySupplierClient() {
         <Card className="shadow-md">
           <Table><TableHeader>
             <TableRow>
-              <TableHead className="w-20 text-center">Return</TableHead>
-              <TableHead className="w-20 text-center">Details</TableHead>
               <TableHead>Product Name</TableHead>
               <TableHead>Barcode</TableHead>
               <TableHead className="text-right">In Stock</TableHead>
@@ -313,13 +311,11 @@ export function ReturnableInventoryBySupplierClient() {
               <TableHead>Expiry</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="w-20 text-center">Edit</TableHead>
+              <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
             </TableRow>
           </TableHeader><TableBody>
             {Array.from({ length: 3 }).map((_, index) => (
               <TableRow key={index}>
-                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
-                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
@@ -328,7 +324,7 @@ export function ReturnableInventoryBySupplierClient() {
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>
+                <TableCell><Skeleton className="h-9 w-24 mx-auto" /></TableCell>
               </TableRow>
             ))}
           </TableBody></Table>
@@ -520,8 +516,6 @@ export function ReturnableInventoryBySupplierClient() {
                       />
                       </TableHead>
                   )}
-                  <TableHead className="w-20 text-center">Return</TableHead>
-                  <TableHead className="w-20 text-center">Details</TableHead>
                   <TableHead>Product Name</TableHead>
                   <TableHead>Barcode</TableHead>
                   <TableHead className="text-right">In Stock</TableHead>
@@ -530,7 +524,7 @@ export function ReturnableInventoryBySupplierClient() {
                   <TableHead>Expiry</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="w-20 text-center">Edit</TableHead>
+                  <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
                   </TableRow>
               </TableHeader>
               <TableBody>
@@ -546,7 +540,6 @@ export function ReturnableInventoryBySupplierClient() {
                               disableReturnButton={role === 'viewer'}
                               isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
                               showSupplierName={false} 
-                              showEditButtonText={false}
                               isSelected={selectedItemIds.has(item.id)}
                               onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
                               showCheckbox={isMultiSelectEnabled}

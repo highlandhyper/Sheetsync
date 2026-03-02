@@ -115,7 +115,6 @@ export function ReturnableInventoryByStaffClient() {
   };
 
   const handleEditSuccess = useCallback(() => {
-    // Local state is updated by the context, no full refresh needed
     setIsEditDialogOpen(false);
     setSelectedItemIds(new Set());
   }, []);
@@ -259,38 +258,34 @@ export function ReturnableInventoryByStaffClient() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-center gap-4 p-4 border rounded-lg shadow bg-card mb-6">
             <Skeleton className="h-10 w-full md:max-w-lg" />
-            <Skeleton className="h-10 w-28" /> {/* Clear */}
-            <Skeleton className="h-10 w-28" /> {/* Print */}
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
             <Skeleton className="h-6 w-32 md:ml-auto" />
         </div>
         <Card className="shadow-md">
           <Table><TableHeader>
-            <TableRow>{/*
-             */}<TableHead className="w-20 text-center">Return</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Details</TableHead>{/*
-             */}<TableHead>Product Name</TableHead>{/*
-             */}<TableHead>Barcode</TableHead>{/*
-             */}<TableHead>Supplier</TableHead>{/*
-             */}<TableHead className="text-right">In Stock</TableHead>{/*
-             */}<TableHead>Expiry</TableHead>{/*
-             */}<TableHead>Location</TableHead>{/*
-             */}<TableHead>Type</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
-           */}</TableRow>
+            <TableRow>
+             <TableHead>Product Name</TableHead>
+             <TableHead>Barcode</TableHead>
+             <TableHead>Supplier</TableHead>
+             <TableHead className="text-right">In Stock</TableHead>
+             <TableHead>Expiry</TableHead>
+             <TableHead>Location</TableHead>
+             <TableHead>Type</TableHead>
+             <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+           </TableRow>
           </TableHeader><TableBody>
             {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>{/*
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/*
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/* Edit
-              */}</TableRow>
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-9 w-24 mx-auto" /></TableCell>
+              </TableRow>
             ))}
           </TableBody></Table>
         </Card>
@@ -434,8 +429,6 @@ export function ReturnableInventoryByStaffClient() {
                       />
                   </TableHead>
                 )}
-                <TableHead className="w-20 text-center">Return</TableHead>
-                <TableHead className="w-20 text-center">Details</TableHead>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Barcode</TableHead>
                 <TableHead>Supplier</TableHead>
@@ -445,7 +438,7 @@ export function ReturnableInventoryByStaffClient() {
                 <TableHead>Expiry</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="w-20 text-center">Edit</TableHead>
+                <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
             </TableRow>
             </TableHeader><TableBody>
                 {itemsToRender.map((item) => (
@@ -457,7 +450,6 @@ export function ReturnableInventoryByStaffClient() {
                     onEditItem={role === 'admin' ? handleOpenEditDialog : undefined}
                     isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
                     showSupplierName={true}
-                    showEditButtonText={false}
                     disableReturnButton={role === 'viewer'}
                     isSelected={selectedItemIds.has(item.id)}
                     onSelectRow={isMultiSelectEnabled && role === 'admin' ? handleSelectRow : undefined}
