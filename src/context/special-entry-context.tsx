@@ -10,7 +10,9 @@ import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-ac
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
   activeSession: SpecialEntryRequest | null;
-  awaitingActivation: SpecialEntryRequest | null;
+  pendingActivationSession: SpecialEntryRequest | null;
+  isActivationDialogOpen: boolean;
+  setActivationDialogOpen: (open: boolean) => void;
   requestSpecialEntry: (staffName: string, type: 'single' | 'timed', reason?: string) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
@@ -32,7 +34,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { specialRequests, updateSpecialRequests } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
-  const [awaitingActivation, setAwaitingActivation] = useState<SpecialEntryRequest | null>(null);
+  const [pendingActivationSession, setPendingActivationSession] = useState<SpecialEntryRequest | null>(null);
+  const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
   const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
   
   const lastPendingCountRef = useRef(0);
@@ -45,22 +48,22 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const pendingRequests = useMemo(() => 
+  const pendingRequestsList = useMemo(() => 
     specialRequests.filter(r => r.status === 'pending')
   , [specialRequests]);
 
   // Admin Notification Logic
   useEffect(() => {
-    if (role === 'admin' && pendingRequests.length > lastPendingCountRef.current) {
+    if (role === 'admin' && pendingRequestsList.length > lastPendingCountRef.current) {
       addNotification({
         title: 'New Special Entry Request',
-        message: `${pendingRequests[pendingRequests.length - 1].staffName} is requesting silent access.`,
+        message: `${pendingRequestsList[pendingRequestsList.length - 1].staffName} is requesting silent access.`,
         type: 'request',
         link: '/dashboard'
       });
     }
-    lastPendingCountRef.current = pendingRequests.length;
-  }, [pendingRequests, role, addNotification]);
+    lastPendingCountRef.current = pendingRequestsList.length;
+  }, [pendingRequestsList, role, addNotification]);
 
   // Viewer Notification & Session Logic
   useEffect(() => {
@@ -86,15 +89,15 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
       // 2. Handle activation logic
       if (activatedSessionId !== myApproved.id) {
-          setAwaitingActivation(myApproved);
+          setPendingActivationSession(myApproved);
           setActiveSession(null);
       } else {
-          setAwaitingActivation(null);
+          setPendingActivationSession(null);
           setActiveSession(myApproved);
       }
     } else {
       setActiveSession(null);
-      setAwaitingActivation(null);
+      setPendingActivationSession(null);
     }
   }, [specialRequests, user, addNotification, activatedSessionId]);
 
@@ -180,31 +183,35 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       if (request && request.otp === enteredOtp) {
           localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
           setActivatedSessionId(id);
-          setAwaitingActivation(null);
+          setPendingActivationSession(null);
           return true;
       }
       return false;
   }, [specialRequests]);
 
   const value = useMemo(() => ({ 
-    pendingRequests, 
+    pendingRequests: pendingRequestsList, 
     activeSession, 
-    awaitingActivation,
+    pendingActivationSession,
+    isActivationDialogOpen,
+    setActivationDialogOpen: setIsActivationDialogOpen,
     requestSpecialEntry, 
     grantProactiveEntry, 
     approveRequest, 
     rejectRequest, 
     consumeSpecialEntry,
     activateSession
-  }), [pendingRequests, activeSession, awaitingActivation, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry, activateSession]);
+  }), [pendingRequestsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry, activateSession]);
 
   return (
     <SpecialEntryContext.Provider value={value}>
         {children}
-        {awaitingActivation && (
+        {pendingActivationSession && (
             <SpecialEntryActivationDialog 
-                session={awaitingActivation} 
-                onActivate={(otp) => activateSession(awaitingActivation.id, otp)} 
+                session={pendingActivationSession} 
+                onActivate={(otp) => activateSession(pendingActivationSession.id, otp)}
+                isOpen={isActivationDialogOpen}
+                onOpenChange={setIsActivationDialogOpen}
             />
         )}
     </SpecialEntryContext.Provider>
