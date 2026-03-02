@@ -20,23 +20,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { useDataCache } from '@/context/data-cache-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
     <>
-      <div className="absolute inset-0 z-0 overflow-hidden rounded-xl">
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-xl pointer-events-none">
         {children}
       </div>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-20">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full relative z-10">
+      <CardContent className="flex flex-col h-full relative z-20">
         {isLoading ? (
             <Skeleton className="h-8 w-1/2" />
         ) : (
@@ -201,116 +199,6 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   );
 }
 
-function SpecialEntryApprovalPanel() {
-    const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
-    const { role } = useAuth();
-    const [customMins, setCustomMins] = useState<string>("15");
-    
-    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-    const [stagedApproval, setStagedApproval] = useState<{id: string, mins?: number} | null>(null);
-
-    if (role !== 'admin' || pendingRequests.length === 0) return null;
-
-    const handleInitiateApproval = (id: string, mins?: number) => {
-        setStagedApproval({ id, mins });
-        setIsAuthDialogOpen(true);
-    };
-
-    const handleAuthSuccess = () => {
-        if (stagedApproval) {
-            approveRequest(stagedApproval.id, stagedApproval.mins);
-            setStagedApproval(null);
-        }
-        setIsAuthDialogOpen(false);
-    };
-
-    return (
-        <>
-        <Card className="mb-8 border-primary/20 bg-primary/5 shadow-md rounded-xl">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-primary" />
-                        Pending Special Entry Requests
-                    </CardTitle>
-                    <Badge variant="secondary" className="animate-pulse">{pendingRequests.length} Pending</Badge>
-                </div>
-                <CardDescription>Authorize staff to log items without email alerts. Local password required.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {pendingRequests.map((req) => (
-                    <div key={req.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 rounded-lg bg-background border gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-primary/10 p-2 rounded-full">
-                                <MessageSquare className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm">{req.staffName}</p>
-                                <p className="text-xs text-muted-foreground">{req.userEmail}</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                            <Button size="sm" variant="outline" className="flex-1 lg:flex-none order-last lg:order-none" onClick={() => rejectRequest(req.id)}>
-                                <X className="mr-1 h-3 w-3" /> Reject
-                            </Button>
-                            
-                            <div className="h-8 w-px bg-border hidden lg:block mx-1" />
-
-                            <Button size="sm" variant="secondary" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id)}>
-                                <Check className="mr-1 h-3 w-3" /> 1 Entry
-                            </Button>
-                            
-                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id, 10)}>
-                                <Clock className="mr-1 h-3 w-3" /> 10 Mins
-                            </Button>
-
-                            <Button size="sm" className="flex-1 lg:flex-none" onClick={() => handleInitiateApproval(req.id, 30)}>
-                                <Clock className="mr-1 h-3 w-3" /> 30 Mins
-                            </Button>
-
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button size="sm" variant="ghost" className="flex-1 lg:flex-none border-dashed border-2">
-                                        <Plus className="mr-1 h-3 w-3" /> Custom
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-40 p-3" align="end">
-                                    <div className="space-y-3">
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Mins</p>
-                                            <Input 
-                                                type="number" 
-                                                value={customMins} 
-                                                onChange={(e) => setCustomMins(e.target.value)} 
-                                                className="h-8"
-                                            />
-                                        </div>
-                                        <Button 
-                                            size="sm" 
-                                            className="w-full text-xs h-8" 
-                                            disabled={!customMins || parseInt(customMins) < 1}
-                                            onClick={() => handleInitiateApproval(req.id, parseInt(customMins))}
-                                        >
-                                            Set Time
-                                        </Button>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-        <AuthorizeActionDialog
-            isOpen={isAuthDialogOpen}
-            onOpenChange={setIsAuthDialogOpen}
-            onAuthorizationSuccess={handleAuthSuccess}
-            actionDescription="You are authorizing a Special Entry (Silent Mode) session. Please verify your local admin credentials."
-        />
-        </>
-    );
-}
-
 function ProactiveGrantDialog({ 
     isOpen, 
     onOpenChange, 
@@ -345,7 +233,7 @@ function ProactiveGrantDialog({
                     </DialogTitle>
                     <DialogDescription>
                         Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>. 
-                        No password required for grant. Staff will enter Admin PIN to activate.
+                        A unique 4-digit OTP will be sent to their notifications.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
@@ -402,7 +290,7 @@ function ProactiveGrantDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleGrant}>
-                        Confirm Authorization
+                        Generate OTP & Authorize
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -426,7 +314,7 @@ function QuickAuthorizeCard() {
         grantProactiveEntry(selectedStaff, duration);
         toast({
             title: "Access Granted",
-            description: `Authorization sent to ${selectedStaff}. They will need to enter the Admin PIN to activate.`,
+            description: `Authorization sent to ${selectedStaff}. A dynamic OTP has been generated.`,
         });
         setSelectedStaff("");
     };
@@ -506,8 +394,8 @@ export default function DashboardPage() {
   if (isLoading || !metrics) {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
-         <h1 className="text-2xl sm:text-3xl font-bold mb-8 text-primary flex items-center tracking-tight">
-          <Activity className="mr-3 h-8 w-8 sm:h-9 sm:w-9" />
+         <h1 className="text-xl font-bold mb-8 text-primary flex items-center tracking-tight">
+          <Activity className="mr-3 h-6 w-6" />
           Command Center
         </h1>
         <DashboardSkeleton />
@@ -546,14 +434,12 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-10">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-primary flex items-center tracking-tight">
-        <Activity className="mr-3 h-8 w-8 sm:h-9 sm:w-9" />
+      <h1 className="text-xl font-bold mb-4 text-primary flex items-center tracking-tight">
+        <Activity className="mr-3 h-6 w-6" />
         Command Center
       </h1>
 
-      <SpecialEntryApprovalPanel />
-
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
