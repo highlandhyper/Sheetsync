@@ -1,18 +1,27 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
-import type { InventoryItem, ReturnedItem, Product } from './types';
+
+export type PDFOrientation = 'portrait' | 'landscape';
 
 export function generateInventoryPDF(
   title: string,
   items: any[],
   columns: string[],
   dataMapper: (item: any) => string[],
-  totalValue?: number
+  totalValue?: number,
+  orientation: PDFOrientation = 'portrait'
 ) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({
+    orientation: orientation === 'landscape' ? 'l' : 'p',
+    unit: 'mm',
+    format: 'a4'
+  });
+
   const now = new Date();
   const timestamp = format(now, 'PPp');
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
 
   // Add Branded Header
   doc.setFontSize(22);
@@ -30,7 +39,7 @@ export function generateInventoryPDF(
   // Draw Line
   doc.setDrawColor(41, 171, 226);
   doc.setLineWidth(0.5);
-  doc.line(14, 42, 196, 42);
+  doc.line(14, 42, pageWidth - 14, 42);
 
   // Table
   (doc as any).autoTable({
@@ -41,6 +50,7 @@ export function generateInventoryPDF(
     alternateRowStyles: { fillColor: [240, 248, 255] },
     margin: { left: 14, right: 14 },
     theme: 'striped',
+    styles: { fontSize: orientation === 'landscape' ? 9 : 8 },
   });
 
   // Footer / Totals
@@ -58,7 +68,7 @@ export function generateInventoryPDF(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Page ${i} of ${pageCount}`, 196, 285, { align: 'right' });
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 10, { align: 'right' });
   }
 
   doc.save(`${title.replace(/\s+/g, '_').toLowerCase()}_${format(now, 'yyyyMMdd_HHmm')}.pdf`);
