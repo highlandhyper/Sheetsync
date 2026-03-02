@@ -104,6 +104,26 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
+// Enhancement: Synthetic Audio Feedback function
+const playScanBeep = () => {
+  try {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.1);
+  } catch (e) {
+    console.warn("Audio feedback failed:", e);
+  }
+};
+
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: AddInventoryItemStepperFormProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -302,6 +322,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const onScanSuccess = useCallback((decodedText: string) => {
+    playScanBeep(); // Audio feedback enhancement
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     
@@ -493,13 +514,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
                  <div className={cn(currentStep !== 2 && "hidden", "space-y-4")}>
                     <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
-                        <MapPin className="h-4 w-4" /> Storage Zone
+                        Storage Zone
                     </Label>
                     <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
                              <div className="flex items-center gap-2">
-                                <MapPin className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                                 <span>{allFormValues.location || "Select Zone..."}</span>
                              </div>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

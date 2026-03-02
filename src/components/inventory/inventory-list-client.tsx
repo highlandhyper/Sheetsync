@@ -65,7 +65,9 @@ export function InventoryListClient() {
       addReturnedItem,
   } = useDataCache();
 
+  // Performance Enhancement: Debounced Search State
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
   
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
@@ -103,6 +105,14 @@ export function InventoryListClient() {
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
+
+  // Handle Search Debouncing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
@@ -157,9 +167,9 @@ export function InventoryListClient() {
        }
     }
 
-    // 2. Phase 2: Apply Local Overlays (Refining the seed or the whole set)
-    if (searchTerm) {
-        const lowerSearchTerm = searchTerm.toLowerCase();
+    // 2. Phase 2: Apply Local Overlays (using debouncedSearch for performance)
+    if (debouncedSearch) {
+        const lowerSearchTerm = debouncedSearch.toLowerCase();
         items = items.filter(item =>
             item.productName.toLowerCase().includes(lowerSearchTerm) ||
             item.barcode.toLowerCase().includes(lowerSearchTerm) ||
@@ -204,7 +214,7 @@ export function InventoryListClient() {
     }
 
     return items;
-  }, [cachedItems, activeDashboardFilter, searchTerm, selectedSupplier, selectedDateRange, typeFilter]);
+  }, [cachedItems, activeDashboardFilter, debouncedSearch, selectedSupplier, selectedDateRange, typeFilter]);
   
   const groupedItems = useMemo(() => {
     const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();
