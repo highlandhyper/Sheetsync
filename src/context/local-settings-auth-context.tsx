@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -15,6 +14,7 @@ interface LocalSettingsAuthContextType {
   isInitialized: boolean;
   updateCredentials: (username?: string, password?: string, quickAuthPin?: string) => void;
   verifyCredentials: (username?: string, password?: string) => boolean;
+  verifyPin: (pin: string) => boolean;
 }
 
 const LocalSettingsAuthContext = createContext<LocalSettingsAuthContextType | undefined>(undefined);
@@ -61,8 +61,14 @@ export function LocalSettingsAuthProvider({ children }: PropsWithChildren) {
     return username === credentials.username && password === credentials.password;
   }, [credentials, isInitialized]);
 
+  const verifyPin = useCallback((pin: string): boolean => {
+    if (!isInitialized) return false;
+    const actualPin = credentials.quickAuthPin || DEFAULT_PIN;
+    return pin === actualPin;
+  }, [credentials.quickAuthPin, isInitialized]);
+
   return (
-    <LocalSettingsAuthContext.Provider value={{ credentials, isInitialized, updateCredentials, verifyCredentials }}>
+    <LocalSettingsAuthContext.Provider value={{ credentials, isInitialized, updateCredentials, verifyCredentials, verifyPin }}>
       {children}
     </LocalSettingsAuthContext.Provider>
   );

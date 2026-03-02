@@ -5,18 +5,23 @@ import type { SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { useNotifications } from './notification-context';
 import { useDataCache } from './data-cache-context';
+import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
   activeSession: SpecialEntryRequest | null;
+  awaitingActivation: SpecialEntryRequest | null;
   requestSpecialEntry: (staffName: string, type: 'single' | 'timed', reason?: string) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
+  activateSession: (id: string) => void;
 }
 
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
+
+const ACTIVATED_STORAGE_KEY = 'sheetSync_activatedSessionId';
 
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
@@ -24,8 +29,18 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { specialRequests, updateSpecialRequests } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
+  const [awaitingActivation, setAwaitingActivation] = useState<SpecialEntryRequest | null>(null);
+  const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
+  
   const lastPendingCountRef = useRef(0);
   const processedApprovalIdsRef = useRef<Set<string>>(new Set());
+
+  // Initialize activated session from local storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setActivatedSessionId(localStorage.getItem(ACTIVATED_STORAGE_KEY));
+    }
+  }, []);
 
   const pendingRequests = useMemo(() => 
     specialRequests.filter(r => r.status === 'pending')
@@ -55,20 +70,30 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     );
 
     if (myApproved) {
+      // 1. Handle notification logic
       if (!processedApprovalIdsRef.current.has(myApproved.id)) {
         addNotification({
           title: 'Special Entry Approved',
-          message: `Authorization granted for ${myApproved.type === 'single' ? '1 entry' : 'the requested duration'}. Silent mode active.`,
+          message: `Authorization granted for ${myApproved.type === 'single' ? '1 entry' : 'the requested duration'}. Silent mode pending activation.`,
           type: 'success',
           link: '/inventory/add'
         });
         processedApprovalIdsRef.current.add(myApproved.id);
       }
-      setActiveSession(myApproved);
+
+      // 2. Handle activation logic
+      if (activatedSessionId !== myApproved.id) {
+          setAwaitingActivation(myApproved);
+          setActiveSession(null);
+      } else {
+          setAwaitingActivation(null);
+          setActiveSession(myApproved);
+      }
     } else {
       setActiveSession(null);
+      setAwaitingActivation(null);
     }
-  }, [specialRequests, user, addNotification]);
+  }, [specialRequests, user, addNotification, activatedSessionId]);
 
   const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed', reason?: string) => {
     if (!user) return;
@@ -138,14 +163,40 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       const updated = specialRequests.map(r => r.id === activeSession.id ? { ...r, status: 'used' as const } : r);
       updateSpecialRequests(updated);
       setActiveSession(null);
+      localStorage.removeItem(ACTIVATED_STORAGE_KEY);
+      setActivatedSessionId(null);
     }
   }, [activeSession, specialRequests, updateSpecialRequests]);
 
-  const value = useMemo(() => ({ 
-    pendingRequests, activeSession, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry 
-  }), [pendingRequests, activeSession, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry]);
+  const activateSession = useCallback((id: string) => {
+      localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
+      setActivatedSessionId(id);
+      setAwaitingActivation(null);
+  }, []);
 
-  return <SpecialEntryContext.Provider value={value}>{children}</SpecialEntryContext.Provider>;
+  const value = useMemo(() => ({ 
+    pendingRequests, 
+    activeSession, 
+    awaitingActivation,
+    requestSpecialEntry, 
+    grantProactiveEntry, 
+    approveRequest, 
+    rejectRequest, 
+    consumeSpecialEntry,
+    activateSession
+  }), [pendingRequests, activeSession, awaitingActivation, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry, activateSession]);
+
+  return (
+    <SpecialEntryContext.Provider value={value}>
+        {children}
+        {awaitingActivation && (
+            <SpecialEntryActivationDialog 
+                session={awaitingActivation} 
+                onActivate={() => activateSession(awaitingActivation.id)} 
+            />
+        )}
+    </SpecialEntryContext.Provider>
+  );
 }
 
 export function useSpecialEntry() {

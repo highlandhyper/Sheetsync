@@ -322,30 +322,17 @@ function ProactiveGrantDialog({
     staffName: string;
     onGrant: (duration?: number) => void;
 }) {
-    const { credentials } = useLocalSettingsAuth();
-    const { toast } = useToast();
-    const [pin, setPin] = useState("");
     const [selectedDuration, setSelectedDuration] = useState<string>("single");
     const [customMins, setCustomMins] = useState("15");
 
     const handleGrant = () => {
-        if (pin === (credentials.quickAuthPin || "1234")) {
-            let duration: number | undefined;
-            if (selectedDuration === "10") duration = 10;
-            else if (selectedDuration === "30") duration = 30;
-            else if (selectedDuration === "custom") duration = parseInt(customMins);
-            
-            onGrant(duration);
-            setPin("");
-            onOpenChange(false);
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Invalid PIN",
-                description: "The 4-digit authorization PIN is incorrect.",
-            });
-            setPin("");
-        }
+        let duration: number | undefined;
+        if (selectedDuration === "10") duration = 10;
+        else if (selectedDuration === "30") duration = 30;
+        else if (selectedDuration === "custom") duration = parseInt(customMins);
+        
+        onGrant(duration);
+        onOpenChange(false);
     };
 
     return (
@@ -353,11 +340,12 @@ function ProactiveGrantDialog({
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <ShieldQuestion className="h-5 w-5 text-primary" />
+                        <ShieldCheck className="h-5 w-5 text-primary" />
                         Authorize Silent Mode
                     </DialogTitle>
                     <DialogDescription>
-                        Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>.
+                        Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>. 
+                        No password required for grant. Staff will enter Admin PIN to activate.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
@@ -410,28 +398,11 @@ function ProactiveGrantDialog({
                             </div>
                         )}
                     </div>
-
-                    <Separator />
-
-                    <div className="space-y-3">
-                        <div className="text-center space-y-1">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Enter 4-Digit Admin PIN</Label>
-                        </div>
-                        <Input 
-                            type="password" 
-                            maxLength={4} 
-                            value={pin}
-                            onChange={(e) => setPin(e.target.value)}
-                            className="text-center text-3xl tracking-[1em] font-mono h-14"
-                            autoFocus
-                            onKeyDown={(e) => e.key === 'Enter' && handleGrant()}
-                        />
-                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleGrant} disabled={pin.length < 4}>
-                        Grant Access
+                    <Button onClick={handleGrant}>
+                        Confirm Authorization
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -454,8 +425,8 @@ function QuickAuthorizeCard() {
     const confirmGrant = (duration?: number) => {
         grantProactiveEntry(selectedStaff, duration);
         toast({
-            title: "Authorization Granted",
-            description: `Silent mode active for ${selectedStaff} (${duration ? duration + ' mins' : '1 entry'}).`,
+            title: "Access Granted",
+            description: `Authorization sent to ${selectedStaff}. They will need to enter the Admin PIN to activate.`,
         });
         setSelectedStaff("");
     };
