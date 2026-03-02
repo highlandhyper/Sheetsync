@@ -107,9 +107,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
     }
   };
   
-  const yAxisWidth = isMobile ? 120 : 180;
-  const charMargin = isMobile ? { top: 20, right: 30, left: 10, bottom: 5 } : { top: 20, right: 30, left: 20, bottom: 5 };
-
+  const charMargin = { top: 30, right: 10, left: 10, bottom: 10 };
 
   return (
     <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
@@ -118,29 +116,28 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
         accessibilityLayer
         data={chartDisplayData}
         margin={charMargin}
-        layout="vertical"
+        layout="horizontal"
       >
-        <CartesianGrid horizontal={false} vertical={true} strokeDasharray="3 3" />
-        <XAxis type="number" dataKey="totalStock" hide />
-        <YAxis 
+        <CartesianGrid horizontal={true} vertical={false} strokeDasharray="3 3" />
+        <XAxis 
           dataKey="name" 
-          type="category" 
+          hide 
+        />
+        <YAxis 
+          type="number" 
           tickLine={false} 
           axisLine={false} 
           tickMargin={8} 
-          width={yAxisWidth} 
-          interval={0} 
-          className="text-xs"
-          tickFormatter={(value) => value.length > (isMobile ? 15 : 20) ? `${value.substring(0, isMobile ? 13 : 18)}...` : value}
+          className="text-[10px]"
         />
         <ChartTooltip
-            cursor={false}
-            content={<ChartTooltipContent hideLabel className="bg-background shadow-lg rounded-md p-2" />}
+            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+            content={<ChartTooltipContent className="bg-background shadow-lg rounded-md p-2" />}
         />
         <Bar 
           dataKey="totalStock" 
           fill="var(--color-totalStock)" 
-          radius={4}
+          radius={[4, 4, 0, 0]}
           onClick={(payload) => handleBarClick(payload)} 
           onMouseEnter={(props, e: any) => { 
             if (e && e.target) e.target.style.cursor = 'pointer';
@@ -149,7 +146,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
              if (e && e.target) e.target.style.cursor = 'default';
           }}
         >
-           <LabelList dataKey="totalStock" position="right" offset={8} className="fill-foreground text-xs" />
+           <LabelList dataKey="totalStock" position="top" offset={8} className="fill-foreground text-[10px] font-bold" />
         </Bar>
       </BarChart>
       </ResponsiveContainer>
@@ -442,14 +439,14 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        {/* Stock by Supplier Bar Chart */}
+        {/* Stock by Supplier Vertical Bar Chart */}
         <Card className="shadow-lg rounded-lg border-0 bg-card/50 lg:col-span-3">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
               <TrendingUp className="mr-2 h-5 w-5 text-primary" />
               Stock by Supplier
             </CardTitle>
-            <CardDescription>Click a bar to filter inventory by supplier.</CardDescription>
+            <CardDescription>Hover over a bar to see the supplier name. Click to filter inventory.</CardDescription>
           </CardHeader>
           <CardContent className="pl-0 pr-4 pb-6 h-[350px]">
             {isLoading ? <Skeleton className="h-full w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
