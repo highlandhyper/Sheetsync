@@ -390,7 +390,7 @@ export default function DashboardPage() {
 
       <SpecialEntryApprovalPanel />
 
-      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
@@ -416,11 +416,34 @@ export default function DashboardPage() {
           description="Unique suppliers registered"
           isLoading={isLoading}
         />
+        
+        {/* Restored items */}
+        <MetricCard 
+            title="Items Expiring Soon" 
+            value={metrics.itemsExpiringSoon} 
+            iconNode={<CalendarClock className="h-5 w-5" />}
+            description="Next 7 days"
+            href="/inventory?filterType=expiringSoon"
+            className={cn(
+                !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
+            )}
+            isLoading={isLoading}
+        />
+        
+        <MetricCard 
+            title="Damaged Items" 
+            value={metrics.damagedItemsCount} 
+            iconNode={<AlertTriangle className="h-5 w-5" />}
+            description="Items marked as damage"
+            href="/inventory?filterType=damaged"
+            className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : "")} 
+            isLoading={isLoading}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         {/* Stock by Supplier Bar Chart */}
-        <Card className="shadow-lg rounded-lg border-0 bg-card/50 lg:col-span-2">
+        <Card className="shadow-lg rounded-lg border-0 bg-card/50 lg:col-span-3">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
               <TrendingUp className="mr-2 h-5 w-5 text-primary" />
@@ -432,31 +455,6 @@ export default function DashboardPage() {
             {isLoading ? <Skeleton className="h-full w-full" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
           </CardContent>
         </Card>
-
-        {/* Status Breakdown Grid */}
-        <div className="space-y-6">
-            <MetricCard 
-                title="Items Expiring Soon" 
-                value={metrics.itemsExpiringSoon} 
-                iconNode={<CalendarClock className="h-5 w-5" />}
-                description="Next 7 days"
-                href="/inventory?filterType=expiringSoon"
-                className={cn(
-                    !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
-                )}
-                isLoading={isLoading}
-            />
-            
-            <MetricCard 
-                title="Damaged Items" 
-                value={metrics.damagedItemsCount} 
-                iconNode={<AlertTriangle className="h-5 w-5" />}
-                description="Items marked as damage"
-                href="/inventory?filterType=damaged"
-                className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : "")} 
-                isLoading={isLoading}
-            />
-        </div>
       </div>
     </div>
   );
