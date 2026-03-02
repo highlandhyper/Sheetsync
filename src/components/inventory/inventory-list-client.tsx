@@ -673,7 +673,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
-                    <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                    <TableHead className="w-[180px] text-right noprint">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -730,30 +730,38 @@ export function InventoryListClient() {
                         <TableCell className={expiryClassName}>
                             {expiryContent}
                         </TableCell>
-                        <TableCell className="text-center noprint">
-                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-center items-center gap-1">
-                                {isSingleItem ? (
-                                    <>
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
-                                            <Eye className="h-4 w-4" />
+                        <TableCell className="text-right noprint">
+                           <div className="relative h-8 flex items-center justify-end">
+                                {/* Date/Time shown when not hovering */}
+                                <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">
+                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                </span>
+                                
+                                {/* Actions hidden by default, shown on hover */}
+                                <div className="hidden group-hover:flex items-center gap-1 transition-all duration-200">
+                                    {isSingleItem ? (
+                                        <>
+                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            {role !== 'viewer' && (
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
+                                                    <Undo2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            {role === 'admin' && (
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold">
+                                            <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                            {individualItems.length} Logs
                                         </Button>
-                                        {role !== 'viewer' && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
-                                                <Undo2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                        {role === 'admin' && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </>
-                                ) : (
-                                    <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold">
-                                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                                        {individualItems.length} Logs
-                                    </Button>
-                                )}
+                                    )}
+                                </div>
                            </div>
                         </TableCell>
                     </TableRow>
