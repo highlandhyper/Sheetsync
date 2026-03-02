@@ -16,12 +16,15 @@ interface SpecialEntryContextType {
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
-  activateSession: (id: string) => void;
+  activateSession: (id: string, otp: string) => boolean;
 }
 
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
 
 const ACTIVATED_STORAGE_KEY = 'sheetSync_activatedSessionId';
+
+// Helper to generate a random 4-digit OTP
+const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
@@ -73,8 +76,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       // 1. Handle notification logic
       if (!processedApprovalIdsRef.current.has(myApproved.id)) {
         addNotification({
-          title: 'Special Entry Approved',
-          message: `Authorization granted for ${myApproved.type === 'single' ? '1 entry' : 'the requested duration'}. Silent mode pending activation.`,
+          title: 'Silent Access Authorized',
+          message: `Special entry granted for ${myApproved.staffName}. USE OTP: ${myApproved.otp || 'NONE'}. Click to activate.`,
           type: 'success',
           link: '/inventory/add'
         });
@@ -119,6 +122,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const now = new Date();
     const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
     const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
+    const otp = generateOTP();
 
     const newRequest: SpecialEntryRequest = {
       id: `grant_${Date.now()}`,
@@ -131,6 +135,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       approvedAt: now.toISOString(),
       expiresAt: expiresAt,
       grantedByAdmin: true,
+      otp: otp,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
@@ -139,6 +144,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const now = new Date();
     const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
     const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
+    const otp = generateOTP();
     
     const updated = specialRequests.map(r => {
       if (r.id !== id) return r;
@@ -147,7 +153,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         status: 'approved' as const, 
         approvedAt: now.toISOString(), 
         type: isTimed ? 'timed' : 'single', 
-        expiresAt: expiresAt
+        expiresAt: expiresAt,
+        otp: otp,
       };
     });
     await updateSpecialRequests(updated);
@@ -168,11 +175,16 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [activeSession, specialRequests, updateSpecialRequests]);
 
-  const activateSession = useCallback((id: string) => {
-      localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
-      setActivatedSessionId(id);
-      setAwaitingActivation(null);
-  }, []);
+  const activateSession = useCallback((id: string, enteredOtp: string) => {
+      const request = specialRequests.find(r => r.id === id);
+      if (request && request.otp === enteredOtp) {
+          localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
+          setActivatedSessionId(id);
+          setAwaitingActivation(null);
+          return true;
+      }
+      return false;
+  }, [specialRequests]);
 
   const value = useMemo(() => ({ 
     pendingRequests, 
@@ -192,7 +204,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         {awaitingActivation && (
             <SpecialEntryActivationDialog 
                 session={awaitingActivation} 
-                onActivate={() => activateSession(awaitingActivation.id)} 
+                onActivate={(otp) => activateSession(awaitingActivation.id, otp)} 
             />
         )}
     </SpecialEntryContext.Provider>
