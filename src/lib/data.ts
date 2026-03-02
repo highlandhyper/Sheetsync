@@ -417,7 +417,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       try {
         const expiryDate = startOfDay(parseISO(i.expiryDate));
         if (isValid(expiryDate)) {
-          if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 8))) {
+          // Changed to strictly check within the next 7 days (including today)
+          if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 7))) {
             itemsExpiringSoonCount++;
           }
         }
