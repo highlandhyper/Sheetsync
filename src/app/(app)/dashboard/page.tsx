@@ -398,7 +398,7 @@ export default function DashboardPage() {
           description={totalStockDescription}
           href="/inventory"
           isLoading={isLoading}
-          className="lg:col-span-2 h-48"
+          className="lg:col-span-2"
         >
             {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
         </MetricCard>
