@@ -101,48 +101,20 @@ export function InventoryListClient() {
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
 
-     if (!activeDashboardFilter) {
-      // Apply manual filters only if no dashboard filter is active
-      if (searchTerm) {
-          const lowerSearchTerm = searchTerm.toLowerCase();
-          items = items.filter(item =>
-              item.productName.toLowerCase().includes(lowerSearchTerm) ||
-              item.barcode.toLowerCase().includes(lowerSearchTerm) ||
-              item.staffName.toLowerCase().includes(lowerSearchTerm) ||
-              item.location.toLowerCase().includes(lowerSearchTerm) ||
-              (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm))
-          );
-      }
-
-      if (selectedSupplier) {
-          items = items.filter(item => item.supplierName === selectedSupplier);
-      }
-
-      if (selectedDateRange?.from && selectedDateRange.to) {
-          const fromDate = startOfDay(selectedDateRange.from);
-          const toDate = startOfDay(selectedDateRange.to);
-          items = items.filter(item => {
-              if (item.itemType === 'Expiry' && item.expiryDate) {
-                  try {
-                      const expiry = startOfDay(parseISO(item.expiryDate));
-                      return isValid(expiry) && !isBefore(expiry, fromDate) && !isAfter(expiry, toDate);
-                  } catch { return false; }
-              }
-              return false;
-          });
-      }
-    } else {
-       // Dashboard filters are applied first
+    // 1. Phase 1: Seed from Dashboard Filter if active
+    if (activeDashboardFilter) {
        switch(activeDashboardFilter.type) {
-        case 'damaged': items = items.filter(item => item.itemType === 'Damage'); break;
+        case 'damaged': 
+            items = items.filter(item => item.itemType === 'Damage'); 
+            break;
         case 'expiringSoon': {
             const today = startOfDay(new Date());
-            const sevenDaysFromNow = startOfDay(addDays(today, 7));
+            const threshold = startOfDay(addDays(today, 7));
             items = items.filter(item => {
                 if (item.itemType === 'Expiry' && item.expiryDate) {
                     try {
                         const expiry = startOfDay(parseISO(item.expiryDate));
-                        return isValid(expiry) && isBefore(expiry, sevenDaysFromNow) && !isBefore(expiry, today);
+                        return isValid(expiry) && !isBefore(expiry, today) && isBefore(expiry, threshold);
                     } catch { return false; }
                 }
                 return false;
@@ -161,16 +133,17 @@ export function InventoryListClient() {
                 try {
                     const from = startOfDay(parseISO(activeDashboardFilter.customExpiryFrom));
                     const to = startOfDay(parseISO(activeDashboardFilter.customExpiryTo));
-                    if (!isValid(from) || !isValid(to)) break;
-                    items = items.filter(item => {
-                        if (item.itemType === 'Expiry' && item.expiryDate) {
-                            try {
-                                const expiry = startOfDay(parseISO(item.expiryDate));
-                                return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
-                            } catch { return false; }
-                        }
-                        return false;
-                    });
+                    if (isValid(from) && isValid(to)) {
+                        items = items.filter(item => {
+                            if (item.itemType === 'Expiry' && item.expiryDate) {
+                                try {
+                                    const expiry = startOfDay(parseISO(item.expiryDate));
+                                    return isValid(expiry) && !isBefore(expiry, from) && !isAfter(expiry, to);
+                                } catch { return false; }
+                            }
+                            return false;
+                        });
+                    }
                 } catch { /* ignore parse errors */ }
             }
             break;
@@ -178,6 +151,35 @@ export function InventoryListClient() {
        }
     }
 
+    // 2. Phase 2: Apply Local Overlays (Refining the seed or the whole set)
+    if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        items = items.filter(item =>
+            item.productName.toLowerCase().includes(lowerSearchTerm) ||
+            item.barcode.toLowerCase().includes(lowerSearchTerm) ||
+            item.staffName.toLowerCase().includes(lowerSearchTerm) ||
+            item.location.toLowerCase().includes(lowerSearchTerm) ||
+            (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm))
+        );
+    }
+
+    if (selectedSupplier) {
+        items = items.filter(item => item.supplierName === selectedSupplier);
+    }
+
+    if (selectedDateRange?.from && selectedDateRange.to) {
+        const fromDate = startOfDay(selectedDateRange.from);
+        const toDate = startOfDay(selectedDateRange.to);
+        items = items.filter(item => {
+            if (item.itemType === 'Expiry' && item.expiryDate) {
+                try {
+                    const expiry = startOfDay(parseISO(item.expiryDate));
+                    return isValid(expiry) && !isBefore(expiry, fromDate) && !isAfter(expiry, toDate);
+                } catch { return false; }
+            }
+            return false;
+        });
+    }
 
     if (typeFilter !== 'all') {
       const today = startOfDay(new Date());
@@ -202,7 +204,7 @@ export function InventoryListClient() {
     const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();
 
     for (const item of filteredItemsBySearchAndSupplierAndDate) {
-        if (item.quantity <= 0) continue; // Exclude items with zero or negative quantity from grouping
+        if (item.quantity <= 0) continue; 
         
         if (!groups.has(item.barcode)) {
             groups.set(item.barcode, { individualItems: [], totalQuantity: 0 });
@@ -272,23 +274,18 @@ export function InventoryListClient() {
     const toDateQuery = searchParams.get('to');
 
     let newPotentialFilter: DashboardFilterType = null;
-    let clearUrlParams = false;
 
     if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
       newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
-      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
       newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
     } else if (filterTypeFromQuery === 'damaged') {
       newPotentialFilter = { type: 'damaged' };
-      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'expiringSoon') {
       newPotentialFilter = { type: 'expiringSoon' };
-      clearUrlParams = true;
     } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
       const supplierNames = decodeURIComponent(suppliersFromQuery).split(',');
       newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
-      clearUrlParams = true;
     }
 
     if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
@@ -302,12 +299,7 @@ export function InventoryListClient() {
         }
       }
     } 
-    
-    if (clearUrlParams) {
-        router.replace('/inventory', { shallow: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router]);
+  }, [searchParams, activeDashboardFilter]);
 
   useEffect(() => {
     if (!isMultiSelectEnabled) {
@@ -324,7 +316,7 @@ export function InventoryListClient() {
     setTypeFilter('all');
     if (activeDashboardFilter) {
         setActiveDashboardFilter(null);
-        router.replace('/inventory', { shallow: true });
+        router.replace('/inventory');
     }
   }
 
@@ -336,13 +328,16 @@ export function InventoryListClient() {
     }
     if (activeDashboardFilter) {
         setActiveDashboardFilter(null);
-        router.replace('/inventory', { shallow: true });
+        router.replace('/inventory');
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    if(activeDashboardFilter) setActiveDashboardFilter(null);
+    if(activeDashboardFilter) {
+        setActiveDashboardFilter(null);
+        router.replace('/inventory');
+    }
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
@@ -352,7 +347,7 @@ export function InventoryListClient() {
     }
     if (activeDashboardFilter) {
         setActiveDashboardFilter(null);
-        router.replace('/inventory', { shallow: true });
+        router.replace('/inventory');
     }
   }
 
@@ -360,7 +355,7 @@ export function InventoryListClient() {
     setTypeFilter(value);
     if (activeDashboardFilter) {
       setActiveDashboardFilter(null);
-      router.replace('/inventory', { shallow: true });
+      router.replace('/inventory');
     }
   };
 
@@ -423,23 +418,17 @@ export function InventoryListClient() {
   };
 
   const handleActionSuccess = useCallback(() => {
-    // This is a generic success handler. We'll refresh all data
-    // to ensure consistency after any modification.
     onDataNeeded();
-    // Close all individual action dialogs
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
     setIsDetailsDialogOpen(false);
 
-    // If the group details dialog is open, we need to update its content
-    // by finding the new state of the group and setting it.
     if (isGroupDetailsOpen && selectedGroup) {
         const updatedGroup = groupedItems.find(g => g.mainItem.barcode === selectedGroup.mainItem.barcode);
         if (updatedGroup) {
             setSelectedGroup(updatedGroup);
         } else {
-            // The group might no longer exist (e.g., all items deleted)
             setIsGroupDetailsOpen(false);
             setSelectedGroup(null);
         }
