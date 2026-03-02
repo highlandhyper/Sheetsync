@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -9,15 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Loader2, Key } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { z } from 'zod';
-
-const extendedCredentialsSchema = localCredentialsSchema.extend({
-    quickAuthPin: z.string().length(4, "PIN must be exactly 4 digits").regex(/^\d+$/, "PIN must be numeric")
-});
-
-type ExtendedFormValues = z.infer<typeof extendedCredentialsSchema>;
 
 export function LocalCredentialsForm() {
   const { credentials, updateCredentials, isInitialized } = useLocalSettingsAuth();
@@ -29,12 +21,11 @@ export function LocalCredentialsForm() {
     handleSubmit,
     reset,
     formState: { errors, isDirty },
-  } = useForm<ExtendedFormValues>({
-    resolver: zodResolver(extendedCredentialsSchema),
+  } = useForm<LocalCredentialsFormValues>({
+    resolver: zodResolver(localCredentialsSchema),
     defaultValues: {
       username: '',
       password: '',
-      quickAuthPin: '1234'
     },
   });
 
@@ -43,17 +34,16 @@ export function LocalCredentialsForm() {
       reset({
           username: credentials.username || '',
           password: credentials.password || '',
-          quickAuthPin: credentials.quickAuthPin || '1234'
       });
     }
   }, [isInitialized, credentials, reset]);
 
-  const onSubmit = (data: ExtendedFormValues) => {
+  const onSubmit = (data: LocalCredentialsFormValues) => {
     setIsSubmitting(true);
-    updateCredentials(data.username, data.password, data.quickAuthPin);
+    updateCredentials(data.username, data.password, credentials.quickAuthPin);
     toast({
       title: 'Credentials Updated',
-      description: 'Your local admin credentials and Quick Auth PIN have been saved.',
+      description: 'Your local admin credentials have been saved.',
     });
     reset(data); 
     setIsSubmitting(false);
@@ -95,23 +85,6 @@ export function LocalCredentialsForm() {
           className={errors.password ? 'border-destructive' : ''}
         />
         {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
-      </div>
-
-      <div className="space-y-2 pt-2 border-t mt-4">
-        <Label htmlFor="quickAuthPin" className="flex items-center gap-2">
-            <Key className="h-3.5 w-3.5 text-primary" />
-            Quick Auth PIN (4 Digits)
-        </Label>
-        <Input
-          id="quickAuthPin"
-          type="password"
-          maxLength={4}
-          placeholder="1234"
-          {...register('quickAuthPin')}
-          className={errors.quickAuthPin ? 'border-destructive' : ''}
-        />
-        {errors.quickAuthPin && <p className="text-sm text-destructive mt-1">{errors.quickAuthPin.message}</p>}
-        <p className="text-[10px] text-muted-foreground">Used for proactive Special Entry authorizations on the dashboard.</p>
       </div>
 
       <Button type="submit" disabled={!isDirty || isSubmitting} className="w-full mt-4">
