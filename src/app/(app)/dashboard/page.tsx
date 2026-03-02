@@ -20,14 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 
-function MetricCard({ title, value, iconNode, description, isLoading, href, className }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string }) {
+function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
     <>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col h-full">
         {isLoading ? (
             <Skeleton className="h-8 w-1/2" />
         ) : (
@@ -35,12 +35,13 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
         )}
         {description && !isLoading && <div className="text-xs text-muted-foreground pt-1 flex items-center">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-1" />}
+        {children && <div className="mt-4 flex-grow">{children}</div>}
       </CardContent>
     </>
   );
 
   const cardContainerClassName = cn(
-    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full",
+    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full flex flex-col",
     "bg-gradient-to-tr from-card to-card/90",
     href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/50" : "",
     className
@@ -156,7 +157,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   );
 }
 
-function StockTrendChart({ data }: { data: StockTrendData[] }) {
+function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   const chartConfig = {
     totalStock: {
       label: "Stock Level",
@@ -167,30 +168,23 @@ function StockTrendChart({ data }: { data: StockTrendData[] }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+    <ChartContainer config={chartConfig} className="h-16 w-full opacity-80">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-          <XAxis 
-            dataKey="date" 
-            axisLine={false} 
-            tickLine={false} 
-            tick={{ fontSize: 10 }}
-            dy={10}
-          />
-          <YAxis hide />
-          <ChartTooltip content={<ChartTooltipContent />} />
+          <XAxis dataKey="date" hide />
+          <YAxis hide domain={['dataMin - 10', 'auto']} />
+          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
           <Area 
             type="monotone" 
             dataKey="totalStock" 
             stroke="hsl(var(--primary))" 
-            strokeWidth={3}
+            strokeWidth={2}
             fillOpacity={1} 
             fill="url(#colorStock)" 
           />
@@ -405,7 +399,10 @@ export default function DashboardPage() {
           description={totalStockDescription}
           href="/inventory"
           isLoading={isLoading}
-        />
+          className="lg:col-span-2"
+        >
+            {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
+        </MetricCard>
         <MetricCard 
           title="Total Stock Value" 
           value={metrics.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
@@ -420,22 +417,11 @@ export default function DashboardPage() {
           description="Unique suppliers registered"
           isLoading={isLoading}
         />
-        <MetricCard 
-          title="Items Expiring Soon" 
-          value={metrics.itemsExpiringSoon} 
-          iconNode={<CalendarClock className="h-5 w-5" />}
-          description="Next 7 days"
-          href="/inventory?filterType=expiringSoon"
-          className={cn(
-            !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
-          )}
-          isLoading={isLoading}
-        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         {/* Stock by Supplier Bar Chart */}
-        <Card className="shadow-lg rounded-lg border-0 bg-card/50">
+        <Card className="shadow-lg rounded-lg border-0 bg-card/50 lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
               <TrendingUp className="mr-2 h-5 w-5 text-primary" />
@@ -448,31 +434,30 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Stock Level Trend Area Chart */}
-        <Card className="shadow-lg rounded-lg border-0 bg-card/50">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <AreaChartIcon className="mr-2 h-5 w-5 text-primary" />
-              Inventory Trend
-            </CardTitle>
-            <CardDescription>Total stock volume over the last 7 days.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 pb-6">
-            {isLoading ? <Skeleton className="h-[300px] w-full" /> : metrics.stockTrend && <StockTrendChart data={metrics.stockTrend} /> }
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-         <MetricCard 
-            title="Damaged Items" 
-            value={metrics.damagedItemsCount} 
-            iconNode={<AlertTriangle className="h-5 w-5" />}
-            description="Items marked as damage"
-            href="/inventory?filterType=damaged"
-            className={cn("max-w-xs", !isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : "")} 
-            isLoading={isLoading}
-        />
+        {/* Status Breakdown Grid */}
+        <div className="space-y-6">
+            <MetricCard 
+                title="Items Expiring Soon" 
+                value={metrics.itemsExpiringSoon} 
+                iconNode={<CalendarClock className="h-5 w-5" />}
+                description="Next 7 days"
+                href="/inventory?filterType=expiringSoon"
+                className={cn(
+                    !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 dark:border-yellow-400/50 hover:border-yellow-500 dark:hover:border-yellow-400"
+                )}
+                isLoading={isLoading}
+            />
+            
+            <MetricCard 
+                title="Damaged Items" 
+                value={metrics.damagedItemsCount} 
+                iconNode={<AlertTriangle className="h-5 w-5" />}
+                description="Items marked as damage"
+                href="/inventory?filterType=damaged"
+                className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 hover:border-destructive" : "")} 
+                isLoading={isLoading}
+            />
+        </div>
       </div>
     </div>
   );
