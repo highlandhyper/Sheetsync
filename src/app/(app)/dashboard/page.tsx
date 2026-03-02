@@ -436,7 +436,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
         <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-3 overflow-hidden">
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center justify-between">
