@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText, MapPin } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -749,10 +749,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 text-primary/60" />
-                                <span>{displayLocation}</span>
-                            </div>
+                            {displayLocation}
                         </TableCell>
                         <TableCell className={expiryClassName}>
                             {expiryContent}

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, MapPin, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History } from 'lucide-react';
+import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History } from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 
 interface InventoryItemDetailsDialogProps {
@@ -120,7 +120,6 @@ export function InventoryItemDetailsDialog({
           <Separator />
 
           <div className="flex items-center">
-            <MapPin className="mr-3 h-4 w-4 text-muted-foreground" />
             <span className="font-medium">Location:</span>
             <span className="ml-2 text-muted-foreground">{item.location}</span>
           </div>
