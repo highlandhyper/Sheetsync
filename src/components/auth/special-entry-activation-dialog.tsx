@@ -5,36 +5,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, Clock, BellOff } from 'lucide-react';
+import { ShieldCheck, KeyRound, BellOff } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
 
 interface SpecialEntryActivationDialogProps {
   session: SpecialEntryRequest;
-  onActivate: () => void;
+  onActivate: (otp: string) => boolean;
 }
 
 export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEntryActivationDialogProps) {
-  const { verifyPin } = useLocalSettingsAuth();
   const { toast } = useToast();
-  const [pin, setPin] = useState("");
+  const [otp, setOtp] = useState("");
   const [isError, setIsError] = useState(false);
 
   const handleActivate = () => {
-    if (verifyPin(pin)) {
+    const success = onActivate(otp);
+    if (success) {
       toast({
         title: "Silent Mode Activated",
         description: `Authorization confirmed for ${session.staffName}.`,
       });
-      onActivate();
     } else {
       setIsError(true);
-      setPin("");
+      setOtp("");
       toast({
         variant: "destructive",
         title: "Activation Failed",
-        description: "The 4-digit Admin PIN is incorrect.",
+        description: "The One-Time Password (OTP) is incorrect. Check your notifications.",
       });
     }
   };
@@ -49,22 +47,22 @@ export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEnt
           <DialogTitle className="text-2xl font-black tracking-tight">Activate Silent Mode</DialogTitle>
           <DialogDescription className="text-center">
             Access has been granted for <span className="font-bold text-foreground">{session.staffName}</span> ({session.type === 'single' ? 'Single Entry' : `${session.durationMinutes} Minutes`}). 
-            <br />Please enter the <span className="font-bold">4-Digit Admin PIN</span> to proceed.
+            <br />Please enter the <span className="font-bold text-primary">4-Digit OTP</span> from your notification to proceed.
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-6 space-y-4">
           <div className="space-y-2 text-center">
-            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Administrator Verification</Label>
+            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Verification Code Required</Label>
             <div className="relative max-w-[200px] mx-auto">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     type="password" 
                     maxLength={4} 
-                    value={pin}
+                    value={otp}
                     onChange={(e) => {
                         setIsError(false);
-                        setPin(e.target.value);
+                        setOtp(e.target.value);
                     }}
                     className={isError ? "border-destructive text-center text-2xl tracking-[0.5em] font-mono h-12" : "text-center text-2xl tracking-[0.5em] font-mono h-12"}
                     placeholder="****"
@@ -76,9 +74,9 @@ export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEnt
         </div>
 
         <DialogFooter>
-          <Button onClick={handleActivate} className="w-full h-12 text-lg font-bold" disabled={pin.length < 4}>
+          <Button onClick={handleActivate} className="w-full h-12 text-lg font-bold" disabled={otp.length < 4}>
             <ShieldCheck className="mr-2 h-5 w-5" />
-            Activate Session
+            Verify OTP & Activate
           </Button>
         </DialogFooter>
       </DialogContent>

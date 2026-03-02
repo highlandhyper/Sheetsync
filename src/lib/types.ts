@@ -132,6 +132,7 @@ export interface SpecialEntryRequest {
   approvedAt?: string;
   expiresAt?: string;
   grantedByAdmin?: boolean;
+  otp?: string; // New: Session-specific OTP for activation
 }
 
 export interface OfflineAction {
