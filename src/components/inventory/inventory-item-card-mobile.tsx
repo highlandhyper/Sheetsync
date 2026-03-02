@@ -21,6 +21,7 @@ import {
   PlusCircle,
   DollarSign,
   Wallet,
+  Clock,
 } from 'lucide-react';
 
 interface InventoryItemCardMobileProps {
@@ -75,6 +76,8 @@ export function InventoryItemCardMobile({
   if (context === 'inventory' && individualItemCount && individualItemCount > 1) {
       formattedExpiryDate = "Multiple";
   }
+
+  const formattedTimestamp = item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A';
 
 
   return (
@@ -147,7 +150,7 @@ export function InventoryItemCardMobile({
                 </div>
            </div>
            {context === 'inventory' && (
-             <div className="flex items-start gap-2 col-span-2">
+             <div className="flex items-start gap-2">
                 <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <div>
                 <span className="font-medium">Logged By</span>
@@ -155,6 +158,13 @@ export function InventoryItemCardMobile({
                 </div>
               </div>
            )}
+           <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <div>
+                <span className="font-medium">Logged At</span>
+                <p className="text-muted-foreground text-xs">{formattedTimestamp}</p>
+              </div>
+           </div>
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
