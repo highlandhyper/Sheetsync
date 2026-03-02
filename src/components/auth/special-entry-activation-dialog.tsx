@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,14 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [isError, setIsError] = useState(false);
+
+  // Clear OTP whenever the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setOtp("");
+      setIsError(false);
+    }
+  }, [isOpen]);
 
   const handleActivate = () => {
     const success = onActivate(otp);
@@ -60,12 +68,15 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
             <div className="relative max-w-[200px] mx-auto">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                    type="password" 
+                    type="text" 
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={4} 
                     value={otp}
                     onChange={(e) => {
                         setIsError(false);
-                        setOtp(e.target.value);
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setOtp(val);
                     }}
                     className={isError ? "border-destructive text-center text-2xl tracking-[0.5em] font-mono h-12" : "text-center text-2xl tracking-[0.5em] font-mono h-12"}
                     placeholder="****"
