@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { InventoryItem } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
-import { Edit, Undo2, Trash2, MapPin, CalendarDays, User as UserIcon, Tag, AlertTriangle } from 'lucide-react';
+import { Edit, Undo2, Trash2, CalendarDays, User as UserIcon, Tag, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -70,7 +70,6 @@ export function InventoryItemGroupDetailsDialog({
           <Separator />
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mt-3">
              <div className="flex items-start gap-2">
-              <MapPin className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
               <div><span className="font-medium">Location</span><p className="text-muted-foreground">{item.location}</p></div>
             </div>
             <div className="flex items-start gap-2">

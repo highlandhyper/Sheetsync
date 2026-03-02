@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { InventoryItem, Product } from '@/lib/types';
@@ -12,7 +11,6 @@ import {
   Building,
   CalendarDays,
   Hash,
-  MapPin,
   Tag,
   AlertTriangle,
   User,
@@ -126,7 +124,6 @@ export function InventoryItemCardMobile({
              </>
           )}
           <div className="flex items-start gap-2">
-            <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div><span className="font-medium">Location</span><p className="text-muted-foreground">{item.location}</p></div>
           </div>
           <div className="flex items-start gap-2">
