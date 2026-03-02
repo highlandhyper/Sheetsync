@@ -24,7 +24,8 @@ import {
     Heart,
     ShieldCheck,
     BellOff,
-    Clock
+    Clock,
+    KeyRound
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -133,7 +134,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     addInventoryItem,
     refreshData,
   } = useDataCache();
-  const { activeSession, consumeSpecialEntry } = useSpecialEntry(); 
+  const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -370,17 +371,30 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 Follow the steps to log a new item into the inventory system.
                 </CardDescription>
             </div>
-            {activeSession && (
-                <div className="flex items-center gap-2">
-                    {activeSession.type === 'timed' && activeSession.expiresAt && (
-                        <SessionTimer expiresAt={activeSession.expiresAt} />
-                    )}
-                    <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
-                        <BellOff className="h-3.5 w-3.5" />
-                        Authorized Silent Mode
-                    </Badge>
-                </div>
-            )}
+            <div className="flex flex-col sm:items-end gap-2">
+                {activeSession && (
+                    <div className="flex items-center gap-2">
+                        {activeSession.type === 'timed' && activeSession.expiresAt && (
+                            <SessionTimer expiresAt={activeSession.expiresAt} />
+                        )}
+                        <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
+                            <BellOff className="h-3.5 w-3.5" />
+                            Authorized Silent Mode
+                        </Badge>
+                    </div>
+                )}
+                {pendingActivationSession && !activeSession && (
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="bg-yellow-500/10 border-yellow-500/20 text-yellow-600 hover:bg-yellow-500/20 animate-pulse font-bold"
+                        onClick={() => setActivationDialogOpen(true)}
+                    >
+                        <KeyRound className="mr-2 h-3.5 w-3.5" />
+                        Activate Silent Mode
+                    </Button>
+                )}
+            </div>
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">

@@ -12,9 +12,11 @@ import type { SpecialEntryRequest } from '@/lib/types';
 interface SpecialEntryActivationDialogProps {
   session: SpecialEntryRequest;
   onActivate: (otp: string) => boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEntryActivationDialogProps) {
+export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOpenChange }: SpecialEntryActivationDialogProps) {
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [isError, setIsError] = useState(false);
@@ -26,6 +28,7 @@ export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEnt
         title: "Silent Mode Activated",
         description: `Authorization confirmed for ${session.staffName}.`,
       });
+      onOpenChange(false);
     } else {
       setIsError(true);
       setOtp("");
@@ -38,8 +41,8 @@ export function SpecialEntryActivationDialog({ session, onActivate }: SpecialEnt
   };
 
   return (
-    <Dialog open={true}>
-      <DialogContent className="sm:max-w-md border-primary/20 shadow-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md border-primary/20 shadow-2xl">
         <DialogHeader className="text-center items-center">
           <div className="bg-primary/10 p-4 rounded-full mb-2">
             <BellOff className="h-8 w-8 text-primary" />
