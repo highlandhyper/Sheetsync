@@ -2,16 +2,15 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { fetchDashboardMetricsAction } from '@/app/actions';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, AreaChart, Area } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -23,11 +22,16 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
     <>
-      {children}
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-xl">
+        {children}
+      </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
@@ -307,30 +311,33 @@ function SpecialEntryApprovalPanel() {
     );
 }
 
-function QuickAuthorizeCard() {
-    const { uniqueStaffNames } = useDataCache();
-    const { grantProactiveEntry } = useSpecialEntry();
+function ProactiveGrantDialog({ 
+    isOpen, 
+    onOpenChange, 
+    staffName, 
+    onGrant 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    staffName: string;
+    onGrant: (duration?: number) => void;
+}) {
     const { credentials } = useLocalSettingsAuth();
     const { toast } = useToast();
-    const [selectedStaff, setSelectedStaff] = useState<string>("");
-    const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
     const [pin, setPin] = useState("");
+    const [selectedDuration, setSelectedDuration] = useState<string>("single");
+    const [customMins, setCustomMins] = useState("15");
 
     const handleGrant = () => {
-        if (!selectedStaff) return;
-        setIsPinDialogOpen(true);
-    };
-
-    const confirmWithPin = () => {
         if (pin === (credentials.quickAuthPin || "1234")) {
-            grantProactiveEntry(selectedStaff);
-            toast({
-                title: "Authorization Granted",
-                description: `Silent mode active for ${selectedStaff} (1 entry).`,
-            });
-            setSelectedStaff("");
+            let duration: number | undefined;
+            if (selectedDuration === "10") duration = 10;
+            else if (selectedDuration === "30") duration = 30;
+            else if (selectedDuration === "custom") duration = parseInt(customMins);
+            
+            onGrant(duration);
             setPin("");
-            setIsPinDialogOpen(false);
+            onOpenChange(false);
         } else {
             toast({
                 variant: "destructive",
@@ -342,11 +349,123 @@ function QuickAuthorizeCard() {
     };
 
     return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <ShieldQuestion className="h-5 w-5 text-primary" />
+                        Authorize Silent Mode
+                    </DialogTitle>
+                    <DialogDescription>
+                        Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground">Access Type</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                                variant={selectedDuration === 'single' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('single')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Check className="h-4 w-4" />
+                                <span className="text-xs">Single Entry</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === '10' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('10')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Clock className="h-4 w-4" />
+                                <span className="text-xs">10 Minutes</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === '30' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('30')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Clock className="h-4 w-4" />
+                                <span className="text-xs">30 Minutes</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('custom')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="text-xs">Custom Time</span>
+                            </Button>
+                        </div>
+                        {selectedDuration === 'custom' && (
+                            <div className="pt-2">
+                                <Label htmlFor="custom-mins" className="text-[10px] uppercase font-bold text-muted-foreground">Minutes</Label>
+                                <Input 
+                                    id="custom-mins" 
+                                    type="number" 
+                                    value={customMins} 
+                                    onChange={(e) => setCustomMins(e.target.value)}
+                                    className="mt-1"
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                        <div className="text-center space-y-1">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Enter 4-Digit Admin PIN</Label>
+                        </div>
+                        <Input 
+                            type="password" 
+                            maxLength={4} 
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            className="text-center text-3xl tracking-[1em] font-mono h-14"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleGrant()}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleGrant} disabled={pin.length < 4}>
+                        Grant Access
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function QuickAuthorizeCard() {
+    const { uniqueStaffNames } = useDataCache();
+    const { grantProactiveEntry } = useSpecialEntry();
+    const { toast } = useToast();
+    const [selectedStaff, setSelectedStaff] = useState<string>("");
+    const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
+
+    const handleOpenGrant = () => {
+        if (!selectedStaff) return;
+        setIsGrantDialogOpen(true);
+    };
+
+    const confirmGrant = (duration?: number) => {
+        grantProactiveEntry(selectedStaff, duration);
+        toast({
+            title: "Authorization Granted",
+            description: `Silent mode active for ${selectedStaff} (${duration ? duration + ' mins' : '1 entry'}).`,
+        });
+        setSelectedStaff("");
+    };
+
+    return (
         <>
         <Card className="shadow-lg rounded-xl bg-gradient-to-br from-card to-card/95 border-border/50 h-full flex flex-col">
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Quick Authorize</CardTitle>
-                <CardDescription className="text-[10px]">Grant silent entry proactively</CardDescription>
+                <CardDescription className="text-[10px]">Proactive silent entry grant</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
                 <Select value={selectedStaff} onValueChange={setSelectedStaff}>
@@ -362,37 +481,20 @@ function QuickAuthorizeCard() {
                 <Button 
                     className="w-full h-9 text-xs font-bold" 
                     disabled={!selectedStaff}
-                    onClick={handleGrant}
+                    onClick={handleOpenGrant}
                 >
                     <UserPlus className="mr-2 h-3.5 w-3.5" />
-                    Give Silent Mode
+                    Authorize Staff
                 </Button>
             </CardContent>
         </Card>
 
-        <Popover open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
-            <PopoverTrigger asChild><div className="hidden" /></PopoverTrigger>
-            <PopoverContent className="w-64 p-4" align="center">
-                <div className="space-y-4">
-                    <div className="text-center space-y-1">
-                        <h4 className="font-bold text-sm">Enter Admin PIN</h4>
-                        <p className="text-[10px] text-muted-foreground">Verify 4-digit code to grant access.</p>
-                    </div>
-                    <Input 
-                        type="password" 
-                        maxLength={4} 
-                        value={pin}
-                        onChange={(e) => setPin(e.target.value)}
-                        className="text-center text-2xl tracking-[1em] font-mono h-12"
-                        autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && confirmWithPin()}
-                    />
-                    <Button className="w-full font-bold" onClick={confirmWithPin} disabled={pin.length < 4}>
-                        Confirm Access
-                    </Button>
-                </div>
-            </PopoverContent>
-        </Popover>
+        <ProactiveGrantDialog 
+            isOpen={isGrantDialogOpen}
+            onOpenChange={setIsGrantDialogOpen}
+            staffName={selectedStaff}
+            onGrant={confirmGrant}
+        />
         </>
     );
 }
