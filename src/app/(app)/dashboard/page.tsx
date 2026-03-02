@@ -1,4 +1,3 @@
-
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
@@ -548,7 +547,7 @@ export default function DashboardPage() {
                     <Badge variant="outline" className="bg-background">Live Data</Badge>
                 </div>
             </div>
-          </Header>
+          </CardHeader>
           <CardContent className="p-0 sm:p-6">
             <div className="h-[400px] w-full mt-4">
                 {isLoading ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
