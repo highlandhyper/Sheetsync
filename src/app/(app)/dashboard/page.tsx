@@ -378,8 +378,8 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-8">
-      <h1 className="text-3xl sm:text-4xl font-black mb-2 text-primary flex items-center tracking-tighter uppercase">
+    <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-10">
+      <h1 className="text-3xl sm:text-4xl font-black mb-4 text-primary flex items-center tracking-tighter uppercase">
         <Activity className="mr-3 h-8 w-8 sm:h-10 sm:w-10" />
         Command Center
       </h1>
