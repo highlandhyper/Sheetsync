@@ -23,25 +23,25 @@ import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-d
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
     <>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      {children}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full">
+      <CardContent className="flex flex-col h-full relative z-10">
         {isLoading ? (
             <Skeleton className="h-8 w-1/2" />
         ) : (
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-3xl font-bold">{value}</div>
         )}
-        {description && !isLoading && <div className="text-xs text-muted-foreground pt-1 flex items-center">{description}</div>}
+        {description && !isLoading && <div className="text-xs text-muted-foreground pt-1 flex items-center font-medium">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-1" />}
-        {children && <div className="mt-4 flex-grow">{children}</div>}
       </CardContent>
     </>
   );
 
   const cardContainerClassName = cn(
-    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full flex flex-col",
+    "shadow-lg transition-all duration-300 rounded-lg hover:shadow-xl h-full flex flex-col relative overflow-hidden",
     "bg-gradient-to-tr from-card to-card/90",
     href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/50" : "",
     className
@@ -168,18 +168,17 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="h-16 w-full opacity-80">
+    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-30 pointer-events-none">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.6}/>
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <XAxis dataKey="date" hide />
           <YAxis hide domain={['dataMin - 10', 'auto']} />
-          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
           <Area 
             type="monotone" 
             dataKey="totalStock" 
@@ -372,7 +371,7 @@ export default function DashboardPage() {
       totalStockDescription = (
         <div className="flex items-center flex-wrap">
           <span>Sum of all items in stock</span>
-          <span className={cn("ml-2 font-semibold flex items-center", colorClass)}>
+          <span className={cn("ml-2 font-bold flex items-center", colorClass)}>
             <ArrowIcon className="h-4 w-4 mr-0.5" />
             {trendText}
           </span>
@@ -399,7 +398,7 @@ export default function DashboardPage() {
           description={totalStockDescription}
           href="/inventory"
           isLoading={isLoading}
-          className="lg:col-span-2"
+          className="lg:col-span-2 h-48"
         >
             {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
         </MetricCard>
