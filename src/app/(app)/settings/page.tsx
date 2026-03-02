@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
-import { Separator } from '@/components/ui/separator';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';

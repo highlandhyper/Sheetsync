@@ -21,7 +21,7 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
   const [otp, setOtp] = useState("");
   const [isError, setIsError] = useState(false);
 
-  // Clear OTP whenever the dialog opens
+  // Clear OTP whenever the dialog opens to prevent browser autofill issues
   useEffect(() => {
     if (isOpen) {
       setOtp("");
@@ -70,7 +70,7 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
                 <Input 
                     type="text" 
                     inputMode="numeric"
-                    autoComplete="one-time-code"
+                    autoComplete="off"
                     maxLength={4} 
                     value={otp}
                     onChange={(e) => {
