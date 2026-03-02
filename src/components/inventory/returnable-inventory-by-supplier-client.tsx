@@ -311,7 +311,7 @@ export function ReturnableInventoryBySupplierClient() {
               <TableHead>Expiry</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+              <TableHead className="w-auto sm:w-36 text-center noprint">Last Logged</TableHead>
             </TableRow>
           </TableHeader><TableBody>
             {Array.from({ length: 3 }).map((_, index) => (
@@ -524,7 +524,7 @@ export function ReturnableInventoryBySupplierClient() {
                   <TableHead>Expiry</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="w-auto sm:w-36 text-center noprint">Actions</TableHead>
+                  <TableHead className="w-auto sm:w-36 text-center noprint">Last Logged</TableHead>
                   </TableRow>
               </TableHeader>
               <TableBody>

@@ -673,7 +673,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
-                    <TableHead className="w-[180px] text-right noprint">Actions</TableHead>
+                    <TableHead className="w-[180px] text-right noprint">Last Logged</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
