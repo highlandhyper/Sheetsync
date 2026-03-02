@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText, ChevronDown } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -29,7 +29,13 @@ import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { InventoryItemGroupDetailsDialog, type GroupedInventoryItem } from './inventory-item-group-details-dialog';
 import { InventoryItemDetailsDialog } from './inventory-item-details-dialog';
-import { generateInventoryPDF } from '@/lib/pdf-reports';
+import { generateInventoryPDF, type PDFOrientation } from '@/lib/pdf-reports';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -452,7 +458,7 @@ export function InventoryListClient() {
     window.print();
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = (orientation: PDFOrientation) => {
     const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
     const dataMapper = (group: GroupedInventoryItem, idx: number) => {
         const product = productsByBarcode.get(group.mainItem.barcode);
@@ -479,7 +485,7 @@ export function InventoryListClient() {
         totalVal += (cost * g.totalQuantity);
     });
 
-    generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal);
+    generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal, orientation);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -612,9 +618,21 @@ export function InventoryListClient() {
                     </Button>
                   )}
                    
-                   <Button variant="outline" className="flex-1 sm:flex-none" onClick={handleExportPDF} disabled={groupedItems.length === 0}>
-                      <FileText className="mr-2 h-4 w-4" /> Export PDF
-                   </Button>
+                   <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
+                          <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
+                          Portrait Orientation
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
+                          Landscape Orientation
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                   </DropdownMenu>
                    
                    <div className="print-button-container flex-1 sm:flex-none">
                     <Button onClick={handlePrint} variant="outline" className="w-full">

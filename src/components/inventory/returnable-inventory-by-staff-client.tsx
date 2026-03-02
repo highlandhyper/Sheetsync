@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem, Product } from '@/lib/types';
-import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet, FileText } from 'lucide-react';
+import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet, FileText, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -24,7 +24,13 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { generateInventoryPDF } from '@/lib/pdf-reports';
+import { generateInventoryPDF, type PDFOrientation } from '@/lib/pdf-reports';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
@@ -203,7 +209,7 @@ export function ReturnableInventoryByStaffClient() {
     window.print();
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = (orientation: PDFOrientation) => {
     if (!selectedStaffName || itemsToRender.length === 0) return;
     
     const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
@@ -228,7 +234,8 @@ export function ReturnableInventoryByStaffClient() {
         itemsToRender, 
         cols, 
         (item) => dataMapper(item, itemsToRender.indexOf(item)), 
-        totalValueForSelectedStaff
+        totalValueForSelectedStaff,
+        orientation
     );
   };
 
@@ -363,9 +370,21 @@ export function ReturnableInventoryByStaffClient() {
                         </div>
                     )}
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handleExportPDF} disabled={itemsToRender.length === 0}>
-                          <FileText className="mr-2 h-4 w-4" /> Export PDF
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                              <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
+                              Portrait Orientation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
+                              Landscape Orientation
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <div className="print-button-container flex-1 sm:flex-none">
                             <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
