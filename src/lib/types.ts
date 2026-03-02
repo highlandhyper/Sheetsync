@@ -131,6 +131,7 @@ export interface SpecialEntryRequest {
   requestedAt: string;
   approvedAt?: string;
   expiresAt?: string;
+  grantedByAdmin?: boolean;
 }
 
 export interface OfflineAction {
