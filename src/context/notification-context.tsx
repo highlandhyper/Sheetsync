@@ -21,23 +21,37 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  const cleanupOldNotifications = useCallback((list: AppNotification[]) => {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    return list.filter(n => n.timestamp >= twentyFourHoursAgo);
+  }, []);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setNotifications(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setNotifications(cleanupOldNotifications(parsed));
       }
     } catch (e) {
       console.warn('NotificationContext: Could not load notifications from storage.');
     }
     setIsInitialized(true);
-  }, []);
+  }, [cleanupOldNotifications]);
 
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
     }
   }, [notifications, isInitialized]);
+
+  // Periodic cleanup every hour
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNotifications(prev => cleanupOldNotifications(prev));
+    }, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [cleanupOldNotifications]);
 
   const addNotification = useCallback((payload: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => {
     const newNotification: AppNotification = {
