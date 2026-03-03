@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
@@ -16,7 +17,6 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { useDataCache } from '@/context/data-cache-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -292,7 +292,7 @@ function ProactiveGrantDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleGrant}>
-                        Generate OTP & Authorize
+                        Next: Verify Admin
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -370,7 +370,7 @@ function QuickAuthorizeCard() {
             isOpen={isAuthDialogOpen}
             onOpenChange={setIsAuthDialogOpen}
             onAuthorizationSuccess={handleAuthorizationSuccess}
-            actionDescription={`Granting special silent mode access to ${selectedStaff}.`}
+            actionDescription={`Granting special silent mode access to ${selectedStaff}. Requires admin credentials.`}
         />
         </>
     );
@@ -380,21 +380,27 @@ function PendingSpecialEntryRequests() {
     const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
     const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
     const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [duration, setDuration] = useState<string>("single");
 
     if (pendingRequests.length === 0) {
         return null;
     }
 
-    const handleApprove = (req: SpecialEntryRequest) => {
+    const handleApproveClick = (req: SpecialEntryRequest) => {
         setSelectedRequest(req);
         setIsApproveDialogOpen(true);
     };
 
-    const confirmApproval = () => {
-        if (!selectedRequest) return;
-        approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
+    const handleApproveSubmit = () => {
         setIsApproveDialogOpen(false);
+        setIsAuthDialogOpen(true);
+    };
+
+    const handleAuthorizationSuccess = () => {
+        if (!selectedRequest) return;
+        setIsAuthDialogOpen(false);
+        approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
         setSelectedRequest(null);
     };
 
@@ -437,7 +443,7 @@ function PendingSpecialEntryRequests() {
                             <Button variant="outline" size="sm" className="flex-1 h-8 text-xs text-destructive hover:bg-destructive/10" onClick={() => rejectRequest(req.id)}>
                                 <X className="mr-1 h-3 w-3" /> Reject
                             </Button>
-                            <Button size="sm" className="flex-1 h-8 text-xs font-bold" onClick={() => handleApprove(req)}>
+                            <Button size="sm" className="flex-1 h-8 text-xs font-bold" onClick={() => handleApproveClick(req)}>
                                 <Check className="mr-1 h-3 w-3" /> Authorize
                             </Button>
                         </div>
@@ -471,13 +477,19 @@ function PendingSpecialEntryRequests() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={confirmApproval}>
-                            <ShieldCheck className="mr-2 h-4 w-4" />
-                            Send Authorization OTP
+                        <Button onClick={handleApproveSubmit}>
+                            Next: Admin Credentials
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AuthorizeActionDialog 
+                isOpen={isAuthDialogOpen}
+                onOpenChange={setIsAuthDialogOpen}
+                onAuthorizationSuccess={handleAuthorizationSuccess}
+                actionDescription={`Approving silent mode request for ${selectedRequest?.staffName}. Credentials required.`}
+            />
         </div>
     );
 }
