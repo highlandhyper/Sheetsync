@@ -1,8 +1,8 @@
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -23,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { format, parseISO } from 'date-fns';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
   const cardInnerContent = (
@@ -304,6 +306,8 @@ function QuickAuthorizeCard() {
     const { toast } = useToast();
     const [selectedStaff, setSelectedStaff] = useState<string>("");
     const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
+    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+    const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
 
     const handleOpenGrant = () => {
         if (!selectedStaff) return;
@@ -311,12 +315,19 @@ function QuickAuthorizeCard() {
     };
 
     const confirmGrant = (duration?: number) => {
-        grantProactiveEntry(selectedStaff, duration);
+        setGrantParams({ duration });
+        setIsAuthDialogOpen(true);
+    };
+
+    const handleAuthorizationSuccess = () => {
+        setIsAuthDialogOpen(false);
+        grantProactiveEntry(selectedStaff, grantParams?.duration);
         toast({
             title: "Access Granted",
             description: `Authorization sent to ${selectedStaff}. A dynamic OTP has been generated.`,
         });
         setSelectedStaff("");
+        setGrantParams(null);
     };
 
     return (
@@ -354,7 +365,120 @@ function QuickAuthorizeCard() {
             staffName={selectedStaff}
             onGrant={confirmGrant}
         />
+
+        <AuthorizeActionDialog 
+            isOpen={isAuthDialogOpen}
+            onOpenChange={setIsAuthDialogOpen}
+            onAuthorizationSuccess={handleAuthorizationSuccess}
+            actionDescription={`Granting special silent mode access to ${selectedStaff}.`}
+        />
         </>
+    );
+}
+
+function PendingSpecialEntryRequests() {
+    const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
+    const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
+    const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+    const [duration, setDuration] = useState<string>("single");
+
+    if (pendingRequests.length === 0) {
+        return null;
+    }
+
+    const handleApprove = (req: SpecialEntryRequest) => {
+        setSelectedRequest(req);
+        setIsApproveDialogOpen(true);
+    };
+
+    const confirmApproval = () => {
+        if (!selectedRequest) return;
+        approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
+        setIsApproveDialogOpen(false);
+        setSelectedRequest(null);
+    };
+
+    return (
+        <div className="space-y-4 pt-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-primary flex items-center gap-2">
+                    <ShieldQuestion className="h-6 w-6" />
+                    Pending Authorizations
+                    <Badge className="ml-2 bg-destructive animate-pulse">{pendingRequests.length}</Badge>
+                </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pendingRequests.map(req => (
+                    <Card key={req.id} className="border-primary/20 shadow-lg overflow-hidden flex flex-col">
+                        <CardHeader className="bg-primary/5 pb-3">
+                            <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-lg">{req.staffName}</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3" />
+                                        Request: {req.type === 'timed' ? 'Timed Access' : 'Single Entry'}
+                                    </CardDescription>
+                                </div>
+                                <span className="text-[10px] font-mono text-muted-foreground bg-background px-2 py-0.5 rounded border">
+                                    {format(parseISO(req.requestedAt), 'HH:mm')}
+                                </span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-4 flex-grow">
+                            <p className="text-sm text-muted-foreground italic mb-4">
+                                {req.reason || '"No reason provided"'}
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold">
+                                <Users className="h-3 w-3" />
+                                <span>Via: {req.userEmail}</span>
+                            </div>
+                        </CardContent>
+                        <div className="p-3 bg-muted/20 border-t flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs text-destructive hover:bg-destructive/10" onClick={() => rejectRequest(req.id)}>
+                                <X className="mr-1 h-3 w-3" /> Reject
+                            </Button>
+                            <Button size="sm" className="flex-1 h-8 text-xs font-bold" onClick={() => handleApprove(req)}>
+                                <Check className="mr-1 h-3 w-3" /> Authorize
+                            </Button>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+
+            <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Authorize Silent Entry</DialogTitle>
+                        <DialogDescription>
+                            Granting silent mode for <span className="font-bold text-foreground">{selectedRequest?.staffName}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Access Duration</Label>
+                            <Select value={duration} onValueChange={setDuration}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="single">Single Log Only</SelectItem>
+                                    <SelectItem value="10">10 Minutes Window</SelectItem>
+                                    <SelectItem value="30">30 Minutes Window</SelectItem>
+                                    <SelectItem value="60">1 Hour Window</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={confirmApproval}>
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Send Authorization OTP
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }
 
@@ -490,6 +614,8 @@ export default function DashboardPage() {
 
         <QuickAuthorizeCard />
       </div>
+
+      <PendingSpecialEntryRequests />
 
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
         <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-3 overflow-hidden">
