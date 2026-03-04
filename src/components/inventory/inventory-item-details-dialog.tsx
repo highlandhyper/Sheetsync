@@ -239,6 +239,12 @@ export function InventoryItemDetailsDialog({
     {/* Image Preview Dialog */}
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+            <DialogHeader className="sr-only">
+                <DialogTitle>Product Image Preview</DialogTitle>
+                <DialogDescription>
+                    Global registry product image for barcode {item.barcode}
+                </DialogDescription>
+            </DialogHeader>
             <div className="relative w-full aspect-square flex items-center justify-center p-8">
                 {externalData?.image ? (
                     <Image 
