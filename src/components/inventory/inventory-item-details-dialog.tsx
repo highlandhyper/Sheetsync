@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2 } from 'lucide-react';
+import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon } from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 import { fetchProductExternalDataAction } from '@/app/actions';
 import { Skeleton } from '../ui/skeleton';
@@ -38,19 +38,32 @@ export function InventoryItemDetailsDialog({
   const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
+  const [showImage, setShowImage] = useState(false);
   
   useEffect(() => {
-    if (isOpen && item?.barcode) {
+    if (!isOpen) {
+        setShowImage(false);
         setExternalData(null);
-        setIsFetchingImage(true);
-        fetchProductExternalDataAction(item.barcode).then(res => {
-            if (res.success && res.data) {
-                setExternalData(res.data);
-            }
-            setIsFetchingImage(false);
-        }).catch(() => setIsFetchingImage(false));
+        setIsFetchingImage(false);
     }
-  }, [isOpen, item?.barcode]);
+  }, [isOpen]);
+
+  const handleFetchImage = async () => {
+    if (!item?.barcode) return;
+    
+    setShowImage(true);
+    setIsFetchingImage(true);
+    try {
+        const res = await fetchProductExternalDataAction(item.barcode);
+        if (res.success && res.data) {
+            setExternalData(res.data);
+        }
+    } catch (err) {
+        console.error("Failed to fetch image:", err);
+    } finally {
+        setIsFetchingImage(false);
+    }
+  };
 
   if (!item) return null;
 
@@ -91,45 +104,25 @@ export function InventoryItemDetailsDialog({
     <Dialog open={isOpen} onOpenChange={(open) => {
         if (!open) {
             setIsAuditLogOpen(false);
-            setExternalData(null);
         }
         onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-md overflow-hidden p-0">
-        {/* Header Section with Image */}
-        <div className="relative">
-            {isFetchingImage ? (
-                <div className="w-full h-48 flex items-center justify-center bg-muted">
-                    <Skeleton className="w-full h-full" />
-                    <Loader2 className="absolute h-8 w-8 animate-spin text-primary/50" />
-                </div>
-            ) : externalData?.image ? (
-                <div className="w-full h-48 bg-white flex items-center justify-center relative border-b overflow-hidden">
-                    <Image 
-                        src={externalData.image} 
-                        alt={item.productName}
-                        fill
-                        className="object-contain p-4"
-                        unoptimized // External images might not be on optimized domains
-                    />
-                </div>
-            ) : null}
-            
-            <div className={externalData?.image ? "p-6 pt-4" : "p-6"}>
-                <DialogHeader className="mb-2">
-                <DialogTitle className="flex items-center text-xl">
-                    <Package className="mr-2 h-5 w-5 text-primary" />
-                    {item.productName}
-                </DialogTitle>
-                <DialogDescription>
-                    {externalData?.brand ? (
-                        <span className="font-bold text-primary mr-2 uppercase text-xs tracking-widest">{externalData.brand}</span>
-                    ) : null}
-                    Internal log details for this inventory asset.
-                </DialogDescription>
-                </DialogHeader>
+        <div className="p-6">
+            <DialogHeader className="mb-2">
+            <DialogTitle className="flex items-center text-xl">
+                <Package className="mr-2 h-5 w-5 text-primary" />
+                {item.productName}
+            </DialogTitle>
+            <DialogDescription>
+                {externalData?.brand ? (
+                    <span className="font-bold text-primary mr-2 uppercase text-xs tracking-widest">{externalData.brand}</span>
+                ) : null}
+                Internal log details for this inventory asset.
+            </DialogDescription>
+            </DialogHeader>
 
-                <div className="space-y-3 text-sm mt-4">
+            <div className="space-y-3 text-sm mt-4">
                 <div className="flex items-center">
                     <BarcodeIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Barcode:</span>
@@ -189,26 +182,66 @@ export function InventoryItemDetailsDialog({
                     </span>
                 </div>
 
+                <Separator />
+
+                {/* Conditional Image Section */}
+                <div className="pt-2">
+                    {!showImage ? (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full text-xs font-bold" 
+                            onClick={handleFetchImage}
+                        >
+                            <ImageIcon className="mr-2 h-3.5 w-3.5" />
+                            View Product Image
+                        </Button>
+                    ) : (
+                        <div className="relative rounded-lg border bg-white overflow-hidden flex flex-col items-center justify-center min-h-[180px]">
+                            {isFetchingImage ? (
+                                <div className="flex flex-col items-center gap-2">
+                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Connecting to GTINHub...</span>
+                                </div>
+                            ) : externalData?.image ? (
+                                <div className="relative w-full h-40">
+                                    <Image 
+                                        src={externalData.image} 
+                                        alt={item.productName}
+                                        fill
+                                        className="object-contain p-4"
+                                        unoptimized
+                                    />
+                                </div>
+                            ) : (
+                                <div className="p-8 text-center">
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                    <p className="text-xs text-muted-foreground">No global image found for barcode {item.barcode}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                <DialogFooter className="mt-8 flex justify-between items-center gap-2">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsAuditLogOpen(true)}>
-                        <History className="mr-2 h-4 w-4" /> History
-                    </Button>
-                    <div className="flex items-center gap-2">
-                    {onStartEdit && (
-                        <Button type="button" variant="outline" size="sm" onClick={handleEditClick}>
-                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                    )}
-                    <DialogClose asChild>
-                        <Button type="button" variant="secondary" size="sm">
-                        Close
-                        </Button>
-                    </DialogClose>
-                    </div>
-                </DialogFooter>
             </div>
+
+            <DialogFooter className="mt-8 flex justify-between items-center gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsAuditLogOpen(true)}>
+                    <History className="mr-2 h-4 w-4" /> History
+                </Button>
+                <div className="flex items-center gap-2">
+                {onStartEdit && (
+                    <Button type="button" variant="outline" size="sm" onClick={handleEditClick}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </Button>
+                )}
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" size="sm">
+                    Close
+                    </Button>
+                </DialogClose>
+                </div>
+            </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
