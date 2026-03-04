@@ -271,22 +271,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return { success: false, message: "Barcode is empty." };
 
-    const response = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json'
-        },
-        next: { revalidate: 86400 } // Cache for 24h
-    });
-
-    if (!response.ok) {
-        return { success: false, message: `Lookup failed with status: ${response.status}` };
-    }
-
-    const rawData = await response.json();
-    console.log(`GTINHub Lookup for ${cleanBarcode}:`, JSON.stringify(rawData).substring(0, 500));
-    
-    // Deep search for image and brand in common API structures
+    // Deep search helper for image URLs
     const findField = (obj: any, keys: string[]): string | undefined => {
         if (!obj) return undefined;
         for (const key of keys) {
@@ -302,6 +287,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         return undefined;
     };
 
+    // Deep search helper for brands/names
     const findBrand = (obj: any, keys: string[]): string | undefined => {
         if (!obj) return undefined;
         for (const key of keys) {
@@ -310,30 +296,74 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         return undefined;
     };
 
-    // GTINHub often nests data under 'product' or 'data' or returns it flat
-    const contexts = [rawData.product, rawData.data, rawData].filter(Boolean);
-    
-    let image: string | undefined;
-    let brand: string | undefined;
-    let name: string | undefined;
+    let result: { image?: string; brand?: string; name?: string } | null = null;
 
-    for (const ctx of contexts) {
-        if (!image) image = findField(ctx, ['image', 'imageUrl', 'image_url', 'item_image', 'product_image', 'images', 'thumbnail']);
-        if (!brand) brand = findBrand(ctx, ['brand', 'brand_name', 'manufacturer', 'vendor', 'make']);
-        if (!name) name = findBrand(ctx, ['name', 'product_name', 'title', 'description']);
+    // --- SERVICE 1: GTINHub ---
+    try {
+        const gtinResponse = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json'
+            },
+            next: { revalidate: 86400 } // Cache for 24h
+        });
+
+        if (gtinResponse.ok) {
+            const rawData = await gtinResponse.json();
+            const contexts = [rawData.product, rawData.data, rawData].filter(Boolean);
+            
+            let image, brand, name;
+            for (const ctx of contexts) {
+                if (!image) image = findField(ctx, ['image', 'imageUrl', 'image_url', 'item_image', 'product_image', 'images', 'thumbnail']);
+                if (!brand) brand = findBrand(ctx, ['brand', 'brand_name', 'manufacturer', 'vendor', 'make']);
+                if (!name) name = findBrand(ctx, ['name', 'product_name', 'title', 'description']);
+            }
+            
+            if (image || brand || name) {
+                result = { image, brand, name };
+            }
+        }
+    } catch (e) {
+        console.warn(`GTINHub lookup failed for ${cleanBarcode}, attempting fallback...`);
     }
 
-    if (!image && !brand && !name) {
-        return { success: false, message: "Product found, but no image or brand details are available in the public registry." };
+    // --- SERVICE 2: SearchUPCData (Fallback) ---
+    // If GTINHub failed or didn't return an image, try the second registry
+    if (!result || (!result.image && !result.brand)) {
+        const apiKey = process.env.SEARCHUPCDATA_API_KEY;
+        if (apiKey) {
+            try {
+                const supcResponse = await fetch(`https://searchupcdata.com/api/v1/product/${cleanBarcode}?key=${apiKey}`, {
+                    headers: { 'Accept': 'application/json' },
+                    next: { revalidate: 86400 }
+                });
+
+                if (supcResponse.ok) {
+                    const supcData = await supcResponse.json();
+                    // SearchUPCData typically returns data under 'data' or 'product'
+                    const p = supcData.data || supcData.product || supcData;
+                    
+                    const image = result?.image || findField(p, ['image', 'image_url', 'image_link', 'product_image', 'thumbnail']);
+                    const brand = result?.brand || findBrand(p, ['brand', 'brand_name', 'manufacturer', 'vendor']);
+                    const name = result?.name || findBrand(p, ['product_name', 'name', 'title', 'description']);
+                    
+                    if (image || brand || name) {
+                        result = { image, brand, name };
+                    }
+                }
+            } catch (e) {
+                console.warn(`SearchUPCData lookup failed for ${cleanBarcode}.`);
+            }
+        }
+    }
+
+    if (!result || (!result.image && !result.brand && !result.name)) {
+        return { success: false, message: "Product found, but no image or brand details are available in the public registries." };
     }
 
     return {
       success: true,
-      data: {
-        image,
-        brand,
-        name
-      }
+      data: result
     };
   } catch (error) {
     console.error("External lookup error:", error);
