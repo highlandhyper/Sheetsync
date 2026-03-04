@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, Search, ExternalLink } from 'lucide-react';
+import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, Search, ExternalLink, X } from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 import { fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -39,22 +39,21 @@ export function InventoryItemDetailsDialog({
   const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
-  const [showImage, setShowImage] = useState(false);
+  const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!isOpen) {
-        setShowImage(false);
         setExternalData(null);
         setIsFetchingImage(false);
         setLookupError(null);
+        setIsImagePopupOpen(false);
     }
   }, [isOpen]);
 
   const handleFetchImage = async () => {
     if (!item?.barcode) return;
     
-    setShowImage(true);
     setIsFetchingImage(true);
     setLookupError(null);
     
@@ -62,15 +61,19 @@ export function InventoryItemDetailsDialog({
         const res = await fetchProductExternalDataAction(item.barcode);
         if (res.success && res.data) {
             setExternalData(res.data);
-            if (!res.data.image) {
-                setLookupError("Product data found, but no image URL was provided by the registry.");
+            if (res.data.image) {
+                setIsImagePopupOpen(true);
+            } else {
+                setLookupError("No image available in the global registry.");
+                toast({ title: "No Image", description: "No image found for this product.", variant: "destructive" });
             }
         } else {
-            setLookupError(res.message || "Could not find this product in the global database.");
+            setLookupError(res.message || "Product not found in database.");
+            toast({ title: "Lookup Failed", description: res.message || "Not found.", variant: "destructive" });
         }
     } catch (err) {
         console.error("Failed to fetch image:", err);
-        setLookupError("A network error occurred while connecting to the image server.");
+        setLookupError("Network error.");
     } finally {
         setIsFetchingImage(false);
     }
@@ -134,10 +137,26 @@ export function InventoryItemDetailsDialog({
             </DialogHeader>
 
             <div className="space-y-3 text-sm mt-4">
-                <div className="flex items-center">
-                    <BarcodeIcon className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Barcode:</span>
-                    <span className="ml-2 text-muted-foreground font-mono">{item.barcode}</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <BarcodeIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Barcode:</span>
+                        <span className="ml-2 text-muted-foreground font-mono">{item.barcode}</span>
+                    </div>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-7 text-[10px] font-bold px-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" 
+                        onClick={handleFetchImage}
+                        disabled={isFetchingImage}
+                    >
+                        {isFetchingImage ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                            <ImageIcon className="mr-1 h-3 w-3" />
+                        )}
+                        VIEW IMAGE
+                    </Button>
                 </div>
 
                 <Separator />
@@ -194,57 +213,6 @@ export function InventoryItemDetailsDialog({
                 </div>
 
                 <Separator />
-
-                {/* Conditional Image Section */}
-                <div className="pt-2">
-                    {!showImage ? (
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full text-xs font-bold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" 
-                            onClick={handleFetchImage}
-                        >
-                            <ImageIcon className="mr-2 h-3.5 w-3.5" />
-                            View Global Product Image
-                        </Button>
-                    ) : (
-                        <div className="relative rounded-lg border bg-muted/30 overflow-hidden flex flex-col items-center justify-center min-h-[200px]">
-                            {isFetchingImage ? (
-                                <div className="flex flex-col items-center gap-2">
-                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Querying Registry...</span>
-                                </div>
-                            ) : externalData?.image ? (
-                                <div className="relative w-full h-48 bg-white flex flex-col">
-                                    <div className="relative flex-grow">
-                                        <Image 
-                                            src={externalData.image} 
-                                            alt={item.productName}
-                                            fill
-                                            className="object-contain p-4"
-                                            unoptimized
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-8 text-center px-4">
-                                    {lookupError ? (
-                                        <>
-                                            <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight leading-relaxed max-w-[200px] mx-auto">{lookupError}</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                            <p className="text-xs text-muted-foreground">No image available for barcode {item.barcode}</p>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
             </div>
 
             <DialogFooter className="mt-8 flex justify-between items-center gap-2">
@@ -267,6 +235,34 @@ export function InventoryItemDetailsDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Image Preview Dialog */}
+    <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+            <div className="relative w-full aspect-square flex items-center justify-center p-8">
+                {externalData?.image ? (
+                    <Image 
+                        src={externalData.image} 
+                        alt={item.productName}
+                        fill
+                        className="object-contain p-6"
+                        unoptimized
+                    />
+                ) : null}
+                <button 
+                    onClick={() => setIsImagePopupOpen(false)}
+                    className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
+                >
+                    <X className="h-5 w-5 text-muted-foreground" />
+                </button>
+            </div>
+            <div className="p-4 bg-muted/30 border-t flex flex-col items-center gap-1">
+                <h4 className="font-bold text-center text-sm truncate w-full px-4">{item.productName}</h4>
+                {externalData?.brand && <p className="text-[10px] font-black uppercase text-primary tracking-widest">{externalData.brand}</p>}
+            </div>
+        </DialogContent>
+    </Dialog>
+
     {item && (
       <ItemAuditLogDialog
         isOpen={isAuditLogOpen}
