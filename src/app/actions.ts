@@ -268,21 +268,44 @@ export async function saveLocationListAction(locations: string[]) {
 
 export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
   try {
-    const response = await fetch(`https://gtinhub.com/api/v1/product/${barcode}`, {
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return { success: false, message: "Barcode is empty." };
+
+    const response = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
+        headers: {
+            'User-Agent': 'SheetSync/1.0',
+            'Accept': 'application/json'
+        },
         next: { revalidate: 86400 } // Cache results for 24h
     });
-    if (!response.ok) return { success: false, message: "External lookup failed." };
-    const data = await response.json();
+
+    if (!response.ok) {
+        return { success: false, message: `Lookup failed with status: ${response.status}` };
+    }
+
+    const rawData = await response.json();
+    
+    // API response can vary, search for data in common locations
+    const product = rawData.product || rawData.data || rawData;
+    const image = product.image || product.imageUrl || (product.images && product.images[0]);
+    const brand = product.brand || product.brand_name || product.manufacturer;
+    const name = product.name || product.product_name || product.title;
+
+    if (!image && !brand && !name) {
+        return { success: false, message: "No relevant product data found." };
+    }
+
     return {
       success: true,
       data: {
-        image: data.image || data.imageUrl || (data.images && data.images[0]),
-        brand: data.brand,
-        name: data.name
+        image: typeof image === 'string' ? image : undefined,
+        brand: typeof brand === 'string' ? brand : undefined,
+        name: typeof name === 'string' ? name : undefined
       }
     };
   } catch (error) {
-    return { success: false, message: "External service error." };
+    console.error("External lookup error:", error);
+    return { success: false, message: "Network or service error occurred." };
   }
 }
 
