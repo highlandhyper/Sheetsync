@@ -266,6 +266,26 @@ export async function saveLocationListAction(locations: string[]) {
     }
 }
 
+export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
+  try {
+    const response = await fetch(`https://gtinhub.com/api/v1/product/${barcode}`, {
+        next: { revalidate: 86400 } // Cache results for 24h
+    });
+    if (!response.ok) return { success: false, message: "External lookup failed." };
+    const data = await response.json();
+    return {
+      success: true,
+      data: {
+        image: data.image || data.imageUrl || (data.images && data.images[0]),
+        brand: data.brand,
+        name: data.name
+      }
+    };
+  } catch (error) {
+    return { success: false, message: "External service error." };
+  }
+}
+
 export async function fetchDashboardMetricsAction() { return { success: true, data: await getDashboardMetrics() }; }
 export async function getPermissionsAction() { return { success: true, data: await loadPermissionsFromSheet() }; }
 export async function setPermissionsAction(p: any) { await savePermissionsToSheet(p); return { success: true }; }
