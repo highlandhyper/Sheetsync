@@ -273,10 +273,10 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
 
     const response = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
         headers: {
-            'User-Agent': 'SheetSync/1.0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'application/json'
         },
-        next: { revalidate: 86400 } // Cache results for 24h
+        next: { revalidate: 86400 } // Cache for 24h
     });
 
     if (!response.ok) {
@@ -284,28 +284,60 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     }
 
     const rawData = await response.json();
+    console.log(`GTINHub Lookup for ${cleanBarcode}:`, JSON.stringify(rawData).substring(0, 500));
     
-    // API response can vary, search for data in common locations
-    const product = rawData.product || rawData.data || rawData;
-    const image = product.image || product.imageUrl || (product.images && product.images[0]);
-    const brand = product.brand || product.brand_name || product.manufacturer;
-    const name = product.name || product.product_name || product.title;
+    // Deep search for image and brand in common API structures
+    const findField = (obj: any, keys: string[]): string | undefined => {
+        if (!obj) return undefined;
+        for (const key of keys) {
+            const val = obj[key];
+            if (typeof val === 'string' && val.startsWith('http')) return val;
+            if (Array.isArray(val) && val.length > 0) {
+                const first = val[0];
+                if (typeof first === 'string' && first.startsWith('http')) return first;
+                if (typeof first === 'object' && first?.url) return first.url;
+                if (typeof first === 'object' && first?.link) return first.link;
+            }
+        }
+        return undefined;
+    };
+
+    const findBrand = (obj: any, keys: string[]): string | undefined => {
+        if (!obj) return undefined;
+        for (const key of keys) {
+            if (typeof obj[key] === 'string' && obj[key].length > 1) return obj[key];
+        }
+        return undefined;
+    };
+
+    // GTINHub often nests data under 'product' or 'data' or returns it flat
+    const contexts = [rawData.product, rawData.data, rawData].filter(Boolean);
+    
+    let image: string | undefined;
+    let brand: string | undefined;
+    let name: string | undefined;
+
+    for (const ctx of contexts) {
+        if (!image) image = findField(ctx, ['image', 'imageUrl', 'image_url', 'item_image', 'product_image', 'images', 'thumbnail']);
+        if (!brand) brand = findBrand(ctx, ['brand', 'brand_name', 'manufacturer', 'vendor', 'make']);
+        if (!name) name = findBrand(ctx, ['name', 'product_name', 'title', 'description']);
+    }
 
     if (!image && !brand && !name) {
-        return { success: false, message: "No relevant product data found." };
+        return { success: false, message: "Product found, but no image or brand details are available in the public registry." };
     }
 
     return {
       success: true,
       data: {
-        image: typeof image === 'string' ? image : undefined,
-        brand: typeof brand === 'string' ? brand : undefined,
-        name: typeof name === 'string' ? name : undefined
+        image,
+        brand,
+        name
       }
     };
   } catch (error) {
     console.error("External lookup error:", error);
-    return { success: false, message: "Network or service error occurred." };
+    return { success: false, message: "Network or service error occurred while connecting to the registry." };
   }
 }
 
