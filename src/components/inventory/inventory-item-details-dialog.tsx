@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, Search, ExternalLink, X } from 'lucide-react';
+import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 import { fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -40,13 +40,11 @@ export function InventoryItemDetailsDialog({
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
   const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
-  const [lookupError, setLookupError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!isOpen) {
         setExternalData(null);
         setIsFetchingImage(false);
-        setLookupError(null);
         setIsImagePopupOpen(false);
     }
   }, [isOpen]);
@@ -55,7 +53,6 @@ export function InventoryItemDetailsDialog({
     if (!item?.barcode) return;
     
     setIsFetchingImage(true);
-    setLookupError(null);
     
     try {
         const res = await fetchProductExternalDataAction(item.barcode);
@@ -64,16 +61,13 @@ export function InventoryItemDetailsDialog({
             if (res.data.image) {
                 setIsImagePopupOpen(true);
             } else {
-                setLookupError("No image available in the global registry.");
-                toast({ title: "No Image", description: "No image found for this product.", variant: "destructive" });
+                toast({ title: "No Image", description: "No visual data found in global registries.", variant: "destructive" });
             }
         } else {
-            setLookupError(res.message || "Product not found in database.");
-            toast({ title: "Lookup Failed", description: res.message || "Not found.", variant: "destructive" });
+            toast({ title: "Lookup Failed", description: res.message || "Product not found.", variant: "destructive" });
         }
     } catch (err) {
         console.error("Failed to fetch image:", err);
-        setLookupError("Network error.");
     } finally {
         setIsFetchingImage(false);
     }
@@ -116,9 +110,7 @@ export function InventoryItemDetailsDialog({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) {
-            setIsAuditLogOpen(false);
-        }
+        if (!open) setIsAuditLogOpen(false);
         onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-md overflow-hidden p-0">
@@ -191,7 +183,6 @@ export function InventoryItemDetailsDialog({
                     <span className="ml-2 text-muted-foreground">{item.location}</span>
                 </div>
 
-                
                 <div className="flex items-center">
                     <CalendarDays className="mr-3 h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Expiry Date:</span>
@@ -199,7 +190,6 @@ export function InventoryItemDetailsDialog({
                     {formattedExpiryDate}
                     </span>
                 </div>
-                
 
                 <div className="flex items-center">
                     {item.itemType === 'Damage' ?
@@ -236,13 +226,12 @@ export function InventoryItemDetailsDialog({
       </DialogContent>
     </Dialog>
 
-    {/* Image Preview Dialog */}
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
             <DialogHeader className="p-4 border-b">
                 <DialogTitle className="text-sm font-bold truncate pr-8">{item.productName}</DialogTitle>
                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
-                    {externalData?.brand || 'Global Registry Product Image'}
+                    {externalData?.brand || 'Product Verification Image'}
                 </DialogDescription>
             </DialogHeader>
             <div className="relative w-full aspect-square flex items-center justify-center p-8">

@@ -328,7 +328,6 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     }
 
     // --- SERVICE 2: SearchUPCData (Fallback) ---
-    // If GTINHub failed or didn't return an image, try the second registry
     if (!result || (!result.image && !result.brand)) {
         const apiKey = process.env.SEARCHUPCDATA_API_KEY;
         if (apiKey) {
@@ -340,7 +339,6 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
 
                 if (supcResponse.ok) {
                     const supcData = await supcResponse.json();
-                    // SearchUPCData typically returns data under 'data' or 'product'
                     const p = supcData.data || supcData.product || supcData;
                     
                     const image = result?.image || findField(p, ['image', 'image_url', 'image_link', 'product_image', 'thumbnail']);
@@ -358,7 +356,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     }
 
     if (!result || (!result.image && !result.brand && !result.name)) {
-        return { success: false, message: "Product found, but no image or brand details are available in the public registries." };
+        return { success: false, message: "Product details not found in the global registry." };
     }
 
     return {
@@ -367,7 +365,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     };
   } catch (error) {
     console.error("External lookup error:", error);
-    return { success: false, message: "Network or service error occurred while connecting to the registry." };
+    return { success: false, message: "Network error while connecting to global product registries." };
   }
 }
 
