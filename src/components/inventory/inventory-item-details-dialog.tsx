@@ -15,10 +15,10 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, Search } from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 import { fetchProductExternalDataAction } from '@/app/actions';
-import { Skeleton } from '../ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 interface InventoryItemDetailsDialogProps {
   item: InventoryItem | null;
@@ -35,16 +35,19 @@ export function InventoryItemDetailsDialog({
   onStartEdit,
   displayContext = 'default'
 }: InventoryItemDetailsDialogProps) {
+  const { toast } = useToast();
   const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
   const [showImage, setShowImage] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!isOpen) {
         setShowImage(false);
         setExternalData(null);
         setIsFetchingImage(false);
+        setLookupError(null);
     }
   }, [isOpen]);
 
@@ -53,13 +56,21 @@ export function InventoryItemDetailsDialog({
     
     setShowImage(true);
     setIsFetchingImage(true);
+    setLookupError(null);
+    
     try {
         const res = await fetchProductExternalDataAction(item.barcode);
         if (res.success && res.data) {
             setExternalData(res.data);
+            if (!res.data.image) {
+                setLookupError("Product found, but no image is available in the registry.");
+            }
+        } else {
+            setLookupError(res.message || "Could not find product image in the global registry.");
         }
     } catch (err) {
         console.error("Failed to fetch image:", err);
+        setLookupError("Network error while connecting to lookup service.");
     } finally {
         setIsFetchingImage(false);
     }
@@ -197,14 +208,14 @@ export function InventoryItemDetailsDialog({
                             View Product Image
                         </Button>
                     ) : (
-                        <div className="relative rounded-lg border bg-white overflow-hidden flex flex-col items-center justify-center min-h-[180px]">
+                        <div className="relative rounded-lg border bg-muted/30 overflow-hidden flex flex-col items-center justify-center min-h-[180px]">
                             {isFetchingImage ? (
                                 <div className="flex flex-col items-center gap-2">
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Connecting to GTINHub...</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Searching Registry...</span>
                                 </div>
                             ) : externalData?.image ? (
-                                <div className="relative w-full h-40">
+                                <div className="relative w-full h-40 bg-white">
                                     <Image 
                                         src={externalData.image} 
                                         alt={item.productName}
@@ -214,9 +225,18 @@ export function InventoryItemDetailsDialog({
                                     />
                                 </div>
                             ) : (
-                                <div className="p-8 text-center">
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                    <p className="text-xs text-muted-foreground">No global image found for barcode {item.barcode}</p>
+                                <div className="p-8 text-center px-4">
+                                    {lookupError ? (
+                                        <>
+                                            <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">{lookupError}</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                            <p className="text-xs text-muted-foreground">No global image found for barcode {item.barcode}</p>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
