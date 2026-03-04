@@ -239,10 +239,10 @@ export function InventoryItemDetailsDialog({
     {/* Image Preview Dialog */}
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
-            <DialogHeader className="sr-only">
-                <DialogTitle>Product Image Preview</DialogTitle>
-                <DialogDescription>
-                    Global registry product image for barcode {item.barcode}
+            <DialogHeader className="p-4 border-b">
+                <DialogTitle className="text-sm font-bold truncate pr-8">{item.productName}</DialogTitle>
+                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
+                    {externalData?.brand || 'Global Registry Product Image'}
                 </DialogDescription>
             </DialogHeader>
             <div className="relative w-full aspect-square flex items-center justify-center p-8">
@@ -257,14 +257,13 @@ export function InventoryItemDetailsDialog({
                 ) : null}
                 <button 
                     onClick={() => setIsImagePopupOpen(false)}
-                    className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
+                    className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors z-50"
                 >
                     <X className="h-5 w-5 text-muted-foreground" />
                 </button>
             </div>
             <div className="p-4 bg-muted/30 border-t flex flex-col items-center gap-1">
-                <h4 className="font-bold text-center text-sm truncate w-full px-4">{item.productName}</h4>
-                {externalData?.brand && <p className="text-[10px] font-black uppercase text-primary tracking-widest">{externalData.brand}</p>}
+                <p className="text-[10px] font-mono text-muted-foreground">Barcode: {item.barcode}</p>
             </div>
         </DialogContent>
     </Dialog>
