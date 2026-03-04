@@ -536,7 +536,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                              <div className="flex items-center gap-2">
                                 <span>{allFormValues.location || "Select Zone..."}</span>
                              </div>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -618,9 +618,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl sm:rounded-lg border-0">
-            <div className="relative h-16 sm:h-14 flex items-center justify-center border-b bg-muted/30">
+            <DialogHeader className="p-6 pb-2 border-b bg-muted/30">
                 <DialogTitle className="font-black uppercase tracking-tighter">Scan Product</DialogTitle>
-            </div>
+                <DialogDescription>Use your camera to capture the product barcode.</DialogDescription>
+            </DialogHeader>
             <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <div className="p-4 bg-muted/30 flex justify-center">
                 <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl sm:rounded-md font-bold">
