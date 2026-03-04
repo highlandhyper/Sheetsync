@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
@@ -174,6 +173,7 @@ export function HeaderBarcodeLookup() {
         <DialogContent className="max-w-md w-full p-0">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle>Scan Barcode</DialogTitle>
+                <DialogDescription>Point your camera at the product barcode to search.</DialogDescription>
             </DialogHeader>
             <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <DialogFooter className="p-6 pt-0">
