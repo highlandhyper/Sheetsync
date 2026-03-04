@@ -212,7 +212,7 @@ export function InventoryItemDetailsDialog({
                             {isFetchingImage ? (
                                 <div className="flex flex-col items-center gap-2">
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Querying GTINHub Registry...</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Querying Registry...</span>
                                 </div>
                             ) : externalData?.image ? (
                                 <div className="relative w-full h-48 bg-white flex flex-col">
@@ -225,12 +225,6 @@ export function InventoryItemDetailsDialog({
                                             unoptimized
                                         />
                                     </div>
-                                    <div className="bg-muted/50 p-2 text-[10px] text-center border-t flex items-center justify-center gap-2">
-                                        <span className="text-muted-foreground">Source: GTINHub</span>
-                                        <a href={`https://gtinhub.com/product/${item.barcode}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 font-bold">
-                                            Open Website <ExternalLink className="h-2.5 w-2.5" />
-                                        </a>
-                                    </div>
                                 </div>
                             ) : (
                                 <div className="p-8 text-center px-4">
@@ -238,9 +232,6 @@ export function InventoryItemDetailsDialog({
                                         <>
                                             <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                                             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight leading-relaxed max-w-[200px] mx-auto">{lookupError}</p>
-                                            <Button variant="link" size="sm" className="h-auto p-0 mt-2 text-xs" asChild>
-                                                <a href={`https://gtinhub.com/product/${item.barcode}`} target="_blank" rel="noopener noreferrer">Try manual search</a>
-                                            </Button>
                                         </>
                                     ) : (
                                         <>
