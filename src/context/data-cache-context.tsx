@@ -22,6 +22,7 @@ interface AppData {
 interface DataCacheContextType extends AppData {
   isCacheReady: boolean;
   isSyncing: boolean;
+  isOnline: boolean;
   pendingActions: OfflineAction[];
   updateInventoryItem: (item: Partial<InventoryItem> & { id: string }) => void;
   addInventoryItem: (item: InventoryItem) => void;
@@ -59,6 +60,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   });
   
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const [pendingActions, setPendingActions] = useState<OfflineAction[]>([]);
   const isFetchingRef = useRef(false);
   const isSyncingQueueRef = useRef(false);
@@ -66,8 +68,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
   // Load offline queue on mount
   useEffect(() => {
-    const saved = localStorage.getItem(OFFLINE_KEY);
-    if (saved) setPendingActions(JSON.parse(saved));
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+      const saved = localStorage.getItem(OFFLINE_KEY);
+      if (saved) setPendingActions(JSON.parse(saved));
+    }
   }, []);
 
   // Persist offline queue
@@ -76,7 +81,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [pendingActions]);
 
   const fetchDataAndCache = useCallback(async (isBackgroundUpdate: boolean) => {
-    if (isFetchingRef.current) return;
+    if (isFetchingRef.current || !navigator.onLine) return;
     isFetchingRef.current = true;
     setIsSyncing(true);
 
@@ -104,7 +109,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         let success = false;
         if (action.type === 'LOG_INVENTORY') {
             const formData = new FormData();
-            Object.entries(action.data).forEach(([k, v]) => formData.append(k, String(v)));
+            Object.entries(action.data).forEach(([k, v]) => {
+                if (v !== undefined && v !== null) {
+                    formData.append(k, String(v));
+                }
+            });
             const res = await addInventoryItemAction(undefined, formData);
             if (res.success) success = true;
         }
@@ -120,8 +129,28 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, [pendingActions, toast]);
 
+  // Connection Event Listeners
   useEffect(() => {
-    const interval = setInterval(processSyncQueue, 10000); // Check every 10s
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast({ title: "Connection Restored", description: "Detecting network... Syncing pending logs." });
+      processSyncQueue();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({ variant: "destructive", title: "Offline Mode", description: "Working from local cache. Scanning is still enabled." });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [processSyncQueue, toast]);
+
+  useEffect(() => {
+    const interval = setInterval(processSyncQueue, 15000); // Regular check
     return () => clearInterval(interval);
   }, [processSyncQueue]);
 
@@ -137,28 +166,38 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [user, authLoading, fetchDataAndCache]);
 
   const refreshData = useCallback(async () => {
+    if (!navigator.onLine) {
+        toast({ variant: "destructive", title: "Sync Failed", description: "Check your internet connection." });
+        return;
+    }
     toast({ title: 'Syncing...', description: 'Fetching latest data.' });
     await fetchDataAndCache(true);
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
       setData(prev => ({ ...prev, specialRequests: requests }));
-      await updateSpecialRequestsAction(requests);
+      if (navigator.onLine) {
+          await updateSpecialRequestsAction(requests);
+      }
   }, []);
 
   const updateStaffList = useCallback(async (staff: string[]) => {
       setData(prev => ({ ...prev, uniqueStaffNames: staff }));
-      const response = await saveStaffListAction(staff);
-      if (response.success) {
-          toast({ title: 'Success', description: 'Staff list updated.' });
+      if (navigator.onLine) {
+          const response = await saveStaffListAction(staff);
+          if (response.success) {
+              toast({ title: 'Success', description: 'Staff list updated.' });
+          }
       }
   }, [toast]);
 
   const updateLocationList = useCallback(async (locations: string[]) => {
       setData(prev => ({ ...prev, uniqueLocations: locations }));
-      const response = await saveLocationListAction(locations);
-      if (response.success) {
-          toast({ title: 'Success', description: 'Location list updated.' });
+      if (navigator.onLine) {
+          const response = await saveLocationListAction(locations);
+          if (response.success) {
+              toast({ title: 'Success', description: 'Location list updated.' });
+          }
       }
   }, [toast]);
 
@@ -169,13 +208,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           timestamp: new Date().toISOString()
       };
       setPendingActions(prev => [...prev, newAction]);
-      toast({ title: "Stored Offline", description: "Internet connection unstable. Data will sync once back online." });
-  }, [toast]);
+      // Immediately try to process if we just queued something and might be online
+      if (navigator.onLine) processSyncQueue();
+  }, [processSyncQueue]);
 
   const value = useMemo(() => ({
     ...data,
     isCacheReady,
     isSyncing,
+    isOnline,
     pendingActions,
     refreshData,
     updateSpecialRequests,
@@ -190,7 +231,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) })),
     addReturnedItem: (r: any) => setData(p => ({ ...p, returnedItems: [r, ...p.returnedItems] })),
-  }), [data, isCacheReady, isSyncing, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
+  }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
   return (
     <DataCacheContext.Provider value={value}>
