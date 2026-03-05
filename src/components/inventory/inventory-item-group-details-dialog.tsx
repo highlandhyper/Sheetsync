@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -13,11 +15,13 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { InventoryItem } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
-import { Edit, Undo2, Trash2, CalendarDays, User as UserIcon, Tag, AlertTriangle } from 'lucide-react';
+import { Edit, Undo2, Trash2, CalendarDays, User as UserIcon, Tag, AlertTriangle, Image as ImageIcon, Loader2, X, Barcode } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '../ui/separator';
+import { fetchProductExternalDataAction } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 export interface GroupedInventoryItem {
   mainItem: InventoryItem;
@@ -44,7 +48,44 @@ export function InventoryItemGroupDetailsDialog({
   onOpenDeleteDialog,
 }: InventoryItemGroupDetailsDialogProps) {
   const { role } = useAuth();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+  const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+        setExternalData(null);
+        setIsFetchingImage(false);
+        setIsImagePopupOpen(false);
+    }
+  }, [isOpen]);
+
+  const handleFetchImage = async () => {
+    if (!group?.mainItem?.barcode) return;
+    
+    setIsFetchingImage(true);
+    
+    try {
+        const res = await fetchProductExternalDataAction(group.mainItem.barcode);
+        if (res.success && res.data) {
+            setExternalData(res.data);
+            if (res.data.image) {
+                setIsImagePopupOpen(true);
+            } else {
+                toast({ title: "No Image", description: "No visual data found in global registries.", variant: "destructive" });
+            }
+        } else {
+            toast({ title: "Lookup Failed", description: res.message || "Product not found.", variant: "destructive" });
+        }
+    } catch (err) {
+        console.error("Failed to fetch image:", err);
+    } finally {
+        setIsFetchingImage(false);
+    }
+  };
 
   if (!group) return null;
 
@@ -121,15 +162,46 @@ export function InventoryItemGroupDetailsDialog({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Individual Logs for: {group.mainItem.productName}</DialogTitle>
-          <DialogDescription>
-            Barcode: {group.mainItem.barcode}. Total Quantity: {group.totalQuantity}. Showing {group.individualItems.length} log(s).
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto p-1">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <div className="p-6 pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <DialogHeader className="flex-grow">
+                    <DialogTitle className="flex items-center text-xl">
+                        {group.mainItem.productName}
+                    </DialogTitle>
+                    <DialogDescription className="flex items-center flex-wrap gap-2 pt-1">
+                        {externalData?.brand && (
+                            <span className="font-bold text-primary uppercase text-[10px] bg-primary/10 px-2 py-0.5 rounded-full tracking-widest">{externalData.brand}</span>
+                        )}
+                        <span className="font-mono text-xs text-muted-foreground flex items-center">
+                            <Barcode className="h-3 w-3 mr-1" /> {group.mainItem.barcode}
+                        </span>
+                        <Separator orientation="vertical" className="h-3 mx-1 hidden sm:block" />
+                        <span>{group.totalQuantity} units in stock</span>
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="shrink-0">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-[10px] font-bold px-3 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary w-full sm:w-auto" 
+                        onClick={handleFetchImage}
+                        disabled={isFetchingImage}
+                    >
+                        {isFetchingImage ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        VIEW PRODUCT IMAGE
+                    </Button>
+                </div>
+            </div>
+        </div>
+
+        <div className="flex-grow overflow-y-auto px-6 py-4">
            {isMobile ? (
               <div className="space-y-3 py-2">
                   {group.individualItems.map(renderItemDetails)}
@@ -153,12 +225,44 @@ export function InventoryItemGroupDetailsDialog({
               </Table>
             )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-2 border-t">
           <DialogClose asChild>
-            <Button type="button" variant="outline">Close</Button>
+            <Button type="button" variant="outline" className="w-full sm:w-auto">Close</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+            <DialogHeader className="p-4 border-b">
+                <DialogTitle className="text-sm font-bold truncate pr-8">{group.mainItem.productName}</DialogTitle>
+                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
+                    {externalData?.brand || 'Product Verification Image'}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="relative w-full aspect-square flex items-center justify-center p-8">
+                {externalData?.image ? (
+                    <Image 
+                        src={externalData.image} 
+                        alt={group.mainItem.productName}
+                        fill
+                        className="object-contain p-6"
+                        unoptimized
+                    />
+                ) : null}
+                <button 
+                    onClick={() => setIsImagePopupOpen(false)}
+                    className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors z-50"
+                >
+                    <X className="h-5 w-5 text-muted-foreground" />
+                </button>
+            </div>
+            <div className="p-4 bg-muted/30 border-t flex flex-col items-center gap-1">
+                <p className="text-[10px] font-mono text-muted-foreground">Barcode: {group.mainItem.barcode}</p>
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
