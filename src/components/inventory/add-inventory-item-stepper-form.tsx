@@ -25,7 +25,8 @@ import {
     ShieldCheck,
     BellOff,
     Clock,
-    KeyRound
+    KeyRound,
+    CloudOff
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -105,7 +106,6 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
-// Enhancement: Synthetic Audio Feedback function
 const playScanBeep = () => {
   try {
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -133,6 +133,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     uniqueLocations: dynamicLocations, 
     addInventoryItem,
     refreshData,
+    queueAction,
+    isOnline,
   } = useDataCache();
   const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry } = useSpecialEntry(); 
   
@@ -191,6 +193,55 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     
     setIsSubmitting(true);
     submitLockRef.current = true;
+
+    // Handle Offline Logic
+    if (!navigator.onLine) {
+        const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
+        
+        queueAction({
+            type: 'LOG_INVENTORY',
+            data: {
+                barcode: data.barcode,
+                staffName: data.staffName,
+                itemType: data.itemType,
+                quantity: data.quantity,
+                location: data.location,
+                expiryDate: formattedExpiry,
+                userEmail: user?.email,
+                disableNotification: activeSession ? 'true' : 'false'
+            }
+        });
+
+        // Optimistically add to UI cache
+        const tempId = `off_${Date.now()}`;
+        addInventoryItem({
+            id: tempId,
+            barcode: data.barcode,
+            quantity: data.quantity,
+            expiryDate: formattedExpiry,
+            location: data.location,
+            staffName: data.staffName,
+            productName: productName || 'Local Batch',
+            supplierName: productSupplier || 'Local Cache',
+            itemType: data.itemType,
+            timestamp: new Date().toISOString()
+        });
+
+        if (activeSession) consumeSpecialEntry();
+
+        setSubmittedStaffName(data.staffName);
+        setIsSuccessDialogOpen(true);
+        setTimeout(() => setIsSuccessDialogOpen(false), 5000);
+
+        reset();
+        setProductName('');
+        setProductSupplier('');
+        setProductLookupError('');
+        setCurrentStep(0);
+        setIsSubmitting(false);
+        submitLockRef.current = false;
+        return;
+    }
 
     startTransition(async () => {
       const formData = new FormData();
@@ -276,6 +327,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         return true;
       }
 
+      if (!navigator.onLine) {
+          setProductLookupError('Working Offline: Only items in local catalog can be verified.');
+          setIsFetchingProduct(false);
+          return false;
+      }
+
       const response = await fetchProductAction(barcode);
       setIsFetchingProduct(false);
       if (response.success && response.data) {
@@ -323,7 +380,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const onScanSuccess = useCallback((decodedText: string) => {
-    playScanBeep(); // Audio feedback enhancement
+    playScanBeep(); 
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     
@@ -366,7 +423,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       <CardHeader className="px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <CardTitle className="text-2xl">Log New Inventory Item</CardTitle>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                    Log New Inventory Item
+                    {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}
+                </CardTitle>
                 <CardDescription>
                 Follow the steps to log a new item into the inventory system.
                 </CardDescription>
@@ -591,6 +651,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 <span>Silent Entry Authorized - No Email Alert</span>
                             </div>
                         )}
+                        {!isOnline && (
+                            <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase text-center">
+                                Working Offline: Will Sync Automatically
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -637,9 +702,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 <PartyPopper className="h-12 w-12 text-primary" />
             </div>
             <DialogHeader className="space-y-2">
-                <DialogTitle className="text-3xl font-black tracking-tighter text-primary uppercase">Logged Successfully!</DialogTitle>
+                <DialogTitle className="text-3xl font-black tracking-tighter text-primary uppercase">
+                    {navigator.onLine ? "Logged Successfully!" : "Saved Locally!"}
+                </DialogTitle>
                 <DialogDescription className="text-slate-400 text-lg font-medium">
-                    Inventory data has been saved to the cloud.
+                    {navigator.onLine ? "Inventory data has been saved to the cloud." : "Working offline. Data stored and will sync later."}
                 </DialogDescription>
             </DialogHeader>
             <Separator className="my-6 bg-slate-800" />

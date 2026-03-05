@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff } from 'lucide-react';
+import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 
 function LastSyncStatus() {
-  const { lastSync, isSyncing, refreshData, pendingActions } = useDataCache();
+  const { lastSync, isSyncing, refreshData, pendingActions, isOnline } = useDataCache();
   const [_, setForceUpdate] = useState(0);
 
   useEffect(() => {
@@ -37,34 +37,54 @@ function LastSyncStatus() {
 
   return (
     <div className="flex items-center gap-2">
+      {!isOnline && (
+          <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="flex items-center gap-1 cursor-help px-2 py-0.5 animate-pulse">
+                        <WifiOff className="h-3 w-3" />
+                        Offline
+                    </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Internet connection lost. Working in offline mode.</p>
+                </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+      )}
+
       {pendingActions.length > 0 && (
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="destructive" className="animate-pulse flex items-center gap-1 cursor-help">
+                    <Badge variant="secondary" className={cn("flex items-center gap-1 cursor-help px-2 py-0.5", isOnline ? "animate-bounce" : "")}>
                         <CloudOff className="h-3 w-3" />
-                        {pendingActions.length} Offline
+                        {pendingActions.length} Pending
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>{pendingActions.length} changes waiting to sync from this device.</p>
+                    <p>{pendingActions.length} logs waiting to sync from this device.</p>
                 </TooltipContent>
             </Tooltip>
           </TooltipProvider>
       )}
 
       <div className="flex flex-col items-end justify-center mr-2 text-[10px] leading-tight text-muted-foreground uppercase tracking-wider font-medium">
-        <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : "text-green-500")}>
+        <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : (isOnline ? "text-green-500" : "text-destructive"))}>
           {isSyncing ? (
             <>
               <RefreshCw className="h-3 w-3 animate-spin" />
-              <span className="hidden sm:inline">Refreshing Data...</span>
-              <span className="sm:hidden">Syncing...</span>
+              <span className="hidden sm:inline">Syncing...</span>
+            </>
+          ) : isOnline ? (
+            <>
+              <Wifi className="h-3 w-3" />
+              <span>Realtime Active</span>
             </>
           ) : (
             <>
-              <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              <span>Realtime Active</span>
+              <WifiOff className="h-3 w-3" />
+              <span>Local Queue</span>
             </>
           )}
         </span>
@@ -80,7 +100,7 @@ function LastSyncStatus() {
               variant="ghost"
               size="icon"
               onClick={refreshData}
-              disabled={isSyncing}
+              disabled={isSyncing || !isOnline}
               className={cn(
                 "h-8 w-8 rounded-full transition-all duration-500",
                 isSyncing ? "bg-primary/10 text-primary rotate-180" : "text-muted-foreground hover:bg-muted"
@@ -90,7 +110,7 @@ function LastSyncStatus() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to force refresh.` : 'Click to sync data now.'}</p>
+            <p>{!isOnline ? 'Cannot sync while offline.' : lastSync ? `Last synced: ${new Date(lastSync).toLocaleString()}. Click to force refresh.` : 'Click to sync data now.'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

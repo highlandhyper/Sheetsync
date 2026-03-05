@@ -1,7 +1,7 @@
 {
-  "name": "SheetSync",
+  "name": "SheetSync Inventory",
   "short_name": "SheetSync",
-  "description": "Next-Gen Inventory Management",
+  "description": "Next-Gen Inventory Management System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F0F8FF",
@@ -16,8 +16,7 @@
     {
       "src": "/logo-pwa.jpg",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/jpeg"
     }
   ]
 }
