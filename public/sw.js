@@ -15,16 +15,14 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests for caching
+  // Only cache GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).catch(() => {
-        // Fallback for document navigation if offline and not in cache
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
+        // Fallback for offline if not in cache
+        return caches.match('/');
       });
     })
   );

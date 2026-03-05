@@ -9,14 +9,9 @@
   "icons": [
     {
       "src": "/logo-pwa.jpg",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/logo-pwa.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg"
     }
   ]
 }
