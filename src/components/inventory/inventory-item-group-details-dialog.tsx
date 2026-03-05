@@ -171,15 +171,17 @@ export function InventoryItemGroupDetailsDialog({
                     <DialogTitle className="flex items-center text-xl">
                         {group.mainItem.productName}
                     </DialogTitle>
-                    <DialogDescription className="flex items-center flex-wrap gap-2 pt-1">
-                        {externalData?.brand && (
-                            <span className="font-bold text-primary uppercase text-[10px] bg-primary/10 px-2 py-0.5 rounded-full tracking-widest">{externalData.brand}</span>
-                        )}
-                        <span className="font-mono text-xs text-muted-foreground flex items-center">
-                            <Barcode className="h-3 w-3 mr-1" /> {group.mainItem.barcode}
-                        </span>
-                        <Separator orientation="vertical" className="h-3 mx-1 hidden sm:block" />
-                        <span>{group.totalQuantity} units in stock</span>
+                    <DialogDescription asChild>
+                        <div className="flex items-center flex-wrap gap-2 pt-1 text-sm text-muted-foreground">
+                            {externalData?.brand && (
+                                <span className="font-bold text-primary uppercase text-[10px] bg-primary/10 px-2 py-0.5 rounded-full tracking-widest">{externalData.brand}</span>
+                            )}
+                            <span className="font-mono text-xs text-muted-foreground flex items-center">
+                                <Barcode className="h-3 w-3 mr-1" /> {group.mainItem.barcode}
+                            </span>
+                            <Separator orientation="vertical" className="h-3 mx-1 hidden sm:block" />
+                            <span>{group.totalQuantity} units in stock</span>
+                        </div>
                     </DialogDescription>
                 </DialogHeader>
                 <div className="shrink-0">
