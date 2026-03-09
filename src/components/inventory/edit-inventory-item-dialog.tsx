@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, KeyRound, User } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -61,6 +61,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   const [quantityChanged, setQuantityChanged] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [stagedData, setStagedData] = useState<EditInventoryItemFormValues | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const {
     register,
@@ -105,12 +106,30 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     function handleItemChange() {
       if (item) {
         setInitialQuantity(item.quantity);
+        
+        // Accurate local date parsing to prevent timezone shifts
+        let parsedDate: Date | null = null;
+        if (item.expiryDate) {
+            const dateParts = item.expiryDate.split('-');
+            if (dateParts.length === 3) {
+                const year = parseInt(dateParts[0], 10);
+                const month = parseInt(dateParts[1], 10) - 1;
+                const day = parseInt(dateParts[2], 10);
+                const d = new Date(year, month, day);
+                if (isValid(d)) parsedDate = d;
+            }
+            if (!parsedDate) {
+                const iso = parseISO(item.expiryDate);
+                if (isValid(iso)) parsedDate = iso;
+            }
+        }
+
         reset({
           itemId: item.id,
           location: item.location,
           itemType: item.itemType,
           quantity: item.quantity,
-          expiryDate: item.expiryDate ? parseISO(item.expiryDate) : null,
+          expiryDate: parsedDate,
         });
       } else {
         setInitialQuantity(null);
@@ -134,12 +153,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      // Timezone-safe date formatting using UTC components.
-      const date = data.expiryDate;
-      const year = date.getUTCFullYear();
-      const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-      const day = date.getUTCDate().toString().padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
+      // Use local formatting to prevent off-by-one errors from UTC shifts
+      const formattedDate = format(data.expiryDate, 'yyyy-MM-dd');
       formData.append('expiryDate', formattedDate);
     } else if (data.itemType === 'Expiry') {
         toast({title: "Validation Error", description: "Expiry date is required for 'Expiry' type items.", variant: "destructive"});
@@ -293,7 +308,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                     name="expiryDate"
                     control={control}
                     render={({ field }) => (
-                    <Popover>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
@@ -307,8 +322,16 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                         </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={field.value} onSelect={(date) => field.onChange(date)} initialFocus />
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={(date) => {
+                                field.onChange(date);
+                                if (date) setIsCalendarOpen(false);
+                            }} 
+                            initialFocus 
+                        />
                         </PopoverContent>
                     </Popover>
                     )}
