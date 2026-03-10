@@ -100,7 +100,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   }, [toast]);
 
   const onScanSuccess = useCallback((decodedText: string) => {
-    if (scanProcessedRef.current) return;
+    if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
 
     playProfessionalBeep();

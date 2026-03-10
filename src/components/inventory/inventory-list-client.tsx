@@ -468,7 +468,7 @@ export function InventoryListClient() {
                         </TableCell>
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
-                                <span className="text-xs text-muted-foreground group-hover:hidden">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span>
+                                <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span>
                                 <div className="hidden group-hover:flex items-center gap-1">
                                     {individualItems.length === 1 ? (
                                         <>
