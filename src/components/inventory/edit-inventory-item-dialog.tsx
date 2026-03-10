@@ -59,6 +59,7 @@ function parseDateStringLocal(dateStr?: string): Date | null {
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
     let y, m, d;
+    // Format could be YYYY-MM-DD or DD/MM/YYYY
     if (parts[0].length === 4) {
       y = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
