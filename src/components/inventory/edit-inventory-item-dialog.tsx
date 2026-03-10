@@ -72,11 +72,11 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   } = useForm<EditInventoryItemFormValues>({
     resolver: zodResolver(editInventoryItemSchema),
     defaultValues: {
-      itemId: item?.id || '',
-      location: item?.location || '',
-      itemType: item?.itemType || 'Expiry',
-      quantity: item?.quantity || 0,
-      expiryDate: item?.expiryDate ? parseISO(item.expiryDate) : null,
+      itemId: '',
+      location: '',
+      itemType: 'Expiry',
+      quantity: 0,
+      expiryDate: null,
     },
   });
 
@@ -104,20 +104,28 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     if (item && isOpen) {
       setInitialQuantity(item.quantity);
       
-      // Fix: Robust local date parsing to prevent timezone shifting
       let parsedDate: Date | null = null;
       if (item.expiryDate) {
-          const dateParts = item.expiryDate.split('-');
-          if (dateParts.length === 3) {
-              const year = parseInt(dateParts[0], 10);
-              const month = parseInt(dateParts[1], 10) - 1;
-              const day = parseInt(dateParts[2], 10);
-              const d = new Date(year, month, day);
-              if (isValid(d)) parsedDate = d;
+          // Robust local parsing to prevent UTC shifts
+          const parts = item.expiryDate.split(/[-/.]/);
+          if (parts.length === 3) {
+              let y, m, d;
+              if (parts[0].length === 4) { // YYYY-MM-DD
+                  y = parseInt(parts[0], 10);
+                  m = parseInt(parts[1], 10) - 1;
+                  d = parseInt(parts[2], 10);
+              } else { // DD/MM/YYYY
+                  d = parseInt(parts[0], 10);
+                  m = parseInt(parts[1], 10) - 1;
+                  y = parseInt(parts[2], 10);
+              }
+              const localDate = new Date(y, m, d);
+              if (isValid(localDate)) parsedDate = localDate;
           }
+          
           if (!parsedDate) {
-              const iso = parseISO(item.expiryDate);
-              if (isValid(iso)) parsedDate = iso;
+              const isoDate = parseISO(item.expiryDate);
+              if (isValid(isoDate)) parsedDate = isoDate;
           }
       }
 
@@ -128,9 +136,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         quantity: item.quantity,
         expiryDate: parsedDate,
       });
-    } else if (!isOpen) {
-      setInitialQuantity(null);
-      setQuantityChanged(false);
     }
   }, [item, reset, isOpen]);
   
@@ -148,7 +153,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      // Use local ISO format to ensure accuracy in database
       const formattedDate = format(data.expiryDate, 'yyyy-MM-dd');
       formData.append('expiryDate', formattedDate);
     } else if (data.itemType === 'Expiry') {
@@ -318,6 +322,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                                 if (date) setIsCalendarOpen(false);
                             }} 
                             initialFocus 
+                            defaultMonth={field.value || undefined}
                         />
                         </PopoverContent>
                     </Popover>
