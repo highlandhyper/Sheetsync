@@ -139,7 +139,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           });
           setIsScannerDialogOpen(false);
         });
-      }, 800);
+      }, 800); // Startup delay to prevent ghost scans
 
       return () => {
         clearTimeout(timer);
@@ -309,9 +309,9 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
         </DialogContent>
       </Dialog>
 
-      {selectedItemForReturn && <ReturnQuantityDialog key={`return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
-      {selectedItemForDeletion && <DeleteConfirmationDialog key={`delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />}
-      {currentItemToEdit && <EditInventoryItemDialog key={`edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
+      {selectedItemForReturn && <ReturnQuantityDialog key={selectedItemForReturn ? `lookup-return-${selectedItemForReturn.id}` : 'lookup-return'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
+      {selectedItemForDeletion && <DeleteConfirmationDialog key={selectedItemForDeletion ? `lookup-delete-${selectedItemForDeletion.id}` : 'lookup-delete'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />}
+      {currentItemToEdit && <EditInventoryItemDialog key={currentItemToEdit ? `lookup-edit-${currentItemToEdit.id}` : 'lookup-edit'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
     </div>
   );
 }

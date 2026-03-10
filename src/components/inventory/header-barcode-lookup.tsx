@@ -143,7 +143,7 @@ export function HeaderBarcodeLookup() {
           });
           setIsScannerOpen(false);
         });
-      }, 800);
+      }, 800); // Startup delay to prevent ghost scans
 
       return () => {
         clearTimeout(timer);
@@ -278,9 +278,9 @@ export function HeaderBarcodeLookup() {
         </DialogContent>
       </Dialog>
       
-      {selectedItemForReturn && <ReturnQuantityDialog key={`header-return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
-      {currentItemToEdit && <EditInventoryItemDialog key={`header-edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
-      {selectedItemForDeletion && <DeleteConfirmationDialog key={`header-delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
+      {selectedItemForReturn && <ReturnQuantityDialog key={selectedItemForReturn ? `header-return-${selectedItemForReturn.id}` : 'header-return'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
+      {currentItemToEdit && <EditInventoryItemDialog key={currentItemToEdit ? `header-edit-${currentItemToEdit.id}` : 'header-edit'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
+      {selectedItemForDeletion && <DeleteConfirmationDialog key={selectedItemForDeletion ? `header-delete-${selectedItemForDeletion.id}` : 'header-delete'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
     </>
   );
 }

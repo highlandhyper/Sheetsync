@@ -49,8 +49,12 @@ interface EditInventoryItemDialogProps {
   uniqueLocationsFromDb: string[]; 
 }
 
+/**
+ * Robust local date parsing to prevent timezone shifting.
+ */
 function parseDateStringLocal(dateStr?: string): Date | null {
   if (!dateStr) return null;
+  
   // Handle YYYY-MM-DD or DD/MM/YYYY
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
@@ -69,6 +73,7 @@ function parseDateStringLocal(dateStr?: string): Date | null {
     const date = new Date(y, m, d);
     return isValid(date) ? date : null;
   }
+  
   const isoDate = parseISO(dateStr);
   return isValid(isoDate) ? isoDate : null;
 }

@@ -106,6 +106,9 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
+/**
+ * Enhanced high-quality retail scanner beep.
+ */
 const playProfessionalBeep = () => {
   try {
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -377,6 +380,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const onScanSuccess = useCallback((decodedText: string) => {
+    // Scan lock to prevent double successes
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
 
@@ -409,7 +413,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             html5QrcodeScannerRef.current = scanner;
           }).catch(console.error);
         }
-      }, 800); 
+      }, 800); // Settle delay to prevent ghost scans
 
       return () => {
         clearTimeout(timer);
