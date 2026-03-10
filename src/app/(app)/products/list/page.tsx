@@ -11,24 +11,26 @@ function ProductListSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
+        <Skeleton className="h-10 w-full sm:max-w-xs" />
         <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Skeleton className="h-10 w-full sm:w-[180px]" /> {/* Sort Select */}
-            <Skeleton className="h-10 w-44" /> {/* Add Product Button */}
+            <Skeleton className="h-10 w-full sm:w-[180px]" />
+            <Skeleton className="h-10 w-44" />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, index) => (
-            <Card className="w-full" key={index}>
-              <div className="p-4 space-y-3">
-                <div className="flex items-center gap-4">
-                    <Skeleton className="h-14 w-14 rounded-md" />
-                    <div className="flex-1 space-y-2">
+            <Card className="w-full flex flex-col h-full" key={index}>
+              <div className="p-6 pb-2 space-y-4">
+                <div className="flex items-start gap-4">
+                    <Skeleton className="h-12 w-12 rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-2 min-w-0">
                         <Skeleton className="h-5 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-1/2" />
                     </div>
                 </div>
-                 <Skeleton className="h-4 w-2/3" />
+              </div>
+              <div className="px-6 pt-2 pb-6 flex-grow">
+                 <Skeleton className="h-4 w-full" />
               </div>
             </Card>
           ))}

@@ -6,17 +6,22 @@ import { InventoryBarcodeLookupClient } from '@/components/inventory/inventory-b
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
+import { Card } from '@/components/ui/card';
 
 function LookupSkeleton() {
     return (
         <div className="space-y-6">
-            <Skeleton className="h-24 w-full" /> {/* Search card */}
-            <div className="text-center py-12">
-                <Search className="mx-auto h-16 w-16 text-muted-foreground" />
-                <h3 className="mt-4 text-xl font-semibold">Loading Lookup Tool...</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Please wait a moment.
-                </p>
+            <Card className="p-4 shadow-md">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Skeleton className="h-10 flex-grow" />
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+            </Card>
+            <div className="text-center py-12 space-y-4">
+                <Skeleton className="mx-auto h-16 w-16 rounded-full" />
+                <Skeleton className="mx-auto h-6 w-48" />
+                <Skeleton className="mx-auto h-4 w-64" />
             </div>
         </div>
     );

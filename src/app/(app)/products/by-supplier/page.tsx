@@ -3,7 +3,6 @@
 import { ReturnableInventoryBySupplierClient } from '@/components/inventory/returnable-inventory-by-supplier-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { useDataCache } from '@/context/data-cache-context';
 
@@ -11,49 +10,27 @@ import { useDataCache } from '@/context/data-cache-context';
 function ReturnableInventorySkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center gap-4 p-4 border rounded-lg shadow bg-card mb-6">
-        <Skeleton className="h-10 w-full md:max-w-lg" /> {/* Supplier Dropdown Skeleton */}
-        <Skeleton className="h-10 w-36" /> {/* Clear/Print Button Skeleton */}
-        <Skeleton className="h-6 w-32 md:ml-auto" /> {/* Item Count Skeleton */}
-      </div>
-      <Card className="shadow-md">
-        <Table>{/*
-          Ensure no leading/trailing whitespace for TableHeader/TableBody children of Table
-        */}<TableHeader>
-            <TableRow>{/*
-             */}<TableHead className="w-20 text-center">Return</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Details</TableHead>{/*
-             */}<TableHead>Product Name</TableHead>{/*
-             */}<TableHead>Barcode</TableHead>{/*
-             */}<TableHead className="text-right">In Stock</TableHead>{/*
-             */}<TableHead className="text-right">Unit Cost</TableHead>{/*
-             */}<TableHead className="text-right">Total Value</TableHead>{/*
-             */}<TableHead>Expiry</TableHead>{/*
-             */}<TableHead>Location</TableHead>{/*
-             */}<TableHead>Type</TableHead>{/*
-             */}<TableHead className="w-20 text-center">Edit</TableHead>{/*
-           */}</TableRow>
-          </TableHeader>{/*
-          Ensure no whitespace between TableHeader and TableBody
-        */}<TableBody>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>{/*
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/* Return button skeleton
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/* Details button skeleton
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Product Name
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Barcode
-                */}<TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>{/* In Stock
-                */}<TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>{/* Unit Cost
-                */}<TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>{/* Total Value
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Expiry
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Location
-                */}<TableCell><Skeleton className="h-5 w-full" /></TableCell>{/* Type
-                */}<TableCell><Skeleton className="h-9 w-10 mx-auto" /></TableCell>{/* Edit button skeleton
-              */}</TableRow>
+      <Card className="p-4 shadow-md">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <Skeleton className="h-10 w-full md:w-[320px]" />
+            <div className="flex gap-2 w-full md:w-auto">
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-24" />
+            </div>
+        </div>
+      </Card>
+      <Card className="shadow-md overflow-hidden">
+        <div className="divide-y">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex p-4 gap-4 items-center">
+                <Skeleton className="h-5 w-64" />
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-16 ml-auto" />
+                <Skeleton className="h-5 w-20 ml-auto" />
+                <Skeleton className="h-5 w-20 ml-auto" />
+              </div>
             ))}
-          </TableBody>{/*
-        Ensure no trailing whitespace before closing Table tag
-      */}</Table>
+        </div>
       </Card>
     </div>
   );
