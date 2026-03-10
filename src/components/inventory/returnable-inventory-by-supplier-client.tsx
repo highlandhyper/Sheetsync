@@ -6,7 +6,7 @@ import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Ey
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
-import { Table, TableHeader, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -497,16 +497,6 @@ export function ReturnableInventoryBySupplierClient() {
         </Card>
       )}
 
-      {isMultiSelectEnabled && selectedSupplierNames.length > 0 && (
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-            <ListChecks className="h-4 w-4 !text-blue-500" />
-            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
-            <AlertDescription>
-                Checkboxes are now available for bulk actions. You can disable this in settings.
-            </AlertDescription>
-        </Alert>
-      )}
-
       {selectedSupplierNames.length === 0 ? (
          <div className="text-center py-12">
           <Filter className="mx-auto h-16 w-16 text-muted-foreground" />
@@ -546,7 +536,7 @@ export function ReturnableInventoryBySupplierClient() {
                       const product = productsByBarcode.get(item.barcode);
                       return (
                           <ReturnableInventoryItemRow
-                              key={item.id}
+                              key={`row-supplier-${item.id}`}
                               item={item}
                               onInitiateReturn={handleOpenReturnDialog}
                               onViewDetails={handleOpenDetailsDialog}
@@ -564,13 +554,6 @@ export function ReturnableInventoryBySupplierClient() {
                   })}
               </TableBody>
             </Table>
-            {filteredInventoryItemsBySupplier.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
-                <CardContent className="pt-4 text-center filters-card-noprint">
-                <p className="text-sm text-muted-foreground">
-                    Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsBySupplier.length} items for this selection.
-                </p>
-                </CardContent>
-            )}
             </Card>
 
             <div className="grid grid-cols-1 gap-4 md:hidden">
@@ -578,7 +561,7 @@ export function ReturnableInventoryBySupplierClient() {
                     const product = productsByBarcode.get(item.barcode);
                     return (
                         <InventoryItemCardMobile
-                            key={item.id}
+                            key={`card-supplier-${item.id}`}
                             item={item}
                             product={product}
                             onDetails={() => handleOpenDetailsDialog(item)}
@@ -605,14 +588,14 @@ export function ReturnableInventoryBySupplierClient() {
       )}
 
       <ReturnQuantityDialog
-        key={`return-${selectedItemForReturn?.id || 'none'}`}
+        key={`return-supplier-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleReturnSuccess}
       />
       <InventoryItemDetailsDialog
-        key={`details-${selectedItemForDetails?.id || 'none'}`}
+        key={`details-supplier-${selectedItemForDetails?.id || 'none'}`}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
@@ -620,7 +603,7 @@ export function ReturnableInventoryBySupplierClient() {
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
-        key={`edit-${currentItemToEdit?.id || 'none'}`}
+        key={`edit-supplier-${currentItemToEdit?.id || 'none'}`}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}

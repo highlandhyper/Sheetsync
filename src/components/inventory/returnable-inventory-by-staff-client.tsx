@@ -415,16 +415,6 @@ export function ReturnableInventoryByStaffClient() {
         </Card>
       )}
 
-      {isMultiSelectEnabled && selectedStaffName && (
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-            <ListChecks className="h-4 w-4 !text-blue-500" />
-            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
-            <AlertDescription>
-                Checkboxes are now available for bulk actions. You can disable this in settings.
-            </AlertDescription>
-        </Alert>
-      )}
-
       {!selectedStaffName.trim() ? (
          <div className="text-center py-12">
           <Search className="mx-auto h-16 w-16 text-muted-foreground" />
@@ -461,7 +451,7 @@ export function ReturnableInventoryByStaffClient() {
             </TableHeader><TableBody>
                 {itemsToRender.map((item) => (
                 <ReturnableInventoryItemRow
-                    key={item.id}
+                    key={`row-staff-${item.id}`}
                     item={item}
                     onInitiateReturn={handleOpenReturnDialog}
                     onViewDetails={handleOpenDetailsDialog}
@@ -477,13 +467,6 @@ export function ReturnableInventoryByStaffClient() {
                 />
                 ))}
             </TableBody></Table>
-            {filteredInventoryItemsByStaff.length > MAX_INVENTORY_ITEMS_TO_DISPLAY && (
-                <CardContent className="pt-4 text-center filters-card-noprint">
-                    <p className="text-sm text-muted-foreground">
-                    Displaying first {MAX_INVENTORY_ITEMS_TO_DISPLAY} of {filteredInventoryItemsByStaff.length} items for this staff member.
-                    </p>
-                </CardContent>
-                )}
             </Card>
 
             <div className="grid grid-cols-1 gap-4 md:hidden">
@@ -491,12 +474,14 @@ export function ReturnableInventoryByStaffClient() {
                     const product = productsByBarcode.get(item.barcode);
                     return (
                     <InventoryItemCardMobile
-                        key={item.id}
+                        key={`card-staff-${item.id}`}
                         item={item}
                         product={product}
                         onDetails={() => handleOpenDetailsDialog(item)}
                         onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
                         onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(item) : undefined}
+                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
+                        onSelect={isMultiSelectEnabled && role === 'admin' ? () => handleSelectRow(item.id) : undefined}
                         context="staff"
                     />
                 )})}
@@ -513,14 +498,14 @@ export function ReturnableInventoryByStaffClient() {
       )}
       
       <ReturnQuantityDialog
-        key={`return-${selectedItemForReturn?.id || 'none'}`}
+        key={`return-staff-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleReturnSuccess}
       />
       <InventoryItemDetailsDialog
-        key={`details-${selectedItemForDetails?.id || 'none'}`}
+        key={`details-staff-${selectedItemForDetails?.id || 'none'}`}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
@@ -528,7 +513,7 @@ export function ReturnableInventoryByStaffClient() {
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
-        key={`edit-${currentItemToEdit?.id || 'none'}`}
+        key={`edit-staff-${currentItemToEdit?.id || 'none'}`}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}

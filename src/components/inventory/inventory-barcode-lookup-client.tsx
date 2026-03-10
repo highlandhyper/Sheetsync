@@ -266,7 +266,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                       }
                   }
                   return (
-                    <TableRow key={item.id}>
+                    <TableRow key={`row-${item.id}`}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{formattedTimestamp}</TableCell>
@@ -309,9 +309,9 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
         </DialogContent>
       </Dialog>
 
-      {selectedItemForReturn && <ReturnQuantityDialog key={selectedItemForReturn ? `lookup-return-${selectedItemForReturn.id}` : 'lookup-return'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
-      {selectedItemForDeletion && <DeleteConfirmationDialog key={selectedItemForDeletion ? `lookup-delete-${selectedItemForDeletion.id}` : 'lookup-delete'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />}
-      {currentItemToEdit && <EditInventoryItemDialog key={currentItemToEdit ? `lookup-edit-${currentItemToEdit.id}` : 'lookup-edit'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
+      <ReturnQuantityDialog key={selectedItemForReturn ? `lookup-return-${selectedItemForReturn.id}` : 'lookup-return'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
+      <DeleteConfirmationDialog key={selectedItemForDeletion ? `lookup-delete-${selectedItemForDeletion.id}` : 'lookup-delete'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
+      <EditInventoryItemDialog key={currentItemToEdit ? `lookup-edit-${currentItemToEdit.id}` : 'lookup-edit'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
     </div>
   );
 }
