@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
@@ -6,22 +5,46 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, PackageSearch, Loader2, Undo2, ScanBarcode, VideoOff, AlertTriangle, Trash2, Edit } from 'lucide-react';
+import { Search, PackageSearch, Loader2, Undo2, ScanBarcode, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchInventoryLogEntriesByBarcodeAction, type ActionResponse } from '@/app/actions';
+import { fetchInventoryLogEntriesByBarcodeAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 
 const SCANNER_REGION_ID = "barcode-scanner-region";
+
+const playProfessionalBeep = () => {
+  try {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {
+    console.warn("Audio feedback failed:", e);
+  }
+};
 
 interface InventoryBarcodeLookupClientProps {
   uniqueLocations: string[];
@@ -47,6 +70,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const scanProcessedRef = useRef(false);
   
   const executeSearch = useCallback(async (barcode: string) => {
     if (!barcode || !barcode.trim()) return;
@@ -76,45 +100,46 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   }, [toast]);
 
   const onScanSuccess = useCallback((decodedText: string) => {
+    if (scanProcessedRef.current) return;
+    scanProcessedRef.current = true;
+
+    playProfessionalBeep();
     setBarcodeToSearch(decodedText);
     setIsScannerDialogOpen(false);
     toast({
-      title: 'Barcode Scanned & Searching!',
-      description: `Automatically searching for barcode: ${decodedText}`,
+      title: 'Barcode Scanned!',
+      description: `Searching for: ${decodedText}`,
     });
     executeSearch(decodedText);
+
+    setTimeout(() => {
+        scanProcessedRef.current = false;
+    }, 1000);
   }, [executeSearch, toast]);
 
 
   useEffect(() => {
     if (isScannerDialogOpen) {
       const timer = setTimeout(() => {
-        if (html5QrcodeScannerRef.current) return; // Already initialized
+        if (html5QrcodeScannerRef.current) return;
 
         const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
-        const qrConfig = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-        };
-
         scanner.start(
           { facingMode: 'environment' },
-          qrConfig,
+          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           onScanSuccess,
-          (errorMessage: string) => { /* ignore errors */ }
+          () => {}
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
         }).catch(err => {
-          console.error("Failed to start QR code scanner:", err);
           toast({
             variant: 'destructive',
             title: 'Scanner Error',
-            description: 'Could not start the camera. Please check permissions and ensure another app is not using it.'
+            description: 'Could not start camera. Check permissions.'
           });
-          setIsScannerDialogOpen(false); // Close dialog on start failure
+          setIsScannerDialogOpen(false);
         });
-      }, 300); // Delay to ensure DOM is ready
+      }, 800);
 
       return () => {
         clearTimeout(timer);
@@ -140,58 +165,31 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   };
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
-    if (role !== 'admin') {
-        toast({ title: 'Permission Denied', description: 'Only admins can process returns.', variant: 'destructive'});
-        return;
-    }
+    if (role !== 'admin') return;
     setSelectedItemForReturn(item);
     setIsReturnDialogOpen(true);
   };
   
   const handleOpenDeleteDialog = (item: InventoryItem) => {
-    if (role !== 'admin') {
-      toast({ title: 'Permission Denied', description: 'Only admins can delete log entries.', variant: 'destructive'});
-      return;
-    }
+    if (role !== 'admin') return;
     setSelectedItemForDeletion(item);
     setIsDeleteDialogOpen(true);
   };
 
   const handleOpenEditDialog = (item: InventoryItem) => {
-    if (role !== 'admin') {
-      toast({ title: 'Permission Denied', description: 'Only admins can edit log entries.', variant: 'destructive'});
-      return;
-    }
+    if (role !== 'admin') return;
     setCurrentItemToEdit(item);
     setIsEditDialogOpen(true);
   };
 
-  const handleReturnSuccess = useCallback(() => {
+  const handleActionSuccess = useCallback(() => {
     setIsReturnDialogOpen(false);
-    setSelectedItemForReturn(null);
-    if (lastSearchedBarcode) {
-      toast({ title: 'Refreshing Log...', description: `Re-querying barcode ${lastSearchedBarcode}.`});
-      executeSearch(lastSearchedBarcode);
-    }
-  }, [lastSearchedBarcode, executeSearch, toast]);
-  
-  const handleDeleteSuccess = useCallback(() => {
     setIsDeleteDialogOpen(false);
-    setSelectedItemForDeletion(null);
-    if (lastSearchedBarcode) {
-      toast({ title: 'Refreshing Log...', description: `Re-querying barcode ${lastSearchedBarcode}.`});
-      executeSearch(lastSearchedBarcode);
-    }
-  }, [lastSearchedBarcode, executeSearch, toast]);
-
-  const handleEditSuccess = useCallback(() => {
     setIsEditDialogOpen(false);
-    setCurrentItemToEdit(null);
     if (lastSearchedBarcode) {
-      toast({ title: 'Refreshing Log...', description: `Re-querying barcode ${lastSearchedBarcode}.`});
       executeSearch(lastSearchedBarcode);
     }
-  }, [lastSearchedBarcode, executeSearch, toast]);
+  }, [lastSearchedBarcode, executeSearch]);
 
 
   return (
@@ -265,15 +263,10 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                       const parsedExp = parseISO(item.expiryDate);
                       if (isValid(parsedExp)) {
                           formattedExpiryDate = format(parsedExp, 'PP');
-                          if (item.itemType === 'Expiry' && parsedExp < new Date() && parsedExp.setHours(0,0,0,0) !== new Date().setHours(0,0,0,0)) {
-                               formattedExpiryDate += " (Expired)";
-                          }
-                      } else {
-                          formattedExpiryDate = "Invalid Date";
                       }
                   }
                   const isExpiredNow = item.itemType === 'Expiry' && item.expiryDate ? 
-                                       (isValid(parseISO(item.expiryDate)) && parseISO(item.expiryDate) < new Date() && parseISO(item.expiryDate).setHours(0,0,0,0) !== new Date().setHours(0,0,0,0) ) : false;
+                                       (isValid(parseISO(item.expiryDate)) && isBefore(startOfDay(parseISO(item.expiryDate)), startOfDay(new Date()))) : false;
 
                   return (
                     <TableRow key={item.id}>
@@ -291,34 +284,9 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                       {role === 'admin' && (
                         <TableCell className="text-center">
                            <div className="flex justify-center items-center gap-1">
-                              <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenEditDialog(item)}
-                                  aria-label={`Edit log for ${item.productName}`}
-                                  className="p-2 h-auto"
-                              >
-                                  <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleOpenReturnDialog(item)}
-                                  disabled={item.quantity <= 0} 
-                                  aria-label={`Return ${item.productName}`}
-                                  className="p-2 h-auto"
-                              >
-                                  <Undo2 className="h-4 w-4" />
-                              </Button>
-                               <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleOpenDeleteDialog(item)}
-                                  aria-label={`Delete log for ${item.productName}`}
-                                  className="p-2 h-auto"
-                              >
-                                  <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenEditDialog(item)} className="p-2 h-auto"><Edit className="h-4 w-4" /></Button>
+                              <Button variant="outline" size="sm" onClick={() => handleOpenReturnDialog(item)} disabled={item.quantity <= 0} className="p-2 h-auto"><Undo2 className="h-4 w-4" /></Button>
+                               <Button variant="destructive" size="sm" onClick={() => handleOpenDeleteDialog(item)} className="p-2 h-auto"><Trash2 className="h-4 w-4" /></Button>
                            </div>
                         </TableCell>
                       )}
@@ -331,74 +299,22 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
         </Card>
       )}
 
-      {!isLoading && hasSearched && searchResults.length === 0 && (
-        <div className="text-center py-12">
-          <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No Log Entries Found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            No inventory log entries were found for barcode: "{lastSearchedBarcode}".
-          </p>
-        </div>
-      )}
-
-      {!isLoading && !hasSearched && (
-        <div className="text-center py-12">
-          <Search className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">Lookup Inventory Log</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Enter a barcode above to search for its historical log entries, or use the scanner.
-          </p>
-        </div>
-      )}
-
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-w-md w-full p-0">
             <DialogHeader className="p-6 pb-2">
                 <DialogTitle>Scan Barcode</DialogTitle>
-                <DialogDescription>
-                    Position the barcode within the frame. The scanner will automatically detect it.
-                </DialogDescription>
+                <DialogDescription>Position the barcode within the frame to search.</DialogDescription>
             </DialogHeader>
             <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
             <div className="p-6 pt-0 flex justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsScannerDialogOpen(false)}
-                  className="mt-4"
-                >
-                  Cancel
-                </Button>
+                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)}>Cancel</Button>
             </div>
         </DialogContent>
       </Dialog>
 
-      {selectedItemForReturn && (
-        <ReturnQuantityDialog
-            item={selectedItemForReturn}
-            isOpen={isReturnDialogOpen}
-            onOpenChange={setIsReturnDialogOpen}
-            onReturnSuccess={handleReturnSuccess}
-        />
-      )}
-      
-       {selectedItemForDeletion && (
-        <DeleteConfirmationDialog
-            item={selectedItemForDeletion}
-            isOpen={isDeleteDialogOpen}
-            onOpenChange={setIsDeleteDialogOpen}
-            onSuccess={handleDeleteSuccess}
-        />
-      )}
-
-      {currentItemToEdit && (
-        <EditInventoryItemDialog
-            item={currentItemToEdit}
-            isOpen={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            onSuccess={handleEditSuccess}
-            uniqueLocationsFromDb={uniqueLocations}
-        />
-      )}
+      {selectedItemForReturn && <ReturnQuantityDialog key={`return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
+      {selectedItemForDeletion && <DeleteConfirmationDialog key={`delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />}
+      {currentItemToEdit && <EditInventoryItemDialog key={`edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
     </div>
   );
 }
