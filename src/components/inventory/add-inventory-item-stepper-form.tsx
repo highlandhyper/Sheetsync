@@ -120,7 +120,6 @@ const playProfessionalBeep = () => {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
 
-    // Smooth retail beep with ramps to prevent artifacts
     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -393,7 +392,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setTimeout(() => {
         nextStep();
         scanProcessedRef.current = false;
-    }, 1000); // 1s lock to prevent ghost beeps
+    }, 1000); 
   }, [setValue, nextStep]);
 
   useEffect(() => {

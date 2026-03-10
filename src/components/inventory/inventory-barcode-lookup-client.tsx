@@ -265,9 +265,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                           formattedExpiryDate = format(parsedExp, 'PP');
                       }
                   }
-                  const isExpiredNow = item.itemType === 'Expiry' && item.expiryDate ? 
-                                       (isValid(parseISO(item.expiryDate)) && isBefore(startOfDay(parseISO(item.expiryDate)), startOfDay(new Date()))) : false;
-
                   return (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
@@ -275,7 +272,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{formattedTimestamp}</TableCell>
                       <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
                       <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                      <TableCell className={cn(isExpiredNow ? "text-destructive" : "text-muted-foreground", "whitespace-nowrap")}>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
                           {formattedExpiryDate}
                       </TableCell>
                       <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500" : "text-muted-foreground")}>

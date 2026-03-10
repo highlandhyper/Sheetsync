@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; 
@@ -7,7 +6,7 @@ import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Ey
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
-import { Table, TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -605,7 +604,6 @@ export function ReturnableInventoryBySupplierClient() {
         </div>
       )}
 
-      {/* Action Dialogs - Keys are prefixed to ensure uniqueness */}
       <ReturnQuantityDialog
         key={`return-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}
