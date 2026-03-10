@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, KeyRound, User } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -50,7 +50,6 @@ interface EditInventoryItemDialogProps {
   uniqueLocationsFromDb: string[]; 
 }
 
-
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -92,7 +91,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     }
   }, [watchedQuantity, initialQuantity]);
 
-
   const availableLocationsForSelect = useMemo(() => {
     const locationsSet = new Set<string>();
     if (item?.location) {
@@ -102,42 +100,39 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     return Array.from(locationsSet).filter(Boolean).sort();
   }, [item?.location, uniqueLocationsFromDb]);
 
-  useEffect(
-    function handleItemChange() {
-      if (item) {
-        setInitialQuantity(item.quantity);
-        
-        // Accurate local date parsing to prevent timezone shifts
-        let parsedDate: Date | null = null;
-        if (item.expiryDate) {
-            const dateParts = item.expiryDate.split('-');
-            if (dateParts.length === 3) {
-                const year = parseInt(dateParts[0], 10);
-                const month = parseInt(dateParts[1], 10) - 1;
-                const day = parseInt(dateParts[2], 10);
-                const d = new Date(year, month, day);
-                if (isValid(d)) parsedDate = d;
-            }
-            if (!parsedDate) {
-                const iso = parseISO(item.expiryDate);
-                if (isValid(iso)) parsedDate = iso;
-            }
-        }
-
-        reset({
-          itemId: item.id,
-          location: item.location,
-          itemType: item.itemType,
-          quantity: item.quantity,
-          expiryDate: parsedDate,
-        });
-      } else {
-        setInitialQuantity(null);
+  useEffect(() => {
+    if (item && isOpen) {
+      setInitialQuantity(item.quantity);
+      
+      // Fix: Robust local date parsing to prevent timezone shifting
+      let parsedDate: Date | null = null;
+      if (item.expiryDate) {
+          const dateParts = item.expiryDate.split('-');
+          if (dateParts.length === 3) {
+              const year = parseInt(dateParts[0], 10);
+              const month = parseInt(dateParts[1], 10) - 1;
+              const day = parseInt(dateParts[2], 10);
+              const d = new Date(year, month, day);
+              if (isValid(d)) parsedDate = d;
+          }
+          if (!parsedDate) {
+              const iso = parseISO(item.expiryDate);
+              if (isValid(iso)) parsedDate = iso;
+          }
       }
+
+      reset({
+        itemId: item.id,
+        location: item.location,
+        itemType: item.itemType,
+        quantity: item.quantity,
+        expiryDate: parsedDate,
+      });
+    } else if (!isOpen) {
+      setInitialQuantity(null);
       setQuantityChanged(false);
-    },
-    [item, reset, isOpen] 
-  );
+    }
+  }, [item, reset, isOpen]);
   
   const executeSave = (data: EditInventoryItemFormValues) => {
     if (!item || !user?.email) {
@@ -153,11 +148,11 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      // Use local formatting to prevent off-by-one errors from UTC shifts
+      // Use local ISO format to ensure accuracy in database
       const formattedDate = format(data.expiryDate, 'yyyy-MM-dd');
       formData.append('expiryDate', formattedDate);
     } else if (data.itemType === 'Expiry') {
-        toast({title: "Validation Error", description: "Expiry date is required for 'Expiry' type items.", variant: "destructive"});
+        toast({title: "Validation Error", description: "Expiry date is required for 'Expiry' items.", variant: "destructive"});
         return;
     }
     
@@ -218,7 +213,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         </DialogHeader>
         <form onSubmit={handleSubmit(handlePrimarySubmit)} className="space-y-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                {/* Location */}
                 <div>
                     <Label htmlFor="location">Location</Label>
                     <Controller
@@ -233,13 +227,9 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            {availableLocationsForSelect.length > 0 ? (
-                            availableLocationsForSelect.map((loc) => (
+                            {availableLocationsForSelect.map((loc) => (
                                 <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                            ))
-                            ) : (
-                            <div className="p-2 text-sm text-muted-foreground">No locations available.</div>
-                            )}
+                            ))}
                         </SelectContent>
                         </Select>
                     )}
@@ -247,7 +237,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                     {formErrors.location && <p className="text-sm text-destructive mt-1">{formErrors.location.message}</p>}
                 </div>
 
-                {/* Quantity */}
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
                    <div className="relative">
@@ -267,14 +256,13 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                    </div>
                   {formErrors.quantity && <p className="text-sm text-destructive mt-1">{formErrors.quantity.message}</p>}
                   {quantityChanged && (
-                    <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-1.5 font-medium">
                       <ShieldQuestion className="h-3.5 w-3.5" />
-                      <span>Authorization will be required to save.</span>
+                      <span>Authorization required to change quantity.</span>
                     </div>
                   )}
                 </div>
 
-                {/* Item Type */}
                 <div>
                 <Label htmlFor="itemType">Item Type</Label>
                 <Controller
@@ -292,8 +280,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         </div>
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="Expiry"><Tag className="mr-2 h-4 w-4 inline-block" />Expiry</SelectItem>
-                        <SelectItem value="Damage"><AlertTriangle className="mr-2 h-4 w-4 inline-block text-orange-500" />Damage</SelectItem>
+                        <SelectItem value="Expiry">Expiry</SelectItem>
+                        <SelectItem value="Damage">Damage</SelectItem>
                         </SelectContent>
                     </Select>
                     )}
@@ -301,14 +289,13 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                 {formErrors.itemType && <p className="text-sm text-destructive mt-1">{formErrors.itemType.message}</p>}
                 </div>
 
-                {/* Expiry Date */}
                 <div>
                 <Label htmlFor="expiryDate">Expiry Date</Label>
                 <Controller
                     name="expiryDate"
                     control={control}
                     render={({ field }) => (
-                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
@@ -358,7 +345,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
         isOpen={isAuthDialogOpen}
         onOpenChange={setIsAuthDialogOpen}
         onAuthorizationSuccess={handleAuthorizationSuccess}
-        actionDescription="You are changing the quantity of an inventory item. This requires local admin authorization."
+        actionDescription="Changing item quantity requires local admin authorization."
     />
     </>
   );
