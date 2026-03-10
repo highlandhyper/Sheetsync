@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, Wallet, FileText, ChevronDown } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, Wallet, FileText, ChevronDown, Barcode } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -458,7 +458,16 @@ export function InventoryListClient() {
                             <Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} />
                         </TableCell>
                         )}
-                        <TableCell className="font-medium">{mainItem.productName}</TableCell>
+                        <TableCell className="font-medium p-0">
+                            <div className="group/name relative h-12 flex items-center px-4 cursor-help overflow-hidden">
+                                <span className="group-hover/name:hidden transition-all duration-300 truncate">
+                                    {mainItem.productName}
+                                </span>
+                                <span className="hidden group-hover/name:flex items-center gap-2 font-mono text-xs text-primary animate-in fade-in slide-in-from-left-2 duration-300">
+                                    <Barcode className="h-3 w-3" /> {mainItem.barcode}
+                                </span>
+                            </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{mainItem.supplierName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
                         <TableCell className="text-right">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>

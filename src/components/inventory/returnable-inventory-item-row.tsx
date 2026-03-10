@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
@@ -5,7 +6,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Undo2, Eye, Pencil } from 'lucide-react';
+import { Undo2, Eye, Pencil, Barcode } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 import { memo } from 'react';
 
@@ -66,7 +67,16 @@ const ReturnableInventoryItemRowComponent = ({
           />
         </TableCell>
       )}
-      <TableCell className="font-medium">{item.productName}</TableCell>
+      <TableCell className="font-medium p-0">
+        <div className="group/name relative h-12 flex items-center px-4 cursor-help overflow-hidden">
+            <span className="group-hover/name:hidden transition-all duration-300 truncate">
+                {item.productName}
+            </span>
+            <span className="hidden group-hover/name:flex items-center gap-2 font-mono text-xs text-primary animate-in fade-in slide-in-from-left-2 duration-300">
+                <Barcode className="h-3 w-3" /> {item.barcode}
+            </span>
+        </div>
+      </TableCell>
       <TableCell className="text-muted-foreground">{item.barcode}</TableCell>
       {showSupplierName && (
         <TableCell className="text-muted-foreground">{item.supplierName || 'N/A'}</TableCell>
@@ -87,12 +97,10 @@ const ReturnableInventoryItemRowComponent = ({
       </TableCell>
       <TableCell className="text-right noprint">
         <div className="relative h-8 flex items-center justify-end">
-            {/* Date/Time shown when not hovering */}
             <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">
                 {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
             </span>
 
-            {/* Actions hidden by default, shown on hover */}
             <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
                 <Button
                     variant="outline"
