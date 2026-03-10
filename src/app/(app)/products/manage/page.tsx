@@ -4,40 +4,43 @@ import { EditOrCreateProductForm } from '@/components/products/create-product-fo
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataCache } from '@/context/data-cache-context';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 function ManageProductFormSkeleton() {
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8">
-      {/* Search Section Skeleton */}
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-1/2" /> {/* Title */}
-        <Skeleton className="h-6 w-3/4" /> {/* Description */}
-        <div className="flex gap-2">
-          <Skeleton className="h-10 flex-grow" /> {/* Barcode Input */}
-          <Skeleton className="h-10 w-24" /> {/* Search Button */}
+    <Card className="w-full max-w-2xl mx-auto shadow-xl">
+      <CardHeader className="space-y-4">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-4 w-3/4" />
+        <div className="flex flex-col sm:flex-row gap-2 pt-4">
+          <Skeleton className="h-10 flex-grow" />
+          <Skeleton className="h-10 w-full sm:w-24" />
         </div>
-      </div>
-      
-      {/* Form Section Skeleton (conditionally shown after search) */}
-      <div className="space-y-6">
-        <Skeleton className="h-6 w-1/3" /> {/* Form Sub-Title or Status */}
+      </CardHeader>
+      <CardContent className="space-y-6 pt-6 border-t">
         <div className="space-y-2">
-            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-4 w-24" />
             <Skeleton className="h-10 w-full" />
         </div>
         <div className="space-y-2">
-            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-4 w-32" />
             <Skeleton className="h-10 w-full" />
         </div>
-        <div className="space-y-2">
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-10 w-full" /> {/* Supplier Field Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+            </div>
         </div>
-        <div className="flex justify-end">
-            <Skeleton className="h-10 w-32" /> {/* Submit Button */}
+        <div className="flex justify-end pt-4">
+            <Skeleton className="h-10 w-full sm:w-36" />
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -56,5 +59,3 @@ export default function ManageProductPage() {
     </div>
   );
 }
-
-    

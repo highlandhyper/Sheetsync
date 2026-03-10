@@ -3,7 +3,6 @@
 import { AuditLogClient } from '@/components/audit/audit-log-client';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
@@ -12,35 +11,27 @@ import { useDataCache } from '@/context/data-cache-context';
 function AuditLogSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border rounded-lg shadow bg-card">
-        <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
-        <Skeleton className="h-10 w-full sm:max-w-[200px]" /> {/* User Filter */}
-        <Skeleton className="h-10 w-full sm:max-w-[200px]" /> {/* Action Filter */}
-        <Skeleton className="h-10 w-full sm:max-w-[200px]" /> {/* Date Range Filter */}
-      </div>
-      <Card className="shadow-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Details</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <Card className="p-4 shadow-md">
+        <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                <Skeleton className="h-10 w-full sm:w-40 flex-1" />
+                <Skeleton className="h-10 w-full sm:w-40 flex-1" />
+                <Skeleton className="h-10 w-full sm:w-48 flex-1" />
+            </div>
+        </div>
+      </Card>
+      <Card className="shadow-md overflow-hidden">
+        <div className="divide-y">
             {Array.from({ length: 10 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-              </TableRow>
+              <div key={index} className="flex p-4 gap-4 items-center">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
             ))}
-          </TableBody>
-        </Table>
+        </div>
       </Card>
     </div>
   );

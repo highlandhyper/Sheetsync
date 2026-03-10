@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -380,7 +381,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const onScanSuccess = useCallback((decodedText: string) => {
-    // Scan lock to prevent double successes
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
 
@@ -413,7 +413,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             html5QrcodeScannerRef.current = scanner;
           }).catch(console.error);
         }
-      }, 800); // Settle delay to prevent ghost scans
+      }, 800);
 
       return () => {
         clearTimeout(timer);
@@ -680,7 +680,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </Button>
                 ) : (
                     <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
-                        {isPending || isSubmitting ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}
+                        {isPending || isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}
                         Complete Log
                     </Button>
                 )}

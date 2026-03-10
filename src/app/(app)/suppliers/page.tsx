@@ -11,28 +11,25 @@ function SupplierListSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
-        <Skeleton className="h-10 w-36" /> {/* Add Supplier Button */}
+        <Skeleton className="h-10 w-full sm:max-w-xs" />
+        <Skeleton className="h-10 w-44" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, index) => (
-            <Card key={index} className="w-full">
-                <CardHeader>
-                    <div className="flex items-center gap-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                            <Skeleton className="h-5 w-3/4" />
-                        </div>
-                    </div>
+            <Card key={index} className="w-full flex flex-col h-full">
+                <CardHeader className="pb-3">
+                    <Skeleton className="h-32 w-full rounded-t-lg -mt-6 -mx-6 mb-4" />
+                    <Skeleton className="h-6 w-3/4" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-grow space-y-2">
                     <Skeleton className="h-4 w-1/2" />
                 </CardContent>
+                <div className="p-4 pt-0">
+                    <Skeleton className="h-9 w-full" />
+                </div>
             </Card>
         ))}
       </div>
-       {/* Max items warning skeleton */}
-      <Skeleton className="h-5 w-3/4 mx-auto" />
     </div>
   );
 }
