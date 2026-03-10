@@ -526,21 +526,21 @@ export function InventoryListClient() {
         onOpenDeleteDialog={handleOpenDeleteDialog}
       />
       <InventoryItemDetailsDialog
-        key={`details-${selectedItemForDetails?.id || 'none'}`}
+        key={selectedItemForDetails ? `details-${selectedItemForDetails.id}` : 'details-dialog'}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog
-        key={`return-${selectedItemForReturn?.id || 'none'}`}
+        key={selectedItemForReturn ? `return-${selectedItemForReturn.id}` : 'return-dialog'}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleActionSuccess}
       />
       <EditInventoryItemDialog
-        key={`edit-${currentItemToEdit?.id || 'none'}`}
+        key={currentItemToEdit ? `edit-${currentItemToEdit.id}` : 'edit-dialog'}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -548,7 +548,7 @@ export function InventoryListClient() {
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
-        key={`delete-${selectedItemForDeletion?.id || 'none'}`}
+        key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-dialog'}
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
