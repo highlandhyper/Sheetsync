@@ -51,14 +51,17 @@ interface EditInventoryItemDialogProps {
 
 function parseDateStringLocal(dateStr?: string): Date | null {
   if (!dateStr) return null;
+  // Handle YYYY-MM-DD or DD/MM/YYYY
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
     let y, m, d;
     if (parts[0].length === 4) {
+      // YYYY-MM-DD
       y = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
       d = parseInt(parts[2], 10);
     } else {
+      // DD/MM/YYYY
       d = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
       y = parseInt(parts[2], 10);
