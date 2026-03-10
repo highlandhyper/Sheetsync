@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
-import type { InventoryItem, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, User, Wallet, FileText, ChevronDown } from 'lucide-react';
+import type { InventoryItem } from '@/lib/types';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, Wallet, FileText, ChevronDown } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
@@ -389,7 +389,7 @@ export function InventoryListClient() {
                 </SelectContent>
               </Select>
 
-              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen} modal={true}>
                 <PopoverTrigger asChild>
                   <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1", !selectedDateRange && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -452,7 +452,7 @@ export function InventoryListClient() {
                     const hasMultipleLocs = new Set(individualItems.map(i => i.location)).size > 1;
 
                     return (
-                    <TableRow key={mainItem.id} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
+                    <TableRow key={`row-${mainItem.barcode}`} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
                         {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
                             <Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} />
@@ -493,7 +493,7 @@ export function InventoryListClient() {
             <div className="grid grid-cols-1 gap-4 md:hidden">
                 {groupedItems.map((group) => (
                     <InventoryItemCardMobile
-                        key={group.mainItem.id}
+                        key={`card-${group.mainItem.barcode}`}
                         item={group.mainItem}
                         product={productsByBarcode.get(group.mainItem.barcode)}
                         totalQuantity={group.totalQuantity}

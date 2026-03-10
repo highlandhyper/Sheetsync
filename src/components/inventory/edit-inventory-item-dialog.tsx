@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/dialog';
 
 import { editInventoryItemSchema, type EditInventoryItemFormValues } from '@/lib/schemas';
-import type { InventoryItem, ItemType } from '@/lib/types';
+import type { InventoryItem } from '@/lib/types';
 import { editInventoryItemAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,31 @@ interface EditInventoryItemDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   uniqueLocationsFromDb: string[]; 
+}
+
+/**
+ * Robust date parser to handle local time consistently and prevent day-jumping.
+ */
+function parseDateStringLocal(dateStr?: string): Date | null {
+  if (!dateStr) return null;
+  // Handle YYYY-MM-DD
+  const parts = dateStr.split(/[-/.]/);
+  if (parts.length === 3) {
+    let y, m, d;
+    if (parts[0].length === 4) { // ISO style
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      d = parseInt(parts[2], 10);
+    } else { // Standard style
+      d = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      y = parseInt(parts[2], 10);
+    }
+    const date = new Date(y, m, d);
+    return isValid(date) ? date : null;
+  }
+  const isoDate = parseISO(dateStr);
+  return isValid(isoDate) ? isoDate : null;
 }
 
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
@@ -67,6 +92,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     reset,
     control,
     watch,
+    setValue,
     formState: { errors: formErrors, isDirty },
   } = useForm<EditInventoryItemFormValues>({
     resolver: zodResolver(editInventoryItemSchema),
@@ -79,8 +105,8 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     },
   });
 
-  const currentItemType = watch('itemType');
   const watchedQuantity = watch('quantity');
+  const watchedExpiryDate = watch('expiryDate');
 
   useEffect(() => {
     if (initialQuantity !== null && watchedQuantity !== initialQuantity) {
@@ -102,30 +128,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   useEffect(() => {
     if (item && isOpen) {
       setInitialQuantity(item.quantity);
-      
-      let parsedDate: Date | null = null;
-      if (item.expiryDate) {
-          const parts = item.expiryDate.split(/[-/.]/);
-          if (parts.length === 3) {
-              let y, m, d;
-              if (parts[0].length === 4) { 
-                  y = parseInt(parts[0], 10);
-                  m = parseInt(parts[1], 10) - 1;
-                  d = parseInt(parts[2], 10);
-              } else { 
-                  d = parseInt(parts[0], 10);
-                  m = parseInt(parts[1], 10) - 1;
-                  y = parseInt(parts[2], 10);
-              }
-              const localDate = new Date(y, m, d);
-              if (isValid(localDate)) parsedDate = localDate;
-          }
-          
-          if (!parsedDate) {
-              const isoDate = parseISO(item.expiryDate);
-              if (isValid(isoDate)) parsedDate = isoDate;
-          }
-      }
+      const parsedDate = parseDateStringLocal(item.expiryDate);
 
       reset({
         itemId: item.id,
@@ -149,9 +152,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
 
     if (data.expiryDate) {
       formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
-    } else if (data.itemType === 'Expiry') {
-        toast({title: "Error", description: "Expiry date is required.", variant: "destructive"});
-        return;
     }
     
     startActionTransition(async () => {
@@ -267,35 +267,30 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
 
                 <div>
                 <Label htmlFor="expiryDate">Expiry Date</Label>
-                <Controller
-                    name="expiryDate"
-                    control={control}
-                    render={({ field }) => (
-                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground", formErrors.expiryDate && 'border-destructive')}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar 
-                            mode="single" 
-                            selected={field.value || undefined} 
-                            onSelect={(date) => {
-                                field.onChange(date);
-                                if (date) setIsCalendarOpen(false);
-                            }} 
-                            initialFocus 
-                            defaultMonth={field.value || undefined}
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    )}
-                />
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal h-10", !watchedExpiryDate && "text-muted-foreground", formErrors.expiryDate && 'border-destructive')}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {watchedExpiryDate ? format(watchedExpiryDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar 
+                        mode="single" 
+                        selected={watchedExpiryDate || undefined} 
+                        onSelect={(date) => {
+                            setValue('expiryDate', date || null, { shouldDirty: true });
+                            if (date) setIsCalendarOpen(false);
+                        }} 
+                        initialFocus 
+                        defaultMonth={watchedExpiryDate || undefined}
+                    />
+                    </PopoverContent>
+                </Popover>
+                {formErrors.expiryDate && <p className="text-xs text-destructive mt-1">{formErrors.expiryDate.message}</p>}
                 </div>
             </div>
           
