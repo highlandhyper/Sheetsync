@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -51,7 +52,7 @@ export function InventoryListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { role, user } = useAuth();
+  const { role } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
       inventoryItems: cachedItems,
@@ -62,10 +63,8 @@ export function InventoryListClient() {
       removeInventoryItem, 
       addProduct: addProductToCache, 
       refreshData: onDataNeeded,
-      addReturnedItem,
   } = useDataCache();
 
-  // Performance Enhancement: Debounced Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
@@ -117,7 +116,6 @@ export function InventoryListClient() {
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
 
-    // 1. Phase 1: Seed from Dashboard Filter if active
     if (activeDashboardFilter) {
        switch(activeDashboardFilter.type) {
         case 'damaged': 
@@ -167,7 +165,6 @@ export function InventoryListClient() {
        }
     }
 
-    // 2. Phase 2: Apply Local Overlays (using debouncedSearch for performance)
     if (debouncedSearch) {
         const lowerSearchTerm = debouncedSearch.toLowerCase();
         items = items.filter(item =>
@@ -255,6 +252,19 @@ export function InventoryListClient() {
 
     return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);
+
+  // Handle Syncing Group Details when data changes
+  useEffect(() => {
+    if (isGroupDetailsOpen && selectedGroup) {
+        const matchingGroup = groupedItems.find(g => g.mainItem.barcode === selectedGroup.mainItem.barcode);
+        if (matchingGroup) {
+            setSelectedGroup(matchingGroup);
+        } else {
+            setIsGroupDetailsOpen(false);
+            setSelectedGroup(null);
+        }
+    }
+  }, [groupedItems, isGroupDetailsOpen]);
 
   const totalValueOfSelectedItems = useMemo(() => {
     if (selectedBarcodes.size === 0) return 0;
@@ -438,19 +448,9 @@ export function InventoryListClient() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    setIsDetailsDialogOpen(false);
-
-    if (isGroupDetailsOpen && selectedGroup) {
-        const updatedGroup = groupedItems.find(g => g.mainItem.barcode === selectedGroup.mainItem.barcode);
-        if (updatedGroup) {
-            setSelectedGroup(updatedGroup);
-        } else {
-            setIsGroupDetailsOpen(false);
-            setSelectedGroup(null);
-        }
-    }
+    // Note: details dialogs stay open or are updated via the useEffect above
     setSelectedBarcodes(new Set());
-  }, [onDataNeeded, isGroupDetailsOpen, selectedGroup, groupedItems]);
+  }, [onDataNeeded]);
 
   const handleBulkSuccess = useCallback(() => {
     onDataNeeded();
@@ -838,8 +838,9 @@ export function InventoryListClient() {
         </div>
       )}
 
-      {/* Individual Item Action Dialogs (triggered from the group dialog) */}
+      {/* Individual Item Action Dialogs */}
        <InventoryItemGroupDetailsDialog
+        key={selectedGroup?.mainItem.barcode || 'group-details'}
         group={selectedGroup}
         isOpen={isGroupDetailsOpen}
         onOpenChange={setIsGroupDetailsOpen}
@@ -849,18 +850,21 @@ export function InventoryListClient() {
         onOpenDeleteDialog={handleOpenDeleteDialog}
       />
       <InventoryItemDetailsDialog
+        key={selectedItemForDetails?.id || 'details'}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog
+        key={selectedItemForReturn?.id || 'return'}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleActionSuccess}
       />
       <EditInventoryItemDialog
+        key={currentItemToEdit?.id || 'edit'}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -868,6 +872,7 @@ export function InventoryListClient() {
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
+        key={selectedItemForDeletion?.id || 'delete'}
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}

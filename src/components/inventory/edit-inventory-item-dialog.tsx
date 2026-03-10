@@ -107,6 +107,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       let parsedDate: Date | null = null;
       if (item.expiryDate) {
           // Robust local parsing to prevent UTC shifts
+          // Handles YYYY-MM-DD or DD/MM/YYYY
           const parts = item.expiryDate.split(/[-/.]/);
           if (parts.length === 3) {
               let y, m, d;
@@ -313,7 +314,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                         </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0" align="start" modal={true}>
                         <Calendar 
                             mode="single" 
                             selected={field.value || undefined} 
