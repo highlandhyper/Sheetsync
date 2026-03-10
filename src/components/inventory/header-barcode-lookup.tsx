@@ -278,7 +278,6 @@ export function HeaderBarcodeLookup() {
         </DialogContent>
       </Dialog>
       
-      {/* Action Dialogs */}
       {selectedItemForReturn && <ReturnQuantityDialog key={`header-return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
       {currentItemToEdit && <EditInventoryItemDialog key={`header-edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
       {selectedItemForDeletion && <DeleteConfirmationDialog key={`header-delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}

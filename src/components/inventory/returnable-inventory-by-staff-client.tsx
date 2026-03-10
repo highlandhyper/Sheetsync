@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -436,7 +435,6 @@ export function ReturnableInventoryByStaffClient() {
         </div>
       ) : itemsToRender.length > 0 ? (
         <>
-            {/* Desktop Table View */}
             <Card className="shadow-md hidden md:block">
             <Table><TableHeader>
                 <TableRow>
@@ -488,7 +486,6 @@ export function ReturnableInventoryByStaffClient() {
                 )}
             </Card>
 
-            {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
                 {itemsToRender.map((item) => {
                     const product = productsByBarcode.get(item.barcode);
@@ -515,7 +512,6 @@ export function ReturnableInventoryByStaffClient() {
         </div>
       )}
       
-      {/* Action Dialogs - Keys are prefixed to ensure uniqueness */}
       <ReturnQuantityDialog
         key={`return-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}

@@ -10,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
 import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, Wallet, FileText, ChevronDown } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';

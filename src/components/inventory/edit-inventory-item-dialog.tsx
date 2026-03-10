@@ -49,20 +49,16 @@ interface EditInventoryItemDialogProps {
   uniqueLocationsFromDb: string[]; 
 }
 
-/**
- * Robust date parser to handle local time consistently and prevent day-jumping.
- */
 function parseDateStringLocal(dateStr?: string): Date | null {
   if (!dateStr) return null;
-  // Handle YYYY-MM-DD
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
     let y, m, d;
-    if (parts[0].length === 4) { // ISO style
+    if (parts[0].length === 4) {
       y = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
       d = parseInt(parts[2], 10);
-    } else { // Standard style
+    } else {
       d = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
       y = parseInt(parts[2], 10);
