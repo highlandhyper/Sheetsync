@@ -838,9 +838,9 @@ export function InventoryListClient() {
         </div>
       )}
 
-      {/* Individual Item Action Dialogs */}
+      {/* Individual Item Action Dialogs - Keys are prefixed to ensure uniqueness */}
        <InventoryItemGroupDetailsDialog
-        key={selectedGroup?.mainItem.barcode || 'group-details'}
+        key={`group-${selectedGroup?.mainItem.barcode || 'none'}`}
         group={selectedGroup}
         isOpen={isGroupDetailsOpen}
         onOpenChange={setIsGroupDetailsOpen}
@@ -850,21 +850,21 @@ export function InventoryListClient() {
         onOpenDeleteDialog={handleOpenDeleteDialog}
       />
       <InventoryItemDetailsDialog
-        key={selectedItemForDetails?.id || 'details'}
+        key={`details-${selectedItemForDetails?.id || 'none'}`}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog
-        key={selectedItemForReturn?.id || 'return'}
+        key={`return-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleActionSuccess}
       />
       <EditInventoryItemDialog
-        key={currentItemToEdit?.id || 'edit'}
+        key={`edit-${currentItemToEdit?.id || 'none'}`}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -872,7 +872,7 @@ export function InventoryListClient() {
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
-        key={selectedItemForDeletion?.id || 'delete'}
+        key={`delete-${selectedItemForDeletion?.id || 'none'}`}
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}

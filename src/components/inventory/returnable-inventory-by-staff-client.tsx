@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -513,13 +514,17 @@ export function ReturnableInventoryByStaffClient() {
           </p>
         </div>
       )}
+      
+      {/* Action Dialogs - Keys are prefixed to ensure uniqueness */}
       <ReturnQuantityDialog
+        key={`return-${selectedItemForReturn?.id || 'none'}`}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleReturnSuccess}
       />
       <InventoryItemDetailsDialog
+        key={`details-${selectedItemForDetails?.id || 'none'}`}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
@@ -527,6 +532,7 @@ export function ReturnableInventoryByStaffClient() {
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
+        key={`edit-${currentItemToEdit?.id || 'none'}`}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
