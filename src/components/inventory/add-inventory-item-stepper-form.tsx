@@ -120,6 +120,7 @@ const playProfessionalBeep = () => {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
 
+    // Smooth retail beep with ramps to prevent artifacts
     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -265,8 +266,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
       if (data.expiryDate) {
         formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
-      } else {
-        formData.append('expiryDate', '');
       }
 
       try {
@@ -394,7 +393,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setTimeout(() => {
         nextStep();
         scanProcessedRef.current = false;
-    }, 100);
+    }, 1000); // 1s lock to prevent ghost beeps
   }, [setValue, nextStep]);
 
   useEffect(() => {
@@ -411,7 +410,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             html5QrcodeScannerRef.current = scanner;
           }).catch(console.error);
         }
-      }, 800); // Slight delay to ensure UI is ready and prevent instant ghost scans
+      }, 800); 
 
       return () => {
         clearTimeout(timer);
@@ -517,7 +516,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
-                        <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen}>
+                        <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen} modal={true}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
                                      <div className="flex items-center gap-2">
@@ -596,7 +595,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
                         Storage Zone
                     </Label>
-                    <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
+                    <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen} modal={true}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
                              <div className="flex items-center gap-2">

@@ -132,7 +132,7 @@ export function HeaderBarcodeLookup() {
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           onScanSuccess,
-          (errorMessage: string) => {}
+          () => {}
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
         }).catch(err => {
@@ -240,7 +240,7 @@ export function HeaderBarcodeLookup() {
                 </TableHeader>
                 <TableBody>
                   {results.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={`lookup-${item.id}`}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell>{item.timestamp ? format(parseISO(item.timestamp), 'PPp') : 'N/A'}</TableCell>
                       <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
@@ -279,9 +279,9 @@ export function HeaderBarcodeLookup() {
       </Dialog>
       
       {/* Action Dialogs */}
-      {selectedItemForReturn && <ReturnQuantityDialog key={`return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
-      {currentItemToEdit && <EditInventoryItemDialog key={`edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
-      {selectedItemForDeletion && <DeleteConfirmationDialog key={`delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
+      {selectedItemForReturn && <ReturnQuantityDialog key={`header-return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
+      {currentItemToEdit && <EditInventoryItemDialog key={`header-edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
+      {selectedItemForDeletion && <DeleteConfirmationDialog key={`header-delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
     </>
   );
 }
