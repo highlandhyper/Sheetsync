@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -164,7 +165,7 @@ export function InventoryItemGroupDetailsDialog({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0" modal={true}>
         <div className="p-6 pb-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <DialogHeader className="flex-grow">
@@ -236,7 +237,7 @@ export function InventoryItemGroupDetailsDialog({
     </Dialog>
 
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl" modal={true}>
             <DialogHeader className="p-4 border-b bg-white">
                 <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{group.mainItem.productName}</DialogTitle>
                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">

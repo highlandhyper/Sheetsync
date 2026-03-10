@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -113,7 +114,7 @@ export function InventoryItemDetailsDialog({
         if (!open) setIsAuditLogOpen(false);
         onOpenChange(open);
     }}>
-      <DialogContent className="sm:max-w-md overflow-hidden p-0">
+      <DialogContent className="sm:max-w-md overflow-hidden p-0" modal={true}>
         <div className="p-6">
             <DialogHeader className="mb-2">
             <DialogTitle className="flex items-center text-xl">
@@ -227,7 +228,7 @@ export function InventoryItemDetailsDialog({
     </Dialog>
 
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl" modal={true}>
             <DialogHeader className="p-4 border-b bg-white">
                 <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{item.productName}</DialogTitle>
                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
