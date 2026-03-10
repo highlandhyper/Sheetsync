@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -106,15 +105,14 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       
       let parsedDate: Date | null = null;
       if (item.expiryDate) {
-          // Robust local parsing to prevent UTC shifts
           const parts = item.expiryDate.split(/[-/.]/);
           if (parts.length === 3) {
               let y, m, d;
-              if (parts[0].length === 4) { // YYYY-MM-DD
+              if (parts[0].length === 4) { 
                   y = parseInt(parts[0], 10);
                   m = parseInt(parts[1], 10) - 1;
                   d = parseInt(parts[2], 10);
-              } else { // DD/MM/YYYY
+              } else { 
                   d = parseInt(parts[0], 10);
                   m = parseInt(parts[1], 10) - 1;
                   y = parseInt(parts[2], 10);
@@ -140,10 +138,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   }, [item, reset, isOpen]);
   
   const executeSave = (data: EditInventoryItemFormValues) => {
-    if (!item || !user?.email) {
-      toast({ title: 'Error', description: 'User or item data is missing.', variant: 'destructive' });
-      return;
-    }
+    if (!item || !user?.email) return;
 
     const formData = new FormData();
     formData.append('itemId', item.id);
@@ -153,40 +148,30 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
 
     if (data.expiryDate) {
-      const formattedDate = format(data.expiryDate, 'yyyy-MM-dd');
-      formData.append('expiryDate', formattedDate);
+      formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
     } else if (data.itemType === 'Expiry') {
-        toast({title: "Validation Error", description: "Expiry date is required for 'Expiry' items.", variant: "destructive"});
+        toast({title: "Error", description: "Expiry date is required.", variant: "destructive"});
         return;
     }
     
     startActionTransition(async () => {
       const result = await editInventoryItemAction(undefined, formData);
       if (result.success && result.data) {
-        toast({
-            title: 'Success!',
-            description: result.message || 'Item updated successfully.',
-        });
+        toast({ title: 'Success', description: 'Item updated successfully.' });
         updateInventoryItem(result.data);
         onSuccess?.();
         onOpenChange(false);
       } else {
-        toast({
-            title: 'Error Updating Item',
-            description: result.message || 'Could not update the item.',
-            variant: 'destructive',
-        });
+        toast({ title: 'Error', description: result.message || 'Update failed.', variant: 'destructive' });
       }
     });
   }
 
   const handlePrimarySubmit = (data: EditInventoryItemFormValues) => {
     if (!isDirty) {
-      toast({ title: "No Changes", description: "No changes were made to the item." });
       onOpenChange(false);
       return;
     }
-
     if (quantityChanged) {
         setStagedData(data);
         setIsAuthDialogOpen(true);
@@ -211,9 +196,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Inventory Item: {item.productName}</DialogTitle>
-          <DialogDescription>
-            Update the details for this inventory item. Barcode: {item.barcode}
-          </DialogDescription>
+          <DialogDescription>Update details for barcode: {item.barcode}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(handlePrimarySubmit)} className="space-y-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -238,7 +221,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         </Select>
                     )}
                     />
-                    {formErrors.location && <p className="text-sm text-destructive mt-1">{formErrors.location.message}</p>}
                 </div>
 
                 <div>
@@ -249,20 +231,14 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         name="quantity"
                         control={control}
                         render={({ field }) => (
-                            <Input
-                            id="quantity"
-                            type="number"
-                            {...field}
-                            className={cn('pl-8', formErrors.quantity && 'border-destructive')}
-                            />
+                            <Input id="quantity" type="number" {...field} className={cn('pl-8', formErrors.quantity && 'border-destructive')} />
                         )}
                         />
                    </div>
-                  {formErrors.quantity && <p className="text-sm text-destructive mt-1">{formErrors.quantity.message}</p>}
                   {quantityChanged && (
                     <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-1.5 font-medium">
                       <ShieldQuestion className="h-3.5 w-3.5" />
-                      <span>Authorization required to change quantity.</span>
+                      <span>Authorization required.</span>
                     </div>
                   )}
                 </div>
@@ -273,13 +249,10 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                     name="itemType"
                     control={control}
                     render={({ field }) => (
-                    <Select onValueChange={(value) => { field.onChange(value as ItemType); }} value={field.value} >
+                    <Select onValueChange={field.onChange} value={field.value} >
                         <SelectTrigger id="itemType" className={cn(formErrors.itemType && 'border-destructive')}>
                         <div className="flex items-center">
-                            {field.value === 'Damage' ? 
-                            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> : 
-                            <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
-                            }
+                            {field.value === 'Damage' ? <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> : <Tag className="mr-2 h-4 w-4 text-muted-foreground" />}
                             <SelectValue placeholder="Select type" />
                         </div>
                         </SelectTrigger>
@@ -290,7 +263,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                     </Select>
                     )}
                 />
-                {formErrors.itemType && <p className="text-sm text-destructive mt-1">{formErrors.itemType.message}</p>}
                 </div>
 
                 <div>
@@ -303,11 +275,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground",
-                            formErrors.expiryDate && currentItemType === 'Expiry' && 'border-destructive'
-                            )}
+                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground", formErrors.expiryDate && 'border-destructive')}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
@@ -328,15 +296,12 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                     </Popover>
                     )}
                 />
-                {formErrors.expiryDate && currentItemType === 'Expiry' && <p className="text-sm text-destructive mt-1">{formErrors.expiryDate.message}</p>}
                 </div>
             </div>
           
           <DialogFooter className="pt-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
+              <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
             <Button type="submit" disabled={isActionPending}>
                 {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

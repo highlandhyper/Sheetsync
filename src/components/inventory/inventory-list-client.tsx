@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -8,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
-import type { InventoryItem, Supplier, Product } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, PlusCircle, Building, User, Wallet, FileText, ChevronDown } from 'lucide-react';
-import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, isSameDay } from 'date-fns';
+import type { InventoryItem, Product } from '@/lib/types';
+import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, User, Wallet, FileText, ChevronDown } from 'lucide-react';
+import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -59,8 +58,6 @@ export function InventoryListClient() {
       products: cachedProducts,
       suppliers,
       uniqueLocations: uniqueDbLocations,
-      updateInventoryItem, 
-      removeInventoryItem, 
       addProduct: addProductToCache, 
       refreshData: onDataNeeded,
   } = useDataCache();
@@ -75,29 +72,20 @@ export function InventoryListClient() {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
-  // States for individual item action dialogs
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [selectedItemForReturn, setSelectedItemForReturn] = useState<InventoryItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
-  
-  // States for grouped item dialog
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupedInventoryItem | null>(null);
-  
-  // State for single item details dialog
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
 
-
   const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
-
-  // State for bulk action dialogs
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
-
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
 
@@ -105,7 +93,6 @@ export function InventoryListClient() {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
 
-  // Handle Search Debouncing
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -118,9 +105,7 @@ export function InventoryListClient() {
 
     if (activeDashboardFilter) {
        switch(activeDashboardFilter.type) {
-        case 'damaged': 
-            items = items.filter(item => item.itemType === 'Damage'); 
-            break;
+        case 'damaged': items = items.filter(item => item.itemType === 'Damage'); break;
         case 'expiringSoon': {
             const today = startOfDay(new Date());
             const threshold = startOfDay(addDays(today, 7));
@@ -158,7 +143,7 @@ export function InventoryListClient() {
                             return false;
                         });
                     }
-                } catch { /* ignore parse errors */ }
+                } catch { }
             }
             break;
         }
@@ -218,7 +203,6 @@ export function InventoryListClient() {
 
     for (const item of filteredItemsBySearchAndSupplierAndDate) {
         if (item.quantity <= 0) continue; 
-        
         if (!groups.has(item.barcode)) {
             groups.set(item.barcode, { individualItems: [], totalQuantity: 0 });
         }
@@ -234,14 +218,7 @@ export function InventoryListClient() {
             const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
             return dateB - dateA;
         });
-        
-        const mainItem = groupData.individualItems[0];
-        
-        result.push({
-            mainItem,
-            individualItems: groupData.individualItems,
-            totalQuantity: groupData.totalQuantity,
-        });
+        result.push({ mainItem: groupData.individualItems[0], individualItems: groupData.individualItems, totalQuantity: groupData.totalQuantity });
     }
 
     result.sort((a, b) => {
@@ -253,28 +230,20 @@ export function InventoryListClient() {
     return result;
   }, [filteredItemsBySearchAndSupplierAndDate]);
 
-  // Handle Syncing Group Details when data changes
   useEffect(() => {
     if (isGroupDetailsOpen && selectedGroup) {
         const matchingGroup = groupedItems.find(g => g.mainItem.barcode === selectedGroup.mainItem.barcode);
-        if (matchingGroup) {
-            setSelectedGroup(matchingGroup);
-        } else {
-            setIsGroupDetailsOpen(false);
-            setSelectedGroup(null);
-        }
+        if (matchingGroup) setSelectedGroup(matchingGroup);
+        else { setIsGroupDetailsOpen(false); setSelectedGroup(null); }
     }
-  }, [groupedItems, isGroupDetailsOpen]);
+  }, [groupedItems, isGroupDetailsOpen, selectedGroup]);
 
   const totalValueOfSelectedItems = useMemo(() => {
     if (selectedBarcodes.size === 0) return 0;
-
     let totalValue = 0;
     groupedItems.forEach(group => {
       if (selectedBarcodes.has(group.mainItem.barcode)) {
-        const product = productsByBarcode.get(group.mainItem.barcode);
-        const costPrice = product?.costPrice ?? 0;
-        totalValue += costPrice * group.totalQuantity;
+        totalValue += (productsByBarcode.get(group.mainItem.barcode)?.costPrice ?? 0) * group.totalQuantity;
       }
     });
     return totalValue;
@@ -282,16 +251,12 @@ export function InventoryListClient() {
   
   const getItemsForBulkAction = (): string[] => {
     if (selectedBarcodes.size === 0) return [];
-    
     const itemIds: string[] = [];
     groupedItems.forEach(group => {
-        if(selectedBarcodes.has(group.mainItem.barcode)) {
-            group.individualItems.forEach(item => itemIds.push(item.id));
-        }
+        if(selectedBarcodes.has(group.mainItem.barcode)) group.individualItems.forEach(item => itemIds.push(item.id));
     });
     return itemIds;
   };
-
 
   useEffect(() => {
     const filterTypeFromQuery = searchParams.get('filterType');
@@ -300,7 +265,6 @@ export function InventoryListClient() {
     const toDateQuery = searchParams.get('to');
 
     let newPotentialFilter: DashboardFilterType = null;
-
     if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
       newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
     } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
@@ -310,16 +274,13 @@ export function InventoryListClient() {
     } else if (filterTypeFromQuery === 'expiringSoon') {
       newPotentialFilter = { type: 'expiringSoon' };
     } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
-      const supplierNames = decodeURIComponent(suppliersFromQuery).split(',');
-      newPotentialFilter = { type: 'otherSuppliers', suppliers: supplierNames };
+      newPotentialFilter = { type: 'otherSuppliers', suppliers: decodeURIComponent(suppliersFromQuery).split(',') };
     }
 
     if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
       setActiveDashboardFilter(newPotentialFilter);
       if (newPotentialFilter) {
-        setSearchTerm('');
-        setSelectedSupplier('');
-        setSelectedDateRange(undefined);
+        setSearchTerm(''); setSelectedSupplier(''); setSelectedDateRange(undefined);
         if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
             setSelectedSupplier(newPotentialFilter.suppliers[0]);
         }
@@ -328,195 +289,57 @@ export function InventoryListClient() {
   }, [searchParams, activeDashboardFilter]);
 
   useEffect(() => {
-    if (!isMultiSelectEnabled) {
-      setSelectedBarcodes(new Set());
-    }
+    if (!isMultiSelectEnabled) setSelectedBarcodes(new Set());
   }, [isMultiSelectEnabled]);
 
-
   const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedSupplier('');
-    setSelectedDateRange(undefined);
-    setIsDatePopoverOpen(false);
-    setTypeFilter('all');
-    if (activeDashboardFilter) {
-        setActiveDashboardFilter(null);
-        router.replace('/inventory');
-    }
+    setSearchTerm(''); setSelectedSupplier(''); setSelectedDateRange(undefined); setIsDatePopoverOpen(false); setTypeFilter('all');
+    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   }
 
   const handleSupplierChange = (value: string) => {
-    if (value === ALL_SUPPLIERS_VALUE) {
-      setSelectedSupplier('');
-    } else {
-      setSelectedSupplier(value);
-    }
-    if (activeDashboardFilter) {
-        setActiveDashboardFilter(null);
-        router.replace('/inventory');
-    }
+    setSelectedSupplier(value === ALL_SUPPLIERS_VALUE ? '' : value);
+    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    if(activeDashboardFilter) {
-        setActiveDashboardFilter(null);
-        router.replace('/inventory');
-    }
+    if(activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setSelectedDateRange(range);
-    if (range?.from && range?.to) {
-      setIsDatePopoverOpen(false);
-    }
-    if (activeDashboardFilter) {
-        setActiveDashboardFilter(null);
-        router.replace('/inventory');
-    }
+    if (range?.from && range?.to) setIsDatePopoverOpen(false);
+    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   }
 
-  const handleTypeFilterChange = (value: string) => {
-    setTypeFilter(value);
-    if (activeDashboardFilter) {
-      setActiveDashboardFilter(null);
-      router.replace('/inventory');
-    }
-  };
-
-
-  const getDashboardFilterMessage = () => {
-    if (!activeDashboardFilter) return null;
-    if (activeDashboardFilter.type === 'damaged') return "Showing only Damaged items from dashboard.";
-    if (activeDashboardFilter.type === 'expiringSoon') return "Showing only Items Expiring Soon (next 7 days) from dashboard.";
-    if (activeDashboardFilter.type === 'otherSuppliers' || activeDashboardFilter.type === 'specificSupplier') {
-      const count = activeDashboardFilter.suppliers?.length || 0;
-      return `Showing items from ${count} supplier${count !== 1 ? 's' : ''} (from dashboard).`;
-    }
-    if (activeDashboardFilter.type === 'customExpiry' && activeDashboardFilter.customExpiryFrom && activeDashboardFilter.customExpiryTo) {
-      try {
-        const from = format(parseISO(activeDashboardFilter.customExpiryFrom), 'PP');
-        const to = format(parseISO(activeDashboardFilter.customExpiryTo), 'PP');
-        return `Showing items expiring between ${from} and ${to} (from dashboard).`;
-      } catch {
-        return "Showing items expiring within a custom date range from dashboard.";
-      }
-    }
-    return null;
-  };
-
-  const handleOpenGroupDetails = (group: GroupedInventoryItem) => {
-    setSelectedGroup(group);
-    setIsGroupDetailsOpen(true);
-  };
-  
-  const handleOpenDetailsDialog = (item: InventoryItem) => {
-    setSelectedItemForDetails(item);
-    setIsDetailsDialogOpen(true);
-  };
-
-  const handleOpenReturnDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return;
-    setSelectedItemForReturn(item);
-    setIsReturnDialogOpen(true);
-  };
-
-  const handleOpenEditDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return;
-    setCurrentItemToEdit(item);
-    setIsEditDialogOpen(true);
-  };
-  
-  const handleOpenCreateProductDialog = (barcode: string) => {
-    if (role !== 'admin') return;
-    setBarcodeToCreate(barcode);
-    setIsCreateProductDialogOpen(true);
-  };
-
-  const handleOpenDeleteDialog = (item: InventoryItem) => {
-    if (role !== 'admin') {
-      toast({ title: 'Permission Denied', description: 'Only admins can delete log entries.', variant: 'destructive'});
-      return;
-    }
-    setSelectedItemForDeletion(item);
-    setIsDeleteDialogOpen(true);
-  };
+  const handleOpenGroupDetails = (group: GroupedInventoryItem) => { setSelectedGroup(group); setIsGroupDetailsOpen(true); };
+  const handleOpenDetailsDialog = (item: InventoryItem) => { setSelectedItemForDetails(item); setIsDetailsDialogOpen(true); };
+  const handleOpenReturnDialog = (item: InventoryItem) => { if (role === 'viewer') return; setSelectedItemForReturn(item); setIsReturnDialogOpen(true); };
+  const handleOpenEditDialog = (item: InventoryItem) => { if (role === 'viewer') return; setCurrentItemToEdit(item); setIsEditDialogOpen(true); };
+  const handleOpenDeleteDialog = (item: InventoryItem) => { if (role !== 'admin') return; setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); };
 
   const handleActionSuccess = useCallback(() => {
     onDataNeeded();
-    setIsReturnDialogOpen(false);
-    setIsEditDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-    // Note: details dialogs stay open or are updated via the useEffect above
+    setIsReturnDialogOpen(false); setIsEditDialogOpen(false); setIsDeleteDialogOpen(false);
     setSelectedBarcodes(new Set());
   }, [onDataNeeded]);
-
-  const handleBulkSuccess = useCallback(() => {
-    onDataNeeded();
-    setSelectedBarcodes(new Set());
-    setIsBulkReturnOpen(false);
-    setIsBulkDeleteOpen(false);
-  }, [onDataNeeded]);
-  
-  const handleProductCreateSuccess = useCallback((newProduct: Product) => {
-    addProductToCache(newProduct);
-    onDataNeeded();
-  }, [addProductToCache, onDataNeeded]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleExportPDF = (orientation: PDFOrientation) => {
     const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
     const dataMapper = (group: GroupedInventoryItem, idx: number) => {
         const product = productsByBarcode.get(group.mainItem.barcode);
         const cost = product?.costPrice ?? 0;
-        const hasMultipleLocations = new Set(group.individualItems.map(i => i.location)).size > 1;
-        const displayLocation = hasMultipleLocations ? "Multiple" : group.mainItem.location;
-
+        const hasMultipleLocs = new Set(group.individualItems.map(i => i.location)).size > 1;
         return [
-            (idx + 1).toString(),
-            group.mainItem.productName,
-            group.mainItem.barcode,
-            group.mainItem.supplierName || 'N/A',
-            group.totalQuantity.toString(),
-            `QAR ${cost.toFixed(2)}`,
-            `QAR ${(cost * group.totalQuantity).toFixed(2)}`,
-            group.mainItem.expiryDate || 'N/A',
-            displayLocation
+            (idx + 1).toString(), group.mainItem.productName, group.mainItem.barcode,
+            group.mainItem.supplierName || 'N/A', group.totalQuantity.toString(),
+            `QAR ${cost.toFixed(2)}`, `QAR ${(cost * group.totalQuantity).toFixed(2)}`,
+            group.mainItem.expiryDate || 'N/A', hasMultipleLocs ? "Multiple" : group.mainItem.location
         ];
     };
-
-    let totalVal = 0;
-    groupedItems.forEach(g => {
-        const cost = productsByBarcode.get(g.mainItem.barcode)?.costPrice ?? 0;
-        totalVal += (cost * g.totalQuantity);
-    });
-
+    let totalVal = 0; groupedItems.forEach(g => totalVal += (productsByBarcode.get(g.mainItem.barcode)?.costPrice ?? 0) * g.totalQuantity);
     generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal, orientation);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allBarcodes = new Set(groupedItems.map(g => g.mainItem.barcode));
-      setSelectedBarcodes(allBarcodes);
-    } else {
-      setSelectedBarcodes(new Set());
-    }
-  };
-
-  const handleSelectRow = (barcode: string) => {
-    setSelectedBarcodes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(barcode)) {
-        newSet.delete(barcode);
-      } else {
-        newSet.add(barcode);
-      }
-      return newSet;
-    });
   };
 
   return (
@@ -526,14 +349,10 @@ export function InventoryListClient() {
           {selectedBarcodes.size > 0 && role === 'admin' && isMultiSelectEnabled ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="text-sm font-medium text-muted-foreground">
-                        {selectedBarcodes.size} product group(s) selected
-                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">{selectedBarcodes.size} products selected</div>
                     <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
                         <Wallet className="mr-2 h-4 w-4" />
-                        <span>
-                            Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        <span>Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -545,110 +364,57 @@ export function InventoryListClient() {
           <div className="flex flex-col gap-4">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search product, barcode, staff, location..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="pl-10 w-full"
-              />
+              <Input type="search" placeholder="Search records..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full" />
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
                 <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
-                  <div className="flex items-center">
-                    <Building className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Filter by Supplier" />
-                  </div>
+                  <div className="flex items-center"><Building className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Supplier" /></div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
-                  {suppliers.map(supplier => (
-                    <SelectItem key={supplier.id} value={supplier.name}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
+                  {suppliers.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               
-              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
-                 <div className="flex items-center">
-                    <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Filter by Type" />
-                  </div>
+                 <div className="flex items-center"><Tag className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Type" /></div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Item Types</SelectItem>
-                  <SelectItem value="expiry">Expiry Items</SelectItem>
-                  <SelectItem value="damage">Damaged Items</SelectItem>
-                  <SelectItem value="expired">Already Expired</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="expiry">Expiry</SelectItem>
+                  <SelectItem value="damage">Damage</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
 
               <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1",
-                      !selectedDateRange && "text-muted-foreground"
-                    )}
-                  >
+                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1", !selectedDateRange && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDateRange?.from ? (
-                      selectedDateRange.to ? (
-                        <>
-                          {format(selectedDateRange.from, "LLL dd, y")} - {format(selectedDateRange.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(selectedDateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Filter by Expiry Date</span>
-                    )}
+                    {selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Expiry Range</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={selectedDateRange?.from}
-                    selected={selectedDateRange}
-                    onSelect={handleDateRangeSelect}
-                    numberOfMonths={1}
-                  />
+                  <Calendar mode="range" selected={selectedDateRange} onSelect={handleDateRangeSelect} numberOfMonths={1} />
                 </PopoverContent>
               </Popover>
 
               <div className="flex gap-2 flex-wrap">
                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters} className="flex-1 sm:flex-none">
-                        <FilterX className="mr-2 h-4 w-4" /> Clear
-                    </Button>
+                    <Button variant="ghost" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4" /> Clear</Button>
                   )}
-                   
                    <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}>
-                          <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
-                        </Button>
+                        <Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><FileText className="mr-2 h-4 w-4" /> Export <ChevronDown className="ml-1 h-3 w-3" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
-                          Portrait Orientation
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
-                          Landscape Orientation
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>Portrait</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>Landscape</DropdownMenuItem>
                       </DropdownMenuContent>
                    </DropdownMenu>
-                   
-                   <div className="print-button-container flex-1 sm:flex-none">
-                    <Button onClick={handlePrint} variant="outline" className="w-full">
-                    <Printer className="mr-2 h-4 w-4" /> Print
-                    </Button>
-                </div>
+                   <Button onClick={() => window.print()} variant="outline" size="sm" disabled={groupedItems.length === 0}><Printer className="mr-2 h-4 w-4" /> Print</Button>
               </div>
             </div>
           </div>
@@ -656,138 +422,63 @@ export function InventoryListClient() {
         </CardContent>
       </Card>
 
-      {activeDashboardFilter && (
-        <Alert variant="default" className="bg-primary/10 border-primary/30">
-          <Info className="h-4 w-4 !text-primary" />
-          <AlertTitle>Dashboard Filter Active</AlertTitle>
-          <AlertDescription>
-            {getDashboardFilterMessage()} Local filters will apply to this subset. Use "Clear Filters" to reset all.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {isMultiSelectEnabled && (
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 filters-card-noprint">
-            <ListChecks className="h-4 w-4 !text-blue-500" />
-            <AlertTitle className="text-blue-600">Multi-Select Mode Active</AlertTitle>
-            <AlertDescription>
-                Checkboxes are now visible for bulk actions. You can disable this in settings or via the command menu (Ctrl/Cmd + K).
-            </AlertDescription>
-        </Alert>
-      )}
-
       {groupedItems.length > 0 ? (
         <>
-            {/* Desktop Table View */}
             <Card className="shadow-md hidden md:block">
             <Table>
                 <TableHeader>
                 <TableRow>
                     {role === 'admin' && isMultiSelectEnabled && (
                     <TableHead className="w-12 text-center noprint">
-                        <Checkbox
-                        checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length}
-                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                        aria-label="Select all rows"
-                        />
+                        <Checkbox checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length} onCheckedChange={(checked) => checked ? setSelectedBarcodes(new Set(groupedItems.map(g => g.mainItem.barcode))) : setSelectedBarcodes(new Set())} />
                     </TableHead>
                     )}
-                    <TableHead className="w-16 text-center print-show-table-cell">No.</TableHead>
                     <TableHead>Product Name</TableHead>
-                    <TableHead className="hidden lg:table-cell">Barcode</TableHead>
                     <TableHead>Supplier</TableHead>
-                    <TableHead className="text-right">Total Qty</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right font-semibold">Total Value</TableHead>
+                    <TableHead className="text-right">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="w-[180px] text-right noprint">Last Logged</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {groupedItems.map((group, index) => {
+                {groupedItems.map((group) => {
                     const { mainItem, totalQuantity, individualItems } = group;
-                    const isProductFound = mainItem.productName !== 'Not Found';
                     const product = productsByBarcode.get(mainItem.barcode);
-                    const costPrice = product?.costPrice;
-                    const totalValue = costPrice !== undefined ? costPrice * totalQuantity : undefined;
-                    const isSingleItem = individualItems.length === 1;
-
+                    const cost = product?.costPrice;
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
-                    const hasMultipleLocations = new Set(individualItems.map(i => i.location)).size > 1;
-                    const displayLocation = hasMultipleLocations ? "Multiple" : mainItem.location;
-
-                    let expiryContent: React.ReactNode = 'N/A';
-                    let expiryClassName = "text-muted-foreground";
-
-                    if (hasMultipleExpiry) {
-                        expiryContent = "Multiple";
-                    } else if (mainItem.expiryDate) {
-                        const parsedDate = parseISO(mainItem.expiryDate);
-                        if (isValid(parsedDate)) {
-                            expiryContent = format(parsedDate, 'PP');
-                            if (isBefore(startOfDay(parsedDate), startOfDay(new Date()))) {
-                                expiryClassName = "text-destructive font-semibold";
-                            }
-                        } else {
-                            expiryContent = "Invalid Date";
-                        }
-                    }
+                    const hasMultipleLocs = new Set(individualItems.map(i => i.location)).size > 1;
 
                     return (
                     <TableRow key={mainItem.id} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
                         {role === 'admin' && isMultiSelectEnabled && (
                         <TableCell className="text-center noprint">
-                            <Checkbox
-                            checked={selectedBarcodes.has(mainItem.barcode)}
-                            onCheckedChange={() => handleSelectRow(mainItem.barcode)}
-                            aria-label={`Select row for ${mainItem.productName}`}
-                            />
+                            <Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} />
                         </TableCell>
                         )}
-                        <TableCell className="text-center print-show-table-cell">{index + 1}</TableCell>
-                        <TableCell className={cn("font-medium", !isProductFound && "text-muted-foreground italic")}>{mainItem.productName}</TableCell>
-                        <TableCell className="text-muted-foreground hidden lg:table-cell">{mainItem.barcode}</TableCell>
+                        <TableCell className="font-medium">{mainItem.productName}</TableCell>
                         <TableCell className="text-muted-foreground">{mainItem.supplierName || 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{totalValue !== undefined ? `QAR ${totalValue.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                            {displayLocation}
-                        </TableCell>
-                        <TableCell className={expiryClassName}>
-                            {expiryContent}
+                        <TableCell className="text-right">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="text-right font-semibold">{cost ? `QAR ${(cost * totalQuantity).toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell>{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
+                        <TableCell className={mainItem.expiryDate && isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) ? "text-destructive font-bold" : ""}>
+                            {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
-                                {/* Date/Time shown when not hovering */}
-                                <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">
-                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
-                                </span>
-                                
-                                {/* Actions hidden by default, shown on hover */}
-                                <div className="hidden group-hover:flex items-center gap-1 transition-all duration-200">
-                                    {isSingleItem ? (
+                                <span className="text-xs text-muted-foreground group-hover:hidden">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span>
+                                <div className="hidden group-hover:flex items-center gap-1">
+                                    {individualItems.length === 1 ? (
                                         <>
-                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8" aria-label="View Details">
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
-                                            {role !== 'viewer' && (
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8" aria-label="Return">
-                                                    <Undo2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            {role === 'admin' && (
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive/70 hover:text-destructive" aria-label="Delete">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
+                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
+                                            {role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8"><Undo2 className="h-4 w-4" /></Button>}
+                                            {role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
                                         </>
                                     ) : (
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold">
-                                            <Eye className="mr-1.5 h-3.5 w-3.5" />
-                                            {individualItems.length} Logs
-                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold"><Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs</Button>
                                     )}
                                 </div>
                            </div>
@@ -799,46 +490,32 @@ export function InventoryListClient() {
             </Table>
             </Card>
 
-            {/* Mobile Card View */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {groupedItems.map((group) => {
-                    const product = productsByBarcode.get(group.mainItem.barcode);
-                    const isSingleItem = group.individualItems.length === 1;
-                    return (
-                        <InventoryItemCardMobile
-                            key={group.mainItem.id}
-                            item={group.mainItem}
-                            product={product}
-                            totalQuantity={group.totalQuantity}
-                            individualItemCount={group.individualItems.length}
-                            onDetails={isSingleItem ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)}
-                            onEdit={undefined}
-                            onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
-                            onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
-                            isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
-                            onSelect={isMultiSelectEnabled && role ==='admin' ? () => handleSelectRow(group.mainItem.barcode) : undefined}
-                            context="inventory"
-                        />
-                    )
-                })}
+                {groupedItems.map((group) => (
+                    <InventoryItemCardMobile
+                        key={group.mainItem.id}
+                        item={group.mainItem}
+                        product={productsByBarcode.get(group.mainItem.barcode)}
+                        totalQuantity={group.totalQuantity}
+                        individualItemCount={group.individualItems.length}
+                        onDetails={group.individualItems.length === 1 ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)}
+                        onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
+                        onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
+                        isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
+                        onSelect={isMultiSelectEnabled && role ==='admin' ? () => { const n = new Set(selectedBarcodes); if (n.has(group.mainItem.barcode)) n.delete(group.mainItem.barcode); else n.add(group.mainItem.barcode); setSelectedBarcodes(n); } : undefined}
+                        context="inventory"
+                    />
+                ))}
             </div>
         </>
       ) : (
         <div className="text-center py-12">
           <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
           <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeDashboardFilter || searchTerm || selectedSupplier || selectedDateRange ? "Try adjusting your search or filters." : "Log new items to see them here."}
-          </p>
-          {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-             <Button variant="outline" onClick={clearFilters} className="mt-6">
-                <FilterX className="mr-2 h-4 w-4" /> Clear All Filters and Search
-            </Button>
-          )}
+          <p className="mt-1 text-sm text-muted-foreground">Log new items to see them here.</p>
         </div>
       )}
 
-      {/* Individual Item Action Dialogs - Keys are prefixed to ensure uniqueness */}
        <InventoryItemGroupDetailsDialog
         key={`group-${selectedGroup?.mainItem.barcode || 'none'}`}
         group={selectedGroup}
@@ -876,35 +553,21 @@ export function InventoryListClient() {
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onSuccess={() => handleActionSuccess()}
+        onSuccess={handleActionSuccess}
       />
       
-       {/* Create Product Dialog */}
       {barcodeToCreate && (
         <CreateProductFromInventoryDialog
           barcode={barcodeToCreate}
           allSuppliers={suppliers}
           isOpen={isCreateProductDialogOpen}
-          onSuccess={handleProductCreateSuccess}
+          onSuccess={(p) => { addProductToCache(p); onDataNeeded(); }}
           onOpenChange={setIsCreateProductDialogOpen}
         />
       )}
       
-      {/* Bulk Action Dialogs */}
-      <BulkReturnDialog 
-        isOpen={isBulkReturnOpen}
-        onOpenChange={setIsBulkReturnOpen}
-        itemIds={getItemsForBulkAction()}
-        onSuccess={handleBulkSuccess}
-        itemCount={getItemsForBulkAction().length}
-      />
-      <BulkDeleteDialog
-        isOpen={isBulkDeleteOpen}
-        onOpenChange={setIsBulkDeleteOpen}
-        itemIds={getItemsForBulkAction()}
-        onSuccess={handleBulkSuccess}
-        itemCount={getItemsForBulkAction().length}
-      />
+      <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={() => { onDataNeeded(); setSelectedBarcodes(new Set()); setIsBulkReturnOpen(false); }} itemCount={getItemsForBulkAction().length} />
+      <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={() => { onDataNeeded(); setSelectedBarcodes(new Set()); setIsBulkDeleteOpen(false); }} itemCount={getItemsForBulkAction().length} />
     </div>
   );
 }

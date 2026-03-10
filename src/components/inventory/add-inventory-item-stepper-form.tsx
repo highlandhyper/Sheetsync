@@ -106,20 +106,26 @@ interface AddInventoryItemStepperFormProps {
   uniqueStaffNames: string[];
 }
 
-const playScanBeep = () => {
+const playProfessionalBeep = () => {
   try {
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const audioCtx = new AudioContextClass();
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
+
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
+
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.15);
   } catch (e) {
     console.warn("Audio feedback failed:", e);
   }
@@ -139,10 +145,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
-  
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
+  const scanProcessedRef = useRef(false);
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   const [staffComboboxOpen, setStaffComboboxOpen] = useState(false);
@@ -194,7 +200,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setIsSubmitting(true);
     submitLockRef.current = true;
 
-    // Handle Offline Logic
     if (!navigator.onLine) {
         const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
         
@@ -212,7 +217,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             }
         });
 
-        // Optimistically add to UI cache
         const tempId = `off_${Date.now()}`;
         addInventoryItem({
             id: tempId,
@@ -260,12 +264,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       }
 
       if (data.expiryDate) {
-        const date = data.expiryDate;
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const formattedDate = `${year}-${month}-${day}`;
-        formData.append('expiryDate', formattedDate);
+        formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
       } else {
         formData.append('expiryDate', '');
       }
@@ -380,7 +379,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const onScanSuccess = useCallback((decodedText: string) => {
-    playScanBeep(); 
+    if (scanProcessedRef.current) return;
+    scanProcessedRef.current = true;
+
+    playProfessionalBeep(); 
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     
@@ -388,7 +390,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       html5QrcodeScannerRef.current.stop().catch(console.error);
       html5QrcodeScannerRef.current = null;
     }
-    setTimeout(() => nextStep(), 100);
+    
+    setTimeout(() => {
+        nextStep();
+        scanProcessedRef.current = false;
+    }, 100);
   }, [setValue, nextStep]);
 
   useEffect(() => {
@@ -405,7 +411,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             html5QrcodeScannerRef.current = scanner;
           }).catch(console.error);
         }
-      }, 300);
+      }, 800); // Slight delay to ensure UI is ready and prevent instant ghost scans
 
       return () => {
         clearTimeout(timer);
@@ -571,7 +577,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
                         <div className="flex-1 space-y-2">
                             <Label className="text-xs font-bold text-muted-foreground uppercase">Date</Label>
-                            <Popover>
+                            <Popover modal={true}>
                                 <PopoverTrigger asChild>
                                     <Button variant={'outline'} className={cn('h-14 sm:h-10 w-full pl-4 text-left font-semibold text-lg sm:text-sm', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}>
                                       <CalendarIcon className="mr-3 h-5 w-5 sm:h-4 sm:w-4 text-primary" />

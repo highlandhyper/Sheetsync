@@ -28,6 +28,31 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 const SCANNER_REGION_ID = "header-barcode-scanner-region";
 
+const playProfessionalBeep = () => {
+  try {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {
+    console.warn("Audio feedback failed:", e);
+  }
+};
+
 export function HeaderBarcodeLookup() {
   const [barcode, setBarcode] = useState('');
   const [lastSearchedBarcode, setLastSearchedBarcode] = useState('');
@@ -37,10 +62,11 @@ export function HeaderBarcodeLookup() {
   const [isLoading, startSearchTransition] = useTransition();
   const { toast } = useToast();
   const { role } = useAuth();
-  const { inventoryItems, uniqueLocations, refreshData } = useDataCache();
+  const { inventoryItems, uniqueLocations } = useDataCache();
+  
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const scanProcessedRef = useRef(false);
 
-  // States for action dialogs
   const [selectedItemForReturn, setSelectedItemForReturn] = useState<InventoryItem | null>(null);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
@@ -77,13 +103,23 @@ export function HeaderBarcodeLookup() {
   );
   
   const onScanSuccess = useCallback((decodedText: string) => {
+    if (scanProcessedRef.current) return;
+    scanProcessedRef.current = true;
+
+    playProfessionalBeep();
     setBarcode(decodedText);
     setIsScannerOpen(false);
+    
     toast({
       title: 'Barcode Scanned!',
       description: `Searching for: ${decodedText}`,
     });
+
     executeSearch(decodedText);
+    
+    setTimeout(() => {
+        scanProcessedRef.current = false;
+    }, 1000);
   }, [executeSearch, toast]);
   
   useEffect(() => {
@@ -107,7 +143,7 @@ export function HeaderBarcodeLookup() {
           });
           setIsScannerOpen(false);
         });
-      }, 300);
+      }, 800);
 
       return () => {
         clearTimeout(timer);
@@ -129,8 +165,6 @@ export function HeaderBarcodeLookup() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    // Data is already updated via context, but we can re-run the search
-    // to refresh the dialog if it's still open.
     if(isDialogOpen && lastSearchedBarcode) {
         executeSearch(lastSearchedBarcode);
     }
@@ -245,9 +279,9 @@ export function HeaderBarcodeLookup() {
       </Dialog>
       
       {/* Action Dialogs */}
-      {selectedItemForReturn && <ReturnQuantityDialog item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
-      {currentItemToEdit && <EditInventoryItemDialog item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
-      {selectedItemForDeletion && <DeleteConfirmationDialog item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
+      {selectedItemForReturn && <ReturnQuantityDialog key={`return-${selectedItemForReturn.id}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />}
+      {currentItemToEdit && <EditInventoryItemDialog key={`edit-${currentItemToEdit.id}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />}
+      {selectedItemForDeletion && <DeleteConfirmationDialog key={`delete-${selectedItemForDeletion.id}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={() => handleActionSuccess()} />}
     </>
   );
 }
