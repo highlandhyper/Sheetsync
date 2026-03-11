@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
@@ -139,7 +140,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           });
           setIsScannerDialogOpen(false);
         });
-      }, 800); // Startup delay to prevent ghost scans
+      }, 800);
 
       return () => {
         clearTimeout(timer);
