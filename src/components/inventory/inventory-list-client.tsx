@@ -526,7 +526,7 @@ export function InventoryListClient() {
       )}
 
        <InventoryItemGroupDetailsDialog
-        key={`group-${selectedGroup?.mainItem.barcode || 'none'}`}
+        key={selectedGroup ? `group-${selectedGroup.mainItem.barcode}` : 'group-none'}
         group={selectedGroup}
         isOpen={isGroupDetailsOpen}
         onOpenChange={setIsGroupDetailsOpen}
@@ -536,21 +536,21 @@ export function InventoryListClient() {
         onOpenDeleteDialog={handleOpenDeleteDialog}
       />
       <InventoryItemDetailsDialog
-        key={`details-${selectedItemForDetails?.id || 'none'}`}
+        key={selectedItemForDetails ? `details-${selectedItemForDetails.id}` : 'details-none'}
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog
-        key={`return-${selectedItemForReturn?.id || 'none'}`}
+        key={selectedItemForReturn ? `return-${selectedItemForReturn.id}` : 'return-none'}
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
         onReturnSuccess={handleActionSuccess}
       />
       <EditInventoryItemDialog
-        key={`edit-${currentItemToEdit?.id || 'none'}`}
+        key={currentItemToEdit ? `edit-${currentItemToEdit.id}` : 'edit-none'}
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -558,7 +558,7 @@ export function InventoryListClient() {
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
-        key={`delete-${selectedItemForDeletion?.id || 'none'}`}
+        key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-none'}
         item={selectedItemForDeletion}
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
