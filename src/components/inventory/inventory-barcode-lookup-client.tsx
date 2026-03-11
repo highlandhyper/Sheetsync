@@ -17,7 +17,7 @@ import { useAuth } from '@/context/auth-context';
 import { Html5Qrcode } from 'html5-qrcode';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 
 const SCANNER_REGION_ID = "barcode-scanner-region";
@@ -267,7 +267,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                       }
                   }
                   return (
-                    <TableRow key={`row-${item.id}`}>
+                    <TableRow key={`row-lookup-${item.id}`}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{formattedTimestamp}</TableCell>
@@ -304,9 +304,9 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                 <DialogDescription>Position the barcode within the frame to search.</DialogDescription>
             </DialogHeader>
             <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
-            <div className="p-6 pt-0 flex justify-end">
+            <DialogFooter className="p-6 pt-0 flex justify-end">
                 <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)}>Cancel</Button>
-            </div>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 
