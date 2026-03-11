@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Info, Eye, Edit, Undo2, AlertTriangle, Tag, Printer, CalendarIcon, Trash2, ListChecks, Building, Wallet, FileText, ChevronDown, Barcode } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';

@@ -19,7 +19,6 @@ import {
     User,
     Tag,
     Hash,
-    MapPin,
     AlertTriangle,
     PartyPopper,
     Heart,

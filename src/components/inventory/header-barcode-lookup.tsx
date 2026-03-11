@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
@@ -143,7 +144,7 @@ export function HeaderBarcodeLookup() {
           });
           setIsScannerOpen(false);
         });
-      }, 800); // Startup delay to prevent ghost scans
+      }, 800);
 
       return () => {
         clearTimeout(timer);
