@@ -42,14 +42,6 @@ import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { AuthorizeActionDialog } from './authorize-action-dialog';
 
-interface EditInventoryItemDialogProps {
-  item: InventoryItem | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-  uniqueLocationsFromDb: string[]; 
-}
-
 /**
  * Robust local date parsing to prevent timezone shifting.
  */
