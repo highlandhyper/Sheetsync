@@ -101,11 +101,6 @@ const steps = [
   { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
 
-interface AddInventoryItemStepperFormProps {
-  uniqueLocations: string[];
-  uniqueStaffNames: string[];
-}
-
 /**
  * Enhanced high-quality retail scanner beep.
  */
@@ -586,7 +581,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="end">
-                                  <Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => setValue('expiryDate', date || new Date())} initialFocus />
+                                  <Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => { setValue('expiryDate', date || new Date()); }} initialFocus />
                                 </PopoverContent>
                               </Popover>
                         </div>
