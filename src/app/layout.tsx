@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
@@ -37,7 +38,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const manifestVersion = "1.0.3";
+  const manifestVersion = "1.0.4";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -51,11 +52,14 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Handle ChunkLoadErrors automatically by refreshing the page
+              // Production Recovery: Automatically refresh on ChunkLoadErrors (404s)
               window.addEventListener('error', function(e) {
-                if (e.message && (e.message.includes('Loading chunk') || e.message.includes('ChunkLoadError') || e.message.includes('Script error'))) {
-                  console.warn('Chunk loading failed. Forcing reload to sync with latest build...');
-                  window.location.reload(true);
+                const chunkError = /Loading chunk [\\d]+ failed/i.test(e.message) || 
+                                 /ChunkLoadError/i.test(e.message) ||
+                                 /Script error/i.test(e.message);
+                if (chunkError) {
+                  console.warn('Sync mismatch detected. Refreshing app to fetch latest production assets...');
+                  window.location.reload();
                 }
               }, true);
 
