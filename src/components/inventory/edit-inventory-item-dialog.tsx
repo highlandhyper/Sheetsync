@@ -41,12 +41,8 @@ import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { AuthorizeActionDialog } from './authorize-action-dialog';
 
-/**
- * Robust local date parsing to prevent timezone shifting.
- */
 function parseDateStringLocal(dateStr?: string): Date | null {
   if (!dateStr) return null;
-  
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
     let y, m, d;
@@ -62,7 +58,6 @@ function parseDateStringLocal(dateStr?: string): Date | null {
     const date = new Date(y, m, d);
     return isValid(date) ? date : null;
   }
-  
   const isoDate = parseISO(dateStr);
   return isValid(isoDate) ? isoDate : null;
 }
@@ -80,7 +75,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const {
-    register,
     handleSubmit,
     reset,
     control,
@@ -111,9 +105,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
 
   const availableLocationsForSelect = useMemo(() => {
     const locationsSet = new Set<string>();
-    if (item?.location) {
-      locationsSet.add(item.location);
-    }
+    if (item?.location) locationsSet.add(item.location);
     uniqueLocationsFromDb.forEach(loc => locationsSet.add(loc));
     return Array.from(locationsSet).filter(Boolean).sort();
   }, [item?.location, uniqueLocationsFromDb]);
@@ -122,7 +114,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     if (item && isOpen) {
       setInitialQuantity(item.quantity);
       const parsedDate = parseDateStringLocal(item.expiryDate);
-
       reset({
         itemId: item.id,
         location: item.location,
@@ -135,17 +126,13 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   
   const executeSave = (data: EditInventoryItemFormValues) => {
     if (!item || !user?.email) return;
-
     const formData = new FormData();
     formData.append('itemId', item.id);
     formData.append('location', data.location);
     formData.append('itemType', data.itemType);
     formData.append('userEmail', user.email);
     formData.append('quantity', String(data.quantity));
-
-    if (data.expiryDate) {
-      formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
-    }
+    if (data.expiryDate) formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
     
     startActionTransition(async () => {
       const result = await editInventoryItemAction(undefined, formData);
@@ -230,7 +217,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                                 min="0"
                                 {...field} 
                                 onKeyDown={(e) => {
-                                    // Physically block non-numeric whole positive number inputs
                                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                         e.preventDefault();
                                     }
