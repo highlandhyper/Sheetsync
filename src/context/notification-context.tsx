@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -23,8 +22,17 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const cleanupOldNotifications = useCallback((list: AppNotification[]) => {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    return list.filter(n => n.timestamp >= twentyFourHoursAgo);
+    const now = Date.now();
+    const TTL_MS = 24 * 60 * 60 * 1000;
+    
+    return list.filter(n => {
+      // If never opened, keep it indefinitely (or until manual clear)
+      if (!n.openedAt) return true;
+      
+      // If opened, check if 24 hours have passed since opening
+      const openedAtTime = new Date(n.openedAt).getTime();
+      return (now - openedAtTime) < TTL_MS;
+    });
   }, []);
 
   useEffect(() => {
@@ -46,11 +54,11 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     }
   }, [notifications, isInitialized]);
 
-  // Periodic cleanup every hour
+  // Periodic cleanup every 15 minutes
   useEffect(() => {
     const timer = setInterval(() => {
       setNotifications(prev => cleanupOldNotifications(prev));
-    }, 60 * 60 * 1000);
+    }, 15 * 60 * 1000);
     return () => clearInterval(timer);
   }, [cleanupOldNotifications]);
 
@@ -66,12 +74,13 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      prev.map(n => n.id === id ? { ...n, isRead: true, openedAt: n.openedAt || new Date().toISOString() } : n)
     );
   }, []);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    const now = new Date().toISOString();
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true, openedAt: n.openedAt || now })));
   }, []);
 
   const clearAll = useCallback(() => {

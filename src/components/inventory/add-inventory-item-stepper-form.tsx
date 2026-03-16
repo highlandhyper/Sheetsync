@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -26,7 +25,8 @@ import {
     BellOff,
     Clock,
     KeyRound,
-    CloudOff
+    CloudOff,
+    MessageSquare
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
+import { useNotifications } from '@/context/notification-context';
 
 function SessionTimer({ expiresAt }: { expiresAt: string }) {
     const [timeLeft, setTimeLeft] = useState<string>('');
@@ -129,6 +130,7 @@ const playProfessionalBeep = () => {
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const { 
     products: cachedProducts, 
     uniqueLocations: dynamicLocations, 
@@ -151,6 +153,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productName, setProductName] = useState('');
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
+  const [showRequestProductButton, setShowRequestProductButton] = useState(false);
+  const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
 
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [submittedStaffName, setSubmittedStaffName] = useState('');
@@ -236,6 +240,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         setProductName('');
         setProductSupplier('');
         setProductLookupError('');
+        setShowRequestProductButton(false);
+        setHasRequestedProduct(false);
         setCurrentStep(0);
         setIsSubmitting(false);
         submitLockRef.current = false;
@@ -281,6 +287,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setProductName('');
           setProductSupplier('');
           setProductLookupError('');
+          setShowRequestProductButton(false);
+          setHasRequestedProduct(false);
           setCurrentStep(0);
           refreshData(); 
         } else {
@@ -310,6 +318,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setProductLookupError('');
       setProductName('');
       setProductSupplier('');
+      setShowRequestProductButton(false);
+      setHasRequestedProduct(false);
       
       const cachedProduct = cachedProducts.find(p => p.barcode === barcode);
       if (cachedProduct) {
@@ -333,9 +343,30 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           return true;
       } else {
           setProductLookupError(response.message || 'Product not found in system.');
+          setShowRequestProductButton(true);
           return false;
       }
   }, [cachedProducts]);
+
+  const handleRequestProductAdd = () => {
+    if (!allFormValues.barcode) return;
+    
+    addNotification({
+        title: 'New Product Request',
+        message: `Staff member ${allFormValues.staffName || 'user'} is requesting to add a product with barcode: ${allFormValues.barcode}. Click to create.`,
+        type: 'request',
+        metadata: {
+            barcode: allFormValues.barcode,
+            type: 'add_product_request'
+        }
+    });
+
+    setHasRequestedProduct(true);
+    toast({
+        title: "Request Sent",
+        description: "Administrators have been notified. Please wait for the product to be added.",
+    });
+  };
 
   type FieldName = keyof AddInventoryItemFormValues;
 
@@ -496,8 +527,31 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </Button>
                     </div>
                     
-                    <div className="min-h-[20px]">
-                        {productLookupError && !isFetchingProduct && <p className="text-sm text-destructive font-medium flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> {productLookupError}</p>}
+                    <div className="min-h-[24px] space-y-3">
+                        {productLookupError && !isFetchingProduct && (
+                            <div className="space-y-3">
+                                <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                                    <AlertTriangle className="h-4 w-4" /> {productLookupError}
+                                </p>
+                                {showRequestProductButton && !hasRequestedProduct && (
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full text-xs font-bold border-primary/20 text-primary hover:bg-primary/5"
+                                        onClick={handleRequestProductAdd}
+                                    >
+                                        <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                                        Request Admin to Add Product
+                                    </Button>
+                                )}
+                                {hasRequestedProduct && (
+                                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20 text-green-600 text-[10px] font-black uppercase text-center">
+                                        Request Sent to Admin
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
