@@ -1,3 +1,4 @@
+
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -355,14 +356,20 @@ export async function processReturn(email: string, id: string, q: number | undef
   const originalRow = data[0];
   const originalQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10);
   
-  // FIX: If q is undefined, it means return the ENTIRE quantity of this specific log entry
   const amountToReturn = (q === undefined || q === null) ? originalQty : q;
   const newQty = Math.max(0, originalQty - amountToReturn);
 
-  // 1. Update Qty
-  await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
+  // 1. Update Qty or Delete Row if zero
+  if (newQty > 0) {
+    await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units. New Qty: ${newQty}`);
+  } else {
+    // If quantity is now 0, delete the row entirely
+    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units. Log row deleted.`);
+  }
 
-  // 2. Log Return
+  // 2. Log Return to Returns Log sheet
   const returnRow = [
     id, originalRow[INV_COL_PRODUCT_NAME], originalRow[INV_COL_BARCODE], 
     originalRow[INV_COL_SUPPLIER_NAME], amountToReturn, originalRow[INV_COL_EXPIRY],
@@ -371,7 +378,6 @@ export async function processReturn(email: string, id: string, q: number | undef
   ];
   await appendSheetData(`${RETURNS_LOG_SHEET_NAME}!A:K`, [returnRow]);
 
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units. New Qty: ${newQty}`);
   return { success: true };
 }
 
@@ -440,7 +446,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     const dateStr = format(date, 'MMM dd');
     let totalStockOnDate = 0;
     
-    // Simplistic simulation: current total stock minus items added after that day
     const currentTotal = inv.reduce((s, i) => s + i.quantity, 0);
     const addedSince = inv.filter(i => i.timestamp && isAfter(parseISO(i.timestamp), endOfDay(date)))
                           .reduce((s, i) => s + i.quantity, 0);
