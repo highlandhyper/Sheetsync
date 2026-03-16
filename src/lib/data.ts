@@ -1,4 +1,3 @@
-
 import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -364,9 +363,9 @@ export async function processReturn(email: string, id: string, q: number | undef
     await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
     await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units. New Qty: ${newQty}`);
   } else {
-    // If quantity is now 0, delete the row entirely
+    // If quantity is now 0, delete the row entirely to keep sheet clean
     await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units. Log row deleted.`);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units. Log row deleted from sheet.`);
   }
 
   // 2. Log Return to Returns Log sheet
@@ -439,12 +438,11 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     .map(([name, totalStock]) => ({ name, totalStock }))
     .sort((a,b) => b.totalStock - a.totalStock);
 
-  // Generate mock trend data for the last 7 days for the dashboard visualization
+  // Generate trend data for the dashboard visualization
   const stockTrend: StockTrendData[] = [];
   for (let d = 6; d >= 0; d--) {
     const date = subDays(today, d);
     const dateStr = format(date, 'MMM dd');
-    let totalStockOnDate = 0;
     
     const currentTotal = inv.reduce((s, i) => s + i.quantity, 0);
     const addedSince = inv.filter(i => i.timestamp && isAfter(parseISO(i.timestamp), endOfDay(date)))
