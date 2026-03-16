@@ -1,35 +1,32 @@
+# Next.js
+.next/
+out/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Production
+build/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Node
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# local env files
-.env*.local
+# Environment Variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# vercel
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Vercel
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts

@@ -346,14 +346,18 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
   return { id, ...u };
 }
 
-export async function processReturn(email: string, id: string, q: number, staff: string) {
+export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
   if (!rowNumber) throw new Error("Original log not found.");
 
   const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:J${rowNumber}`);
   if (!data || !data[0]) throw new Error("Read failed.");
   const originalRow = data[0];
-  const newQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10) - q;
+  const originalQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10);
+  
+  // FIX: If q is undefined, it means return the ENTIRE quantity of this specific log entry
+  const amountToReturn = (q === undefined || q === null) ? originalQty : q;
+  const newQty = Math.max(0, originalQty - amountToReturn);
 
   // 1. Update Qty
   await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
@@ -361,13 +365,13 @@ export async function processReturn(email: string, id: string, q: number, staff:
   // 2. Log Return
   const returnRow = [
     id, originalRow[INV_COL_PRODUCT_NAME], originalRow[INV_COL_BARCODE], 
-    originalRow[INV_COL_SUPPLIER_NAME], q, originalRow[INV_COL_EXPIRY],
+    originalRow[INV_COL_SUPPLIER_NAME], amountToReturn, originalRow[INV_COL_EXPIRY],
     originalRow[INV_COL_LOCATION], originalRow[INV_COL_STAFF], 
     originalRow[INV_COL_TYPE], staff, format(new Date(), "d/M/yyyy HH:mm:ss")
   ];
   await appendSheetData(`${RETURNS_LOG_SHEET_NAME}!A:K`, [returnRow]);
 
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${q} units. New Qty: ${newQty}`);
+  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units. New Qty: ${newQty}`);
   return { success: true };
 }
 

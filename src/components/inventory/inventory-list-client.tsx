@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -356,8 +355,8 @@ export function InventoryListClient() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return All</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete All</Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return All Selected</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete All Selected</Button>
                 </div>
              </div>
           ) : (
@@ -424,9 +423,9 @@ export function InventoryListClient() {
 
       {groupedItems.length > 0 ? (
         <>
-            <Card className="shadow-md hidden md:block">
+            <Card className="shadow-md hidden md:block overflow-hidden">
             <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/50">
                 <TableRow>
                     {role === 'admin' && isMultiSelectEnabled && (
                     <TableHead className="w-12 text-center noprint">
@@ -440,7 +439,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
-                    <TableHead className="w-[180px] text-right noprint">Last Logged</TableHead>
+                    <TableHead className="w-[140px] text-right noprint">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -477,19 +476,18 @@ export function InventoryListClient() {
                             {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
                         <TableCell className="text-right noprint">
-                           <div className="relative h-8 flex items-center justify-end">
-                                <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span>
-                                <div className="hidden group-hover:flex items-center gap-1">
-                                    {individualItems.length === 1 ? (
-                                        <>
-                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
-                                            {role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8"><Undo2 className="h-4 w-4" /></Button>}
-                                            {role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
-                                        </>
-                                    ) : (
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold"><Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs</Button>
-                                    )}
-                                </div>
+                           <div className="flex justify-end items-center gap-1">
+                                {individualItems.length === 1 ? (
+                                    <>
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>
+                                        {role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8 text-muted-foreground hover:text-primary"><Undo2 className="h-4 w-4" /></Button>}
+                                        {role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>}
+                                    </>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+                                        <Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs
+                                    </Button>
+                                )}
                            </div>
                         </TableCell>
                     </TableRow>

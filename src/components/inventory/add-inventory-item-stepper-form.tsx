@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -574,6 +573,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     min="1"
                                     {...register('quantity', { valueAsNumber: true })} 
                                     onKeyDown={(e) => {
+                                        // STRICT FIX: Prevent typing negative signs, exponents, plus, or periods
                                         if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                             e.preventDefault();
                                         }
