@@ -66,7 +66,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const isSyncingQueueRef = useRef(false);
   const isCacheReady = data.lastSync !== null;
 
-  // Load offline queue on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsOnline(navigator.onLine);
@@ -75,7 +74,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  // Persist offline queue
   useEffect(() => {
     localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
   }, [pendingActions]);
@@ -98,7 +96,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  // Offline Sync Processor
   const processSyncQueue = useCallback(async () => {
     if (isSyncingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
     
@@ -129,7 +126,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, [pendingActions, toast]);
 
-  // Connection Event Listeners
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -150,7 +146,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [processSyncQueue, toast]);
 
   useEffect(() => {
-    const interval = setInterval(processSyncQueue, 15000); // Regular check
+    const interval = setInterval(processSyncQueue, 15000); 
     return () => clearInterval(interval);
   }, [processSyncQueue]);
 
@@ -184,22 +180,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const updateStaffList = useCallback(async (staff: string[]) => {
       setData(prev => ({ ...prev, uniqueStaffNames: staff }));
       if (navigator.onLine) {
-          const response = await saveStaffListAction(staff);
-          if (response.success) {
-              toast({ title: 'Success', description: 'Staff list updated.' });
-          }
+          await saveStaffListAction(staff);
       }
-  }, [toast]);
+  }, []);
 
   const updateLocationList = useCallback(async (locations: string[]) => {
       setData(prev => ({ ...prev, uniqueLocations: locations }));
       if (navigator.onLine) {
-          const response = await saveLocationListAction(locations);
-          if (response.success) {
-              toast({ title: 'Success', description: 'Location list updated.' });
-          }
+          await saveLocationListAction(locations);
       }
-  }, [toast]);
+  }, []);
 
   const queueAction = useCallback((action: Omit<OfflineAction, 'id' | 'timestamp'>) => {
       const newAction: OfflineAction = {
@@ -208,7 +198,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           timestamp: new Date().toISOString()
       };
       setPendingActions(prev => [...prev, newAction]);
-      // Immediately try to process if we just queued something and might be online
       if (navigator.onLine) processSyncQueue();
   }, [processSyncQueue]);
 

@@ -5,30 +5,45 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Edit2, Check, X, Loader2, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Loader2, MapPin, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function LocationManager() {
+  const { toast } = useToast();
   const { uniqueLocations, updateLocationList, isSyncing } = useDataCache();
   const [newLocation, setNewLocation] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
 
   const handleAdd = async () => {
     if (!newLocation.trim()) return;
     if (uniqueLocations.some(l => l.toLowerCase() === newLocation.trim().toLowerCase())) {
-        alert("This location already exists.");
+        toast({ variant: "destructive", title: "Error", description: "This storage zone already exists." });
         return;
     }
     const updated = [...uniqueLocations, newLocation.trim()].sort();
     await updateLocationList(updated);
+    toast({ title: "Zone Added", description: `"${newLocation.trim()}" is now an active storage zone.` });
     setNewLocation('');
   };
 
-  const handleRemove = async (name: string) => {
-    if (confirm(`Are you sure you want to remove "${name}"? Existing logs will keep this location, but new logs cannot select it.`)) {
-        const updated = uniqueLocations.filter(n => n !== name);
-        await updateLocationList(updated);
-    }
+  const confirmDelete = async () => {
+    if (!locationToDelete) return;
+    const updated = uniqueLocations.filter(n => n !== locationToDelete);
+    await updateLocationList(updated);
+    toast({ title: "Zone Removed", description: `"${locationToDelete}" has been removed.` });
+    setLocationToDelete(null);
   };
 
   const startEditing = (index: number, name: string) => {
@@ -41,6 +56,7 @@ export function LocationManager() {
     const updated = [...uniqueLocations];
     updated[index] = editingValue.trim();
     await updateLocationList(updated.sort());
+    toast({ title: "Updated", description: "Location name updated." });
     setEditingIndex(null);
   };
 
@@ -97,7 +113,7 @@ export function LocationManager() {
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEditing(index, name)}>
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemove(name)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setLocationToDelete(name)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -118,6 +134,28 @@ export function LocationManager() {
               <Loader2 className="h-3 w-3 animate-spin" /> Updating cloud registry...
           </div>
       )}
+
+      <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Remove Storage Zone
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirm removal of <span className="font-bold text-foreground">"{locationToDelete}"</span>. 
+              <br /><br />
+              This will remove it from future logging options. Existing records associated with this zone will remain unchanged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Zone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
