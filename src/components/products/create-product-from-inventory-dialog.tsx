@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Loader2, Check, ChevronsUpDown, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -68,6 +68,7 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
       barcode: barcode,
       productName: '',
       supplierName: '',
+      costPrice: undefined,
     }
   });
 
@@ -78,6 +79,7 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
       barcode: barcode,
       productName: '',
       supplierName: '',
+      costPrice: undefined,
     });
   }, [barcode, reset, isOpen]);
 
@@ -86,6 +88,9 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
     formData.append('barcode', data.barcode);
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
+    if (data.costPrice !== undefined) {
+        formData.append('costPrice', String(data.costPrice));
+    }
     formData.append('editMode', 'create'); 
     
     startActionTransition(async () => {
@@ -144,55 +149,76 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
               {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="supplierName">Supplier Name</Label>
-              <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={supplierComboboxOpen}
-                    className={cn(
-                      "w-full justify-between font-normal",
-                      !supplierNameValue && "text-muted-foreground",
-                      formErrors.supplierName && 'border-destructive'
-                    )}
-                  >
-                    {supplierNameValue
-                      ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name
-                      : "Select or type supplier..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                    <CommandInput
-                      placeholder="Search or create supplier..."
-                      value={supplierNameValue || ''}
-                      onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No supplier found. Type to create new.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedSuppliers.map((supplier) => (
-                          <CommandItem
-                            key={supplier.id}
-                            value={supplier.name}
-                            onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true }); setSupplierComboboxOpen(false); }}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                            {supplier.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-              <p className="text-xs text-muted-foreground mt-1">If supplier doesn't exist, it will be created.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="supplierName">Supplier Name</Label>
+                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={supplierComboboxOpen}
+                            className={cn(
+                            "w-full justify-between font-normal",
+                            !supplierNameValue && "text-muted-foreground",
+                            formErrors.supplierName && 'border-destructive'
+                            )}
+                        >
+                            <span className="truncate">
+                                {supplierNameValue
+                                ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
+                                : "Select supplier..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                            <CommandInput
+                            placeholder="Search or create supplier..."
+                            value={supplierNameValue || ''}
+                            onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
+                            />
+                            <CommandList>
+                            <CommandEmpty>No supplier found. Type to create new.</CommandEmpty>
+                            <CommandGroup>
+                                {sortedSuppliers.map((supplier) => (
+                                <CommandItem
+                                    key={supplier.id}
+                                    value={supplier.name}
+                                    onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true }); setSupplierComboboxOpen(false); }}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                    {supplier.name}
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                            </CommandList>
+                        </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
+                </div>
+
+                <div>
+                    <Label htmlFor="costPrice">Cost Price</Label>
+                    <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            id="costPrice"
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...register('costPrice')}
+                            className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                        />
+                    </div>
+                    {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
+                </div>
             </div>
             
+            <p className="text-xs text-muted-foreground pt-2">If the supplier doesn't exist, it will be created automatically.</p>
+
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
