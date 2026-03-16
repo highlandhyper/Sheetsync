@@ -8,9 +8,10 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Header } from '@/components/layout/header';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
+import { Button } from '@/components/ui/button';
 
 const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
 
@@ -22,12 +23,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [showSafetyButton, setShowSafetyButton] = useState(false);
   const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
   const loading = authLoading || !permissionsInitialized || !settingsInitialized;
   const INACTIVITY_TIMEOUT_MS = (generalSettings.inactivityTimeout || 5) * 60 * 1000;
 
-  // --- Inactivity Lock Logic ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) setShowSafetyButton(true);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   const handleLock = useCallback(() => {
     setIsLocked(true);
     localStorage.setItem(LOCK_STORAGE_KEY, 'true');
@@ -46,115 +54,88 @@ export default function AppLayout({ children }: PropsWithChildren) {
     resetInactivityTimer();
   };
 
-  // Initialize lock state from storage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedLockState = localStorage.getItem(LOCK_STORAGE_KEY);
-      if (savedLockState === 'true' && role === 'admin') {
-        setIsLocked(true);
-      }
+      try {
+        const savedLockState = localStorage.getItem(LOCK_STORAGE_KEY);
+        if (savedLockState === 'true' && role === 'admin') {
+          setIsLocked(true);
+        }
+      } catch (e) {}
     }
   }, [role]);
 
   useEffect(() => {
     if (user && !loading && !isLocked && role === 'admin' && generalSettings.isLockOnInactivityEnabled) {
       const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
-      
-      const handleActivity = () => {
-        resetInactivityTimer();
-      };
-
+      const handleActivity = () => resetInactivityTimer();
       events.forEach(event => window.addEventListener(event, handleActivity));
       resetInactivityTimer(); 
-
       return () => {
         events.forEach(event => window.removeEventListener(event, handleActivity));
-        if (inactivityTimerRef.current) {
-          clearTimeout(inactivityTimerRef.current);
-        }
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
       };
-    } else {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
     }
   }, [user, loading, isLocked, resetInactivityTimer, role, generalSettings.isLockOnInactivityEnabled]);
 
   useEffect(() => {
-    if (loading) {
-      return; 
-    }
+    if (loading) return; 
 
     if (!user) {
       router.replace('/login');
-      sessionStorage.removeItem('adminWelcomeShown'); 
-      setShowAdminWelcomeScreen(false); 
       return;
     }
 
     if (role === 'viewer') {
       const canAccessCurrentPath = isAllowed(role, pathname);
       if (!canAccessCurrentPath) {
-        // Redirect to dynamic default path if current path is restricted
         const defaultPathForViewer = permissions.viewerDefaultPath || '/inventory/add';
         router.replace(defaultPathForViewer);
       }
-      sessionStorage.removeItem('adminWelcomeShown');
-      setShowAdminWelcomeScreen(false);
     }
   }, [loading, user, role, router, pathname, isAllowed, permissions]);
 
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
-
     if (!loading && role === 'admin' && generalSettings.showAdminWelcome) {
       const welcomeShownSession = sessionStorage.getItem('adminWelcomeShown');
       if (!welcomeShownSession) {
         setShowAdminWelcomeScreen(true);
         sessionStorage.setItem('adminWelcomeShown', 'true');
-        timerId = setTimeout(() => {
-          setShowAdminWelcomeScreen(false);
-        }, 3500); 
-      } else {
-        setShowAdminWelcomeScreen(false);
+        timerId = setTimeout(() => setShowAdminWelcomeScreen(false), 3500); 
       }
-    } else {
-      setShowAdminWelcomeScreen(false);
     }
-
-    return () => {
-      if (timerId) {
-        clearTimeout(timerId);
-      }
-    };
+    return () => { if (timerId) clearTimeout(timerId); };
   }, [loading, role, generalSettings.showAdminWelcome]); 
 
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg mt-4">Loading application, please wait...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-lg font-medium text-muted-foreground animate-pulse">Establishing connection...</p>
+        {showSafetyButton && (
+          <div className="mt-8 animate-fade-in space-y-4">
+            <div className="flex items-center gap-2 text-destructive text-sm">
+              <AlertCircle className="h-4 w-4" />
+              Application is taking longer than expected to load.
+            </div>
+            <Button variant="outline" onClick={() => window.location.reload()}>Retry Connection</Button>
+          </div>
+        )}
       </div>
     );
   }
 
-  if (!user) {
-    return (
-        <div className="flex items-center justify-center h-screen bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-lg">Redirecting to login...</p>
-        </div>
-    );
-  }
+  if (!user) return null;
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4">
         <ShieldCheck className="h-20 w-20 text-primary mb-6 animate-pulse" strokeWidth={1.5} />
-        <h1 className="text-4xl font-bold text-primary mb-3 text-center">Welcome back, Chief!</h1>
-        <p className="text-xl text-muted-foreground mb-8 text-center">Your command center is ready. Let's get to work.</p>
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <h1 className="text-4xl font-bold text-primary mb-3 text-center tracking-tighter">Welcome back, Chief!</h1>
+        <p className="text-xl text-muted-foreground mb-8 text-center">Your command center is ready.</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
       </div>
     );
   }
