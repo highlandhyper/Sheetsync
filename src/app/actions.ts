@@ -271,7 +271,6 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return { success: false, message: "Barcode is empty." };
 
-    // Deep search helper for image URLs
     const findField = (obj: any, keys: string[]): string | undefined => {
         if (!obj) return undefined;
         for (const key of keys) {
@@ -287,7 +286,6 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         return undefined;
     };
 
-    // Deep search helper for brands/names
     const findBrand = (obj: any, keys: string[]): string | undefined => {
         if (!obj) return undefined;
         for (const key of keys) {
@@ -298,14 +296,13 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
 
     let result: { image?: string; brand?: string; name?: string } | null = null;
 
-    // --- SERVICE 1: GTINHub ---
     try {
         const gtinResponse = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'application/json'
             },
-            next: { revalidate: 86400 } // Cache for 24h
+            next: { revalidate: 86400 } 
         });
 
         if (gtinResponse.ok) {
@@ -327,7 +324,6 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         console.warn(`GTINHub lookup failed for ${cleanBarcode}, attempting fallback...`);
     }
 
-    // --- SERVICE 2: SearchUPCData (Fallback) ---
     if (!result || (!result.image && !result.brand)) {
         const apiKey = process.env.SEARCHUPCDATA_API_KEY;
         if (apiKey) {
@@ -359,10 +355,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         return { success: false, message: "Product details not found in the global registry." };
     }
 
-    return {
-      success: true,
-      data: result
-    };
+    return { success: true, data: result };
   } catch (error) {
     console.error("External lookup error:", error);
     return { success: false, message: "Network error while connecting to global product registries." };
@@ -398,7 +391,6 @@ export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) {
 }
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
     for (const id of ids) {
-        // If type is 'all', pass undefined to trigger "Return All" logic for this specific log entry
         const quantityToReturn = t === 'all' ? undefined : q;
         await dbProcessReturn(e, id, quantityToReturn, s);
     }

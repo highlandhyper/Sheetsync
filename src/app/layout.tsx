@@ -37,7 +37,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const manifestVersion = "1.0.1";
+  const manifestVersion = "1.0.2";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -51,9 +51,21 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Handle ChunkLoadErrors automatically by refreshing the page
+              window.addEventListener('error', function(e) {
+                if (e.message && (e.message.includes('Loading chunk') || e.message.includes('ChunkLoadError'))) {
+                  console.warn('Chunk loading failed. Forcing reload to sync with latest build...');
+                  window.location.reload();
+                }
+              }, true);
+
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('SW registered');
+                  }).catch(function(err) {
+                    console.log('SW registration failed: ', err);
+                  });
                 });
               }
             `,

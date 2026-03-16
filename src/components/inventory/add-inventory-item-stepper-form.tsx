@@ -625,7 +625,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     min="1"
                                     {...register('quantity', { valueAsNumber: true })} 
                                     onKeyDown={(e) => {
-                                        // Strictly block negative symbols and decimals
                                         if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                             e.preventDefault();
                                         }
