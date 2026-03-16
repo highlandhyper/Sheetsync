@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 
-function MetricCard({ title, value, iconNode, description, isLoading, href, className, children }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode }) {
+function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <>
       <div className="absolute inset-0 z-0 overflow-hidden rounded-xl pointer-events-none">
@@ -34,7 +34,21 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-20">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className="p-2 bg-primary/10 rounded-full text-primary">{iconNode}</div>
+        <div 
+            className={cn(
+                "p-2 bg-primary/10 rounded-full text-primary transition-all duration-200", 
+                onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
+            )}
+            onClick={(e) => {
+                if (onIconClick) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onIconClick(e);
+                }
+            }}
+        >
+            {iconNode}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col h-full relative z-20">
         {isLoading ? (
@@ -199,6 +213,72 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
       </ResponsiveContainer>
     </ChartContainer>
   );
+}
+
+function StockTrendDetailedDialog({ isOpen, onOpenChange, data }: { isOpen: boolean; onOpenChange: (open: boolean) => void; data: StockTrendData[] }) {
+    const chartConfig = {
+        totalStock: {
+            label: "Total Units",
+            color: "hsl(var(--primary))",
+        },
+    } satisfies ChartConfig;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        7-Day Stock Trend
+                    </DialogTitle>
+                    <DialogDescription>
+                        Historical overview of total inventory volume across all storage zones.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="h-[350px] w-full mt-4">
+                    <ChartContainer config={chartConfig} className="h-full w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorStockDetailed" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tickMargin={10} 
+                                    className="text-[10px] font-bold uppercase text-muted-foreground" 
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tickMargin={10} 
+                                    className="text-[10px] font-bold text-muted-foreground"
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="totalStock" 
+                                    stroke="hsl(var(--primary))" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorStockDetailed)" 
+                                    animationDuration={1500}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
+                </div>
+                <DialogFooter className="sm:justify-start">
+                    <Button variant="secondary" onClick={() => onOpenChange(false)}>Close Overview</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 function ProactiveGrantDialog({ 
@@ -521,6 +601,7 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
 
   useEffect(() => {
     async function getMetrics() {
@@ -589,6 +670,7 @@ export default function DashboardPage() {
           title="Total Stock Quantity" 
           value={metrics.totalStockQuantity} 
           iconNode={<Warehouse className="h-5 w-5" />}
+          onIconClick={() => setIsStockTrendDialogOpen(true)}
           description={totalStockDescription}
           href="/inventory"
           isLoading={isLoading}
@@ -661,6 +743,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {metrics.stockTrend && (
+          <StockTrendDetailedDialog 
+            isOpen={isStockTrendDialogOpen} 
+            onOpenChange={setIsStockTrendDialogOpen} 
+            data={metrics.stockTrend} 
+          />
+      )}
     </div>
   );
 }
