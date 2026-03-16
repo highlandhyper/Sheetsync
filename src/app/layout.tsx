@@ -37,7 +37,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const manifestVersion = "1.0.2";
+  const manifestVersion = "1.0.3";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -53,9 +53,9 @@ export default function RootLayout({
             __html: `
               // Handle ChunkLoadErrors automatically by refreshing the page
               window.addEventListener('error', function(e) {
-                if (e.message && (e.message.includes('Loading chunk') || e.message.includes('ChunkLoadError'))) {
+                if (e.message && (e.message.includes('Loading chunk') || e.message.includes('ChunkLoadError') || e.message.includes('Script error'))) {
                   console.warn('Chunk loading failed. Forcing reload to sync with latest build...');
-                  window.location.reload();
+                  window.location.reload(true);
                 }
               }, true);
 

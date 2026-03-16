@@ -34,6 +34,11 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // Safety timeout to prevent stuck loading
+    const safetyTimer = setTimeout(() => {
+        if (!isInitialized) setIsInitialized(true);
+    }, 5000);
+
     try {
       if (typeof window !== 'undefined') {
         const storedValue = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -45,9 +50,10 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
     } catch (error) {
       console.warn('GeneralSettings: Could not access storage.', error);
     } finally {
+      clearTimeout(safetyTimer);
       setIsInitialized(true);
     }
-  }, []);
+  }, [isInitialized]);
 
   const setSetting = useCallback(<K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     setSettings(prevSettings => {
@@ -62,12 +68,6 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
       return newSettings;
     });
   }, []);
-  
-  // Safety: If initialization hangs for some reason, ensure we don't block the UI forever
-  // (though the logic above is synchronous after effect fires)
-  if (!isInitialized) {
-      return null;
-  }
 
   return (
     <GeneralSettingsContext.Provider value={{ settings, setSetting, isInitialized }}>
