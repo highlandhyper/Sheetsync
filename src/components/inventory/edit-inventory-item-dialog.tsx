@@ -230,7 +230,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                                 min="0"
                                 {...field} 
                                 onKeyDown={(e) => {
-                                    // Block non-numeric whole positive number inputs
+                                    // Physically block non-numeric whole positive number inputs
                                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                         e.preventDefault();
                                     }

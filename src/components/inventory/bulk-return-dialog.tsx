@@ -140,6 +140,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
                 min="1"
                 {...register('quantity', { valueAsNumber: true })}
                 onKeyDown={(e) => {
+                    // Physically block non-numeric positive whole number inputs
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                         e.preventDefault();
                     }

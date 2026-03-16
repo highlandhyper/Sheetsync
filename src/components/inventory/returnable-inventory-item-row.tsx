@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
@@ -120,7 +119,7 @@ const ReturnableInventoryItemRowComponent = ({
                         size="icon"
                         onClick={() => onEditItem(item)}
                         aria-label={`Edit ${item.productName}`}
-                        className="h-8 w-8"
+                        className="h-4 w-4"
                         disabled={isProcessing}
                     >
                         <Pencil className="h-4 w-4" />
