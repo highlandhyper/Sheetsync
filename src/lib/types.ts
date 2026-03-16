@@ -117,7 +117,12 @@ export interface AppNotification {
   timestamp: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'request';
   isRead: boolean;
+  openedAt?: string; // New: tracking when opened for 24h TTL
   link?: string;
+  metadata?: {
+    barcode?: string;
+    type?: 'add_product_request';
+  };
 }
 
 export interface SpecialEntryRequest {

@@ -26,12 +26,22 @@ const NotificationIcon = ({ type }: { type: AppNotification['type'] }) => {
   }
 };
 
-export function NotificationCenter() {
+interface NotificationCenterProps {
+  onOpenProductRequest?: (barcode: string) => void;
+}
+
+export function NotificationCenter({ onOpenProductRequest }: NotificationCenterProps) {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleNotificationClick = (id: string) => {
-    markAsRead(id);
+  const handleNotificationClick = (n: AppNotification) => {
+    markAsRead(n.id);
+    
+    // If it's a product request, trigger the popup
+    if (n.type === 'request' && n.metadata?.type === 'add_product_request' && n.metadata.barcode) {
+      onOpenProductRequest?.(n.metadata.barcode);
+    }
+    
     setIsOpen(false);
   };
 
@@ -95,7 +105,7 @@ export function NotificationCenter() {
                       "p-4 transition-colors relative group cursor-pointer",
                       !n.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50"
                     )}
-                    onClick={() => handleNotificationClick(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                   >
                     {!n.isRead && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
@@ -114,13 +124,24 @@ export function NotificationCenter() {
                         <p className="text-[10px] text-muted-foreground/60 font-medium">
                           {formatDistanceToNow(parseISO(n.timestamp), { addSuffix: true })}
                         </p>
-                        {n.link && (
+                        {n.metadata?.type === 'add_product_request' ? (
+                           <Button 
+                            variant="link" 
+                            className="h-auto p-0 text-xs font-bold text-primary hover:underline mt-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleNotificationClick(n);
+                            }}
+                           >
+                               Complete Request
+                           </Button>
+                        ) : n.link && (
                           <Link 
                             href={n.link} 
                             className="inline-block mt-2 text-xs font-bold text-primary hover:underline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleNotificationClick(n.id);
+                              handleNotificationClick(n);
                             }}
                           >
                             View Details

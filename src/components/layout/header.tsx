@@ -23,6 +23,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
 
 function LastSyncStatus() {
   const { lastSync, isSyncing, refreshData, pendingActions, isOnline } = useDataCache();
@@ -122,7 +123,10 @@ function LastSyncStatus() {
 export function Header({ className, onManualLock }: { className?: string; onManualLock?: () => void; }) {
   const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const { isSyncing } = useDataCache();
+  const { isSyncing, suppliers, addProduct, refreshData } = useDataCache();
+  
+  const [isRequestProductDialogOpen, setIsRequestProductDialogOpen] = useState(false);
+  const [requestedBarcode, setRequestedBarcode] = useState('');
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -131,6 +135,11 @@ export function Header({ className, onManualLock }: { className?: string; onManu
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
     return email.substring(0, 2).toUpperCase();
+  };
+
+  const handleOpenProductRequest = (barcode: string) => {
+    setRequestedBarcode(barcode);
+    setIsRequestProductDialogOpen(true);
   };
 
   return (
@@ -149,7 +158,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         
         <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
           <div className="hidden md:flex flex-1 justify-center px-4">
-             <div className="w-full max-w-sm">
+             <div className="w-full max-sm:hidden max-w-sm">
                 <HeaderBarcodeLookup />
             </div>
           </div>
@@ -169,7 +178,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                 <Command className="h-3.5 w-3.5" />
             </Button>
 
-            <NotificationCenter />
+            <NotificationCenter onOpenProductRequest={handleOpenProductRequest} />
 
             {role === 'admin' && onManualLock && (
               <TooltipProvider>
@@ -233,6 +242,19 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         </div>
       </header>
       <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
+      
+      {requestedBarcode && (
+        <CreateProductFromInventoryDialog 
+            isOpen={isRequestProductDialogOpen}
+            onOpenChange={setIsRequestProductDialogOpen}
+            barcode={requestedBarcode}
+            allSuppliers={suppliers}
+            onSuccess={(p) => {
+                addProduct(p);
+                refreshData();
+            }}
+        />
+      )}
     </>
   );
 }
