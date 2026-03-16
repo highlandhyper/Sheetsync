@@ -1,8 +1,7 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 interface GeneralSettings {
   showAdminWelcome: boolean;
@@ -22,41 +21,50 @@ const SETTINGS_STORAGE_KEY = 'sheetSyncGeneralSettings';
 
 const defaultSettings: GeneralSettings = {
   showAdminWelcome: true,
-  inactivityTimeout: 5, // Default to 5 minutes
+  inactivityTimeout: 5,
   isLockOnInactivityEnabled: true,
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState<GeneralSettings>(defaultSettings);
   const [isInitialized, setIsInitialized] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     try {
-      const storedValue = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (storedValue) {
-        const storedSettings = JSON.parse(storedValue);
-        // Merge stored settings with defaults to ensure new settings are applied
-        const mergedSettings = { ...defaultSettings, ...storedSettings };
-        setSettings(mergedSettings);
+      if (typeof window !== 'undefined') {
+        const storedValue = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (storedValue) {
+          const storedSettings = JSON.parse(storedValue);
+          setSettings({ ...defaultSettings, ...storedSettings });
+        }
       }
     } catch (error) {
-      console.warn('Could not access localStorage for general settings.', error);
+      console.warn('GeneralSettings: Could not access storage.', error);
+    } finally {
+      setIsInitialized(true);
     }
-    setIsInitialized(true);
   }, []);
 
   const setSetting = useCallback(<K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     setSettings(prevSettings => {
       const newSettings = { ...prevSettings, [key]: value };
       try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+        }
       } catch (error) {
-        console.warn('Could not save general settings to localStorage.', error);
+        console.warn('GeneralSettings: Save failed.', error);
       }
       return newSettings;
     });
   }, []);
   
+  // Safety: If initialization hangs for some reason, ensure we don't block the UI forever
+  // (though the logic above is synchronous after effect fires)
   if (!isInitialized) {
       return null;
   }

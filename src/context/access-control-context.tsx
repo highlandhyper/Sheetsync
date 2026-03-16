@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useRef } from 'react';
 import { allNavItems, accountNavItems } from '@/lib/nav-config';
 import type { Permissions } from '@/lib/types';
 import { getPermissionsAction, setPermissionsAction } from '@/app/actions';
@@ -39,21 +39,40 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   const { role } = useAuth();
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    async function loadPermissions() {
-      const response = await getPermissionsAction();
-      if (response.success && response.data) {
-        setPermissions(response.data);
-      } else {
-        console.log(response.message || "Using default permissions.");
-        setPermissions(getDefaultPermissions());
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    // Resilience: Safety timeout for permission loading
+    const safetyTimeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn("AccessControl: Safety timeout reached. Using defaults.");
+        setIsInitialized(true);
       }
-      setIsInitialized(true);
+    }, 8000);
+
+    async function loadPermissions() {
+      try {
+        const response = await getPermissionsAction();
+        if (response.success && response.data) {
+          setPermissions(response.data);
+        } else {
+          setPermissions(getDefaultPermissions());
+        }
+      } catch (err) {
+        console.error("AccessControl: Critical failure loading permissions.", err);
+        setPermissions(getDefaultPermissions());
+      } finally {
+        clearTimeout(safetyTimeout);
+        setIsInitialized(true);
+      }
     }
 
     loadPermissions();
-  }, []);
+    return () => clearTimeout(safetyTimeout);
+  }, [isInitialized]);
 
   const setPermission = useCallback((roleToSet: 'viewer', path: string, isEnabled: boolean) => {
     if (role !== 'admin') {
@@ -71,7 +90,6 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
         ? [...new Set([...currentPaths, path])] 
         : currentPaths.filter(p => p !== path); 
 
-      // If the path being removed was the default path, reset it
       let newDefaultPath = prevPermissions.viewerDefaultPath;
       if (!isEnabled && path === newDefaultPath) {
           newDefaultPath = newPaths.length > 0 ? newPaths[0] : '/inventory/add';
@@ -85,14 +103,16 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       
       setPermissionsAction(updatedPermissions).then(response => {
         if (response.success) {
-          toast({ title: "Permissions Saved", description: `Access for 'viewer' role to ${path} has been updated.` });
+          toast({ title: "Permissions Saved", description: `Access updated.` });
         } else {
           toast({
             title: "Save Failed",
-            description: response.message || "Could not save permissions to the server.",
+            description: response.message || "Could not save settings.",
             variant: "destructive",
           });
         }
+      }).catch(err => {
+        console.error("Failed to save permissions:", err);
       });
 
       return updatedPermissions;
@@ -100,28 +120,12 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   }, [role, toast]);
 
   const setViewerDefaultPath = useCallback((path: string) => {
-    if (role !== 'admin') {
-      toast({
-        title: "Permission Denied",
-        description: "Only admins can set the default landing page.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (role !== 'admin') return;
 
     setPermissions(prev => {
         const updated = { ...prev, viewerDefaultPath: path };
-        setPermissionsAction(updated).then(response => {
-            if (response.success) {
-                toast({ title: "Default Page Updated", description: `Viewers will now land on ${path} by default.` });
-            } else {
-                toast({
-                    title: "Save Failed",
-                    description: response.message || "Could not save settings.",
-                    variant: "destructive",
-                });
-            }
-        });
+        setPermissionsAction(updated).catch(console.error);
+        toast({ title: "Default Page Updated" });
         return updated;
     });
   }, [role, toast]);
@@ -130,10 +134,8 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string): boolean => {
     if (userRole === 'admin') return true;
     if (!isInitialized) return false;
-
     const userPermissions = permissions[userRole] || [];
     return userPermissions.includes(path);
-    
   }, [permissions, isInitialized]);
 
 
