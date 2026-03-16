@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -34,7 +33,7 @@ interface BulkReturnDialogProps {
 
 const returnSchema = z.object({
   returnType: z.enum(['all', 'specific']),
-  quantity: z.coerce.number().optional(),
+  quantity: z.coerce.number().int().optional(),
   staffName: z.string().min(1, "Name is required."),
 }).refine(data => {
     if (data.returnType === 'specific' && (data.quantity === undefined || data.quantity < 1)) {

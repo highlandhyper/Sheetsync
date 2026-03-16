@@ -24,7 +24,6 @@ import {
   getInventoryItems,
   getProducts,
   getSuppliers,
-  getReturnedItems,
   getUniqueLocations,
   getUniqueStaffNames,
   getAuditLogs,
@@ -36,7 +35,8 @@ import {
   saveStaffListToSheet,
   loadStaffListFromSheet,
   saveLocationListToSheet,
-  getAppMetaData
+  getAppMetaData,
+  getReturnedItems
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -397,7 +397,11 @@ export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) {
     return { success: true, message: `${ids.length} items deleted.` }; 
 }
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
-    for (const id of ids) await dbProcessReturn(e, id, q || 1, s);
+    for (const id of ids) {
+        // If type is 'all', pass undefined to trigger "Return All" logic for this specific log entry
+        const quantityToReturn = t === 'all' ? undefined : q;
+        await dbProcessReturn(e, id, quantityToReturn, s);
+    }
     revalidatePath('/inventory');
     return { success: true, message: `${ids.length} returns processed.` }; 
 }

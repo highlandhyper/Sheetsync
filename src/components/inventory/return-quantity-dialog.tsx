@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,7 +32,7 @@ interface ReturnQuantityDialogProps {
 }
 
 const returnSchema = z.object({
-  quantityToReturn: z.coerce.number().min(1, "Quantity must be at least 1."),
+  quantityToReturn: z.coerce.number().int().min(1, "Quantity must be at least 1."),
   staffName: z.string().min(1, "Your name is required."),
 });
 type ReturnFormValues = z.infer<typeof returnSchema>;
@@ -111,6 +110,7 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
                   min="1"
                   {...register('quantityToReturn', { valueAsNumber: true })}
                   onKeyDown={(e) => {
+                    // Prevent non-numeric whole positive number inputs
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                         e.preventDefault();
                     }
