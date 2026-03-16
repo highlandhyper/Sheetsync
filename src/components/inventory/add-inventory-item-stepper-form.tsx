@@ -573,7 +573,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     min="1"
                                     {...register('quantity', { valueAsNumber: true })} 
                                     onKeyDown={(e) => {
-                                        // STRICT FIX: Prevent typing negative signs, exponents, plus, or periods
+                                        // Physically block non-numeric positive whole number inputs
                                         if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                             e.preventDefault();
                                         }

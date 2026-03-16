@@ -110,7 +110,7 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
                   min="1"
                   {...register('quantityToReturn', { valueAsNumber: true })}
                   onKeyDown={(e) => {
-                    // Prevent non-numeric whole positive number inputs
+                    // Physically block non-numeric positive whole number inputs
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                         e.preventDefault();
                     }
