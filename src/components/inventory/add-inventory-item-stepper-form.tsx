@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -100,9 +101,6 @@ const steps = [
   { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
 
-/**
- * Enhanced high-quality retail scanner beep.
- */
 const playProfessionalBeep = () => {
   try {
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -573,7 +571,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     min="1"
                                     {...register('quantity', { valueAsNumber: true })} 
                                     onKeyDown={(e) => {
-                                        // Physically block non-numeric positive whole number inputs
+                                        // Physically block non-numeric whole positive integers
                                         if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                                             e.preventDefault();
                                         }
