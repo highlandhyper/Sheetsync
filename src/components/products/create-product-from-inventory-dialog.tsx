@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -210,6 +209,11 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                             step="0.01"
                             placeholder="0.00"
                             {...register('costPrice')}
+                            onKeyDown={(e) => {
+                                if (['-', 'e', 'E', '+'].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
                             className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
                         />
                     </div>

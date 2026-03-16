@@ -117,7 +117,7 @@ export interface AppNotification {
   timestamp: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'request';
   isRead: boolean;
-  openedAt?: string; // New: tracking when opened for 24h TTL
+  openedAt?: string; // Tracking when opened for 24h TTL
   link?: string;
   metadata?: {
     barcode?: string;
@@ -137,7 +137,7 @@ export interface SpecialEntryRequest {
   approvedAt?: string;
   expiresAt?: string;
   grantedByAdmin?: boolean;
-  otp?: string; // New: Session-specific OTP for activation
+  otp?: string; // Session-specific OTP for activation
 }
 
 export interface OfflineAction {
