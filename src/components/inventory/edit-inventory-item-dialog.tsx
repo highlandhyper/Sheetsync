@@ -51,7 +51,6 @@ function parseDateStringLocal(dateStr?: string): Date | null {
   const parts = dateStr.split(/[-/.]/);
   if (parts.length === 3) {
     let y, m, d;
-    // Format could be YYYY-MM-DD or DD/MM/YYYY
     if (parts[0].length === 4) {
       y = parseInt(parts[0], 10);
       m = parseInt(parts[1], 10) - 1;
@@ -69,7 +68,7 @@ function parseDateStringLocal(dateStr?: string): Date | null {
   return isValid(isoDate) ? isoDate : null;
 }
 
-export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: EditInventoryItemDialogProps) {
+export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: { item: InventoryItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void, onSuccess?: () => void, uniqueLocationsFromDb: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
@@ -226,7 +225,18 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         name="quantity"
                         control={control}
                         render={({ field }) => (
-                            <Input id="quantity" type="number" {...field} className={cn('pl-8', formErrors.quantity && 'border-destructive')} />
+                            <Input 
+                                id="quantity" 
+                                type="number" 
+                                min="0"
+                                {...field} 
+                                onKeyDown={(e) => {
+                                    if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                className={cn('pl-8', formErrors.quantity && 'border-destructive')} 
+                            />
                         )}
                         />
                    </div>

@@ -129,7 +129,7 @@ const playProfessionalBeep = () => {
   }
 };
 
-export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: AddInventoryItemStepperFormProps) {
+export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const { 
@@ -568,7 +568,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             <Label className="text-xs font-bold text-muted-foreground uppercase">Qty</Label>
                             <div className="relative">
                                 <Hash className="absolute left-4 sm:left-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-4 sm:w-4 text-muted-foreground" />
-                                <Input id="qty" type="number" {...register('quantity')} className={cn('h-14 sm:h-10 pl-11 text-lg sm:text-base font-bold', errors.quantity && 'border-destructive')}/>
+                                <Input 
+                                    id="qty" 
+                                    type="number" 
+                                    min="1"
+                                    {...register('quantity', { valueAsNumber: true })} 
+                                    onKeyDown={(e) => {
+                                        if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    className={cn('h-14 sm:h-10 pl-11 text-lg sm:text-base font-bold', errors.quantity && 'border-destructive')}
+                                />
                             </div>
                         </div>
                         <div className="flex-1 space-y-2">

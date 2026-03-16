@@ -29,7 +29,7 @@ export const addInventoryItemSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
   itemType: z.enum(['Expiry', 'Damage'], { required_error: "Item type is required." }),
   barcode: z.string().min(1, "Barcode is required."),
-  quantity: z.coerce.number().int().min(1, "Quantity must be a whole number and at least 1."),
+  quantity: z.coerce.number().int().positive("Quantity must be at least 1."),
   expiryDate: z.date({ required_error: "A date is required for this item."}), 
   location: z.string().min(1, "Location is required."),
 });
@@ -45,7 +45,7 @@ export const editInventoryItemSchema = z.object({
   itemId: z.string().min(1, "Item ID is required."),
   location: z.string().min(1, "Location is required."),
   itemType: z.enum(['Expiry', 'Damage'], { required_error: "Item type is required." }),
-  quantity: z.coerce.number().int().min(0, "Quantity must be a whole number and not negative."),
+  quantity: z.coerce.number().int().min(0, "Quantity cannot be negative."),
   expiryDate: z.date().nullable().optional(), // Can be null if itemType is 'Damage'
 }).refine(data => {
   if (data.itemType === 'Expiry' && !data.expiryDate) {

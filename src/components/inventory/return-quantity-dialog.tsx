@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +20,7 @@ from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { returnInventoryItemAction, type ActionResponse } from '@/app/actions';
+import { returnInventoryItemAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -107,7 +108,13 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
                 <Input
                   id="quantityToReturn"
                   type="number"
-                  {...register('quantityToReturn')}
+                  min="1"
+                  {...register('quantityToReturn', { valueAsNumber: true })}
+                  onKeyDown={(e) => {
+                    if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                  }}
                   className={cn('pl-9 h-9 text-sm', errors.quantityToReturn && 'border-destructive')}
                 />
               </div>

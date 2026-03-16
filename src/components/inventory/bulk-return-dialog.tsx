@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -137,7 +138,13 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
               <Input
                 id="quantity"
                 type="number"
-                {...register('quantity')}
+                min="1"
+                {...register('quantity', { valueAsNumber: true })}
+                onKeyDown={(e) => {
+                    if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                }}
                 className={cn('h-9 text-sm', errors.quantity && 'border-destructive')}
               />
               {errors.quantity && <p className="text-[10px] text-destructive font-medium">{errors.quantity.message}</p>}
