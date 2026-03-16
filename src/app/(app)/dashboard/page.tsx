@@ -3,8 +3,8 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
@@ -215,7 +218,48 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   );
 }
 
-function StockTrendDetailedDialog({ isOpen, onOpenChange, data }: { isOpen: boolean; onOpenChange: (open: boolean) => void; data: StockTrendData[] }) {
+function StockTrendDetailedDialog({ 
+    isOpen, 
+    onOpenChange, 
+    initialData 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    initialData: StockTrendData[] 
+}) {
+    const { inventoryItems } = useDataCache();
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: subDays(new Date(), 6),
+        to: new Date(),
+    });
+
+    const trendData = useMemo(() => {
+        if (!dateRange?.from || !dateRange?.to) return initialData;
+        
+        const data: StockTrendData[] = [];
+        const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+        
+        // Calculate total stock as of today
+        const currentTotal = inventoryItems.reduce((s, i) => s + i.quantity, 0);
+
+        days.forEach(day => {
+            // Approximation: items in list represent additions at their timestamp
+            // Current Stock - Items added after this date = Stock at this date
+            const addedSince = inventoryItems.filter(i => {
+                if (!i.timestamp) return false;
+                const logDate = parseISO(i.timestamp);
+                return isAfter(logDate, endOfDay(day));
+            }).reduce((s, i) => s + i.quantity, 0);
+
+            data.push({
+                date: format(day, 'MMM dd'),
+                totalStock: Math.max(0, currentTotal - addedSince)
+            });
+        });
+
+        return data;
+    }, [dateRange, inventoryItems, initialData]);
+
     const chartConfig = {
         totalStock: {
             label: "Total Units",
@@ -225,20 +269,55 @@ function StockTrendDetailedDialog({ isOpen, onOpenChange, data }: { isOpen: bool
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-primary" />
-                        7-Day Stock Trend
-                    </DialogTitle>
-                    <DialogDescription>
-                        Historical overview of total inventory volume across all storage zones.
-                    </DialogDescription>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <DialogTitle className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                Inventory Volume Analysis
+                            </DialogTitle>
+                            <DialogDescription>
+                                Historical stock trend based on recorded additions and current levels.
+                            </DialogDescription>
+                        </div>
+                        <div className="flex flex-col gap-1 sm:items-end">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Analyze Period</Label>
+                            <Popover modal={true}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-8 text-xs font-semibold px-3 bg-muted/30">
+                                        <CalendarIcon className="mr-2 h-3 w-3" />
+                                        {dateRange?.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "MMM dd, y")} - {format(dateRange.to, "MMM dd, y")}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "MMM dd, y")
+                                            )
+                                        ) : (
+                                            <span>Select custom period</span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
                 </DialogHeader>
-                <div className="h-[350px] w-full mt-4">
+                <div className="h-[350px] w-full mt-6">
                     <ChartContainer config={chartConfig} className="h-full w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                            <AreaChart data={trendData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorStockDetailed" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -273,8 +352,8 @@ function StockTrendDetailedDialog({ isOpen, onOpenChange, data }: { isOpen: bool
                         </ResponsiveContainer>
                     </ChartContainer>
                 </div>
-                <DialogFooter className="sm:justify-start">
-                    <Button variant="secondary" onClick={() => onOpenChange(false)}>Close Overview</Button>
+                <DialogFooter className="sm:justify-start pt-4">
+                    <Button variant="secondary" onClick={() => onOpenChange(false)}>Close Analysis</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -748,7 +827,7 @@ export default function DashboardPage() {
           <StockTrendDetailedDialog 
             isOpen={isStockTrendDialogOpen} 
             onOpenChange={setIsStockTrendDialogOpen} 
-            data={metrics.stockTrend} 
+            initialData={metrics.stockTrend} 
           />
       )}
     </div>
