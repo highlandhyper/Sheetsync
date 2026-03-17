@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { fetchDashboardMetricsAction } from '@/app/actions';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
 import { useSpecialEntry } from '@/context/special-entry-context';
@@ -133,7 +133,6 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 
   return (
     <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
-      <ResponsiveContainer width="100%" height="100%">
       <BarChart
         accessibilityLayer
         data={chartDisplayData}
@@ -176,7 +175,6 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
            />
         </Bar>
       </BarChart>
-      </ResponsiveContainer>
     </ChartContainer>
   );
 }
@@ -193,7 +191,6 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
 
   return (
     <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
-      <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
@@ -213,7 +210,6 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
             animationDuration={2000}
           />
         </AreaChart>
-      </ResponsiveContainer>
     </ChartContainer>
   );
 }
@@ -316,7 +312,6 @@ function StockTrendDetailedDialog({
                 </DialogHeader>
                 <div className="h-[350px] w-full mt-6">
                     <ChartContainer config={chartConfig} className="h-full w-full">
-                        <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={trendData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorStockDetailed" x1="0" y1="0" x2="0" y2="1">
@@ -349,7 +344,6 @@ function StockTrendDetailedDialog({
                                     animationDuration={1500}
                                 />
                             </AreaChart>
-                        </ResponsiveContainer>
                     </ChartContainer>
                 </div>
                 <DialogFooter className="sm:justify-start pt-4">

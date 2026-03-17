@@ -1,0 +1,15 @@
+
+{
+  "supplierPlaceholder": {
+    "urlTemplate": "https://picsum.photos/seed/{id}/400/200",
+    "width": 400,
+    "height": 200,
+    "keywords": "office building"
+  },
+  "dashboardSparkline": {
+    "url": "https://picsum.photos/seed/spark/200/100",
+    "width": 200,
+    "height": 100,
+    "keywords": "data trend"
+  }
+}
