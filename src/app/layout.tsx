@@ -38,7 +38,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const manifestVersion = "1.0.4";
+  // Use a timestamp to force manifest refresh on new builds
+  const manifestVersion = typeof window !== 'undefined' ? Date.now().toString() : "1.0.5";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -57,18 +58,50 @@ export default function RootLayout({
                 const chunkError = /Loading chunk [\\d]+ failed/i.test(e.message) || 
                                  /ChunkLoadError/i.test(e.message) ||
                                  /Script error/i.test(e.message);
+                
                 if (chunkError) {
-                  console.warn('Sync mismatch detected. Refreshing app to fetch latest production assets...');
-                  window.location.reload();
+                  console.warn('SheetSync: Code chunk mismatch detected. Performing clean recovery...');
+                  
+                  // Avoid infinite reload loops
+                  const lastReload = sessionStorage.getItem('last_chunk_recovery');
+                  const now = Date.now();
+                  
+                  if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+                    sessionStorage.setItem('last_chunk_recovery', now.toString());
+                    
+                    // Clear caches and force hard reload
+                    if ('caches' in window) {
+                      caches.keys().then(names => {
+                        for (let name of names) caches.delete(name);
+                      });
+                    }
+                    
+                    window.location.reload(true);
+                  }
                 }
               }, true);
 
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('SW registered');
+                    console.log('SheetSync: SW registered');
+                    
+                    // Force update check on every load
+                    registration.update();
+                    
+                    registration.onupdatefound = () => {
+                      const installingWorker = registration.installing;
+                      if (installingWorker) {
+                        installingWorker.onstatechange = () => {
+                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('SheetSync: New version available, reloading...');
+                            window.location.reload();
+                          }
+                        };
+                      }
+                    };
                   }).catch(function(err) {
-                    console.log('SW registration failed: ', err);
+                    console.log('SheetSync: SW registration failed: ', err);
                   });
                 });
               }
