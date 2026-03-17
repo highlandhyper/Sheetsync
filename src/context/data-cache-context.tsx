@@ -27,6 +27,7 @@ interface DataCacheContextType extends AppData {
   updateInventoryItem: (item: Partial<InventoryItem> & { id: string }) => void;
   addInventoryItem: (item: InventoryItem) => void;
   removeInventoryItem: (itemId: string) => void;
+  removeInventoryItems: (itemIds: string[]) => void;
   addSupplier: (supplier: Supplier) => void;
   updateSupplier: (updatedSupplier: Supplier) => void;
   addProduct: (product: Partial<Product> & { id: string }) => void;
@@ -215,6 +216,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? { ...x, ...i } : x) })),
     addInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: [i, ...p.inventoryItems] })),
     removeInventoryItem: (id: string) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.filter(x => x.id !== id) })),
+    removeInventoryItems: (ids: string[]) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.filter(x => !ids.includes(x.id)) })),
     addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
     updateSupplier: (s: any) => refreshData(),
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),

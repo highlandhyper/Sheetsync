@@ -23,6 +23,7 @@ import { returnInventoryItemAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface ReturnQuantityDialogProps {
   item: InventoryItem | null;
@@ -40,6 +41,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSuccess }: ReturnQuantityDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { updateInventoryItem, removeInventoryItem, addReturnedItem, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -78,16 +80,40 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     }
 
     setIsSubmitting(true);
-    const response = await returnInventoryItemAction(user.email, item.id, data.quantityToReturn, data.staffName);
-    setIsSubmitting(false);
-
-    if (response.success) {
-      toast({ title: 'Return Processed', description: response.message });
-      onReturnSuccess(item.id, data.quantityToReturn);
-      onOpenChange(false);
+    
+    // OPTIMISTIC UPDATE
+    const returnedQty = data.quantityToReturn;
+    const newQty = item.quantity - returnedQty;
+    
+    if (newQty > 0) {
+        updateInventoryItem({ ...item, quantity: newQty });
     } else {
-      toast({ title: 'Return Failed', description: response.message || 'Could not process return.', variant: 'destructive' });
+        removeInventoryItem(item.id);
     }
+    
+    addReturnedItem({
+        ...item,
+        id: `ret_opt_${Date.now()}`,
+        returnedQuantity: returnedQty,
+        returnTimestamp: new Date().toISOString(),
+        processedBy: user.email,
+    });
+
+    onOpenChange(false);
+    onReturnSuccess(item.id, returnedQty);
+    toast({ title: 'Success', description: "Processing return in background..." });
+
+    // BACKGROUND SYNC
+    returnInventoryItemAction(user.email, item.id, returnedQty, data.staffName).then(response => {
+        setIsSubmitting(false);
+        if (!response.success) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Failed to process return on sheet.' });
+            refreshData(); // Revert
+        }
+    }).catch(() => {
+        setIsSubmitting(false);
+        refreshData();
+    });
   };
 
   return (
@@ -110,7 +136,6 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
                   min="1"
                   {...register('quantityToReturn', { valueAsNumber: true })}
                   onKeyDown={(e) => {
-                    // Physically block non-numeric positive whole number inputs
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                         e.preventDefault();
                     }

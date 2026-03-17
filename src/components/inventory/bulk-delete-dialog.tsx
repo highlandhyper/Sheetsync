@@ -22,6 +22,7 @@ import { bulkDeleteInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface BulkDeleteDialogProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ type DeleteFormValues = z.infer<typeof deleteSchema>;
 export function BulkDeleteDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkDeleteDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { removeInventoryItems, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
   const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -71,16 +73,25 @@ export function BulkDeleteDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     if (!user?.email) return;
 
     setIsSubmitting(true);
-    const response = await bulkDeleteInventoryItemsAction(user.email, itemIds);
-    setIsSubmitting(false);
+    
+    // OPTIMISTIC UPDATE
+    removeInventoryItems(itemIds);
+    onOpenChange(false);
+    onSuccess();
+    reset();
+    toast({ title: 'Processing', description: `Deleting ${itemCount} items from sheet...` });
 
-    if (response.success) {
-      toast({ title: 'Success', description: response.message });
-      onSuccess();
-      handleOpenChange(false);
-    } else {
-      toast({ title: 'Failed', description: response.message, variant: 'destructive' });
-    }
+    // BACKGROUND SYNC
+    bulkDeleteInventoryItemsAction(user.email, itemIds).then(response => {
+        setIsSubmitting(false);
+        if (!response.success) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Bulk delete failed.' });
+            refreshData();
+        }
+    }).catch(() => {
+        setIsSubmitting(false);
+        refreshData();
+    });
   };
 
   const { ref: passwordHookRef, ...passwordProps } = register('authPassword');

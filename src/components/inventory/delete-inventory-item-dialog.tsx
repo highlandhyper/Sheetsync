@@ -23,6 +23,7 @@ import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useLocalSettingsAuth } from '@/context/local-settings-auth-context';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface DeleteConfirmationDialogProps {
   item: InventoryItem | null;
@@ -40,6 +41,7 @@ type DeleteFormValues = z.infer<typeof deleteSchema>;
 export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess }: DeleteConfirmationDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { removeInventoryItem, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
   const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -66,17 +68,25 @@ export function DeleteConfirmationDialog({ item, isOpen, onOpenChange, onSuccess
     if (!user?.email) return;
 
     setIsSubmitting(true);
-    const response = await deleteInventoryItemAction(user.email, item.id);
-    setIsSubmitting(false);
+    
+    // OPTIMISTIC UPDATE: Remove from UI immediately
+    removeInventoryItem(item.id);
+    onOpenChange(false);
+    onSuccess(item.id);
+    reset();
+    toast({ title: 'Deleted', description: "Item removed from view. Syncing with sheet..." });
 
-    if (response.success) {
-      toast({ title: 'Deleted', description: response.message });
-      onSuccess(item.id);
-      onOpenChange(false);
-      reset();
-    } else {
-      toast({ title: 'Error', description: response.message, variant: 'destructive' });
-    }
+    // BACKGROUND SYNC
+    deleteInventoryItemAction(user.email, item.id).then(response => {
+        setIsSubmitting(false);
+        if (!response.success) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Failed to sync deletion.' });
+            refreshData(); // Revert by refreshing
+        }
+    }).catch(() => {
+        setIsSubmitting(false);
+        refreshData();
+    });
   };
 
   const { ref: passwordHookRef, ...passwordProps } = register('authPassword');
