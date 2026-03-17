@@ -63,6 +63,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
 import { useNotifications } from '@/context/notification-context';
+import type { InventoryItem } from '@/lib/types';
 
 function SessionTimer({ expiresAt }: { expiresAt: string }) {
     const [timeLeft, setTimeLeft] = useState<string>('');
@@ -200,9 +201,45 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setIsSubmitting(true);
     submitLockRef.current = true;
 
+    // --- OPTIMISTIC UI UPDATE ---
+    const now = new Date();
+    const tempId = `opt_${now.getTime()}`;
+    const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
+
+    const optimisticItem: InventoryItem = {
+        id: tempId,
+        barcode: data.barcode,
+        quantity: data.quantity,
+        expiryDate: formattedExpiry,
+        location: data.location,
+        staffName: data.staffName,
+        productName: productName || 'Syncing...',
+        supplierName: productSupplier || '...',
+        itemType: data.itemType,
+        timestamp: now.toISOString()
+    };
+
+    // 1. Immediately update local UI cache
+    addInventoryItem(optimisticItem);
+
+    // 2. Immediately show success dialog
+    setSubmittedStaffName(data.staffName);
+    setIsSuccessDialogOpen(true);
+    setTimeout(() => setIsSuccessDialogOpen(false), 5000);
+
+    // 3. Immediately reset form for next use
+    const savedStaffName = data.staffName; // Keep for convenience
+    reset();
+    setValue('staffName', savedStaffName); // Pre-fill staff for next scan
+    setProductName('');
+    setProductSupplier('');
+    setProductLookupError('');
+    setShowRequestProductButton(false);
+    setHasRequestedProduct(false);
+    setCurrentStep(0);
+
+    // 4. Background Sync
     if (!navigator.onLine) {
-        const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
-        
         queueAction({
             type: 'LOG_INVENTORY',
             data: {
@@ -216,34 +253,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 disableNotification: activeSession ? 'true' : 'false'
             }
         });
-
-        const tempId = `off_${Date.now()}`;
-        addInventoryItem({
-            id: tempId,
-            barcode: data.barcode,
-            quantity: data.quantity,
-            expiryDate: formattedExpiry,
-            location: data.location,
-            staffName: data.staffName,
-            productName: productName || 'Local Batch',
-            supplierName: productSupplier || 'Local Cache',
-            itemType: data.itemType,
-            timestamp: new Date().toISOString()
-        });
-
         if (activeSession) consumeSpecialEntry();
-
-        setSubmittedStaffName(data.staffName);
-        setIsSuccessDialogOpen(true);
-        setTimeout(() => setIsSuccessDialogOpen(false), 5000);
-
-        reset();
-        setProductName('');
-        setProductSupplier('');
-        setProductLookupError('');
-        setShowRequestProductButton(false);
-        setHasRequestedProduct(false);
-        setCurrentStep(0);
         setIsSubmitting(false);
         submitLockRef.current = false;
         return;
@@ -273,38 +283,21 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         const response = await addInventoryItemAction(undefined, formData);
         
         if (response.success && response.data) {
-          addInventoryItem(response.data);
-          
+          // Success handled optimistically, just consume session and refresh
           if (activeSession) {
               consumeSpecialEntry(); 
           }
-
-          setSubmittedStaffName(data.staffName);
-          setIsSuccessDialogOpen(true);
-          
-          setTimeout(() => setIsSuccessDialogOpen(false), 5000);
-
-          reset();
-          setProductName('');
-          setProductSupplier('');
-          setProductLookupError('');
-          setShowRequestProductButton(false);
-          setHasRequestedProduct(false);
-          setCurrentStep(0);
           refreshData(); 
         } else {
           toast({
             variant: 'destructive',
-            title: 'Error Logging Item',
-            description: response.message || 'Failed to add inventory item.'
+            title: 'Sync Error',
+            description: response.message || 'Background log failed. Re-syncing...'
           });
+          refreshData(); // Revert/Correct the optimistic update
         }
       } catch (err) {
-        toast({
-          variant: 'destructive',
-          title: 'System Error',
-          description: 'An unexpected error occurred during submission.'
-        });
+        console.warn("Background log error:", err);
       } finally {
         setIsSubmitting(false);
         submitLockRef.current = false;
