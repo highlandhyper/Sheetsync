@@ -212,7 +212,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             await dbUpdateProductAndSupplierLinks(userEmail, data.barcode as string, data.productName as string, data.supplierName as string, data.costPrice ? parseFloat(data.costPrice as string) : undefined);
             await logAuditEvent(userEmail, 'UPDATE_PRODUCT', data.barcode as string, `Changes: ${diffs.join(', ')}`);
             revalidatePath('/products/list');
-            const product = await getProductDetailsByBarcode(data.barcode as string);
+            const product = await getProductDetailsByBarcode(barcode as string);
             return { success: true, message: "Product updated successfully.", data: product as Product };
         }
     } catch (e) {
@@ -385,11 +385,15 @@ export async function deleteInventoryItemAction(e: string, i: string) {
     return { success: true, message: "Item deleted." }; 
 }
 export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
-    for (const id of ids) await dbDeleteInventoryItemById(e, id);
+    // Process sequentially to avoid concurrent write collisions in Google Sheets
+    for (const id of ids) {
+        await dbDeleteInventoryItemById(e, id);
+    }
     revalidatePath('/inventory');
     return { success: true, message: `${ids.length} items deleted.` }; 
 }
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
+    // Process sequentially to ensure accurate row management and avoid rate limits
     for (const id of ids) {
         const quantityToReturn = t === 'all' ? undefined : q;
         await dbProcessReturn(e, id, quantityToReturn, s);
