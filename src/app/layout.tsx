@@ -39,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // Use a timestamp to force manifest refresh on new builds
-  const manifestVersion = typeof window !== 'undefined' ? Date.now().toString() : "1.0.5";
+  const manifestVersion = typeof window !== 'undefined' ? Date.now().toString() : "1.0.6";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -53,40 +53,50 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Production Recovery: Automatically refresh on ChunkLoadErrors (404s)
+              // Aggressive Production Recovery: Automatically refresh on ChunkLoadErrors or missing resources (404s)
               window.addEventListener('error', function(e) {
-                const chunkError = /Loading chunk [\\d]+ failed/i.test(e.message) || 
-                                 /ChunkLoadError/i.test(e.message) ||
-                                 /Script error/i.test(e.message);
+                // Detect if the error is a ChunkLoadError or a resource (JS/CSS) that failed to load
+                const isResourceError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK');
+                const message = e.message || "";
+                const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
+                                   /ChunkLoadError/i.test(message) ||
+                                   /Script error/i.test(message);
                 
-                if (chunkError) {
-                  console.warn('SheetSync: Code chunk mismatch detected. Performing clean recovery...');
+                if (isChunkError || isResourceError) {
+                  // Only care about our own static chunks failing
+                  if (isResourceError) {
+                    const url = e.target.src || e.target.href || "";
+                    if (!url.includes('_next/static')) return; 
+                  }
+
+                  console.warn('SheetSync: Production chunk mismatch detected. Forcing clean recovery...');
                   
                   // Avoid infinite reload loops
                   const lastReload = sessionStorage.getItem('last_chunk_recovery');
                   const now = Date.now();
                   
-                  if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+                  if (!lastReload || (now - parseInt(lastReload)) > 15000) {
                     sessionStorage.setItem('last_chunk_recovery', now.toString());
                     
-                    // Clear caches and force hard reload
+                    // Clear all caches to purge stale build manifest
                     if ('caches' in window) {
                       caches.keys().then(names => {
                         for (let name of names) caches.delete(name);
                       });
                     }
                     
+                    // Hard reload to fetch the latest production code
                     window.location.reload(true);
                   }
                 }
-              }, true);
+              }, true); // Use capture phase to catch sub-resource errors
 
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(function(registration) {
                     console.log('SheetSync: SW registered');
                     
-                    // Force update check on every load
+                    // Force update check on every load to prevent stale manifest mapping
                     registration.update();
                     
                     registration.onupdatefound = () => {
@@ -94,7 +104,12 @@ export default function RootLayout({
                       if (installingWorker) {
                         installingWorker.onstatechange = () => {
                           if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('SheetSync: New version available, reloading...');
+                            console.log('SheetSync: New version available, clearing cache and reloading...');
+                            if ('caches' in window) {
+                              caches.keys().then(names => {
+                                for (let name of names) caches.delete(name);
+                              });
+                            }
                             window.location.reload();
                           }
                         };
