@@ -22,6 +22,7 @@ import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface BulkReturnDialogProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkReturnDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { inventoryItems, removeInventoryItems, updateInventoryItem, addReturnedItem, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnType, setReturnType] = useState<'all' | 'specific'>('all');
 
@@ -79,16 +81,49 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
   const onSubmit = async (data: ReturnFormValues) => {
     if (!user?.email) return;
     setIsSubmitting(true);
-    const response = await bulkReturnInventoryItemsAction(user.email, itemIds, data.staffName, data.returnType, data.quantity);
-    setIsSubmitting(false);
-
-    if (response.success) {
-      toast({ title: 'Success', description: response.message });
-      onSuccess();
-      handleOpenChange(false);
-    } else {
-      toast({ title: 'Failed', description: response.message || 'Error processing returns.', variant: 'destructive' });
+    
+    // OPTIMISTIC UPDATE
+    const itemsToProcess = inventoryItems.filter(i => itemIds.includes(i.id));
+    const returnedItemsList: string[] = [];
+    
+    itemsToProcess.forEach(item => {
+        const amountToReturn = data.returnType === 'all' ? item.quantity : (data.quantity || 1);
+        const newQty = item.quantity - amountToReturn;
+        
+        if (newQty <= 0) {
+            returnedItemsList.push(item.id);
+        } else {
+            updateInventoryItem({ ...item, quantity: newQty });
+        }
+        
+        addReturnedItem({
+            ...item,
+            id: `bulk_ret_opt_${item.id}_${Date.now()}`,
+            returnedQuantity: amountToReturn,
+            returnTimestamp: new Date().toISOString(),
+            processedBy: user.email!,
+        });
+    });
+    
+    if (returnedItemsList.length > 0) {
+        removeInventoryItems(returnedItemsList);
     }
+
+    onOpenChange(false);
+    onSuccess();
+    toast({ title: 'Success', description: "Processing bulk returns in background..." });
+
+    // BACKGROUND SYNC
+    bulkReturnInventoryItemsAction(user.email, itemIds, data.staffName, data.returnType, data.quantity).then(response => {
+        setIsSubmitting(false);
+        if (!response.success) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Bulk return failed.' });
+            refreshData();
+        }
+    }).catch(() => {
+        setIsSubmitting(false);
+        refreshData();
+    });
   };
 
   return (
@@ -140,7 +175,6 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
                 min="1"
                 {...register('quantity', { valueAsNumber: true })}
                 onKeyDown={(e) => {
-                    // Physically block non-numeric positive whole number inputs
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
                         e.preventDefault();
                     }

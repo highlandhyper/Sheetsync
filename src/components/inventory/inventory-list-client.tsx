@@ -319,10 +319,11 @@ export function InventoryListClient() {
   const handleOpenDeleteDialog = (item: InventoryItem) => { if (role !== 'admin') return; setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); };
 
   const handleActionSuccess = useCallback(() => {
-    onDataNeeded();
-    setIsReturnDialogOpen(false); setIsEditDialogOpen(false); setIsDeleteDialogOpen(false);
+    setIsReturnDialogOpen(false); 
+    setIsEditDialogOpen(false); 
+    setIsDeleteDialogOpen(false);
     setSelectedBarcodes(new Set());
-  }, [onDataNeeded]);
+  }, []);
 
   const handleExportPDF = (orientation: PDFOrientation) => {
     const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
@@ -579,8 +580,8 @@ export function InventoryListClient() {
         />
       )}
       
-      <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={() => { onDataNeeded(); setSelectedBarcodes(new Set()); setIsBulkReturnOpen(false); }} itemCount={getItemsForBulkAction().length} />
-      <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={() => { onDataNeeded(); setSelectedBarcodes(new Set()); setIsBulkDeleteOpen(false); }} itemCount={getItemsForBulkAction().length} />
+      <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
+      <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
     </div>
   );
 }
