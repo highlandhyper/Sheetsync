@@ -1,9 +1,11 @@
+
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building, Edit } from 'lucide-react';
 import type { Supplier } from '@/lib/types';
 import { memo } from 'react';
+import placeholderData from '@/app/lib/placeholder-images.json';
 
 interface SupplierCardProps {
   supplier: Supplier;
@@ -11,27 +13,26 @@ interface SupplierCardProps {
 }
 
 const SupplierCardComponent = ({ supplier, onEdit }: SupplierCardProps) => {
-  // A simple function to extract one or two keywords from the supplier name for the AI hint.
   const getAiHint = (name: string): string => {
     if (!name) return 'office building';
     const words = name.toLowerCase().split(' ');
-    // Filter out common business suffixes and short words
     const significantWords = words.filter(w => w.length > 2 && !['and', 'the', 'for', 'with', 'of', 'ltd', 'inc', 'co', 'llc'].includes(w));
     if (significantWords.length > 0) {
       return significantWords.slice(0, 2).join(' ');
     }
-    // Fallback to the first word if filtering results in an empty array
     return words[0] || 'office building';
   };
+
+  const imageUrl = placeholderData.supplierPlaceholder.urlTemplate.replace('{id}', supplier.id);
 
   return (
     <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader className="pb-3">
          <Image
-            src={`https://picsum.photos/seed/${supplier.id}/400/200`}
+            src={imageUrl}
             alt={supplier.name}
-            width={400}
-            height={200}
+            width={placeholderData.supplierPlaceholder.width}
+            height={placeholderData.supplierPlaceholder.height}
             className="rounded-t-lg aspect-[2/1] object-cover -mt-6 -mx-6 mb-4"
             data-ai-hint={getAiHint(supplier.name)}
           />
