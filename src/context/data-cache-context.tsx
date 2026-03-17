@@ -3,7 +3,7 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction } from '@/app/actions';
+import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry, SpecialEntryRequest, OfflineAction } from '@/lib/types';
 import { useAuth } from './auth-context';
 
@@ -113,6 +113,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 }
             });
             const res = await addInventoryItemAction(undefined, formData);
+            if (res.success) success = true;
+        } else if (action.type === 'PROCESS_RETURN') {
+            const { userEmail, itemId, returnedQty, staffName } = action.data;
+            const res = await returnInventoryItemAction(userEmail, itemId, returnedQty, staffName);
             if (res.success) success = true;
         }
 
