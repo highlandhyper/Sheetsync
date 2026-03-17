@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode, ChevronsUpDown, Check } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
@@ -64,6 +72,7 @@ export function InventoryListClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -367,15 +376,65 @@ export function InventoryListClient() {
               <Input type="search" placeholder="Search records..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full" />
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-               <Select value={selectedSupplier || ALL_SUPPLIERS_VALUE} onValueChange={handleSupplierChange}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
-                  <div className="flex items-center"><Building className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Supplier" /></div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_SUPPLIERS_VALUE}>All Suppliers</SelectItem>
-                  {suppliers.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={supplierComboboxOpen}
+                    className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal"
+                  >
+                    <div className="flex items-center truncate">
+                      <Building className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      {selectedSupplier ? selectedSupplier : "All Suppliers"}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search supplier..." />
+                    <CommandList>
+                      <CommandEmpty>No supplier found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value={ALL_SUPPLIERS_VALUE}
+                          onSelect={() => {
+                            handleSupplierChange(ALL_SUPPLIERS_VALUE);
+                            setSupplierComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !selectedSupplier ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Suppliers
+                        </CommandItem>
+                        {suppliers.map((s) => (
+                          <CommandItem
+                            key={s.id}
+                            value={s.name}
+                            onSelect={() => {
+                              handleSupplierChange(s.name);
+                              setSupplierComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedSupplier === s.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {s.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
