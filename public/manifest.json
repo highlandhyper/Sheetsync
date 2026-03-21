@@ -4,19 +4,19 @@
   "description": "Next-Gen Inventory Management System",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#29ABE2",
-  "theme_color": "#29ABE2",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "portrait",
   "icons": [
     {
       "src": "/logo-pwa.jpg",
-      "sizes": "192x192",
+      "sizes": "195x195",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/logo-splash.jpg",
-      "sizes": "512x512",
+      "src": "/logo-pwa.jpg",
+      "sizes": "510x510",
       "type": "image/jpeg",
       "purpose": "any maskable"
     }
