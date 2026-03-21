@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -62,7 +61,6 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
-import { useNotifications } from '@/context/notification-context';
 import type { InventoryItem } from '@/lib/types';
 
 function SessionTimer({ expiresAt }: { expiresAt: string }) {
@@ -132,7 +130,6 @@ const playProfessionalBeep = () => {
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { addNotification } = useNotifications();
   const { 
     products: cachedProducts, 
     uniqueLocations: dynamicLocations, 
@@ -141,7 +138,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     queueAction,
     isOnline,
   } = useDataCache();
-  const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry } = useSpecialEntry(); 
+  const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry, requestSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isPending, startTransition] = useTransition();
@@ -345,15 +342,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const handleRequestProductAdd = () => {
     if (!allFormValues.barcode) return;
     
-    addNotification({
-        title: 'New Product Request',
-        message: `Staff member ${allFormValues.staffName || 'user'} is requesting to add a product with barcode: ${allFormValues.barcode}. Click to create.`,
-        type: 'request',
-        metadata: {
-            barcode: allFormValues.barcode,
-            type: 'add_product_request'
-        }
-    });
+    // Use the global special entry system for product requests
+    requestSpecialEntry(
+        allFormValues.staffName || 'Viewer', 
+        'product_add', 
+        allFormValues.barcode
+    );
 
     setHasRequestedProduct(true);
     toast({

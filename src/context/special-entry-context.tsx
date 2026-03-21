@@ -13,7 +13,7 @@ interface SpecialEntryContextType {
   pendingActivationSession: SpecialEntryRequest | null;
   isActivationDialogOpen: boolean;
   setActivationDialogOpen: (open: boolean) => void;
-  requestSpecialEntry: (staffName: string, type: 'single' | 'timed', reason?: string) => Promise<void>;
+  requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
@@ -39,7 +39,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
   
   const lastPendingCountRef = useRef(0);
-  const processedApprovalIdsRef = useRef<Set<string>>(new Set());
+  const processedRequestIdsRef = useRef<Set<string>>(new Set());
 
   // Initialize activated session from local storage
   useEffect(() => {
@@ -54,12 +54,29 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
   // Admin Notification Logic
   useEffect(() => {
-    if (role === 'admin' && pendingRequestsList.length > lastPendingCountRef.current) {
-      addNotification({
-        title: 'New Special Entry Request',
-        message: `${pendingRequestsList[pendingRequestsList.length - 1].staffName} is requesting silent access.`,
-        type: 'request',
-        link: '/dashboard'
+    if (role === 'admin' && pendingRequestsList.length > 0) {
+      pendingRequestsList.forEach(req => {
+        if (!processedRequestIdsRef.current.has(req.id)) {
+          if (req.type === 'product_add') {
+            addNotification({
+              title: 'New Product Request',
+              message: `${req.staffName} is requesting barcode: ${req.reason}. Click to create.`,
+              type: 'request',
+              metadata: {
+                barcode: req.reason,
+                type: 'add_product_request'
+              }
+            });
+          } else {
+            addNotification({
+              title: 'New Special Entry Request',
+              message: `${req.staffName} is requesting silent access.`,
+              type: 'request',
+              link: '/dashboard'
+            });
+          }
+          processedRequestIdsRef.current.add(req.id);
+        }
       });
     }
     lastPendingCountRef.current = pendingRequestsList.length;
@@ -77,14 +94,14 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
     if (myApproved) {
       // 1. Handle notification logic
-      if (!processedApprovalIdsRef.current.has(myApproved.id)) {
+      if (!processedRequestIdsRef.current.has(myApproved.id)) {
         addNotification({
           title: 'Silent Access Authorized',
           message: `Special entry granted for ${myApproved.staffName}. USE OTP: ${myApproved.otp || 'NONE'}. Click to activate.`,
           type: 'success',
           link: '/inventory/add'
         });
-        processedApprovalIdsRef.current.add(myApproved.id);
+        processedRequestIdsRef.current.add(myApproved.id);
       }
 
       // 2. Handle activation logic
@@ -101,7 +118,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [specialRequests, user, addNotification, activatedSessionId]);
 
-  const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed', reason?: string) => {
+  const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => {
     if (!user) return;
     const newRequest: SpecialEntryRequest = {
       id: `req_${Date.now()}`,
