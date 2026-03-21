@@ -95,7 +95,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>
