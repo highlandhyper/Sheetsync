@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
@@ -38,85 +37,60 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Use a timestamp to force manifest refresh on new builds
-  const manifestVersion = typeof window !== 'undefined' ? Date.now().toString() : "1.0.6";
+  // Use a hardcoded build version to prevent hydration mismatch while still allowing manual busts
+  const manifestVersion = "1.0.8";
 
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <meta name="theme-color" content="#29ABE2" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="manifest" href={`/manifest.json?v=${manifestVersion}`} />
+        <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
         <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Aggressive Production Recovery: Automatically refresh on ChunkLoadErrors or missing resources (404s)
+              // Aggressive Production Recovery: Automatically refresh on ChunkLoadErrors
               window.addEventListener('error', function(e) {
-                // Detect if the error is a ChunkLoadError or a resource (JS/CSS) that failed to load
                 const isResourceError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK');
                 const message = e.message || "";
                 const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
-                                   /ChunkLoadError/i.test(message) ||
-                                   /Script error/i.test(message);
+                                   /ChunkLoadError/i.test(message);
                 
                 if (isChunkError || isResourceError) {
-                  // Only care about our own static chunks failing
                   if (isResourceError) {
                     const url = e.target.src || e.target.href || "";
                     if (!url.includes('_next/static')) return; 
                   }
 
-                  console.warn('SheetSync: Production chunk mismatch detected. Forcing clean recovery...');
+                  console.warn('SheetSync: Asset mismatch detected. Recovering...');
                   
-                  // Avoid infinite reload loops
                   const lastReload = sessionStorage.getItem('last_chunk_recovery');
                   const now = Date.now();
                   
-                  if (!lastReload || (now - parseInt(lastReload)) > 15000) {
+                  if (!lastReload || (now - parseInt(lastReload)) > 10000) {
                     sessionStorage.setItem('last_chunk_recovery', now.toString());
                     
-                    // Clear all caches to purge stale build manifest
                     if ('caches' in window) {
                       caches.keys().then(names => {
                         for (let name of names) caches.delete(name);
                       });
                     }
-                    
-                    // Hard reload to fetch the latest production code
                     window.location.reload(true);
                   }
                 }
-              }, true); // Use capture phase to catch sub-resource errors
+              }, true);
 
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                  navigator.serviceWorker.register('/sw.js').then(function(reg) {
                     console.log('SheetSync: SW registered');
-                    
-                    // Force update check on every load to prevent stale manifest mapping
-                    registration.update();
-                    
-                    registration.onupdatefound = () => {
-                      const installingWorker = registration.installing;
-                      if (installingWorker) {
-                        installingWorker.onstatechange = () => {
-                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('SheetSync: New version available, clearing cache and reloading...');
-                            if ('caches' in window) {
-                              caches.keys().then(names => {
-                                for (let name of names) caches.delete(name);
-                              });
-                            }
-                            window.location.reload();
-                          }
-                        };
-                      }
-                    };
+                    reg.update();
                   }).catch(function(err) {
-                    console.log('SheetSync: SW registration failed: ', err);
+                    console.error('SheetSync: SW failed', err);
                   });
                 });
               }
