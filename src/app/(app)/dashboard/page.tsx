@@ -1,4 +1,3 @@
-
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
@@ -536,7 +535,12 @@ function PendingSpecialEntryRequests() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [duration, setDuration] = useState<string>("single");
 
-    if (pendingRequests.length === 0) {
+    // Filter to only show actual access requests (not product additions)
+    const accessRequests = useMemo(() => 
+        pendingRequests.filter(r => r.type === 'single' || r.type === 'timed')
+    , [pendingRequests]);
+
+    if (accessRequests.length === 0) {
         return null;
     }
 
@@ -563,11 +567,11 @@ function PendingSpecialEntryRequests() {
                 <h2 className="text-xl font-black text-primary flex items-center gap-2">
                     <ShieldQuestion className="h-6 w-6" />
                     Pending Authorizations
-                    <Badge className="ml-2 bg-destructive animate-pulse">{pendingRequests.length}</Badge>
+                    <Badge className="ml-2 bg-destructive animate-pulse">{accessRequests.length}</Badge>
                 </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingRequests.map(req => (
+                {accessRequests.map(req => (
                     <Card key={req.id} className="border-primary/20 shadow-lg overflow-hidden flex flex-col">
                         <CardHeader className="bg-primary/5 pb-3">
                             <div className="flex justify-between items-start">

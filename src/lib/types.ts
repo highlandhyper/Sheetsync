@@ -131,7 +131,7 @@ export interface SpecialEntryRequest {
   staffName: string;
   reason?: string;
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
-  type: 'single' | 'timed';
+  type: 'single' | 'timed' | 'product_add';
   durationMinutes?: number;
   requestedAt: string;
   approvedAt?: string;
