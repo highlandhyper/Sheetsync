@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
@@ -38,9 +37,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Static version to prevent hydration mismatch while allowing manual busts
-  const manifestVersion = "1.0.9";
-
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
@@ -48,7 +44,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#29ABE2" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="manifest" href={`/manifest.json?v=${manifestVersion}`} />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
         <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
         <script
