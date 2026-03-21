@@ -1,4 +1,5 @@
-const CACHE_NAME = 'sheetsync-v2';
+// SheetSync Service Worker
+const CACHE_NAME = 'sheetsync-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,6 +10,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Simple pass-through for production stability
+  // Simple pass-through to satisfy PWA installability requirements
+  // and prevent stale cache issues with code chunks.
   event.respondWith(fetch(event.request));
 });

@@ -1,24 +1,37 @@
 {
-  "name": "SheetSync Inventory",
+  "name": "SheetSync",
   "short_name": "SheetSync",
-  "description": "Next-Gen Inventory Management System",
+  "description": "Next-Gen Inventory Management",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
   "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "/logo-pwa.jpg",
-      "sizes": "195x195",
+      "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
       "src": "/logo-pwa.jpg",
-      "sizes": "510x510",
+      "sizes": "512x512",
       "type": "image/jpeg",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-pwa.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo-pwa.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
     }
   ]
 }
