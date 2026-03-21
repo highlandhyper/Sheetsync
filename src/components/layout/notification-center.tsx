@@ -27,7 +27,7 @@ const NotificationIcon = ({ type }: { type: AppNotification['type'] }) => {
 };
 
 interface NotificationCenterProps {
-  onOpenProductRequest?: (barcode: string) => void;
+  onOpenProductRequest?: (barcode: string, requestId?: string) => void;
 }
 
 export function NotificationCenter({ onOpenProductRequest }: NotificationCenterProps) {
@@ -39,7 +39,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
     
     // If it's a product request, trigger the popup
     if (n.type === 'request' && n.metadata?.type === 'add_product_request' && n.metadata.barcode) {
-      onOpenProductRequest?.(n.metadata.barcode);
+      onOpenProductRequest?.(n.metadata.barcode, n.metadata.requestId);
     }
     
     setIsOpen(false);

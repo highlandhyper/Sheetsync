@@ -24,6 +24,7 @@ interface SpecialEntryContextType {
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
 
 const ACTIVATED_STORAGE_KEY = 'sheetSync_activatedSessionId';
+const NOTIFIED_IDS_KEY = 'sheetSync_notifiedRequestIds';
 
 // Helper to generate a random 4-digit OTP
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -38,13 +39,24 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
   const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
   
-  const lastPendingCountRef = useRef(0);
   const processedRequestIdsRef = useRef<Set<string>>(new Set());
 
-  // Initialize activated session from local storage
+  // Initialize activated session and notified IDs from local storage
   useEffect(() => {
     if (typeof window !== 'undefined') {
         setActivatedSessionId(localStorage.getItem(ACTIVATED_STORAGE_KEY));
+        
+        const storedNotified = localStorage.getItem(NOTIFIED_IDS_KEY);
+        if (storedNotified) {
+            try {
+                const ids = JSON.parse(storedNotified);
+                if (Array.isArray(ids)) {
+                    processedRequestIdsRef.current = new Set(ids);
+                }
+            } catch (e) {
+                console.warn("Failed to parse notified request IDs");
+            }
+        }
     }
   }, []);
 
@@ -55,6 +67,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   // Admin Notification Logic
   useEffect(() => {
     if (role === 'admin' && pendingRequestsList.length > 0) {
+      let changed = false;
+      
       pendingRequestsList.forEach(req => {
         if (!processedRequestIdsRef.current.has(req.id)) {
           if (req.type === 'product_add') {
@@ -64,6 +78,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
               type: 'request',
               metadata: {
                 barcode: req.reason,
+                requestId: req.id,
                 type: 'add_product_request'
               }
             });
@@ -76,10 +91,14 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
             });
           }
           processedRequestIdsRef.current.add(req.id);
+          changed = true;
         }
       });
+
+      if (changed) {
+          localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(Array.from(processedRequestIdsRef.current)));
+      }
     }
-    lastPendingCountRef.current = pendingRequestsList.length;
   }, [pendingRequestsList, role, addNotification]);
 
   // Viewer Notification & Session Logic
@@ -102,6 +121,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
           link: '/inventory/add'
         });
         processedRequestIdsRef.current.add(myApproved.id);
+        localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(Array.from(processedRequestIdsRef.current)));
       }
 
       // 2. Handle activation logic

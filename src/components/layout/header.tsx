@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { CreateProductFromInventoryDialog } from '../products/create-product-from-inventory-dialog';
+import { useSpecialEntry } from '@/context/special-entry-context';
 
 function LastSyncStatus() {
   const { lastSync, isSyncing, refreshData, pendingActions, isOnline } = useDataCache();
@@ -124,9 +125,11 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { isSyncing, suppliers, addProduct, refreshData } = useDataCache();
+  const { approveRequest } = useSpecialEntry();
   
   const [isRequestProductDialogOpen, setIsRequestProductDialogOpen] = useState(false);
   const [requestedBarcode, setRequestedBarcode] = useState('');
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -137,9 +140,22 @@ export function Header({ className, onManualLock }: { className?: string; onManu
     return email.substring(0, 2).toUpperCase();
   };
 
-  const handleOpenProductRequest = (barcode: string) => {
+  const handleOpenProductRequest = (barcode: string, requestId?: string) => {
     setRequestedBarcode(barcode);
+    setActiveRequestId(requestId || null);
     setIsRequestProductDialogOpen(true);
+  };
+
+  const handleProductCreateSuccess = (p: any) => {
+    addProduct(p);
+    
+    // Resolve the special request if it was triggered by a notification
+    if (activeRequestId) {
+        approveRequest(activeRequestId);
+        setActiveRequestId(null);
+    }
+    
+    refreshData();
   };
 
   return (
@@ -249,10 +265,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             onOpenChange={setIsRequestProductDialogOpen}
             barcode={requestedBarcode}
             allSuppliers={suppliers}
-            onSuccess={(p) => {
-                addProduct(p);
-                refreshData();
-            }}
+            onSuccess={handleProductCreateSuccess}
         />
       )}
     </>

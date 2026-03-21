@@ -121,6 +121,7 @@ export interface AppNotification {
   link?: string;
   metadata?: {
     barcode?: string;
+    requestId?: string;
     type?: 'add_product_request';
   };
 }
