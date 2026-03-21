@@ -7,8 +7,19 @@
   "background_color": "#FFFFFF",
   "theme_color": "#FFFFFF",
   "orientation": "portrait",
-  "scope": "/",
   "icons": [
+    {
+      "src": "/logo-pwa.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-pwa.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
     {
       "src": "/logo-pwa.jpg",
       "sizes": "192x192",

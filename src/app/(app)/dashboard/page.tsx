@@ -131,7 +131,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   };
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[350px] w-full h-full max-h-[400px]">
+    <ChartContainer config={chartConfig} className="h-full w-full max-h-[400px]">
       <BarChart
         accessibilityLayer
         data={chartDisplayData}
@@ -234,12 +234,9 @@ function StockTrendDetailedDialog({
         const data: StockTrendData[] = [];
         const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
         
-        // Calculate total stock as of today
         const currentTotal = inventoryItems.reduce((s, i) => s + i.quantity, 0);
 
         days.forEach(day => {
-            // Approximation: items in list represent additions at their timestamp
-            // Current Stock - Items added after this date = Stock at this date
             const addedSince = inventoryItems.filter(i => {
                 if (!i.timestamp) return false;
                 const logDate = parseISO(i.timestamp);
@@ -535,7 +532,6 @@ function PendingSpecialEntryRequests() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [duration, setDuration] = useState<string>("single");
 
-    // Filter to only show actual access requests (not product additions)
     const accessRequests = useMemo(() => 
         pendingRequests.filter(r => r.type === 'single' || r.type === 'timed')
     , [pendingRequests]);
