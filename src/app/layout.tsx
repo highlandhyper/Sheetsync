@@ -41,12 +41,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
        <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-        <meta name="theme-color" content="#29ABE2" />
+        <meta name="theme-color" content="#FFFFFF" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
-        <link rel="apple-touch-startup-image" href="/logo-splash.jpg" />
+        <link rel="apple-touch-startup-image" href="/logo-pwa.jpg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
