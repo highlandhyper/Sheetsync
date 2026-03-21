@@ -1,7 +1,7 @@
-const CACHE_NAME = 'sheetsync-cache-v1';
 
-// We only cache essential static assets. 
-// Dynamic data is handled by our DataCacheContext.
+// Minimal Service Worker for PWA Installation and Cache Management
+const CACHE_NAME = 'sheetsync-v1';
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -18,18 +18,19 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  return self.clients.claim();
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Bypass service worker for Google Sheets API and Auth
-  if (event.request.url.includes('googleapis.com') || event.request.url.includes('firebase')) {
+  // Network-first strategy for dynamic data, Cache-first for static assets
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
-
+  
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });
