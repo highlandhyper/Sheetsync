@@ -13,7 +13,6 @@ import {
   addProduct as dbAddProduct,
   getProductDetailsByBarcode,
   processReturn as dbProcessReturn,
-  addSupplier as dbAddSupplier,
   updateSupplierNameAndReferences as dbUpdateSupplierName,
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
@@ -24,21 +23,17 @@ import {
   getInventoryItems,
   getProducts,
   getSuppliers,
-  getUniqueLocations,
-  getUniqueStaffNames,
   getAuditLogs,
   logAuditEvent,
-  loadSpecialRequestsFromSheet,
   saveSpecialRequestsToSheet,
-  getInventoryLogEntriesByBarcode,
   addInventoryItemToSheet,
   saveStaffListToSheet,
-  loadStaffListFromSheet,
   saveLocationListToSheet,
   getAppMetaData,
-  getReturnedItems
+  getReturnedItems,
+  getInventoryLogEntriesByBarcode
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, ItemType, DashboardMetrics, Permissions, ReturnedItem, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
 
 const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
@@ -196,26 +191,36 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const data = Object.fromEntries(formData.entries());
         const editMode = data.editMode as string;
         const userEmail = (data.userEmail as string) || 'Admin';
+        const barcode = data.barcode as string;
+        const productName = data.productName as string;
+        const supplierName = data.supplierName as string;
+        const costPriceRaw = data.costPrice as string;
+        const costPrice = costPriceRaw !== "" ? parseFloat(costPriceRaw) : undefined;
         
         if (editMode === 'create') {
-            const product = await dbAddProduct(userEmail, data);
+            const product = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
             revalidatePath('/products/list');
             return { success: true, message: "Product created successfully.", data: product as Product };
         } else {
-            const oldProduct = await getProductDetailsByBarcode(data.barcode as string);
+            const oldProduct = await getProductDetailsByBarcode(barcode);
             const diffs: string[] = [];
             if (oldProduct) {
-                if (data.productName !== oldProduct.productName) diffs.push(`Name: ${oldProduct.productName} -> ${data.productName}`);
-                if (data.supplierName !== oldProduct.supplierName) diffs.push(`Supplier: ${oldProduct.supplierName} -> ${data.supplierName}`);
-                if (data.costPrice && Number(data.costPrice) !== oldProduct.costPrice) diffs.push(`Cost: ${oldProduct.costPrice} -> ${data.costPrice}`);
+                if (productName !== oldProduct.productName) diffs.push(`Name: ${oldProduct.productName} -> ${productName}`);
+                if (supplierName !== oldProduct.supplierName) diffs.push(`Supplier: ${oldProduct.supplierName} -> ${supplierName}`);
+                if (costPrice !== oldProduct.costPrice) diffs.push(`Cost: ${oldProduct.costPrice} -> ${costPrice}`);
             }
-            await dbUpdateProductAndSupplierLinks(userEmail, data.barcode as string, data.productName as string, data.supplierName as string, data.costPrice ? parseFloat(data.costPrice as string) : undefined);
-            await logAuditEvent(userEmail, 'UPDATE_PRODUCT', data.barcode as string, `Changes: ${diffs.join(', ')}`);
+            
+            const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
+            if (!success) return { success: false, message: "Product not found in sheet." };
+            
             revalidatePath('/products/list');
-            const product = await getProductDetailsByBarcode(barcode as string);
-            return { success: true, message: "Product updated successfully.", data: product as Product };
+            revalidatePath('/inventory');
+            
+            const updatedProduct = await getProductDetailsByBarcode(barcode);
+            return { success: true, message: "Product updated successfully.", data: updatedProduct as Product };
         }
     } catch (e) {
+        console.error("saveProductAction error:", e);
         return { success: false, message: "Failed to save product." };
     }
 }
@@ -371,8 +376,48 @@ export async function fetchInventoryLogEntriesByBarcodeAction(b: string) {
 }
 
 export async function addProductAction(p: any, f: FormData) { return saveProductAction(p, f); }
-export async function addSupplierAction(p: any, f: FormData) { return { success: true }; }
-export async function editSupplierAction(p: any, f: FormData) { return { success: true }; }
+
+export async function addSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse<Supplier>> {
+    try {
+        const data = Object.fromEntries(formData.entries());
+        const name = data.supplierName as string;
+        const userEmail = (data.userEmail as string) || 'Admin';
+        
+        if (!name) return { success: false, message: "Name required." };
+        
+        await logAuditEvent(userEmail, 'REGISTER_SUPPLIER', name, `Supplier registered in system catalog.`);
+        
+        return { 
+            success: true, 
+            message: "Supplier registered. You can now assign products to this vendor.", 
+            data: { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() } 
+        };
+    } catch (e) {
+        return { success: false, message: "Failed to register supplier." };
+    }
+}
+
+export async function editSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse> {
+    try {
+        const data = Object.fromEntries(formData.entries());
+        const oldName = data.currentSupplierName as string;
+        const newName = data.newSupplierName as string;
+        const userEmail = (data.userEmail as string) || 'Admin';
+        
+        if (!oldName || !newName) return { success: false, message: "Names required." };
+        
+        await dbUpdateSupplierName(userEmail, oldName, newName);
+        revalidatePath('/suppliers');
+        revalidatePath('/products/list');
+        revalidatePath('/inventory');
+        
+        return { success: true, message: "Supplier renamed successfully across all catalog products and inventory logs." };
+    } catch (e) {
+        console.error("editSupplierAction error:", e);
+        return { success: false, message: "Failed to update supplier records." };
+    }
+}
+
 export async function returnInventoryItemAction(e: string, i: string, q: number, s: string) { 
     await dbProcessReturn(e, i, q, s);
     revalidatePath('/inventory');
@@ -385,7 +430,6 @@ export async function deleteInventoryItemAction(e: string, i: string) {
     return { success: true, message: "Item deleted." }; 
 }
 export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
-    // Process sequentially to avoid concurrent write collisions in Google Sheets
     for (const id of ids) {
         await dbDeleteInventoryItemById(e, id);
     }
@@ -393,7 +437,6 @@ export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) {
     return { success: true, message: `${ids.length} items deleted.` }; 
 }
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
-    // Process sequentially to ensure accurate row management and avoid rate limits
     for (const id of ids) {
         const quantityToReturn = t === 'all' ? undefined : q;
         await dbProcessReturn(e, id, quantityToReturn, s);
