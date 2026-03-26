@@ -305,10 +305,28 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
     const updates = [
       { range: `${DB_SHEET_NAME}!C${rowNumber}`, values: [[n]] },
       { range: `${DB_SHEET_NAME}!D${rowNumber}`, values: [[s]] },
-      { range: `${DB_SHEET_NAME}!E${rowNumber}`, values: [[c || '']] }
+      { range: `${DB_SHEET_NAME}!E${rowNumber}`, values: [[c ?? '']] }
     ];
     await batchUpdateSheetCells(updates);
-    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated: [Name: ${n}], [Supplier: ${s}], [Cost: ${c || 'N/A'}]`);
+    
+    // Propagate changes to existing inventory logs for this specific barcode
+    const invData = await readSheetData(INVENTORY_READ_RANGE);
+    if (invData) {
+        const invUpdates = [];
+        for (let i = 0; i < invData.length; i++) {
+            const row = invData[i];
+            if (row && String(row[INV_COL_BARCODE]).trim() === b) {
+                // Product Name column G (index 6), Supplier column H (index 7)
+                invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i + 2}`, values: [[n]] });
+                invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`, values: [[s]] });
+            }
+        }
+        if (invUpdates.length > 0) {
+            await batchUpdateSheetCells(invUpdates);
+        }
+    }
+
+    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated definition: [Name: ${n}], [Supplier: ${s}], [Cost: ${c || 'N/A'}]`);
     return true;
   }
   return false;

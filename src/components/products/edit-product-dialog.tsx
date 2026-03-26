@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -34,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
+import { useAuth } from '@/context/auth-context';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -54,6 +54,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   
@@ -93,7 +94,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const processFormSubmit = (data: AddProductFormValues) => {
     if (!product) return;
     if (!isDirty) {
-      toast({ title: "No Changes", description: "No changes were made to the product." });
+      toast({ title: "No Changes", description: "No changes were made to the product definition." });
       onOpenChange(false);
       return;
     }
@@ -102,6 +103,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     formData.append('barcode', product.barcode);
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
+    formData.append('userEmail', user?.email || 'Admin');
+    
     if (data.costPrice !== undefined) {
       formData.append('costPrice', String(data.costPrice));
     }
@@ -111,14 +114,14 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
         toast({
-          title: 'Success!',
+          title: 'Update Successful',
           description: result.message,
         });
-        onSuccess(result.data); // Notify parent to update cache
+        onSuccess(result.data);
         onOpenChange(false);
       } else {
         toast({
-          title: 'Error Updating Product',
+          title: 'Update Failed',
           description: result.message || 'An unknown error occurred.',
           variant: 'destructive',
         });
@@ -137,8 +140,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       setIsSupplierEditDialogOpen(true);
     } else {
       toast({
-        title: "Supplier Not Found",
-        description: "Please select an existing supplier to edit.",
+        title: "Selection Error",
+        description: "Please select a registered supplier to edit their details.",
         variant: "destructive",
       });
     }
@@ -151,9 +154,9 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Product: {product.productName}</DialogTitle>
+            <DialogTitle>Edit Product Catalog</DialogTitle>
             <DialogDescription>
-              Update the details for this product. The barcode cannot be changed.
+              Modify details for barcode: <span className="font-mono font-bold text-foreground">{product.barcode}</span>. Changes will propagate to inventory logs.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
@@ -163,7 +166,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 id="barcode"
                 {...register('barcode')}
                 readOnly
-                className="bg-muted cursor-not-allowed"
+                className="bg-muted cursor-not-allowed font-mono"
               />
             </div>
             <div>
@@ -180,17 +183,17 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                      <Label htmlFor="supplierName">Supplier Name</Label>
+                      <Label htmlFor="supplierName">Supplier</Label>
                       <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={handleEditSupplierClick}
                           disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
-                          className="text-xs h-auto py-0.5 px-2"
+                          className="text-[10px] uppercase font-bold h-auto py-0.5 px-2 hover:bg-primary/10 text-primary"
                       >
                           <Edit className="mr-1 h-3 w-3" />
-                          Edit
+                          Rename Vendor
                       </Button>
                     </div>
                       <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
@@ -208,7 +211,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             <span className="truncate">
                             {supplierNameValue
                               ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
-                              : "Select or type supplier..."}
+                              : "Select vendor..."}
                             </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -218,12 +221,12 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0 }
                           >
                             <CommandInput
-                              placeholder="Search or create supplier..."
+                              placeholder="Search or type new..."
                               value={supplierNameValue || ''}
                               onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
                             />
                             <CommandList>
-                              <CommandEmpty>No supplier found. Type to create new.</CommandEmpty>
+                              <CommandEmpty>Press Enter to use "{supplierNameValue}"</CommandEmpty>
                               <CommandGroup>
                                 {sortedSuppliers.map((supplier) => (
                                   <CommandItem
@@ -246,7 +249,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                       className="italic text-muted-foreground"
                                   >
                                       <PlusCircle className="mr-2 h-4 w-4" />
-                                      Create new supplier: "{supplierNameValue}"
+                                      Add "{supplierNameValue}"
                                   </CommandItem>
                               )}
                               </CommandGroup>
@@ -258,14 +261,14 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 </div>
 
                 <div>
-                      <Label htmlFor="costPrice">Cost Price</Label>
+                      <Label htmlFor="costPrice">Cost Price (QAR)</Label>
                       <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                               id="costPrice"
                               type="number"
                               step="0.01"
-                              placeholder="e.g., 12.99"
+                              placeholder="0.00"
                               {...register('costPrice')}
                               className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
                           />
@@ -273,10 +276,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                       {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
                   </div>
             </div>
-            <p className="text-xs text-muted-foreground pt-2">If supplier doesn't exist, it will be created automatically.</p>
-
-
-            <DialogFooter className="pt-4">
+            
+            <DialogFooter className="pt-4 gap-2 sm:gap-0">
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
