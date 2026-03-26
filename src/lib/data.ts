@@ -1,11 +1,11 @@
-import type { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
+
+import { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 // --- Sheet Names ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; 
-const RETURNS_LOG_SHEET_NAME = "Returns Log";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; 
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
 
@@ -27,18 +27,6 @@ const DB_COL_PRODUCT_NAME = 2;
 const DB_COL_SUPPLIER_NAME = 3;
 const DB_COL_COST_PRICE = 4;
 
-const RL_COL_ORIGINAL_INV_ID = 0;
-const RL_COL_PRODUCT_NAME = 1;
-const RL_COL_BARCODE = 2;
-const RL_COL_SUPPLIER_NAME = 3;
-const RL_COL_RETURNED_QTY = 4;
-const RL_COL_EXPIRY_DATE = 5;
-const RL_COL_LOCATION = 6;
-const RL_COL_ORIGINAL_STAFF = 7;
-const RL_COL_ITEM_TYPE = 8;
-const RL_COL_PROCESSED_BY = 9;
-const RL_COL_RETURN_TIMESTAMP = 10;
-
 const SETTINGS_COL_KEY = 0;
 const SETTINGS_COL_VALUE = 1;
 
@@ -51,7 +39,6 @@ const AUDIT_COL_DETAILS = 4;
 // --- Read Ranges ---
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
-const RETURN_LOG_READ_RANGE = `${RETURNS_LOG_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
@@ -118,27 +105,6 @@ function transformToInventoryItem(row: any[], rowIndex: number): InventoryItem |
   } catch { return null; }
 }
 
-function transformToReturnedItem(row: any[], rowIndex: number): ReturnedItem | null {
-  try {
-    if (!row || row.length < 10) return null;
-    const qty = parseInt(String(row[RL_COL_RETURNED_QTY] || '0'), 10);
-    if (isNaN(qty)) return null;
-    return {
-      id: `ret_${rowIndex}_${Date.now()}`,
-      originalInventoryItemId: String(row[RL_COL_ORIGINAL_INV_ID] || '').trim(),
-      productName: String(row[RL_COL_PRODUCT_NAME] || '').trim(),
-      barcode: String(row[RL_COL_BARCODE] || '').trim(),
-      supplierName: String(row[RL_COL_SUPPLIER_NAME] || '').trim(),
-      returnedQuantity: qty,
-      location: String(row[RL_COL_LOCATION] || '').trim(),
-      staffName: String(row[RL_COL_ORIGINAL_STAFF] || '').trim(),
-      itemType: String(row[RL_COL_ITEM_TYPE] || '').toLowerCase() === 'damage' ? 'Damage' : 'Expiry',
-      processedBy: String(row[RL_COL_PROCESSED_BY] || '').trim(),
-      returnTimestamp: parseFlexibleTimestamp(row[RL_COL_RETURN_TIMESTAMP])?.toISOString(),
-    };
-  } catch { return null; }
-}
-
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
   return data ? data.map(transformToProduct).filter((p): p is Product => p !== null) : [];
@@ -154,11 +120,6 @@ export async function getSuppliers(existingProducts?: Product[]): Promise<Suppli
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   const data = await readSheetData(INVENTORY_READ_RANGE);
   return data ? data.map(transformToInventoryItem).filter((i): i is InventoryItem => i !== null && i.quantity > 0) : [];
-}
-
-export async function getReturnedItems(): Promise<ReturnedItem[]> {
-  const data = await readSheetData(RETURN_LOG_READ_RANGE);
-  return data ? data.map(transformToReturnedItem).filter((i): i is ReturnedItem => i !== null) : [];
 }
 
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
@@ -316,7 +277,6 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
         for (let i = 0; i < invData.length; i++) {
             const row = invData[i];
             if (row && String(row[INV_COL_BARCODE]).trim() === b) {
-                // Product Name column G (index 6), Supplier column H (index 7)
                 invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i + 2}`, values: [[n]] });
                 invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`, values: [[s]] });
             }
@@ -376,24 +336,13 @@ export async function processReturn(email: string, id: string, q: number | undef
   const amountToReturn = (q === undefined || q === null) ? originalQty : q;
   const newQty = Math.max(0, originalQty - amountToReturn);
 
-  // 1. Update Qty or Delete Row if zero
   if (newQty > 0) {
     await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units. New Qty: ${newQty}`);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units (By: ${staff}). New Qty: ${newQty}`);
   } else {
-    // If quantity is now 0, delete the row entirely to keep sheet clean
     await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units. Log row deleted from sheet.`);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units (By: ${staff}). Row deleted.`);
   }
-
-  // 2. Log Return to Returns Log sheet
-  const returnRow = [
-    id, originalRow[INV_COL_PRODUCT_NAME], originalRow[INV_COL_BARCODE], 
-    originalRow[INV_COL_SUPPLIER_NAME], amountToReturn, originalRow[INV_COL_EXPIRY],
-    originalRow[INV_COL_LOCATION], originalRow[INV_COL_STAFF], 
-    originalRow[INV_COL_TYPE], staff, format(new Date(), "d/M/yyyy HH:mm:ss")
-  ];
-  await appendSheetData(`${RETURNS_LOG_SHEET_NAME}!A:K`, [returnRow]);
 
   return { success: true };
 }
@@ -456,16 +405,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     .map(([name, totalStock]) => ({ name, totalStock }))
     .sort((a,b) => b.totalStock - a.totalStock);
 
-  // Generate trend data for the dashboard visualization
   const stockTrend: StockTrendData[] = [];
   for (let d = 6; d >= 0; d--) {
     const date = subDays(today, d);
     const dateStr = format(date, 'MMM dd');
-    
     const currentTotal = inv.reduce((s, i) => s + i.quantity, 0);
     const addedSince = inv.filter(i => i.timestamp && isAfter(parseISO(i.timestamp), endOfDay(date)))
                           .reduce((s, i) => s + i.quantity, 0);
-    
     stockTrend.push({
       date: dateStr,
       totalStock: Math.max(0, currentTotal - addedSince)

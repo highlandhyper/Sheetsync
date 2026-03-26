@@ -1,49 +1,22 @@
 
 'use client';
-import { ReturnLogListClient } from '@/components/inventory/return-log-list-client';
-import { Suspense } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
-import { useDataCache } from '@/context/data-cache-context';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-function ReturnLogSkeleton() {
-  return (
-    <div className="space-y-6">
-      <Card className="p-4 shadow">
-        <Skeleton className="h-10 w-full sm:max-w-md" />
-      </Card>
-      <Card className="shadow-md overflow-hidden">
-        <div className="divide-y">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="flex p-4 gap-4 items-center">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-5 w-16 ml-auto" />
-                <Skeleton className="h-5 w-24 ml-auto" />
-              </div>
-            ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
+// This page has been deprecated as return history is now managed via the Audit Log.
+export default function DeprecatedReturnLogPage() {
+  const router = useRouter();
 
-
-export default function ReturnLogPage() {
-  const { isCacheReady } = useDataCache();
+  useEffect(() => {
+    router.replace('/audit-log');
+  }, [router]);
 
   return (
-    <div className="container mx-auto py-2">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Return Log</h1>
-      <Suspense fallback={<ReturnLogSkeleton />}>
-        {isCacheReady ? (
-          <ReturnLogListClient />
-        ) : (
-          <ReturnLogSkeleton />
-        )}
-      </Suspense>
+    <div className="flex flex-col items-center justify-center h-full">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="ml-4 text-lg mt-4">This page has been removed. Redirecting to Audit Log...</p>
     </div>
   );
 }

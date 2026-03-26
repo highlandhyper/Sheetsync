@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -11,7 +12,6 @@ interface AppData {
   inventoryItems: InventoryItem[];
   products: Product[];
   suppliers: Supplier[];
-  returnedItems: ReturnedItem[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
@@ -32,7 +32,6 @@ interface DataCacheContextType extends AppData {
   updateSupplier: (updatedSupplier: Supplier) => void;
   addProduct: (product: Partial<Product> & { id: string }) => void;
   updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
-  addReturnedItem: (item: ReturnedItem) => void;
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
   updateStaffList: (staff: string[]) => Promise<void>;
   updateLocationList: (locations: string[]) => Promise<void>;
@@ -52,7 +51,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     inventoryItems: [],
     products: [],
     suppliers: [],
-    returnedItems: [],
     uniqueLocations: [],
     uniqueStaffNames: [],
     auditLogs: [],
@@ -158,7 +156,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setData({ inventoryItems: [], products: [], suppliers: [], returnedItems: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], lastSync: null });
+      setData({ inventoryItems: [], products: [], suppliers: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], lastSync: null });
       return;
     }
     fetchDataAndCache(false);
@@ -225,7 +223,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateSupplier: (s: any) => refreshData(),
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) })),
-    addReturnedItem: (r: any) => setData(p => ({ ...p, returnedItems: [r, ...p.returnedItems] })),
   }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
   return (

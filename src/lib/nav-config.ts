@@ -17,7 +17,6 @@ export const allNavItems: NavItem[] = [
   { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'], exact: true },
   { href: '/inventory', label: 'View Inventory', icon: ClipboardList, roles: ['admin'], exact: true },
   { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, roles: ['admin', 'viewer'] },
-  { href: '/inventory/returns', label: 'Return Log', icon: History, roles: ['admin'] },
   { href: '/inventory/lookup', label: 'Barcode Log Lookup', icon: SearchCode, roles: ['admin', 'viewer'], mobileOnly: true },
   { href: '/audit-log', label: 'Audit Log', icon: FileText, roles: ['admin'], exact: true },
 ];
