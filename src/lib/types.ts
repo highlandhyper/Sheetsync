@@ -139,6 +139,8 @@ export interface SpecialEntryRequest {
   expiresAt?: string;
   grantedByAdmin?: boolean;
   otp?: string; // Session-specific OTP for activation
+  isDismissedByAdmin?: boolean; // NEW: Cross-device sync for admins
+  isReadByUser?: boolean;      // NEW: Cross-device sync for requester
 }
 
 export interface OfflineAction {

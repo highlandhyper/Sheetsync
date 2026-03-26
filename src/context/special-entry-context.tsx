@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { useNotifications } from './notification-context';
 import { useDataCache } from './data-cache-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 
@@ -24,13 +23,11 @@ interface SpecialEntryContextType {
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
 
 const ACTIVATED_STORAGE_KEY = 'sheetSync_activatedSessionId';
-const NOTIFIED_IDS_KEY = 'sheetSync_notifiedRequestIds';
 
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
-  const { addNotification } = useNotifications();
   const { specialRequests, updateSpecialRequests } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
@@ -38,22 +35,11 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
   const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
   
-  const processedRequestIdsRef = useRef<Set<string>>(new Set());
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
         setActivatedSessionId(localStorage.getItem(ACTIVATED_STORAGE_KEY));
-        
-        const storedNotified = localStorage.getItem(NOTIFIED_IDS_KEY);
-        if (storedNotified) {
-            try {
-                const ids = JSON.parse(storedNotified);
-                if (Array.isArray(ids)) {
-                    processedRequestIdsRef.current = new Set(ids);
-                }
-            } catch (e) {}
-        }
         setIsInitialized(true);
     }
   }, []);
@@ -62,41 +48,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     specialRequests.filter(r => r.status === 'pending')
   , [specialRequests]);
 
-  useEffect(() => {
-    if (!isInitialized || !role || role !== 'admin' || pendingRequestsList.length === 0) return;
-
-    let changed = false;
-    pendingRequestsList.forEach(req => {
-      if (!processedRequestIdsRef.current.has(req.id)) {
-        if (req.type === 'product_add') {
-          addNotification({
-            title: 'New Product Request',
-            message: `${req.staffName} is requesting barcode: ${req.reason}.`,
-            type: 'request',
-            metadata: {
-              barcode: req.reason,
-              requestId: req.id,
-              type: 'add_product_request'
-            }
-          });
-        } else {
-          addNotification({
-            title: 'New Special Entry Request',
-            message: `${req.staffName} is requesting silent access.`,
-            type: 'request',
-            link: '/dashboard'
-          });
-        }
-        processedRequestIdsRef.current.add(req.id);
-        changed = true;
-      }
-    });
-
-    if (changed) {
-        localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(Array.from(processedRequestIdsRef.current)));
-    }
-  }, [pendingRequestsList, role, addNotification, isInitialized]);
-
+  // Handle local session activation logic
   useEffect(() => {
     if (!isInitialized || !user) return;
 
@@ -107,17 +59,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     );
 
     if (myApproved) {
-      if (!processedRequestIdsRef.current.has(myApproved.id)) {
-        addNotification({
-          title: 'Silent Access Authorized',
-          message: `Special entry granted for ${myApproved.staffName}. USE OTP: ${myApproved.otp || 'NONE'}.`,
-          type: 'success',
-          link: '/inventory/add'
-        });
-        processedRequestIdsRef.current.add(myApproved.id);
-        localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(Array.from(processedRequestIdsRef.current)));
-      }
-
       if (activatedSessionId !== myApproved.id) {
           setPendingActivationSession(myApproved);
           setActiveSession(null);
@@ -129,7 +70,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       setActiveSession(null);
       setPendingActivationSession(null);
     }
-  }, [specialRequests, user, addNotification, activatedSessionId, isInitialized]);
+  }, [specialRequests, user, activatedSessionId, isInitialized]);
 
   const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => {
     if (!user) return;

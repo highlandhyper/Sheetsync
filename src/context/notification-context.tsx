@@ -1,104 +1,126 @@
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { AppNotification } from '@/lib/types';
+import { createContext, useContext, useMemo, useCallback } from 'react';
+import type { AppNotification, SpecialEntryRequest } from '@/lib/types';
+import { useDataCache } from './data-cache-context';
+import { useAuth } from './auth-context';
 
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
-  addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearAll: () => void;
+  addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'sheetSyncNotifications';
-
 export function NotificationProvider({ children }: PropsWithChildren) {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const { specialRequests, updateSpecialRequests, role, user } = useDataCache();
+  const { user: authUser } = useAuth();
 
-  const cleanupOldNotifications = useCallback((list: AppNotification[]) => {
-    const now = Date.now();
-    const TTL_MS = 24 * 60 * 60 * 1000;
-    
-    return list.filter(n => {
-      // If never opened, keep it indefinitely (or until manual clear)
-      if (!n.openedAt) return true;
-      
-      // If opened, check if 24 hours have passed since opening
-      const openedAtTime = new Date(n.openedAt).getTime();
-      return (now - openedAtTime) < TTL_MS;
-    });
-  }, []);
+  // DERIVE notifications from shared sheet state (specialRequests)
+  const notifications = useMemo(() => {
+    if (!role || !authUser?.email) return [];
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setNotifications(cleanupOldNotifications(parsed));
+    const list: AppNotification[] = [];
+
+    specialRequests.forEach((req: SpecialEntryRequest) => {
+      // ADMIN VIEW: See pending requests that aren't dismissed
+      if (role === 'admin') {
+        if (req.status === 'pending' && !req.isDismissedByAdmin) {
+          if (req.type === 'product_add') {
+            list.push({
+              id: `notif_${req.id}`,
+              title: 'Product Addition Requested',
+              message: `${req.staffName} is requesting a new product for barcode: ${req.reason}`,
+              timestamp: req.requestedAt,
+              type: 'request',
+              isRead: false,
+              metadata: {
+                barcode: req.reason,
+                requestId: req.id,
+                type: 'add_product_request'
+              }
+            });
+          } else {
+            list.push({
+              id: `notif_${req.id}`,
+              title: 'Access Request',
+              message: `${req.staffName} is requesting silent entry authorization.`,
+              timestamp: req.requestedAt,
+              type: 'request',
+              isRead: false,
+              link: '/dashboard'
+            });
+          }
+        }
       }
-    } catch (e) {
-      console.warn('NotificationContext: Could not load notifications from storage.');
-    }
-    setIsInitialized(true);
-  }, [cleanupOldNotifications]);
 
-  useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    }
-  }, [notifications, isInitialized]);
+      // VIEWER VIEW: See their own approved/rejected status
+      if (role === 'viewer' && req.userEmail === authUser.email) {
+        if ((req.status === 'approved' || req.status === 'rejected') && !req.isReadByUser) {
+          list.push({
+            id: `notif_${req.id}`,
+            title: req.status === 'approved' ? 'Access Authorized' : 'Request Declined',
+            message: req.status === 'approved' 
+              ? `Your silent mode request was granted. Use OTP: ${req.otp || 'N/A'}`
+              : `Your request for ${req.staffName} was declined by an administrator.`,
+            timestamp: req.approvedAt || req.requestedAt,
+            type: req.status === 'approved' ? 'success' : 'error',
+            isRead: false,
+            link: req.status === 'approved' ? '/inventory/add' : undefined
+          });
+        }
+      }
+    });
 
-  // Periodic cleanup every 15 minutes
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNotifications(prev => cleanupOldNotifications(prev));
-    }, 15 * 60 * 1000);
-    return () => clearInterval(timer);
-  }, [cleanupOldNotifications]);
+    // Sort by timestamp descending
+    return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [specialRequests, role, authUser]);
 
-  const addNotification = useCallback((payload: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => {
-    const newNotification: AppNotification = {
-      ...payload,
-      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      isRead: false,
-    };
-    setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep last 50
+  const markAsRead = useCallback(async (id: string) => {
+    // Strip the prefix to get the original request ID
+    const requestId = id.replace('notif_', '');
+    const updated = specialRequests.map(req => {
+      if (req.id !== requestId) return req;
+      if (role === 'admin') return { ...req, isDismissedByAdmin: true };
+      return { ...req, isReadByUser: true };
+    });
+    await updateSpecialRequests(updated);
+  }, [specialRequests, updateSpecialRequests, role]);
+
+  const markAllAsRead = useCallback(async () => {
+    const updated = specialRequests.map(req => {
+      if (role === 'admin' && req.status === 'pending') return { ...req, isDismissedByAdmin: true };
+      if (role === 'viewer' && req.userEmail === authUser?.email) return { ...req, isReadByUser: true };
+      return req;
+    });
+    await updateSpecialRequests(updated);
+  }, [specialRequests, updateSpecialRequests, role, authUser]);
+
+  const clearAll = useCallback(async () => {
+    // In this derived architecture, "clear all" is same as "mark all as read"
+    await markAllAsRead();
+  }, [markAllAsRead]);
+
+  // Legacy method for local-only transient alerts if needed
+  const addNotification = useCallback(() => {
+    // Non-persistent notifications are ignored in this version to prioritize sync
   }, []);
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, isRead: true, openedAt: n.openedAt || new Date().toISOString() } : n)
-    );
-  }, []);
-
-  const markAllAsRead = useCallback(() => {
-    const now = new Date().toISOString();
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true, openedAt: n.openedAt || now })));
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  const unreadCount = useMemo(() => 
-    notifications.filter(n => !n.isRead).length
-  , [notifications]);
+  const unreadCount = useMemo(() => notifications.length, [notifications]);
 
   const value = useMemo(() => ({
     notifications,
     unreadCount,
-    addNotification,
     markAsRead,
     markAllAsRead,
-    clearAll
-  }), [notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll]);
+    clearAll,
+    addNotification
+  }), [notifications, unreadCount, markAsRead, markAllAsRead, clearAll, addNotification]);
 
   return (
     <NotificationContext.Provider value={value}>
