@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -30,7 +31,6 @@ import {
   saveStaffListToSheet,
   saveLocationListToSheet,
   getAppMetaData,
-  getReturnedItems,
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem } from '@/lib/types';
@@ -49,7 +49,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products: Product[];
   suppliers: Supplier[];
-  returnedItems: ReturnedItem[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
@@ -59,13 +58,11 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
     const [
       inventoryItems,
       products,
-      returnedItems,
       auditLogs,
       meta
     ] = await Promise.all([
       getInventoryItems(),
       getProducts(),
-      getReturnedItems(),
       getAuditLogs(),
       getAppMetaData()
     ]);
@@ -78,7 +75,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
         inventoryItems: inventoryItems || [],
         products: products || [],
         suppliers: suppliers || [],
-        returnedItems: returnedItems || [],
         uniqueLocations: meta.locations || [],
         uniqueStaffNames: meta.staff || [],
         auditLogs: auditLogs || [],
@@ -202,14 +198,6 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             revalidatePath('/products/list');
             return { success: true, message: "Product created successfully.", data: product as Product };
         } else {
-            const oldProduct = await getProductDetailsByBarcode(barcode);
-            const diffs: string[] = [];
-            if (oldProduct) {
-                if (productName !== oldProduct.productName) diffs.push(`Name: ${oldProduct.productName} -> ${productName}`);
-                if (supplierName !== oldProduct.supplierName) diffs.push(`Supplier: ${oldProduct.supplierName} -> ${supplierName}`);
-                if (costPrice !== oldProduct.costPrice) diffs.push(`Cost: ${oldProduct.costPrice} -> ${costPrice}`);
-            }
-            
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
             if (!success) return { success: false, message: "Product not found in sheet." };
             
@@ -269,102 +257,6 @@ export async function saveLocationListAction(locations: string[]) {
     } catch (e) {
         return { success: false, message: "Failed to save location list." };
     }
-}
-
-export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
-  try {
-    const cleanBarcode = barcode.trim();
-    if (!cleanBarcode) return { success: false, message: "Barcode is empty." };
-
-    const findField = (obj: any, keys: string[]): string | undefined => {
-        if (!obj) return undefined;
-        for (const key of keys) {
-            const val = obj[key];
-            if (typeof val === 'string' && val.startsWith('http')) return val;
-            if (Array.isArray(val) && val.length > 0) {
-                const first = val[0];
-                if (typeof first === 'string' && first.startsWith('http')) return first;
-                if (typeof first === 'object' && first?.url) return first.url;
-                if (typeof first === 'object' && first?.link) return first.link;
-            }
-        }
-        return undefined;
-    };
-
-    const findBrand = (obj: any, keys: string[]): string | undefined => {
-        if (!obj) return undefined;
-        for (const key of keys) {
-            if (typeof obj[key] === 'string' && obj[key].length > 1) return obj[key];
-        }
-        return undefined;
-    };
-
-    let result: { image?: string; brand?: string; name?: string } | null = null;
-
-    try {
-        const gtinResponse = await fetch(`https://gtinhub.com/api/v1/product/${cleanBarcode}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'application/json'
-            },
-            next: { revalidate: 86400 } 
-        });
-
-        if (gtinResponse.ok) {
-            const rawData = await gtinResponse.json();
-            const contexts = [rawData.product, rawData.data, rawData].filter(Boolean);
-            
-            let image, brand, name;
-            for (const ctx of contexts) {
-                if (!image) image = findField(ctx, ['image', 'imageUrl', 'image_url', 'item_image', 'product_image', 'images', 'thumbnail']);
-                if (!brand) brand = findBrand(ctx, ['brand', 'brand_name', 'manufacturer', 'vendor', 'make']);
-                if (!name) name = findBrand(ctx, ['name', 'product_name', 'title', 'description']);
-            }
-            
-            if (image || brand || name) {
-                result = { image, brand, name };
-            }
-        }
-    } catch (e) {
-        console.warn(`GTINHub lookup failed for ${cleanBarcode}, attempting fallback...`);
-    }
-
-    if (!result || (!result.image && !result.brand)) {
-        const apiKey = process.env.SEARCHUPCDATA_API_KEY;
-        if (apiKey) {
-            try {
-                const supcResponse = await fetch(`https://searchupcdata.com/api/v1/product/${cleanBarcode}?key=${apiKey}`, {
-                    headers: { 'Accept': 'application/json' },
-                    next: { revalidate: 86400 }
-                });
-
-                if (supcResponse.ok) {
-                    const supcData = await supcResponse.json();
-                    const p = supcData.data || supcData.product || supcData;
-                    
-                    const image = result?.image || findField(p, ['image', 'image_url', 'image_link', 'product_image', 'thumbnail']);
-                    const brand = result?.brand || findBrand(p, ['brand', 'brand_name', 'manufacturer', 'vendor']);
-                    const name = result?.name || findBrand(p, ['product_name', 'name', 'title', 'description']);
-                    
-                    if (image || brand || name) {
-                        result = { image, brand, name };
-                    }
-                }
-            } catch (e) {
-                console.warn(`SearchUPCData lookup failed for ${cleanBarcode}.`);
-            }
-        }
-    }
-
-    if (!result || (!result.image && !result.brand && !result.name)) {
-        return { success: false, message: "Product details not found in the global registry." };
-    }
-
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("External lookup error:", error);
-    return { success: false, message: "Network error while connecting to global product registries." };
-  }
 }
 
 export async function fetchDashboardMetricsAction() { return { success: true, data: await getDashboardMetrics() }; }
