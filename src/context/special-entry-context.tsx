@@ -61,10 +61,12 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
   // Handle local session activation logic for the current user
   useEffect(() => {
-    if (!isInitialized || !user) return;
+    if (!isInitialized || !user || !user.email) return;
+
+    const currentEmail = user.email.toLowerCase();
 
     const myApproved = specialRequests.find(r => 
-      (r.userEmail === user.email) && 
+      (r.userEmail?.toLowerCase() === currentEmail) && 
       r.status === 'approved' && 
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
@@ -101,6 +103,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
     if (!user) return;
     
+    // Try to find the email of the person with this staff name, or default to generic viewer
     const existingReq = specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase());
     const targetEmail = existingReq?.userEmail || "viewer@example.com"; 
 

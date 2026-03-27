@@ -26,6 +26,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     if (!role || !authUser?.email) return [];
 
     const list: AppNotification[] = [];
+    const currentEmail = authUser.email.toLowerCase();
 
     specialRequests.forEach((req: SpecialEntryRequest) => {
       // ADMIN VIEW: See pending requests that aren't dismissed
@@ -60,18 +61,21 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       }
 
       // VIEWER VIEW: See their own approved/rejected status
-      if (role === 'viewer' && req.userEmail === authUser.email) {
+      if (role === 'viewer' && req.userEmail?.toLowerCase() === currentEmail) {
         if ((req.status === 'approved' || req.status === 'rejected') && !req.isReadByUser) {
           list.push({
             id: `notif_${req.id}`,
             title: req.status === 'approved' ? 'Access Authorized' : 'Request Declined',
             message: req.status === 'approved' 
-              ? `Your silent mode request was granted. Use OTP: ${req.otp || 'N/A'}`
+              ? `Your silent mode request for ${req.staffName} was granted. Use OTP: ${req.otp || 'N/A'}`
               : `Your request for ${req.staffName} was declined by an administrator.`,
             timestamp: req.approvedAt || req.requestedAt,
             type: req.status === 'approved' ? 'success' : 'error',
             isRead: false,
-            link: req.status === 'approved' ? '/inventory/add' : undefined
+            link: req.status === 'approved' ? '/inventory/add' : undefined,
+            metadata: {
+                requestId: req.id
+            }
           });
         }
       }
@@ -83,7 +87,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
   const markAsRead = useCallback(async (id: string) => {
     // Strip the prefix to get the original request ID
-    const requestId = id.replace('notif_', '');
+    const requestId = id.startsWith('notif_') ? id.replace('notif_', '') : id;
     const updated = specialRequests.map(req => {
       if (req.id !== requestId) return req;
       if (role === 'admin') return { ...req, isDismissedByAdmin: true };
@@ -93,22 +97,21 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, [specialRequests, updateSpecialRequests, role]);
 
   const markAllAsRead = useCallback(async () => {
+    const currentEmail = authUser?.email?.toLowerCase();
     const updated = specialRequests.map(req => {
       if (role === 'admin' && req.status === 'pending') return { ...req, isDismissedByAdmin: true };
-      if (role === 'viewer' && req.userEmail === authUser?.email) return { ...req, isReadByUser: true };
+      if (role === 'viewer' && req.userEmail?.toLowerCase() === currentEmail) return { ...req, isReadByUser: true };
       return req;
     });
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests, role, authUser]);
 
   const clearAll = useCallback(async () => {
-    // In this derived architecture, "clear all" is same as "mark all as read"
     await markAllAsRead();
   }, [markAllAsRead]);
 
-  // Legacy method for local-only transient alerts if needed
   const addNotification = useCallback(() => {
-    // Non-persistent notifications are ignored in this version to prioritize sync
+    // Non-persistent notifications are ignored in this version
   }, []);
 
   const unreadCount = useMemo(() => notifications.length, [notifications]);
