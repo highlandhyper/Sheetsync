@@ -88,7 +88,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
 
 export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
     try {
-        // Using Open Food Facts as a primary free source for product data
         const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { 
             next: { revalidate: 3600 } 
         });

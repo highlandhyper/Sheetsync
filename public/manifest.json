@@ -6,6 +6,7 @@
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#FFFFFF",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/logo-pwa.jpg",
@@ -17,13 +18,7 @@
       "src": "/logo-pwa.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo-pwa.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }
