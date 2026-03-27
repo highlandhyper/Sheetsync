@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -125,7 +125,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { isSyncing, suppliers, addProduct, refreshData } = useDataCache();
-  const { approveRequest } = useSpecialEntry();
+  const { approveRequest, activeSessions } = useSpecialEntry();
   
   const [isRequestProductDialogOpen, setIsRequestProductDialogOpen] = useState(false);
   const [requestedBarcode, setRequestedBarcode] = useState('');
@@ -193,6 +193,29 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             >
                 <Command className="h-3.5 w-3.5" />
             </Button>
+
+            {role === 'admin' && activeSessions.length > 0 && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Link href="/dashboard">
+                                <Button variant="outline" size="icon" className="h-8 w-8 text-green-600 bg-green-500/5 border-green-500/20 relative group">
+                                    <BellOff className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 text-[8px] text-white items-center justify-center font-bold">
+                                            {activeSessions.length}
+                                        </span>
+                                    </span>
+                                </Button>
+                            </Link>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{activeSessions.length} active silent mode sessions</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
 
             <NotificationCenter onOpenProductRequest={handleOpenProductRequest} />
 

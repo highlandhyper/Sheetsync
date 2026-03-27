@@ -8,6 +8,7 @@ import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-ac
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
+  activeSessions: SpecialEntryRequest[];
   activeSession: SpecialEntryRequest | null;
   pendingActivationSession: SpecialEntryRequest | null;
   isActivationDialogOpen: boolean;
@@ -16,6 +17,7 @@ interface SpecialEntryContextType {
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
+  revokeRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
   activateSession: (id: string, otp: string) => boolean;
 }
@@ -48,7 +50,16 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     specialRequests.filter(r => r.status === 'pending')
   , [specialRequests]);
 
-  // Handle local session activation logic
+  const activeSessionsList = useMemo(() => {
+    const now = new Date();
+    return specialRequests.filter(r => 
+        r.status === 'approved' && 
+        (r.type === 'single' || r.type === 'timed') &&
+        (!r.expiresAt || new Date(r.expiresAt) > now)
+    );
+  }, [specialRequests]);
+
+  // Handle local session activation logic for the current user
   useEffect(() => {
     if (!isInitialized || !user) return;
 
@@ -139,6 +150,11 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 
+  const revokeRequest = useCallback(async (id: string) => {
+    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'expired' as const } : r);
+    await updateSpecialRequests(updated);
+  }, [specialRequests, updateSpecialRequests]);
+
   const consumeSpecialEntry = useCallback(() => {
     if (activeSession?.type === 'single') {
       const updated = specialRequests.map(r => r.id === activeSession.id ? { ...r, status: 'used' as const } : r);
@@ -162,6 +178,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
   const value = useMemo(() => ({ 
     pendingRequests: pendingRequestsList, 
+    activeSessions: activeSessionsList,
     activeSession, 
     pendingActivationSession,
     isActivationDialogOpen,
@@ -170,9 +187,10 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     grantProactiveEntry, 
     approveRequest, 
     rejectRequest, 
+    revokeRequest,
     consumeSpecialEntry,
     activateSession
-  }), [pendingRequestsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, consumeSpecialEntry, activateSession]);
+  }), [pendingRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
 
   return (
     <SpecialEntryContext.Provider value={value}>

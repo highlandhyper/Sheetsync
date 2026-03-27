@@ -18,7 +18,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: PropsWithChildren) {
-  const { specialRequests, updateSpecialRequests, role, user } = useDataCache();
+  const { specialRequests, updateSpecialRequests, role } = useDataCache();
   const { user: authUser } = useAuth();
 
   // DERIVE notifications from shared sheet state (specialRequests)

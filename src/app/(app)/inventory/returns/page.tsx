@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'navigation';
 import { Loader2 } from 'lucide-react';
 
 // This page has been deprecated as return history is now managed via the Audit Log.
