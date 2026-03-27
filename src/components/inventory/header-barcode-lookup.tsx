@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
-import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode } from 'lucide-react';
+import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, Command } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +65,7 @@ export function HeaderBarcodeLookup() {
   const { role } = useAuth();
   const { inventoryItems, uniqueLocations } = useDataCache();
   
+  const inputRef = useRef<HTMLInputElement>(null);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   const scanProcessedRef = useRef(false);
 
@@ -75,6 +76,19 @@ export function HeaderBarcodeLookup() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
+  // Shortcut listener: Alt + / to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === '/') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const executeSearch = useCallback(
     (barcodeToSearch: string) => {
       if (!barcodeToSearch.trim()) return;
@@ -173,32 +187,34 @@ export function HeaderBarcodeLookup() {
 
   const handleClear = () => {
     setBarcode('');
+    inputRef.current?.focus();
   }
 
   return (
     <>
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative w-full group">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input
+          ref={inputRef}
           type="search"
-          placeholder="Barcode lookup"
-          className="pl-9 pr-24"
+          placeholder="Barcode lookup (Alt + /)"
+          className="pl-9 pr-24 ring-offset-background focus-visible:ring-primary/50"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSearch();
           }}
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-1.5">
+        <div className="absolute inset-y-0 right-0 flex items-center pr-1.5 gap-0.5">
            {barcode && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={handleClear}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={handleClear} title="Clear">
               <X className="h-4 w-4" />
             </Button>
            )}
-           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setIsScannerOpen(true)}>
+           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => setIsScannerOpen(true)} title="Scan with Camera">
              <ScanBarcode className="h-4 w-4" />
            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={handleSearch} disabled={!barcode || isLoading}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={handleSearch} disabled={!barcode || isLoading} title="Search Log">
              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
            </Button>
         </div>
