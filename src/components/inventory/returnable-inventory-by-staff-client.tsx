@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -60,6 +61,9 @@ export function ReturnableInventoryByStaffClient() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
+
+  const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const [totalItemsForSelectedStaff, setTotalItemsForSelectedStaff] = useState(0);
   
@@ -120,8 +124,16 @@ export function ReturnableInventoryByStaffClient() {
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSuccess = useCallback(() => {
+  const handleOpenDeleteDialog = (item: InventoryItem) => {
+    if (role !== 'admin') return;
+    setSelectedItemForDeletion(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleActionSuccess = useCallback(() => {
+    setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
     setSelectedItemIds(new Set());
   }, []);
 
@@ -517,8 +529,15 @@ export function ReturnableInventoryByStaffClient() {
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleEditSuccess}
+        onSuccess={handleActionSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
+      />
+      <DeleteConfirmationDialog
+        key={`delete-staff-${selectedItemForDeletion?.id || 'none'}`}
+        item={selectedItemForDeletion}
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onSuccess={handleActionSuccess}
       />
        <BulkReturnDialog 
         isOpen={isBulkReturnOpen}

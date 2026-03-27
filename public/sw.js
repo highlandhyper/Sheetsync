@@ -1,6 +1,7 @@
-const CACHE_NAME = 'sheetsync-v2';
+const CACHE_NAME = 'sheetsync-v1';
 const ASSETS_TO_CACHE = [
-  '/offline',
+  '/',
+  '/manifest.json',
   '/logo-pwa.jpg'
 ];
 
@@ -10,7 +11,6 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -28,11 +28,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/offline');
-      })
-    );
-  }
+  // Simple network-first strategy for dynamic Next.js content
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });

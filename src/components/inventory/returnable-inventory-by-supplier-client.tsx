@@ -6,12 +6,13 @@ import { Search, PackageOpen, Building, Check, ChevronsUpDown, X, ListFilter, Ey
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
-import { Table, TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableCell, TableHead, TableHeader as TableHeadOriginal, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -63,6 +64,9 @@ export function ReturnableInventoryBySupplierClient() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
+
+  const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
 
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
@@ -125,6 +129,12 @@ export function ReturnableInventoryBySupplierClient() {
   const handleOpenEditDialog = (item: InventoryItem) => {
     setCurrentItemToEdit(item);
     setIsEditDialogOpen(true);
+  };
+
+  const handleOpenDeleteDialog = (item: InventoryItem) => {
+    if (role !== 'admin') return;
+    setSelectedItemForDeletion(item);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleEditSuccess = useCallback(() => {
@@ -609,6 +619,13 @@ export function ReturnableInventoryBySupplierClient() {
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
+      />
+      <DeleteConfirmationDialog
+        key={`delete-supplier-${selectedItemForDeletion?.id || 'none'}`}
+        item={selectedItemForDeletion}
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onSuccess={handleActionSuccess}
       />
       
       <BulkReturnDialog 
