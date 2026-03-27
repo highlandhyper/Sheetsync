@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown, DollarSign } from 'lucide-react';
+import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown, DollarSign, Edit } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
+import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 
 
 interface SubmitButtonProps {
@@ -64,6 +65,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const [productNotFound, setProductNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  
+  const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
+  const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
 
 
   const {
@@ -186,7 +190,22 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     return [...allSuppliers].sort((a, b) => a.name.localeCompare(b.name));
   }, [allSuppliers]);
 
+  const handleEditSupplierClick = () => {
+    const selectedSupplier = allSuppliers.find(s => s.name.toLowerCase() === supplierNameValue.toLowerCase());
+    if (selectedSupplier) {
+      setSupplierToEdit(selectedSupplier);
+      setIsSupplierEditDialogOpen(true);
+    } else {
+      toast({
+        title: "Selection Error",
+        description: "Please select a registered supplier from the list to rename them globally.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
+    <>
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Product Catalog Manager</CardTitle>
@@ -263,8 +282,21 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="supplierName">Vendor / Supplier</Label>
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="supplierName">Vendor / Supplier</Label>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleEditSupplierClick}
+                            disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
+                            className="text-[10px] uppercase font-black h-6 px-2 hover:bg-primary/10 text-primary"
+                        >
+                            <Edit className="mr-1 h-3 w-3" />
+                            Rename Vendor
+                        </Button>
+                    </div>
                     <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -361,5 +393,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         )}
       </CardContent>
     </Card>
+    
+    {supplierToEdit && (
+        <EditSupplierDialog
+            isOpen={isSupplierEditDialogOpen}
+            onOpenChange={setIsSupplierEditDialogOpen}
+            supplier={supplierToEdit}
+        />
+    )}
+    </>
   );
 }

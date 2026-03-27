@@ -86,6 +86,31 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   }
 }
 
+export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
+    try {
+        // Using Open Food Facts as a primary free source for product data
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { 
+            next: { revalidate: 3600 } 
+        });
+        const data = await res.json();
+        
+        if (data.status === 1 && data.product) {
+            return {
+                success: true,
+                data: {
+                    image: data.product.image_url || data.product.image_front_url,
+                    brand: data.product.brands,
+                    name: data.product.product_name
+                }
+            };
+        }
+        
+        return { success: false, message: "Product image not found in global registry." };
+    } catch (e) {
+        return { success: false, message: "External lookup failed." };
+    }
+}
+
 export async function addInventoryItemAction(
   prevState: ActionResponse | undefined,
   formData: FormData
