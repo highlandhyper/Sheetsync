@@ -14,7 +14,7 @@ import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
-import { DeleteConfirmationDialog } from '@/components/inventory/delete-confirmation-dialog';
+import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
