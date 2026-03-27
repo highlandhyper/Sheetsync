@@ -1,7 +1,15 @@
-// public/sw.js
-const CACHE_NAME = 'sheetsync-v1';
+const CACHE_NAME = 'sheetsync-v2';
+const ASSETS_TO_CACHE = [
+  '/offline',
+  '/logo-pwa.jpg'
+];
 
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
   self.skipWaiting();
 });
 
@@ -15,12 +23,16 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass-through fetch strategy to prevent 404 chunk errors
-  // Modern Next.js handles its own chunk mapping; over-caching in SW causes mismatches
-  event.respondWith(fetch(event.request));
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/offline');
+      })
+    );
+  }
 });

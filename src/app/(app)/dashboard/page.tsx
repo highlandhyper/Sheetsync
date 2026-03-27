@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -525,6 +525,79 @@ function QuickAuthorizeCard() {
     );
 }
 
+function ActiveAuthorizations() {
+    const { activeSessions, revokeRequest } = useSpecialEntry();
+    const { toast } = useToast();
+
+    if (activeSessions.length === 0) return null;
+
+    const handleRevokeClick = (id: string, name: string) => {
+        revokeRequest(id);
+        toast({
+            title: "Authorization Revoked",
+            description: `Silent mode access for ${name} has been terminated.`,
+        });
+    };
+
+    return (
+        <div className="space-y-4 pt-6">
+            <h2 className="text-xl font-black text-primary flex items-center gap-2">
+                <ShieldCheck className="h-6 w-6" />
+                Live Silent Mode Sessions
+                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600 border-green-500/20">
+                    {activeSessions.length} Active
+                </Badge>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeSessions.map(session => (
+                    <Card key={session.id} className="border-green-500/20 bg-green-500/[0.02] shadow-sm overflow-hidden flex flex-col group">
+                        <CardHeader className="pb-2 bg-green-500/[0.03]">
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <User className="h-4 w-4 text-green-600" />
+                                    {session.staffName}
+                                </CardTitle>
+                                <Badge variant="outline" className="text-[9px] uppercase font-black bg-background border-green-200">
+                                    {session.type === 'timed' ? 'Timed' : 'Single Use'}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="text-xs space-y-2 pt-3 flex-grow">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Authorized:</span>
+                                <span className="font-medium text-foreground">{session.approvedAt ? format(parseISO(session.approvedAt), 'HH:mm') : 'N/A'}</span>
+                            </div>
+                            {session.expiresAt && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="flex items-center gap-1 text-destructive"><Timer className="h-3 w-3" /> Expiry:</span>
+                                    <span className="font-bold text-destructive">
+                                        {format(parseISO(session.expiresAt), 'HH:mm')}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="pt-2 flex items-center gap-1.5 text-[10px] font-bold text-green-600 uppercase tracking-tight">
+                                <BellOff className="h-3 w-3" />
+                                <span>No Email Alerts active</span>
+                            </div>
+                        </CardContent>
+                        <div className="p-2 border-t bg-muted/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="w-full h-7 text-[10px] font-black uppercase text-destructive hover:bg-destructive/5"
+                                onClick={() => handleRevokeClick(session.id, session.staffName)}
+                            >
+                                <Ban className="mr-1 h-3 w-3" />
+                                Revoke Session
+                            </Button>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function PendingSpecialEntryRequests() {
     const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
     const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
@@ -791,6 +864,7 @@ export default function DashboardPage() {
         <QuickAuthorizeCard />
       </div>
 
+      <ActiveAuthorizations />
       <PendingSpecialEntryRequests />
 
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
