@@ -5,6 +5,7 @@ import { createContext, useContext, useMemo, useCallback } from 'react';
 import type { AppNotification, SpecialEntryRequest } from '@/lib/types';
 import { useDataCache } from './data-cache-context';
 import { useAuth } from './auth-context';
+import { isAfter, subHours, parseISO } from 'date-fns';
 
 interface NotificationContextType {
   notifications: AppNotification[];
@@ -26,9 +27,14 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
     const list: AppNotification[] = [];
     const currentEmail = authUser.email.toLowerCase().trim();
+    const threshold = subHours(new Date(), 24); // Show logs from last 24 hours
 
     specialRequests.forEach((req: SpecialEntryRequest) => {
       const reqEmail = req.userEmail?.toLowerCase().trim() || "";
+      const reqDate = parseISO(req.requestedAt);
+      
+      // TTL Check: Only show recent notifications
+      if (!isAfter(reqDate, threshold)) return;
 
       // ADMIN VIEW: See pending requests that aren't dismissed
       if (role === 'admin') {
@@ -62,20 +68,23 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       }
 
       // VIEWER VIEW: See their own approved/rejected status
+      // We show them even if read, so the OTP persists in the panel for the duration of the session
       if (role === 'viewer' && reqEmail === currentEmail) {
-        if ((req.status === 'approved' || req.status === 'rejected') && !req.isReadByUser) {
+        if (req.status === 'approved' || req.status === 'rejected') {
           list.push({
             id: `notif_${req.id}`,
             title: req.status === 'approved' ? 'Access Authorized' : 'Request Declined',
             message: req.status === 'approved' 
-              ? `Your silent mode request for ${req.staffName} was granted. Use OTP: ${req.otp || '----'}`
+              ? `Your silent mode request for ${req.staffName} was granted. Use the code below to activate.`
               : `Your request for ${req.staffName} was declined by an administrator.`,
             timestamp: req.approvedAt || req.requestedAt,
             type: req.status === 'approved' ? 'success' : 'error',
-            isRead: false,
+            isRead: !!req.isReadByUser,
             link: req.status === 'approved' ? '/inventory/add' : undefined,
             metadata: {
-                requestId: req.id
+                requestId: req.id,
+                otp: req.otp,
+                type: 'authorization'
             }
           });
         }
@@ -112,7 +121,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
   const addNotification = useCallback(() => {}, []);
 
-  const unreadCount = useMemo(() => notifications.length, [notifications]);
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
 
   const value = useMemo(() => ({
     notifications,
