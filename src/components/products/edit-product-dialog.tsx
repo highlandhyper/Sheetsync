@@ -160,29 +160,35 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
-            <div>
-              <Label htmlFor="barcode">Barcode</Label>
-              <Input
-                id="barcode"
-                {...register('barcode')}
-                readOnly
-                className="bg-muted cursor-not-allowed font-mono"
-              />
-            </div>
-            <div>
-              <Label htmlFor="productName">Product Name</Label>
-              <Input
-                id="productName"
-                placeholder="e.g., Organic Almond Milk"
-                {...register('productName')}
-                className={cn(formErrors.productName && 'border-destructive')}
-              />
-              {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="barcode">Barcode</Label>
+                    </div>
+                    <Input
+                        id="barcode"
+                        {...register('barcode')}
+                        readOnly
+                        className="bg-muted cursor-not-allowed font-mono h-10"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="productName">Product Name</Label>
+                    </div>
+                    <Input
+                        id="productName"
+                        placeholder="e.g., Organic Almond Milk"
+                        {...register('productName')}
+                        className={cn("h-10", formErrors.productName && 'border-destructive')}
+                    />
+                    {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <div className="flex items-center justify-between mb-1">
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between h-6 mb-1">
                       <Label htmlFor="supplierName">Supplier</Label>
                       <Button
                           type="button"
@@ -193,7 +199,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           className="text-[10px] uppercase font-bold h-auto py-0.5 px-2 hover:bg-primary/10 text-primary"
                       >
                           <Edit className="mr-1 h-3 w-3" />
-                          Rename Vendor
+                          Rename
                       </Button>
                     </div>
                       <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
@@ -203,7 +209,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             role="combobox"
                             aria-expanded={supplierComboboxOpen}
                             className={cn(
-                              "w-full justify-between font-normal",
+                              "w-full h-10 justify-between font-normal",
                               !supplierNameValue && "text-muted-foreground",
                               formErrors.supplierName && 'border-destructive'
                             )}
@@ -260,8 +266,10 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                     {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
                 </div>
 
-                <div>
-                      <Label htmlFor="costPrice">Cost Price (QAR)</Label>
+                <div className="space-y-2">
+                      <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="costPrice">Cost Price (QAR)</Label>
+                      </div>
                       <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -270,7 +278,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                               step="0.01"
                               placeholder="0.00"
                               {...register('costPrice')}
-                              className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                              className={cn('pl-8 h-10', formErrors.costPrice && 'border-destructive')}
                           />
                       </div>
                       {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
