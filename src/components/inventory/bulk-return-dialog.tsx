@@ -51,7 +51,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkReturnDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { inventoryItems, removeInventoryItems, updateInventoryItem, addReturnedItem, refreshData } = useDataCache();
+  const { inventoryItems, removeInventoryItems, updateInventoryItem, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnType, setReturnType] = useState<'all' | 'specific'>('all');
 
@@ -95,14 +95,6 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
         } else {
             updateInventoryItem({ ...item, quantity: newQty });
         }
-        
-        addReturnedItem({
-            ...item,
-            id: `bulk_ret_opt_${item.id}_${Date.now()}`,
-            returnedQuantity: amountToReturn,
-            returnTimestamp: new Date().toISOString(),
-            processedBy: user.email!,
-        });
     });
     
     if (returnedItemsList.length > 0) {
