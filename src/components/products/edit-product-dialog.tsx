@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Save, Check, ChevronsUpDown, PlusCircle, DollarSign, Edit } from 'lucide-react';
@@ -43,15 +43,6 @@ interface EditProductDialogProps {
   onSuccess: (updatedProduct: Product) => void;
 }
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-      Save Changes
-    </Button>
-  );
-}
-
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -59,6 +50,10 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const nameRef = useRef<HTMLInputElement>(null);
+  const supplierTriggerRef = useRef<HTMLButtonElement>(null);
+  const costRef = useRef<HTMLInputElement>(null);
+
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
 
@@ -90,13 +85,13 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         costPrice: product.costPrice,
       });
       setSearchTerm('');
+      setTimeout(() => nameRef.current?.focus(), 100);
     }
   }, [product, reset, isOpen]);
 
   const processFormSubmit = (data: AddProductFormValues) => {
     if (!product) return;
     if (!isDirty) {
-      toast({ title: "No Changes", description: "No changes were made to the product definition." });
       onOpenChange(false);
       return;
     }
@@ -106,19 +101,13 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
-    
-    if (data.costPrice !== undefined) {
-      formData.append('costPrice', String(data.costPrice));
-    }
+    if (data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
     formData.append('editMode', 'edit');
 
     startActionTransition(async () => {
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
-        toast({
-          title: 'Update Successful',
-          description: result.message,
-        });
+        toast({ title: 'Update Successful', description: result.message });
         onSuccess(result.data);
         onOpenChange(false);
       } else {
@@ -135,17 +124,16 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     return [...allSuppliers].sort((a, b) => a.name.localeCompare(b.name));
   }, [allSuppliers]);
 
+  const { ref: nameFormRef, ...nameProps } = register('productName');
+  const { ref: costFormRef, ...costProps } = register('costPrice', { valueAsNumber: true });
+
   const handleEditSupplierClick = () => {
     const selectedSupplier = allSuppliers.find(s => s.name.toLowerCase() === supplierNameValue.toLowerCase());
     if (selectedSupplier) {
       setSupplierToEdit(selectedSupplier);
       setIsSupplierEditDialogOpen(true);
     } else {
-      toast({
-        title: "Selection Error",
-        description: "Please select a registered supplier to edit their details.",
-        variant: "destructive",
-      });
+      toast({ title: "Selection Error", description: "Select a registered supplier to edit.", variant: "destructive" });
     }
   };
 
@@ -158,33 +146,34 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
           <DialogHeader>
             <DialogTitle>Edit Product Catalog</DialogTitle>
             <DialogDescription>
-              Modify details for barcode: <span className="font-mono font-bold text-foreground">{product.barcode}</span>. Changes will propagate to inventory logs.
+              Modifying details for <span className="font-mono font-bold text-foreground">{product.barcode}</span>.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center h-8 mb-1">
-                        <Label htmlFor="barcode">Barcode</Label>
-                    </div>
-                    <Input
-                        id="barcode"
-                        {...register('barcode')}
-                        readOnly
-                        className="bg-muted cursor-not-allowed font-mono h-10"
-                    />
+                    <Label htmlFor="barcode">Barcode</Label>
+                    <Input id="barcode" {...register('barcode')} readOnly className="bg-muted cursor-not-allowed font-mono h-10" />
                 </div>
                 <div className="space-y-2">
-                    <div className="flex items-center h-8 mb-1">
-                        <Label htmlFor="productName">Product Name</Label>
-                    </div>
+                    <Label htmlFor="productName">Product Name</Label>
                     <Input
                         id="productName"
                         placeholder="e.g., Organic Almond Milk"
-                        {...register('productName')}
+                        {...nameProps}
+                        ref={(e) => {
+                            nameFormRef(e);
+                            (nameRef as any).current = e;
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                supplierTriggerRef.current?.focus();
+                            }
+                        }}
                         className={cn("h-10", formErrors.productName && 'border-destructive')}
                     />
-                    {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
+                    {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
                 </div>
             </div>
 
@@ -200,27 +189,18 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
                           className="text-[10px] uppercase font-bold h-7 px-2 hover:bg-primary/10 text-primary"
                       >
-                          <Edit className="mr-1 h-3 w-3" />
-                          Rename
+                          <Edit className="mr-1 h-3 w-3" /> Rename
                       </Button>
                     </div>
                       <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                         <PopoverTrigger asChild>
                           <Button
+                            ref={supplierTriggerRef}
                             variant="outline"
                             role="combobox"
-                            aria-expanded={supplierComboboxOpen}
-                            className={cn(
-                              "w-full h-10 justify-between font-normal",
-                              !supplierNameValue && "text-muted-foreground",
-                              formErrors.supplierName && 'border-destructive'
-                            )}
+                            className={cn("w-full h-10 justify-between font-normal", !supplierNameValue && "text-muted-foreground", formErrors.supplierName && 'border-destructive')}
                           >
-                            <span className="truncate">
-                            {supplierNameValue
-                              ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
-                              : "Select vendor..."}
-                            </span>
+                            <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -230,6 +210,13 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                               placeholder="Search or type new..."
                               value={searchTerm}
                               onValueChange={setSearchTerm}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchTerm) {
+                                    setValue('supplierName', searchTerm, { shouldDirty: true });
+                                    setSupplierComboboxOpen(false);
+                                    setTimeout(() => costRef.current?.focus(), 100);
+                                }
+                              }}
                             />
                             <CommandList>
                               <CommandEmpty>
@@ -240,11 +227,12 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                         onClick={() => {
                                             setValue('supplierName', searchTerm, { shouldDirty: true });
                                             setSupplierComboboxOpen(false);
+                                            setTimeout(() => costRef.current?.focus(), 100);
                                         }}
                                     >
                                         <PlusCircle className="mr-2 h-3 w-3" /> Use "{searchTerm}"
                                     </Button>
-                                ) : "Type to find or add vendor..."}
+                                ) : "Type to find vendor..."}
                               </CommandEmpty>
                               <CommandGroup>
                                 {sortedSuppliers.map((supplier) => (
@@ -254,6 +242,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                     onSelect={() => { 
                                         setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
                                         setSupplierComboboxOpen(false); 
+                                        setTimeout(() => costRef.current?.focus(), 100);
                                     }}
                                   >
                                     <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
@@ -265,13 +254,11 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           </Command>
                         </PopoverContent>
                       </Popover>
-                    {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
+                    {formErrors.supplierName && <p className="text-xs text-destructive">{formErrors.supplierName.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                      <div className="flex items-center h-8 mb-1">
-                        <Label htmlFor="costPrice">Cost Price (QAR)</Label>
-                      </div>
+                      <Label htmlFor="costPrice" className="h-8 flex items-center mb-1">Unit Cost (QAR)</Label>
                       <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -279,29 +266,38 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                               type="number"
                               step="0.01"
                               placeholder="0.00"
-                              {...register('costPrice')}
+                              {...costProps}
+                              ref={(e) => {
+                                  costFormRef(e);
+                                  (costRef as any).current = e;
+                              }}
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSubmit(processFormSubmit)();
+                                  }
+                              }}
                               className={cn('pl-8 h-10', formErrors.costPrice && 'border-destructive')}
                           />
                       </div>
-                      {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
+                      {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
                   </div>
             </div>
             
-            <DialogFooter className="pt-4 gap-2 sm:gap-0">
+            <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <SubmitButton isPending={isActionPending} />
+              <Button type="submit" disabled={isActionPending}>
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Changes
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
       {supplierToEdit && (
-        <EditSupplierDialog
-          isOpen={isSupplierEditDialogOpen}
-          onOpenChange={setIsSupplierEditDialogOpen}
-          supplier={supplierToEdit}
-        />
+        <EditSupplierDialog isOpen={isSupplierEditDialogOpen} onOpenChange={setIsSupplierEditDialogOpen} supplier={supplierToEdit} />
       )}
     </>
   );
