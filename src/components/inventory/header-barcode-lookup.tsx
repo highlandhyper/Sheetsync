@@ -95,7 +95,7 @@ export function HeaderBarcodeLookup() {
       startSearchTransition(() => {
         setLastSearchedBarcode(barcodeToSearch);
         const searchResults = inventoryItems.filter(
-          item => item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase()
+          item => item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase() && item.quantity > 0
         ).sort((a, b) => {
             const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
             const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
@@ -115,6 +115,20 @@ export function HeaderBarcodeLookup() {
     },
     [inventoryItems, toast]
   );
+
+  // REACTIVE SYNC: Update results popup automatically when cache changes
+  useEffect(() => {
+    if (isDialogOpen && lastSearchedBarcode) {
+      const searchResults = inventoryItems.filter(
+        item => item.barcode.toLowerCase() === lastSearchedBarcode.trim().toLowerCase() && item.quantity > 0
+      ).sort((a, b) => {
+          const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+          const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+          return dateB - dateA;
+      });
+      setResults(searchResults);
+    }
+  }, [inventoryItems, lastSearchedBarcode, isDialogOpen]);
   
   const onScanSuccess = useCallback((decodedText: string) => {
     if (scanProcessedRef.current) return;
@@ -175,14 +189,12 @@ export function HeaderBarcodeLookup() {
     }
   };
   
-  const handleActionSuccess = () => {
+  const handleActionSuccess = useCallback(() => {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    if(isDialogOpen && lastSearchedBarcode) {
-        executeSearch(lastSearchedBarcode);
-    }
-  };
+    // results are now synced via useEffect
+  }, []);
 
   const handleClear = () => {
     setBarcode('');
@@ -281,7 +293,7 @@ export function HeaderBarcodeLookup() {
                     <PackageSearch className="mx-auto h-12 w-12 text-muted-foreground" />
                     <h3 className="mt-4 text-lg font-semibold">No Log Entries Found</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        No inventory history for barcode: "{lastSearchedBarcode}".
+                        No active inventory history for barcode: "{lastSearchedBarcode}".
                     </p>
                 </div>
             )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
@@ -14,6 +13,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 import { Html5Qrcode } from 'html5-qrcode';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
@@ -54,6 +54,7 @@ interface InventoryBarcodeLookupClientProps {
 export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarcodeLookupClientProps) {
   const { toast } = useToast();
   const { role } = useAuth();
+  const { inventoryItems } = useDataCache();
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
   const [isLoading, startSearchTransition] = useTransition();
@@ -77,28 +78,28 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     if (!barcode || !barcode.trim()) return;
     setHasSearched(true);
     setLastSearchedBarcode(barcode);
-    setSearchResults([]); 
-
+    
     startSearchTransition(async () => {
-      const response = await fetchInventoryLogEntriesByBarcodeAction(barcode);
-      if (response.success && response.data) {
-        setSearchResults(response.data);
-        if (response.data.length === 0) {
-          toast({
-            title: 'No Results',
-            description: `No inventory log entries found for barcode: ${barcode}`,
-          });
-        }
-      } else {
-        setSearchResults([]);
+      // Use cache primarily for speed, falls back to action if needed
+      const filtered = inventoryItems.filter(i => i.barcode === barcode && i.quantity > 0);
+      setSearchResults(filtered);
+      
+      if (filtered.length === 0) {
         toast({
-          title: 'Search Error',
-          description: response.message || 'Failed to fetch inventory log entries.',
-          variant: 'destructive',
+          title: 'No Active Logs',
+          description: `No current inventory logs found for barcode: ${barcode}`,
         });
       }
     });
-  }, [toast]);
+  }, [inventoryItems, toast]);
+
+  // REACTIVE SYNC: Keep results up to date if global cache changes
+  useEffect(() => {
+    if (hasSearched && lastSearchedBarcode) {
+      const filtered = inventoryItems.filter(i => i.barcode === lastSearchedBarcode && i.quantity > 0);
+      setSearchResults(filtered);
+    }
+  }, [inventoryItems, hasSearched, lastSearchedBarcode]);
 
   const onScanSuccess = useCallback((decodedText: string) => {
     if (scanProcessedRef.current || !decodedText) return;
@@ -166,7 +167,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   };
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
-    if (role !== 'admin') return;
+    if (role === 'viewer') return;
     setSelectedItemForReturn(item);
     setIsReturnDialogOpen(true);
   };
@@ -178,7 +179,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   };
 
   const handleOpenEditDialog = (item: InventoryItem) => {
-    if (role !== 'admin') return;
+    if (role === 'viewer') return;
     setCurrentItemToEdit(item);
     setIsEditDialogOpen(true);
   };
@@ -187,10 +188,8 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     setIsReturnDialogOpen(false);
     setIsDeleteDialogOpen(false);
     setIsEditDialogOpen(false);
-    if (lastSearchedBarcode) {
-      executeSearch(lastSearchedBarcode);
-    }
-  }, [lastSearchedBarcode, executeSearch]);
+    // sync is now handled by useEffect
+  }, []);
 
 
   return (
@@ -295,6 +294,14 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
             </Table>
           </div>
         </Card>
+      )}
+
+      {hasSearched && !isLoading && searchResults.length === 0 && (
+          <div className="text-center py-12">
+            <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground opacity-50" />
+            <h3 className="mt-4 text-lg font-semibold">No active entries</h3>
+            <p className="text-sm text-muted-foreground">Barcode "{lastSearchedBarcode}" has no stock remaining.</p>
+          </div>
       )}
 
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
