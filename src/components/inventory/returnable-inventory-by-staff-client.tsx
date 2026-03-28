@@ -360,7 +360,7 @@ export function ReturnableInventoryByStaffClient() {
                             <span>{totalItemsForSelectedStaff} logs found</span>
                         </div>
                     )}
-                    {role !== 'viewer' && (
+                    {role === 'admin' && (
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -495,7 +495,7 @@ export function ReturnableInventoryByStaffClient() {
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleReturnSuccess}
+        onReturnSuccess={handleActionSuccess}
       />
       <InventoryItemDetailsDialog
         key={`details-staff-${selectedItemForDetails?.id || 'none'}`}
