@@ -260,22 +260,26 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             
             <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 border-t pt-6 mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="barcodeDisplay">Barcode</Label>
+                <div className="space-y-2">
+                    <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="barcodeDisplay">Barcode</Label>
+                    </div>
                     <Input
                     id="barcodeDisplay"
                     {...register('barcode')}
                     readOnly 
-                    className="bg-muted cursor-not-allowed font-mono"
+                    className="bg-muted cursor-not-allowed font-mono h-10"
                     />
                 </div>
-                <div>
-                    <Label htmlFor="productName">Product Name</Label>
+                <div className="space-y-2">
+                    <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="productName">Product Name</Label>
+                    </div>
                     <Input
                     id="productName"
                     placeholder="e.g., Organic Almond Milk"
                     {...register('productName')}
-                    className={cn(formErrors.productName && 'border-destructive')}
+                    className={cn("h-10", formErrors.productName && 'border-destructive')}
                     />
                     {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
                 </div>
@@ -283,7 +287,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between h-6 mb-1">
                         <Label htmlFor="supplierName">Vendor / Supplier</Label>
                         <Button
                             type="button"
@@ -304,14 +308,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                           role="combobox"
                           aria-expanded={supplierComboboxOpen}
                           className={cn(
-                            "w-full justify-between font-normal",
+                            "w-full h-10 justify-between font-normal",
                             !supplierNameValue && "text-muted-foreground",
                             formErrors.supplierName && 'border-destructive'
                           )}
                         >
-                          {supplierNameValue
-                            ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
-                            : "Select vendor..."}
+                          <span className="truncate">
+                            {supplierNameValue
+                                ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
+                                : "Select vendor..."}
+                          </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -368,8 +374,10 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </Popover>
                     {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
                 </div>
-                <div>
-                    <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
+                <div className="space-y-2">
+                    <div className="flex items-center h-6 mb-1">
+                        <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
+                    </div>
                     <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -378,7 +386,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             step="0.01"
                             placeholder="0.00"
                             {...register('costPrice')}
-                            className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                            className={cn('pl-8 h-10', formErrors.costPrice && 'border-destructive')}
                         />
                     </div>
                     {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
