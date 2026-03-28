@@ -19,21 +19,23 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: PropsWithChildren) {
-  const { specialRequests, updateSpecialRequests, role } = useDataCache();
-  const { user: authUser } = useAuth();
+  const { specialRequests, updateSpecialRequests } = useDataCache();
+  const { user: authUser, role } = useAuth();
 
   const notifications = useMemo(() => {
+    // Safety check: Don't process if user/role is missing
     if (!role || !authUser?.email) return [];
 
     const list: AppNotification[] = [];
     const currentEmail = authUser.email.toLowerCase().trim();
-    const threshold = subHours(new Date(), 24); // Show logs from last 24 hours
+    // Show notifications from the last 48 hours to ensure visibility across shifts
+    const threshold = subHours(new Date(), 48); 
 
     specialRequests.forEach((req: SpecialEntryRequest) => {
-      const reqEmail = req.userEmail?.toLowerCase().trim() || "";
+      const reqEmail = (req.userEmail || "").toLowerCase().trim();
       const reqDate = parseISO(req.requestedAt);
       
-      // TTL Check: Only show recent notifications
+      // TTL Check: Filter out old records
       if (!isAfter(reqDate, threshold)) return;
 
       // ADMIN VIEW: See pending requests that aren't dismissed
@@ -68,7 +70,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       }
 
       // VIEWER VIEW: See their own approved/rejected status
-      // We show them even if read, so the OTP persists in the panel for the duration of the session
+      // We use case-insensitive matching for the email
       if (role === 'viewer' && reqEmail === currentEmail) {
         if (req.status === 'approved' || req.status === 'rejected') {
           list.push({
@@ -91,6 +93,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       }
     });
 
+    // Return sorted by newest first
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [specialRequests, role, authUser]);
 
@@ -107,7 +110,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const markAllAsRead = useCallback(async () => {
     const currentEmail = authUser?.email?.toLowerCase().trim();
     const updated = specialRequests.map(req => {
-      const reqEmail = req.userEmail?.toLowerCase().trim();
+      const reqEmail = (req.userEmail || "").toLowerCase().trim();
       if (role === 'admin' && req.status === 'pending') return { ...req, isDismissedByAdmin: true };
       if (role === 'viewer' && reqEmail === currentEmail) return { ...req, isReadByUser: true };
       return req;
@@ -119,7 +122,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     await markAllAsRead();
   }, [markAllAsRead]);
 
-  const addNotification = useCallback(() => {}, []);
+  const addNotification = useCallback(() => {
+    // This is currently handled by the data sync engine
+  }, []);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
 
