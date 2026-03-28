@@ -260,7 +260,12 @@ export async function updateSupplierNameAndReferences(email: string, oldN: strin
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
-  const rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A);
+  // Try finding barcode in Column A or Column B
+  let rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A);
+  if (!rowNumber) {
+    rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
+  }
+
   if (rowNumber) {
     const updates = [
       { range: `${DB_SHEET_NAME}!C${rowNumber}`, values: [[n]] },

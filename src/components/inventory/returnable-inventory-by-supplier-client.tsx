@@ -137,8 +137,10 @@ export function ReturnableInventoryBySupplierClient() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleEditSuccess = useCallback(() => {
+  const handleActionSuccess = useCallback(() => {
+    setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
     setSelectedItemIds(new Set());
   }, []);
 
@@ -617,7 +619,7 @@ export function ReturnableInventoryBySupplierClient() {
         item={currentItemToEdit}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleEditSuccess}
+        onSuccess={handleActionSuccess}
         uniqueLocationsFromDb={uniqueDbLocations}
       />
       <DeleteConfirmationDialog
