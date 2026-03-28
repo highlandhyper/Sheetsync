@@ -5,6 +5,7 @@ import type { SpecialEntryRequest } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { useDataCache } from './data-cache-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -30,6 +31,7 @@ const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
+  const { toast } = useToast();
   const { specialRequests, updateSpecialRequests } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
@@ -38,6 +40,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const [activatedSessionId, setActivatedSessionId] = useState<string | null>(null);
   
   const [isInitialized, setIsInitialized] = useState(false);
+  const prevApprovedCountRef = useRef(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -63,34 +66,44 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!isInitialized || !user || !user.email) return;
 
-    const currentEmail = user.email.toLowerCase();
+    const currentEmail = user.email.toLowerCase().trim();
 
-    const myApproved = specialRequests.find(r => 
-      (r.userEmail?.toLowerCase() === currentEmail) && 
+    const myApprovedSessions = specialRequests.filter(r => 
+      (r.userEmail?.toLowerCase().trim() === currentEmail) && 
       r.status === 'approved' && 
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
 
-    if (myApproved) {
-      if (activatedSessionId !== myApproved.id) {
-          setPendingActivationSession(myApproved);
-          setActiveSession(null);
-      } else {
-          setPendingActivationSession(null);
-          setActiveSession(myApproved);
-      }
-    } else {
-      setActiveSession(null);
-      setPendingActivationSession(null);
+    // Alert the user if a new approval is detected
+    if (myApprovedSessions.length > prevApprovedCountRef.current && role === 'viewer') {
+        toast({
+            title: "Access Authorized!",
+            description: "Your silent mode request has been approved. Check notifications for your OTP.",
+        });
     }
-  }, [specialRequests, user, activatedSessionId, isInitialized]);
+    prevApprovedCountRef.current = myApprovedSessions.length;
+
+    const currentActive = myApprovedSessions.find(r => r.id === activatedSessionId);
+    const firstUnactivated = myApprovedSessions.find(r => r.id !== activatedSessionId);
+
+    if (currentActive) {
+        setActiveSession(currentActive);
+        setPendingActivationSession(null);
+    } else if (firstUnactivated) {
+        setPendingActivationSession(firstUnactivated);
+        setActiveSession(null);
+    } else {
+        setActiveSession(null);
+        setPendingActivationSession(null);
+    }
+  }, [specialRequests, user, activatedSessionId, isInitialized, role, toast]);
 
   const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => {
     if (!user) return;
     const newRequest: SpecialEntryRequest = {
       id: `req_${Date.now()}`,
-      userEmail: user.email!,
-      staffName,
+      userEmail: user.email!.toLowerCase().trim(),
+      staffName: staffName.toUpperCase(),
       reason,
       status: 'pending',
       type,
@@ -103,9 +116,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
     if (!user) return;
     
-    // Try to find the email of the person with this staff name, or default to generic viewer
     const existingReq = specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase());
-    const targetEmail = existingReq?.userEmail || "viewer@example.com"; 
+    const targetEmail = existingReq?.userEmail?.toLowerCase().trim() || "viewer@example.com"; 
 
     const now = new Date();
     const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
@@ -177,7 +189,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
           return true;
       }
       return false;
-  }, [specialRequests]);
+  }, [specialRequests, activatedSessionId]);
 
   const value = useMemo(() => ({ 
     pendingRequests: pendingRequestsList, 
