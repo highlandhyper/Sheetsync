@@ -142,12 +142,6 @@ export function ReturnableInventoryBySupplierClient() {
   }, []);
 
 
-  const handleReturnSuccess = useCallback(() => {
-    setIsReturnDialogOpen(false);
-    setSelectedItemIds(new Set());
-  }, []);
-
-
   const filteredInventoryItemsBySupplier = useMemo(() => {
     const sortedAndFiltered = cachedItems
       .filter(item => item.quantity > 0)
@@ -583,7 +577,7 @@ export function ReturnableInventoryBySupplierClient() {
         item={selectedItemForReturn}
         isOpen={isReturnDialogOpen}
         onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleReturnSuccess}
+        onReturnSuccess={handleActionSuccess}
       />
       <InventoryItemDetailsDialog
         key={`details-supplier-${selectedItemForDetails?.id || 'none'}`}
