@@ -65,6 +65,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const [productNotFound, setProductNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
@@ -118,6 +119,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setEditMode('edit');
         setProductNotFound(false);
         setShowForm(true);
+        setSupplierSearchTerm('');
         return;
       }
       
@@ -138,6 +140,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setProductNotFound(true);
       }
       setShowForm(true); 
+      setSupplierSearchTerm('');
     });
   };
 
@@ -198,7 +201,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     } else {
       toast({
         title: "Selection Error",
-        description: "Please select a registered supplier from the list to rename them globally.",
+        description: "Please select a registered vendor from the list to rename them globally.",
         variant: "destructive",
       });
     }
@@ -261,7 +264,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 border-t pt-6 mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center h-6 mb-1">
+                    <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="barcodeDisplay">Barcode</Label>
                     </div>
                     <Input
@@ -272,7 +275,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     />
                 </div>
                 <div className="space-y-2">
-                    <div className="flex items-center h-6 mb-1">
+                    <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="productName">Product Name</Label>
                     </div>
                     <Input
@@ -287,7 +290,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between h-6 mb-1">
+                    <div className="flex items-center justify-between h-8 mb-1">
                         <Label htmlFor="supplierName">Vendor / Supplier</Label>
                         <Button
                             type="button"
@@ -295,7 +298,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             size="sm"
                             onClick={handleEditSupplierClick}
                             disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
-                            className="text-[10px] uppercase font-black h-6 px-2 hover:bg-primary/10 text-primary"
+                            className="text-[10px] uppercase font-black h-7 px-2 hover:bg-primary/10 text-primary"
                         >
                             <Edit className="mr-1 h-3 w-3" />
                             Rename Vendor
@@ -322,17 +325,26 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command
-                          filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}
-                        >
+                        <Command>
                           <CommandInput
                             placeholder="Search or type new..."
-                            value={supplierNameValue || ''}
-                            onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
+                            value={supplierSearchTerm}
+                            onValueChange={setSupplierSearchTerm}
                           />
                           <CommandList>
                             <CommandEmpty>
-                              {supplierNameValue ? `Add "${supplierNameValue}" to list?` : "Type to add vendor."}
+                                {supplierSearchTerm ? (
+                                    <Button 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-xs h-8 font-bold"
+                                        onClick={() => {
+                                            setValue('supplierName', supplierSearchTerm, { shouldValidate: true });
+                                            setSupplierComboboxOpen(false);
+                                        }}
+                                    >
+                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearchTerm}"
+                                    </Button>
+                                ) : "Type to add vendor..."}
                             </CommandEmpty>
                             <CommandGroup>
                               {sortedSuppliers.map((supplier) => (
@@ -354,20 +366,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                 </CommandItem>
                               ))}
                             </CommandGroup>
-                             {supplierNameValue && !sortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase()) && (
-                                <CommandItem
-                                    key={supplierNameValue}
-                                    value={supplierNameValue}
-                                    onSelect={() => {
-                                        setValue("supplierName", supplierNameValue, { shouldValidate: true });
-                                        setSupplierComboboxOpen(false);
-                                    }}
-                                    className="italic text-muted-foreground"
-                                >
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Use "{supplierNameValue}"
-                                </CommandItem>
-                            )}
                           </CommandList>
                         </Command>
                       </PopoverContent>
@@ -375,7 +373,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
                 </div>
                 <div className="space-y-2">
-                    <div className="flex items-center h-6 mb-1">
+                    <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
                     </div>
                     <div className="relative">

@@ -168,7 +168,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         toast({ variant: "destructive", title: "Sync Failed", description: "Check your internet connection." });
         return;
     }
-    toast({ title: 'Syncing...', description: 'Fetching latest data.' });
     await fetchDataAndCache(true);
   }, [fetchDataAndCache, toast]);
 
@@ -221,7 +220,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
     updateSupplier: (s: any) => refreshData(),
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
-    updateProduct: (pr: any) => setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) })),
+    updateProduct: (pr: any) => {
+        setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) }));
+        refreshData(); // Metadata change propagates to logs, so we need a fresh fetch
+    },
   }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
   return (
