@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircle, Loader2, Check, ChevronsUpDown, DollarSign } from 'lucide-react';
@@ -40,19 +40,15 @@ interface CreateProductFromInventoryDialogProps {
   onSuccess: (newProduct: Product) => void;
 }
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-      Create Product
-    </Button>
-  );
-}
-
 export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen, onOpenChange, onSuccess }: CreateProductFromInventoryDialogProps) {
   const { toast } = useToast();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState('');
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const supplierTriggerRef = useRef<HTMLButtonElement>(null);
+  const costRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -74,12 +70,17 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
   const supplierNameValue = watch('supplierName');
   
   useEffect(() => {
-    reset({
-      barcode: barcode,
-      productName: '',
-      supplierName: '',
-      costPrice: undefined,
-    });
+    if (isOpen) {
+        reset({
+            barcode: barcode,
+            productName: '',
+            supplierName: '',
+            costPrice: undefined,
+        });
+        setSupplierSearch('');
+        // Focus product name on open
+        setTimeout(() => nameRef.current?.focus(), 100);
+    }
   }, [barcode, reset, isOpen]);
 
   const processFormSubmit = (data: AddProductFormValues) => {
@@ -95,10 +96,7 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
     startActionTransition(async () => {
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
-        toast({
-          title: 'Success!',
-          description: result.message,
-        });
+        toast({ title: 'Success!', description: result.message });
         onSuccess(result.data);
         onOpenChange(false);
       } else {
@@ -115,45 +113,47 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
     return [...allSuppliers].sort((a, b) => a.name.localeCompare(b.name));
   }, [allSuppliers]);
 
+  const { ref: nameFormRef, ...nameProps } = register('productName');
+  const { ref: costFormRef, ...costProps } = register('costPrice', { valueAsNumber: true });
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Create New Product</DialogTitle>
+          <DialogTitle>Define New Product</DialogTitle>
           <DialogDescription>
-            This product was not found in your catalog. Add its details below.
+            Barcode <span className="font-mono font-bold text-foreground">{barcode}</span> is not registered.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
-            <div>
-              <Label htmlFor="barcode">Barcode</Label>
-              <Input
-                id="barcode"
-                {...register('barcode')}
-                readOnly
-                className="bg-muted cursor-not-allowed"
-              />
-              {formErrors.barcode && <p className="text-sm text-destructive mt-1">{formErrors.barcode.message}</p>}
-            </div>
-
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="productName">Product Name</Label>
               <Input
                 id="productName"
                 placeholder="e.g., Organic Almond Milk"
-                {...register('productName')}
+                {...nameProps}
+                ref={(e) => {
+                    nameFormRef(e);
+                    (nameRef as any).current = e;
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        supplierTriggerRef.current?.focus();
+                    }
+                }}
                 className={cn(formErrors.productName && 'border-destructive')}
               />
-              {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
+              {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="supplierName">Supplier Name</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="supplierName">Supplier</Label>
                     <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                         <PopoverTrigger asChild>
                         <Button
+                            ref={supplierTriggerRef}
                             variant="outline"
                             role="combobox"
                             aria-expanded={supplierComboboxOpen}
@@ -166,26 +166,51 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                             <span className="truncate">
                                 {supplierNameValue
                                 ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
-                                : "Select supplier..."}
+                                : "Select vendor..."}
                             </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                        <Command>
                             <CommandInput
-                            placeholder="Search or create supplier..."
-                            value={supplierNameValue || ''}
-                            onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
+                                placeholder="Search or type new..."
+                                value={supplierSearch}
+                                onValueChange={setSupplierSearch}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && supplierSearch) {
+                                        setValue('supplierName', supplierSearch, { shouldValidate: true });
+                                        setSupplierComboboxOpen(false);
+                                        setTimeout(() => costRef.current?.focus(), 100);
+                                    }
+                                }}
                             />
                             <CommandList>
-                            <CommandEmpty>No supplier found. Type to create new.</CommandEmpty>
+                            <CommandEmpty>
+                                {supplierSearch ? (
+                                    <Button 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-xs h-8 font-bold"
+                                        onClick={() => {
+                                            setValue('supplierName', supplierSearch, { shouldValidate: true });
+                                            setSupplierComboboxOpen(false);
+                                            setTimeout(() => costRef.current?.focus(), 100);
+                                        }}
+                                    >
+                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
+                                    </Button>
+                                ) : "Type to add vendor..."}
+                            </CommandEmpty>
                             <CommandGroup>
                                 {sortedSuppliers.map((supplier) => (
                                 <CommandItem
                                     key={supplier.id}
                                     value={supplier.name}
-                                    onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true }); setSupplierComboboxOpen(false); }}
+                                    onSelect={() => { 
+                                        setValue("supplierName", supplier.name, { shouldValidate: true }); 
+                                        setSupplierComboboxOpen(false); 
+                                        setTimeout(() => costRef.current?.focus(), 100);
+                                    }}
                                 >
                                     <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
                                     {supplier.name}
@@ -196,11 +221,11 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                         </Command>
                         </PopoverContent>
                     </Popover>
-                    {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
+                    {formErrors.supplierName && <p className="text-xs text-destructive">{formErrors.supplierName.message}</p>}
                 </div>
 
-                <div>
-                    <Label htmlFor="costPrice">Cost Price</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
                     <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -208,26 +233,32 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            {...register('costPrice')}
+                            {...costProps}
+                            ref={(e) => {
+                                costFormRef(e);
+                                (costRef as any).current = e;
+                            }}
                             onKeyDown={(e) => {
-                                if (['-', 'e', 'E', '+'].includes(e.key)) {
+                                if (e.key === 'Enter') {
                                     e.preventDefault();
+                                    handleSubmit(processFormSubmit)();
                                 }
                             }}
                             className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
                         />
                     </div>
-                    {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
+                    {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
                 </div>
             </div>
-            
-            <p className="text-xs text-muted-foreground pt-2">If the supplier doesn't exist, it will be created automatically.</p>
 
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <SubmitButton isPending={isActionPending} />
+              <Button type="submit" disabled={isActionPending}>
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                Register Product
+              </Button>
             </DialogFooter>
         </form>
       </DialogContent>

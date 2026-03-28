@@ -1,11 +1,9 @@
-
 'use client';
 
-import { useEffect, useState, useActionState, useTransition } from 'react';
-// Removed useFormStatus as it's not suitable for this manual action invocation
+import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, ChevronsUpDown, Check, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,40 +17,42 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { addProductAction, type ActionResponse } from '@/app/actions';
+import { addProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
-
-interface SubmitButtonProps {
-  isPending: boolean;
-}
-
-function SubmitButton({ isPending }: SubmitButtonProps) {
-  return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-      Add Product
-    </Button>
-  );
-}
+import { useDataCache } from '@/context/data-cache-context';
 
 export function AddProductDialog() {
   const { toast } = useToast();
+  const { suppliers, addProduct: addProductToCache } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
+  const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState('');
 
-  const [state, formAction] = useActionState<ActionResponse<Product> | undefined, FormData>(
-    addProductAction,
-    undefined
-  );
+  const barcodeRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const supplierTriggerRef = useRef<HTMLButtonElement>(null);
+  const costRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors: formErrors }, // Renamed to avoid conflict with action state.errors
+    watch,
+    setValue,
+    formState: { errors: formErrors },
   } = useForm<AddProductFormValues>({
     resolver: zodResolver(addProductSchema),
     defaultValues: {
@@ -62,48 +62,53 @@ export function AddProductDialog() {
       costPrice: undefined,
     }
   });
+
+  const supplierNameValue = watch('supplierName');
   
   useEffect(() => {
-    if (!state) return; // Do nothing if state is initial (undefined)
-
-    if (state.success) {
-      toast({
-        title: 'Success!',
-        description: state.message,
-        variant: 'default',
-      });
-      reset();
-      setIsOpen(false); 
-    } else if (state.message && !state.success) {
-      toast({
-        title: 'Error Adding Product',
-        description: state.message,
-        variant: 'destructive',
-      });
+    if (isOpen) {
+        reset();
+        setSupplierSearch('');
+        setTimeout(() => barcodeRef.current?.focus(), 100);
     }
-  }, [state, toast, reset]);
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      reset(); // Reset form when dialog is closed
-    }
-    setIsOpen(open);
-  };
+  }, [isOpen, reset]);
 
   const processFormSubmit = (data: AddProductFormValues) => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, String(value));
+    formData.append('barcode', data.barcode);
+    formData.append('productName', data.productName);
+    formData.append('supplierName', data.supplierName);
+    formData.append('editMode', 'create');
+    if (data.costPrice !== undefined) {
+        formData.append('costPrice', String(data.costPrice));
+    }
+
+    startActionTransition(async () => {
+      const result = await addProductAction(undefined, formData);
+      if (result.success && result.data) {
+        toast({ title: 'Success!', description: result.message });
+        addProductToCache(result.data);
+        setIsOpen(false);
+      } else {
+        toast({
+          title: 'Error Adding Product',
+          description: result.message || 'Validation failed.',
+          variant: 'destructive',
+        });
       }
-    });
-    startActionTransition(() => {
-      formAction(formData);
     });
   };
 
+  const sortedSuppliers = useMemo(() => {
+    return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
+  }, [suppliers]);
+
+  const { ref: barcodeFormRef, ...barcodeProps } = register('barcode');
+  const { ref: nameFormRef, ...nameProps } = register('productName');
+  const { ref: costFormRef, ...costProps } = register('costPrice', { valueAsNumber: true });
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
@@ -113,71 +118,165 @@ export function AddProductDialog() {
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
           <DialogDescription>
-            Enter the details for the new product and its supplier. The supplier will be created if they don't exist.
+            Register a new barcode in your system catalog.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(processFormSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="barcode" className="text-left">
-                Barcode
-              </Label>
+        <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="barcode">Barcode</Label>
               <Input
                 id="barcode"
-                placeholder="e.g., 1234567890123"
-                {...register('barcode')}
-                className={cn(formErrors.barcode || state?.errors?.find(e => e.path.includes('barcode')) ? 'border-destructive' : '')}
+                placeholder="Scan or enter barcode"
+                {...barcodeProps}
+                ref={(e) => {
+                    barcodeFormRef(e);
+                    (barcodeRef as any).current = e;
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nameRef.current?.focus();
+                    }
+                }}
+                className={cn("font-mono", formErrors.barcode && 'border-destructive')}
               />
-              {formErrors.barcode && <p className="text-sm text-destructive mt-1">{formErrors.barcode.message}</p>}
-              {state?.errors?.find(e => e.path.includes('barcode')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('barcode'))?.message}</p>}
+              {formErrors.barcode && <p className="text-xs text-destructive">{formErrors.barcode.message}</p>}
             </div>
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="productName" className="text-left">
-                Product Name
-              </Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="productName">Product Name</Label>
               <Input
                 id="productName"
                 placeholder="e.g., Organic Almond Milk"
-                {...register('productName')}
-                className={cn(formErrors.productName || state?.errors?.find(e => e.path.includes('productName')) ? 'border-destructive' : '')}
+                {...nameProps}
+                ref={(e) => {
+                    nameFormRef(e);
+                    (nameRef as any).current = e;
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        supplierTriggerRef.current?.focus();
+                    }
+                }}
+                className={cn(formErrors.productName && 'border-destructive')}
               />
-              {formErrors.productName && <p className="text-sm text-destructive mt-1">{formErrors.productName.message}</p>}
-               {state?.errors?.find(e => e.path.includes('productName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('productName'))?.message}</p>}
+              {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
             </div>
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="supplierName" className="text-left">
-                Supplier Name
-              </Label>
-              <Input
-                id="supplierName"
-                placeholder="e.g., Green Pastures Ltd."
-                {...register('supplierName')}
-                className={cn(formErrors.supplierName || state?.errors?.find(e => e.path.includes('supplierName')) ? 'border-destructive' : '')}
-              />
-              {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-              {state?.errors?.find(e => e.path.includes('supplierName')) && <p className="text-sm text-destructive mt-1">{state.errors.find(e => e.path.includes('supplierName'))?.message}</p>}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="supplierName">Supplier</Label>
+                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                        <PopoverTrigger asChild>
+                        <Button
+                            ref={supplierTriggerRef}
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={supplierComboboxOpen}
+                            className={cn(
+                            "w-full justify-between font-normal",
+                            !supplierNameValue && "text-muted-foreground",
+                            formErrors.supplierName && 'border-destructive'
+                            )}
+                        >
+                            <span className="truncate">
+                                {supplierNameValue
+                                ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
+                                : "Select vendor..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                            <CommandInput
+                                placeholder="Search or type new..."
+                                value={supplierSearch}
+                                onValueChange={setSupplierSearch}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && supplierSearch) {
+                                        setValue('supplierName', supplierSearch, { shouldValidate: true });
+                                        setSupplierComboboxOpen(false);
+                                        setTimeout(() => costRef.current?.focus(), 100);
+                                    }
+                                }}
+                            />
+                            <CommandList>
+                            <CommandEmpty>
+                                {supplierSearch ? (
+                                    <Button 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-xs h-8 font-bold"
+                                        onClick={() => {
+                                            setValue('supplierName', supplierSearch, { shouldValidate: true });
+                                            setSupplierComboboxOpen(false);
+                                            setTimeout(() => costRef.current?.focus(), 100);
+                                        }}
+                                    >
+                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
+                                    </Button>
+                                ) : "Type to find vendor..."}
+                            </CommandEmpty>
+                            <CommandGroup>
+                                {sortedSuppliers.map((supplier) => (
+                                <CommandItem
+                                    key={supplier.id}
+                                    value={supplier.name}
+                                    onSelect={() => { 
+                                        setValue("supplierName", supplier.name, { shouldValidate: true }); 
+                                        setSupplierComboboxOpen(false); 
+                                        setTimeout(() => costRef.current?.focus(), 100);
+                                    }}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                    {supplier.name}
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                            </CommandList>
+                        </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {formErrors.supplierName && <p className="text-xs text-destructive">{formErrors.supplierName.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
+                    <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            id="costPrice"
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...costProps}
+                            ref={(e) => {
+                                costFormRef(e);
+                                (costRef as any).current = e;
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSubmit(processFormSubmit)();
+                                }
+                            }}
+                            className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                        />
+                    </div>
+                    {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
+                </div>
             </div>
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="costPrice" className="text-left">
-                Cost Price
-              </Label>
-              <Input
-                id="costPrice"
-                type="number"
-                step="0.01"
-                placeholder="e.g., 12.99"
-                {...register('costPrice')}
-                className={cn(formErrors.costPrice && 'border-destructive')}
-              />
-              {formErrors.costPrice && <p className="text-sm text-destructive mt-1">{formErrors.costPrice.message}</p>}
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
-            </DialogClose>
-            <SubmitButton isPending={isActionPending} />
-          </DialogFooter>
+
+            <DialogFooter className="pt-4">
+              <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={isActionPending}>
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                Add Product
+              </Button>
+            </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
