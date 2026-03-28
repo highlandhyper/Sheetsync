@@ -57,6 +57,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const { user } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
@@ -81,13 +82,14 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const supplierNameValue = watch('supplierName');
 
   useEffect(() => {
-    if (product) {
+    if (product && isOpen) {
       reset({
         barcode: product.barcode,
         productName: product.productName,
         supplierName: product.supplierName || '',
         costPrice: product.costPrice,
       });
+      setSearchTerm('');
     }
   }, [product, reset, isOpen]);
 
@@ -162,7 +164,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center h-6 mb-1">
+                    <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="barcode">Barcode</Label>
                     </div>
                     <Input
@@ -173,7 +175,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                     />
                 </div>
                 <div className="space-y-2">
-                    <div className="flex items-center h-6 mb-1">
+                    <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="productName">Product Name</Label>
                     </div>
                     <Input
@@ -188,7 +190,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between h-6 mb-1">
+                    <div className="flex items-center justify-between h-8 mb-1">
                       <Label htmlFor="supplierName">Supplier</Label>
                       <Button
                           type="button"
@@ -196,7 +198,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           size="sm"
                           onClick={handleEditSupplierClick}
                           disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
-                          className="text-[10px] uppercase font-bold h-auto py-0.5 px-2 hover:bg-primary/10 text-primary"
+                          className="text-[10px] uppercase font-bold h-7 px-2 hover:bg-primary/10 text-primary"
                       >
                           <Edit className="mr-1 h-3 w-3" />
                           Rename
@@ -223,41 +225,41 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command
-                            filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0 }
-                          >
+                          <Command>
                             <CommandInput
                               placeholder="Search or type new..."
-                              value={supplierNameValue || ''}
-                              onValueChange={(v) => setValue('supplierName', v, { shouldValidate: true })}
+                              value={searchTerm}
+                              onValueChange={setSearchTerm}
                             />
                             <CommandList>
-                              <CommandEmpty>Press Enter to use "{supplierNameValue}"</CommandEmpty>
+                              <CommandEmpty>
+                                {searchTerm ? (
+                                    <Button 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-xs h-8 font-bold"
+                                        onClick={() => {
+                                            setValue('supplierName', searchTerm, { shouldDirty: true });
+                                            setSupplierComboboxOpen(false);
+                                        }}
+                                    >
+                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{searchTerm}"
+                                    </Button>
+                                ) : "Type to find or add vendor..."}
+                              </CommandEmpty>
                               <CommandGroup>
                                 {sortedSuppliers.map((supplier) => (
                                   <CommandItem
                                     key={supplier.id}
                                     value={supplier.name}
-                                    onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true }); setSupplierComboboxOpen(false); }}
+                                    onSelect={() => { 
+                                        setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
+                                        setSupplierComboboxOpen(false); 
+                                    }}
                                   >
                                     <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
                                     {supplier.name}
                                   </CommandItem>
                                 ))}
-                                {supplierNameValue && !sortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase()) && (
-                                  <CommandItem
-                                      key={supplierNameValue}
-                                      value={supplierNameValue}
-                                      onSelect={() => {
-                                          setValue("supplierName", supplierNameValue, { shouldValidate: true });
-                                          setSupplierComboboxOpen(false);
-                                      }}
-                                      className="italic text-muted-foreground"
-                                  >
-                                      <PlusCircle className="mr-2 h-4 w-4" />
-                                      Add "{supplierNameValue}"
-                                  </CommandItem>
-                              )}
                               </CommandGroup>
                             </CommandList>
                           </Command>
@@ -267,7 +269,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 </div>
 
                 <div className="space-y-2">
-                      <div className="flex items-center h-6 mb-1">
+                      <div className="flex items-center h-8 mb-1">
                         <Label htmlFor="costPrice">Cost Price (QAR)</Label>
                       </div>
                       <div className="relative">
