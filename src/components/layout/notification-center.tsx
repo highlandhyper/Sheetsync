@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare, Key } from 'lucide-react';
+import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare, Key, X } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
       onOpenProductRequest?.(n.metadata.barcode, n.metadata.requestId);
     }
     
+    // Close panel if redirecting to add inventory
     if (n.link === '/inventory/add') {
         setIsOpen(false);
     }
@@ -68,17 +69,20 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 shadow-2xl animate-fade-in" align="end">
-        <div className="flex items-center justify-between p-4 bg-muted/30">
-          <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Bell className="h-4 w-4" /> Notifications
-          </h3>
+      <PopoverContent className="w-80 p-0 shadow-2xl animate-fade-in border-none overflow-hidden" align="end">
+        <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <h3 className="font-black text-xs uppercase tracking-widest">
+              Security Logs
+            </h3>
+          </div>
           {notifications.length > 0 && (
             <div className="flex gap-1">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                className="h-7 w-7 text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
                 onClick={markAllAsRead}
                 title="Mark all as read"
               >
@@ -87,7 +91,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
                 onClick={clearAll}
                 title="Clear all"
               >
@@ -96,92 +100,80 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
             </div>
           )}
         </div>
-        <Separator />
-        <ScrollArea className="h-80">
+        <ScrollArea className="h-96">
           {notifications.length > 0 ? (
             <div className="flex flex-col">
               {notifications.map((n) => (
                 <React.Fragment key={n.id}>
                   <div 
                     className={cn(
-                      "p-4 transition-colors relative group cursor-pointer",
-                      !n.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50"
+                      "p-4 transition-all relative group cursor-pointer border-b last:border-0",
+                      !n.isRead ? "bg-primary/[0.03] hover:bg-primary/[0.06]" : "hover:bg-muted/50"
                     )}
                     onClick={() => handleNotificationClick(n)}
                   >
                     {!n.isRead && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+                      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
                     )}
                     <div className="flex gap-3">
-                      <div className="mt-1 shrink-0">
+                      <div className="mt-1 shrink-0 bg-background p-1.5 rounded-full shadow-sm border">
                         <NotificationIcon type={n.type} />
                       </div>
-                      <div className="flex-1 space-y-1 min-w-0">
-                        <p className={cn("text-sm font-semibold leading-none", !n.isRead ? "text-foreground" : "text-muted-foreground")}>
+                      <div className="flex-1 space-y-1.5 min-w-0">
+                        <p className={cn("text-sm font-bold leading-tight", !n.isRead ? "text-foreground" : "text-muted-foreground")}>
                           {n.title}
                         </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                           {n.message}
                         </p>
                         
-                        {/* OTP BADGE FOR AUTHORIZATIONS */}
+                        {/* PROMINENT OTP BADGE FOR AUTHORIZATIONS */}
                         {n.metadata?.otp && (
-                            <div className="mt-2 py-2 px-3 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between group/otp hover:bg-primary/20 transition-colors">
+                            <div className="mt-3 py-2.5 px-4 bg-white border-2 border-primary/20 rounded-xl flex items-center justify-between group/otp hover:border-primary/40 transition-all shadow-sm">
                                 <div className="flex items-center gap-2">
-                                    <Key className="h-3 w-3 text-primary" />
+                                    <div className="bg-primary/10 p-1 rounded-md">
+                                        <Key className="h-3.5 w-3.5 text-primary" />
+                                    </div>
                                     <span className="text-[10px] font-black uppercase text-primary tracking-widest">Activation OTP</span>
                                 </div>
-                                <span className="font-mono text-base font-black text-primary tracking-[0.2em]">{n.metadata.otp}</span>
+                                <span className="font-mono text-xl font-black text-primary tracking-[0.2em]">{n.metadata.otp}</span>
                             </div>
                         )}
 
-                        <p className="text-[10px] text-muted-foreground/60 font-medium pt-1">
-                          {formatDistanceToNow(parseISO(n.timestamp), { addSuffix: true })}
-                        </p>
-                        
-                        {n.metadata?.type === 'add_product_request' ? (
-                           <Button 
-                            variant="link" 
-                            className="h-auto p-0 text-xs font-bold text-primary hover:underline mt-2"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleNotificationClick(n);
-                            }}
-                           >
-                               Complete Request
-                           </Button>
-                        ) : n.link && (
-                          <Link 
-                            href={n.link} 
-                            className="inline-block mt-2 text-xs font-bold text-primary hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNotificationClick(n);
-                            }}
-                          >
-                            {n.metadata?.otp ? 'Go to Activation' : 'View Details'}
-                          </Link>
-                        )}
+                        <div className="flex items-center justify-between pt-2">
+                            <span className="text-[10px] text-muted-foreground/60 font-black uppercase tracking-tighter">
+                                {formatDistanceToNow(parseISO(n.timestamp), { addSuffix: true })}
+                            </span>
+                            
+                            {n.metadata?.type === 'add_product_request' ? (
+                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary">
+                                    Pending Request
+                                </Badge>
+                            ) : n.link && (
+                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary">
+                                    Go to Action
+                                </Badge>
+                            )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <Separator />
                 </React.Fragment>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full py-12 px-4 text-center">
-              <div className="bg-muted p-4 rounded-full mb-4">
-                <Bell className="h-8 w-8 text-muted-foreground/40" />
+            <div className="flex flex-col items-center justify-center h-full py-16 px-4 text-center">
+              <div className="bg-muted p-5 rounded-full mb-4 shadow-inner">
+                <Bell className="h-10 w-10 text-muted-foreground/30" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">All caught up!</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">No new notifications.</p>
+              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No Active Alerts</p>
+              <p className="text-xs text-muted-foreground/60 mt-2 font-medium">Logs and authorization codes will appear here.</p>
             </div>
           )}
         </ScrollArea>
-        <div className="p-2 bg-muted/10">
-          <Button variant="ghost" className="w-full text-xs font-bold text-muted-foreground hover:text-primary transition-colors h-8" onClick={() => setIsOpen(false)}>
-            Close Panel
+        <div className="p-3 bg-muted/20 border-t flex justify-center">
+          <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all" onClick={() => setIsOpen(false)}>
+            Dismiss Panel
           </Button>
         </div>
       </PopoverContent>
