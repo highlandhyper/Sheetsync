@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare } from 'lucide-react';
+import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare, Key } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useNotifications } from '@/context/notification-context';
 import type { AppNotification } from '@/lib/types';
+import { Badge } from '../ui/badge';
 
 const NotificationIcon = ({ type }: { type: AppNotification['type'] }) => {
   switch (type) {
@@ -41,7 +42,9 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
       onOpenProductRequest?.(n.metadata.barcode, n.metadata.requestId);
     }
     
-    setIsOpen(false);
+    if (n.link === '/inventory/add') {
+        setIsOpen(false);
+    }
   };
 
   return (
@@ -120,9 +123,22 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           {n.message}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/60 font-medium">
+                        
+                        {/* OTP BADGE FOR AUTHORIZATIONS */}
+                        {n.metadata?.otp && (
+                            <div className="mt-2 py-2 px-3 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between group/otp hover:bg-primary/20 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <Key className="h-3 w-3 text-primary" />
+                                    <span className="text-[10px] font-black uppercase text-primary tracking-widest">Activation OTP</span>
+                                </div>
+                                <span className="font-mono text-base font-black text-primary tracking-[0.2em]">{n.metadata.otp}</span>
+                            </div>
+                        )}
+
+                        <p className="text-[10px] text-muted-foreground/60 font-medium pt-1">
                           {formatDistanceToNow(parseISO(n.timestamp), { addSuffix: true })}
                         </p>
+                        
                         {n.metadata?.type === 'add_product_request' ? (
                            <Button 
                             variant="link" 
@@ -143,7 +159,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                               handleNotificationClick(n);
                             }}
                           >
-                            View Details
+                            {n.metadata?.otp ? 'Go to Activation' : 'View Details'}
                           </Link>
                         )}
                       </div>

@@ -122,7 +122,8 @@ export interface AppNotification {
   metadata?: {
     barcode?: string;
     requestId?: string;
-    type?: 'add_product_request';
+    otp?: string;
+    type?: 'add_product_request' | 'authorization';
   };
 }
 
