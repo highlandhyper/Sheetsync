@@ -335,17 +335,22 @@ export async function processReturn(email: string, id: string, q: number | undef
   const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:J${rowNumber}`);
   if (!data || !data[0]) throw new Error("Read failed.");
   const originalRow = data[0];
+  
+  const barcode = String(originalRow[INV_COL_BARCODE] || '').trim();
+  const productName = String(originalRow[INV_COL_PRODUCT_NAME] || '').trim();
   const originalQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10);
   
   const amountToReturn = (q === undefined || q === null) ? originalQty : q;
   const newQty = Math.max(0, originalQty - amountToReturn);
 
+  const detailString = `[RETURN] Product: ${productName} | Barcode: ${barcode} | Qty: ${amountToReturn} | Staff: ${staff} | Final: ${newQty}`;
+
   if (newQty > 0) {
     await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amountToReturn} units (By: ${staff}). New Qty: ${newQty}`);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, detailString);
   } else {
     await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, `Full return of ${amountToReturn} units (By: ${staff}). Row deleted.`);
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, detailString + ' (Log Removed)');
   }
 
   return { success: true };

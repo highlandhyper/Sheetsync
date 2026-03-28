@@ -1,102 +1,120 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, PackageSearch } from 'lucide-react';
-import type { ReturnedItem } from '@/lib/types';
+import { Search, History, FilterX, Barcode } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
+import { Button } from '@/components/ui/button';
+
+interface ParsedReturnLog {
+  id: string;
+  timestamp: string;
+  productName: string;
+  barcode: string;
+  quantity: string;
+  staff: string;
+  user: string;
+}
 
 export function ReturnLogListClient() {
-  const { returnedItems: allReturnedItems } = useDataCache();
+  const { auditLogs } = useDataCache();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredItems = useMemo(() => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    if (!lowerSearchTerm) return allReturnedItems;
+  const returnLogs = useMemo(() => {
+    return auditLogs
+      .filter(log => log.action === 'RETURN_INVENTORY')
+      .map(log => {
+        const details = log.details;
+        
+        // Parsing pattern: [RETURN] Product: {name} | Barcode: {barcode} | Qty: {qty} | Staff: {staff}
+        const nameMatch = details.match(/Product: (.*?) \|/);
+        const barcodeMatch = details.match(/Barcode: (.*?) \|/);
+        const qtyMatch = details.match(/Qty: (.*?) \|/);
+        const staffMatch = details.match(/Staff: (.*?) \|/);
 
-    return allReturnedItems.filter(item =>
-      item.productName.toLowerCase().includes(lowerSearchTerm) ||
-      item.barcode.toLowerCase().includes(lowerSearchTerm) ||
-      (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm)) ||
-      item.staffName.toLowerCase().includes(lowerSearchTerm) ||
-      item.location.toLowerCase().includes(lowerSearchTerm)
+        return {
+          id: log.id,
+          timestamp: log.timestamp,
+          productName: nameMatch ? nameMatch[1] : 'N/A',
+          barcode: barcodeMatch ? barcodeMatch[1] : 'N/A',
+          quantity: qtyMatch ? qtyMatch[1] : 'N/A',
+          staff: staffMatch ? staffMatch[1] : 'N/A',
+          user: log.user
+        } as ParsedReturnLog;
+      });
+  }, [auditLogs]);
+
+  const filteredLogs = useMemo(() => {
+    const lower = searchTerm.toLowerCase();
+    if (!lower) return returnLogs;
+
+    return returnLogs.filter(log => 
+      log.productName.toLowerCase().includes(lower) ||
+      log.barcode.toLowerCase().includes(lower) ||
+      log.staff.toLowerCase().includes(lower) ||
+      log.user.toLowerCase().includes(lower)
     );
-  }, [allReturnedItems, searchTerm]);
+  }, [returnLogs, searchTerm]);
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 shadow">
-        <CardContent className="p-0">
-          <div className="relative w-full md:max-w-md">
+      <Card className="p-4 shadow-md">
+        <CardContent className="p-0 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search return log (product, barcode, supplier, staff...)"
+              placeholder="Search by product, barcode, or staff member..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full"
             />
           </div>
+          {searchTerm && (
+            <Button variant="ghost" onClick={() => setSearchTerm('')}>
+              <FilterX className="mr-2 h-4 w-4" /> Clear
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {filteredItems.length > 0 ? (
-        <Card className="shadow-md">
+      {filteredLogs.length > 0 ? (
+        <Card className="shadow-md overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/50">
               <TableRow>
+                <TableHead>Date / Time</TableHead>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Barcode</TableHead>
-                <TableHead>Supplier</TableHead>
                 <TableHead className="text-right">Returned Qty</TableHead>
-                <TableHead>Return Date</TableHead>
-                <TableHead>Original Location</TableHead>
-                <TableHead>Processed By</TableHead>
-                <TableHead>Item Type</TableHead>
-                <TableHead>Expiry Date</TableHead>
+                <TableHead>Processed By (Staff)</TableHead>
+                <TableHead>Admin User</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.map((item) => {
-                const isExpired = item.expiryDate && item.returnTimestamp && new Date(item.expiryDate) < new Date(item.returnTimestamp);
-                const formattedReturnTimestamp = item.returnTimestamp && isValid(parseISO(item.returnTimestamp)) 
-                  ? format(parseISO(item.returnTimestamp), 'PPp') 
-                  : 'N/A';
-
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.productName}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.barcode}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.supplierName}</TableCell>
-                    <TableCell className="text-right font-semibold">{item.returnedQuantity}</TableCell>
-                    <TableCell className="text-muted-foreground">{formattedReturnTimestamp}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
-                    <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500" : "text-muted-foreground")}>
-                      {item.itemType}
-                    </TableCell>
-                    <TableCell className={cn(isExpired && item.itemType === 'Expiry' ? "text-destructive" : "text-muted-foreground")}>
-                      {item.expiryDate && isValid(parseISO(item.expiryDate)) ? format(parseISO(item.expiryDate), 'PP') : 'N/A'}
-                      {isExpired && item.itemType === 'Expiry' && " (Expired)"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {filteredLogs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="text-xs font-medium">
+                    {format(parseISO(log.timestamp), 'PPp')}
+                  </TableCell>
+                  <TableCell className="font-bold text-primary">{log.productName}</TableCell>
+                  <TableCell className="font-mono text-xs">{log.barcode}</TableCell>
+                  <TableCell className="text-right font-black text-destructive">{log.quantity}</TableCell>
+                  <TableCell>{log.staff}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{log.user}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </Card>
       ) : (
-        <div className="text-center py-12">
-          <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No matching items in Return Log</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Try adjusting your search terms or check if any items have been returned.
-          </p>
+        <div className="text-center py-20 border-2 border-dashed rounded-xl">
+          <History className="mx-auto h-16 w-16 text-muted-foreground opacity-20" />
+          <h3 className="mt-4 text-xl font-bold text-muted-foreground">No return history found</h3>
+          <p className="text-sm text-muted-foreground">Processed returns will appear here automatically.</p>
         </div>
       )}
     </div>
