@@ -360,29 +360,31 @@ export function ReturnableInventoryByStaffClient() {
                             <span>{totalItemsForSelectedStaff} logs found</span>
                         </div>
                     )}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
-                              <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
-                              Portrait Orientation
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
-                              Landscape Orientation
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                    {role !== 'viewer' && (
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
+                                  <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
+                                  Portrait Orientation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
+                                  Landscape Orientation
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
 
-                        <div className="print-button-container flex-1 sm:flex-none">
-                            <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
-                                <Printer className="mr-2 h-4 w-4" /> Print
-                            </Button>
+                            <div className="print-button-container flex-1 sm:flex-none">
+                                <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
+                                    <Printer className="mr-2 h-4 w-4" /> Print
+                                </Button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
           )}
