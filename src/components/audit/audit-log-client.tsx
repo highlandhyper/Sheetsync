@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AuditLogEntry } from '@/lib/types';
 import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info, FileText } from 'lucide-react';
-import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
+import { parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -116,7 +116,7 @@ export function AuditLogClient() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search logs..."
+              placeholder="Search logs (Barcode, Product, or User)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full"
@@ -183,12 +183,8 @@ export function AuditLogClient() {
                                   <p className="text-muted-foreground break-all">{log.user}</p>
                               </div>
                           </div>
-                          <div className="flex items-start gap-2">
-                              <Crosshair className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                              <div>
-                                  <p className="font-medium">Target ID</p>
-                                  <p className="text-muted-foreground font-mono text-xs break-all">{log.target}</p>
-                              </div>
+                          <div className="mt-2 text-xs line-clamp-2 text-muted-foreground">
+                              {log.details}
                           </div>
                           <div className="mt-4 pt-4 border-t">
                             <Button variant="secondary" className="w-full" onClick={() => handleOpenDetails(log)}>
@@ -212,8 +208,8 @@ export function AuditLogClient() {
                 <TableHead className="w-[200px]">Timestamp</TableHead>
                 <TableHead className="w-[220px]">User</TableHead>
                 <TableHead className="w-[200px]">Action</TableHead>
-                <TableHead className="w-[200px]">Target ID</TableHead>
-                <TableHead>Details</TableHead>
+                <TableHead>Quick Details</TableHead>
+                <TableHead className="w-[120px] text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -223,10 +219,10 @@ export function AuditLogClient() {
                     <TableCell className="text-xs whitespace-nowrap">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
                     <TableCell className="font-medium break-all">{log.user}</TableCell>
                     <TableCell><Badge variant="secondary">{formatActionString(log.action)}</Badge></TableCell>
-                    <TableCell className="font-mono text-xs break-all">{log.target}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate">{log.details}</TableCell>
+                    <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(log)}>
-                            <Info className="mr-2 h-4 w-4" /> View Details
+                            <Info className="mr-2 h-4 w-4" /> Details
                         </Button>
                     </TableCell>
                   </TableRow>
@@ -278,7 +274,9 @@ export function AuditLogClient() {
                      <Separator />
                      <div>
                         <h4 className="font-medium mb-2 flex items-center gap-3"><Info className="h-4 w-4 text-muted-foreground" />Details:</h4>
-                        <pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-md font-sans">{selectedLog.details}</pre>
+                        <pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-md font-sans border border-primary/10">
+                            {selectedLog.details}
+                        </pre>
                     </div>
                 </div>
             )}
