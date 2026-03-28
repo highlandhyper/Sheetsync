@@ -48,9 +48,6 @@ export function ReturnableInventoryBySupplierClient() {
     products: cachedProducts,
     suppliers,
     uniqueLocations,
-    updateInventoryItem,
-    removeInventoryItem,
-    addReturnedItem,
     refreshData 
   } = useDataCache();
   const [selectedSupplierNames, setSelectedSupplierNames] = useState<string[]>([]);
@@ -145,28 +142,10 @@ export function ReturnableInventoryBySupplierClient() {
   }, []);
 
 
-  const handleReturnSuccess = useCallback((returnedItemId: string, returnedQuantity: number) => {
-    const itemToUpdate = cachedItems.find(item => item.id === returnedItemId);
-    if (itemToUpdate) {
-        const newQuantity = itemToUpdate.quantity - returnedQuantity;
-        addReturnedItem({
-            ...itemToUpdate,
-            id: `ret_${Date.now()}`,
-            originalInventoryItemId: itemToUpdate.id,
-            returnedQuantity: returnedQuantity,
-            returnTimestamp: new Date().toISOString(),
-            processedBy: user?.email || 'Unknown', 
-        });
-
-        if (newQuantity > 0) {
-            updateInventoryItem({ ...itemToUpdate, quantity: newQuantity });
-        } else {
-            removeInventoryItem(returnedItemId);
-        }
-    }
+  const handleReturnSuccess = useCallback(() => {
     setIsReturnDialogOpen(false);
     setSelectedItemIds(new Set());
-  }, [cachedItems, user, addReturnedItem, updateInventoryItem, removeInventoryItem]);
+  }, []);
 
 
   const filteredInventoryItemsBySupplier = useMemo(() => {

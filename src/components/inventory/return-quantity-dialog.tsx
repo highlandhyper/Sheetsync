@@ -41,7 +41,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSuccess }: ReturnQuantityDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { updateInventoryItem, removeInventoryItem, addReturnedItem, refreshData } = useDataCache();
+  const { updateInventoryItem, removeInventoryItem, refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -91,14 +91,6 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
         removeInventoryItem(item.id);
     }
     
-    addReturnedItem({
-        ...item,
-        id: `ret_opt_${Date.now()}`,
-        returnedQuantity: returnedQty,
-        returnTimestamp: new Date().toISOString(),
-        processedBy: user.email,
-    });
-
     onOpenChange(false);
     onReturnSuccess(item.id, returnedQty);
     toast({ title: 'Success', description: "Processing return in background..." });
