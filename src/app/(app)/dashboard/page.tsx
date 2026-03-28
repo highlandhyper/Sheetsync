@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -575,6 +575,10 @@ function ActiveAuthorizations() {
                                     </span>
                                 </div>
                             )}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="flex items-center gap-1 text-primary"><Key className="h-3 w-3" /> Active OTP:</span>
+                                <span className="font-black text-primary tracking-widest">{session.otp || '----'}</span>
+                            </div>
                             <div className="pt-2 flex items-center gap-1.5 text-[10px] font-bold text-green-600 uppercase tracking-tight">
                                 <BellOff className="h-3 w-3" />
                                 <span>No Email Alerts active</span>

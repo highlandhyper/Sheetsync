@@ -37,7 +37,6 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
   const handleNotificationClick = (n: AppNotification) => {
     markAsRead(n.id);
     
-    // If it's a product request, trigger the popup
     if (n.type === 'request' && n.metadata?.type === 'add_product_request' && n.metadata.barcode) {
       onOpenProductRequest?.(n.metadata.barcode, n.metadata.requestId);
     }
@@ -118,7 +117,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                         <p className={cn("text-sm font-semibold leading-none", !n.isRead ? "text-foreground" : "text-muted-foreground")}>
                           {n.title}
                         </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                           {n.message}
                         </p>
                         <p className="text-[10px] text-muted-foreground/60 font-medium">
@@ -160,7 +159,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                 <Bell className="h-8 w-8 text-muted-foreground/40" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">All caught up!</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">No new notifications at the moment.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">No new notifications.</p>
             </div>
           )}
         </ScrollArea>
