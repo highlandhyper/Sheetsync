@@ -145,6 +145,12 @@ export interface SpecialEntryRequest {
   otp?: string; // Session-specific OTP for activation
   isDismissedByAdmin?: boolean; // NEW: Cross-device sync for admins
   isReadByUser?: boolean;      // NEW: Cross-device sync for requester
+  originalDetails?: {
+    location: string;
+    itemType: ItemType;
+    quantity: number;
+    expiryDate?: string;
+  };
   editDetails?: {
     itemId: string;
     productName: string;

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
+  processedRequests: SpecialEntryRequest[];
   activeSessions: SpecialEntryRequest[];
   activeSession: SpecialEntryRequest | null;
   pendingActivationSession: SpecialEntryRequest | null;
@@ -54,6 +55,10 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     specialRequests.filter(r => r.status === 'pending')
   , [specialRequests]);
 
+  const processedRequestsList = useMemo(() => 
+    specialRequests.filter(r => r.status !== 'pending').slice(0, 50)
+  , [specialRequests]);
+
   const activeSessionsList = useMemo(() => {
     const now = new Date();
     return specialRequests.filter(r => 
@@ -63,7 +68,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     );
   }, [specialRequests]);
 
-  // Handle local session activation logic for the current user
   useEffect(() => {
     if (!isInitialized || !user || !user.email) return;
 
@@ -75,7 +79,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
 
-    // Alert the user if a new approval is detected
     if (myApprovedSessions.length > prevApprovedCountRef.current && role === 'viewer') {
         toast({
             title: "Request Updated!",
@@ -123,6 +126,12 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       status: 'pending',
       type: 'inventory_edit',
       requestedAt: new Date().toISOString(),
+      originalDetails: {
+        location: item.location,
+        itemType: item.itemType,
+        quantity: item.quantity,
+        expiryDate: item.expiryDate
+      },
       editDetails: {
         itemId: item.id,
         productName: item.productName,
@@ -174,7 +183,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         ...r, 
         status: 'approved' as const, 
         approvedAt: now.toISOString(), 
-        type: r.type === 'inventory_edit' ? r.type : (isTimed ? 'timed' : 'single'), 
+        type: r.type === 'inventory_edit' || r.type === 'product_add' ? r.type : (isTimed ? 'timed' : 'single'), 
         expiresAt: expiresAt,
         otp: otp,
       };
@@ -183,7 +192,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   }, [specialRequests, updateSpecialRequests]);
 
   const rejectRequest = useCallback(async (id: string) => {
-    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const } : r);
+    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString() } : r);
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 
@@ -215,6 +224,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
   const value = useMemo(() => ({ 
     pendingRequests: pendingRequestsList, 
+    processedRequests: processedRequestsList,
     activeSessions: activeSessionsList,
     activeSession, 
     pendingActivationSession,
@@ -228,7 +238,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     revokeRequest,
     consumeSpecialEntry,
     activateSession
-  }), [pendingRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
+  }), [pendingRequestsList, processedRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
 
   return (
     <SpecialEntryContext.Provider value={value}>
