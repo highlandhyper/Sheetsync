@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users, MapPin, SwatchBook } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users, MapPin } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -14,7 +14,6 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
-import { ThemeCenter } from '@/components/settings/theme-center';
 import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
@@ -66,19 +65,9 @@ export default function SettingsPage() {
           title="General Settings"
           description="Manage theme, interface preferences, and other global application settings."
           triggerText="Manage General Settings"
-          dialogClassName="sm:max-w-3xl"
+          dialogClassName="sm:max-w-xl"
         >
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <SwatchBook className="h-5 w-5 text-primary" />
-                Global Theme Preset
-              </h3>
-              <ThemeCenter />
-            </div>
-
-            <Separator />
-
+          <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-lg border p-4 flex flex-col">
                 <div className="flex-grow">

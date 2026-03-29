@@ -153,5 +153,3 @@ export interface OfflineAction {
   data: any;
   timestamp: string;
 }
-
-export type ThemePreset = 'standard' | 'minimal' | 'emerald' | 'midnight';

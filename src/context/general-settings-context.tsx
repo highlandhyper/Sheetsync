@@ -2,13 +2,11 @@
 
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { ThemePreset } from '@/lib/types';
 
 interface GeneralSettings {
   showAdminWelcome: boolean;
   inactivityTimeout: number; // in minutes
   isLockOnInactivityEnabled: boolean;
-  themePreset: ThemePreset;
 }
 
 interface GeneralSettingsContextType {
@@ -25,7 +23,6 @@ const defaultSettings: GeneralSettings = {
   showAdminWelcome: true,
   inactivityTimeout: 5,
   isLockOnInactivityEnabled: true,
-  themePreset: 'standard',
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {
@@ -48,13 +45,6 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
           const storedSettings = JSON.parse(storedValue);
           const finalSettings = { ...defaultSettings, ...storedSettings };
           setSettings(finalSettings);
-          
-          // Apply theme attribute
-          if (finalSettings.themePreset !== 'standard') {
-            document.documentElement.setAttribute('data-theme', finalSettings.themePreset);
-          } else {
-            document.documentElement.removeAttribute('data-theme');
-          }
         }
       }
     } catch (error) {
@@ -72,14 +62,6 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
       try {
         if (typeof window !== 'undefined') {
           localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
-          
-          if (key === 'themePreset') {
-            if (value === 'standard') {
-              document.documentElement.removeAttribute('data-theme');
-            } else {
-              document.documentElement.setAttribute('data-theme', value as string);
-            }
-          }
         }
       } catch (error) {
         console.warn('GeneralSettings: Save failed.', error);
