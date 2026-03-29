@@ -22,6 +22,7 @@ import {
   DollarSign,
   Wallet,
   Clock,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface InventoryItemCardMobileProps {
@@ -30,6 +31,7 @@ interface InventoryItemCardMobileProps {
   totalQuantity?: number;
   individualItemCount?: number;
   onDetails: () => void;
+  onViewImage?: () => void;
   onEdit?: () => void;
   onReturn?: () => void;
   onDelete?: () => void;
@@ -45,6 +47,7 @@ export function InventoryItemCardMobile({
   totalQuantity,
   individualItemCount,
   onDetails,
+  onViewImage,
   onEdit,
   onReturn,
   onDelete,
@@ -167,27 +170,32 @@ export function InventoryItemCardMobile({
            </div>
         </div>
       </CardContent>
-      <CardFooter className="bg-muted/50 p-2 flex justify-end gap-2">
+      <CardFooter className="bg-muted/50 p-2 flex flex-wrap justify-end gap-2">
+        {onViewImage && (
+            <Button variant="outline" size="sm" onClick={onViewImage} className="bg-primary/5 border-primary/20 text-primary font-bold">
+                <ImageIcon className="mr-2 h-4 w-4" /> Image
+            </Button>
+        )}
         {context === 'inventory' ? (
           isSingleItem ? (
             <>
-              <Button variant="outline" size="sm" onClick={onDetails}><Eye className="mr-2 h-4 w-4" />Details</Button>
-              {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
-              {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
+              <Button variant="outline" size="sm" onClick={onDetails} className="font-bold"><Eye className="mr-2 h-4 w-4" />Details</Button>
+              {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0} className="font-bold"><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
+              {onDelete && <Button variant="destructive" size="sm" onClick={onDelete} className="font-bold"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
             </>
           ) : (
-            <Button variant="outline" size="sm" onClick={onDetails} className="w-full">
-              <Eye className="mr-2 h-4 w-4" /> View {individualItemCount || 1} Log(s)
+            <Button variant="outline" size="sm" onClick={onDetails} className="w-full font-bold">
+              <Eye className="mr-2 h-4 w-4" /> View {individualItemCount || 1} Logs
             </Button>
           )
         ) : isProductFound ? (
           <>
-            {onEdit && <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>}
-            {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0}><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
-            {onDelete && <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
+            {onEdit && <Button variant="ghost" size="sm" onClick={onEdit} className="font-bold"><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+            {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0} className="font-bold"><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
+            {onDelete && <Button variant="destructive" size="sm" onClick={onDelete} className="font-bold"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
           </>
         ) : (
-          onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct}><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
+          onCreateProduct && <Button variant="default" size="sm" onClick={onCreateProduct} className="font-bold"><PlusCircle className="mr-2 h-4 w-4" /> Create Product</Button>
         )}
       </CardFooter>
     </Card>

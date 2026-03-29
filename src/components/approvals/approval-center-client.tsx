@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
@@ -86,7 +86,9 @@ export function ApprovalCenterClient() {
 
                 const result = await updateInventoryItemAction(undefined, formData);
                 if (result.success && result.data) {
+                    // Update cache immediately
                     updateInventoryItem(result.data);
+                    // Process request
                     await approveRequest(selectedRequest.id);
                     toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
                 } else {
