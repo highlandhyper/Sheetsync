@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { parseISO, isValid, format } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
+import { useAccessControl } from '@/context/access-control-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 import { Checkbox } from '../ui/checkbox';
@@ -39,6 +40,7 @@ const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 export function ReturnableInventoryByStaffClient() {
   const { toast } = useToast();
   const { role, user } = useAuth();
+  const { hasFeature } = useAccessControl();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { 
     inventoryItems: cachedItems, 
@@ -67,6 +69,13 @@ export function ReturnableInventoryByStaffClient() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+
+  // Feature Flags
+  const canExport = role === 'admin' || hasFeature('EXPORT_PDF');
+  const canPrint = role === 'admin' || hasFeature('PRINT_RECORDS');
+  const canReturn = role === 'admin' || hasFeature('PROCESS_RETURN');
+  const canEdit = role === 'admin' || hasFeature('EDIT_INVENTORY');
+  const canDelete = role === 'admin' || hasFeature('DELETE_INVENTORY');
 
   const uniqueDbLocations = useMemo(() => {
     return uniqueLocations;
@@ -105,7 +114,7 @@ export function ReturnableInventoryByStaffClient() {
   }, [isMultiSelectEnabled]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return; 
+    if (!canReturn) return; 
     setSelectedItemForReturn(item);
     setIsReturnDialogOpen(true);
   };
@@ -116,13 +125,13 @@ export function ReturnableInventoryByStaffClient() {
   };
 
   const handleOpenEditDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return; 
+    if (!canEdit) return; 
     setCurrentItemToEdit(item);
     setIsEditDialogOpen(true);
   };
 
   const handleOpenDeleteDialog = (item: InventoryItem) => {
-    if (role !== 'admin') return;
+    if (!canDelete) return;
     setSelectedItemForDeletion(item);
     setIsDeleteDialogOpen(true);
   };
@@ -295,7 +304,7 @@ export function ReturnableInventoryByStaffClient() {
     <div className="space-y-6">
       <Card className="p-4 shadow-md filters-card-noprint">
         <CardContent className="p-0">
-          {selectedItemIds.size > 0 && isMultiSelectEnabled && role === 'admin' ? (
+          {selectedItemIds.size > 0 && isMultiSelectEnabled && canReturn ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="flex items-center gap-4 flex-wrap">
                     <div className="text-sm font-medium text-muted-foreground">
@@ -309,8 +318,8 @@ export function ReturnableInventoryByStaffClient() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return Selected</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete Selected</Button>
+                    {canReturn && <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return Selected</Button>}
+                    {canDelete && <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete Selected</Button>}
                 </div>
              </div>
           ) : (
@@ -360,31 +369,34 @@ export function ReturnableInventoryByStaffClient() {
                             <span>{totalItemsForSelectedStaff} logs found</span>
                         </div>
                     )}
-                    {role === 'admin' && (
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                    
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {canExport && (
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
+                                <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
-                                  <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
+                                    <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
                                 </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
-                                  Portrait Orientation
+                                    Portrait Orientation
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
-                                  Landscape Orientation
+                                    Landscape Orientation
                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
+                                </DropdownMenuContent>
                             </DropdownMenu>
+                        )}
 
+                        {canPrint && (
                             <div className="print-button-container flex-1 sm:flex-none">
                                 <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
                                     <Printer className="mr-2 h-4 w-4" /> Print
                                 </Button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
           )}
@@ -421,7 +433,7 @@ export function ReturnableInventoryByStaffClient() {
             <Card className="shadow-md hidden md:block">
             <Table><TableHeader>
                 <TableRow>
-                {isMultiSelectEnabled && role === 'admin' && (
+                {isMultiSelectEnabled && canReturn && (
                   <TableHead className="w-12 text-center noprint">
                       <Checkbox
                       checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
@@ -446,15 +458,15 @@ export function ReturnableInventoryByStaffClient() {
                 <ReturnableInventoryItemRow
                     key={`row-staff-${item.id}`}
                     item={item}
-                    onInitiateReturn={handleOpenReturnDialog}
+                    onInitiateReturn={canReturn ? handleOpenReturnDialog : undefined}
                     onViewDetails={handleOpenDetailsDialog}
-                    onEditItem={role === 'admin' ? handleOpenEditDialog : undefined}
+                    onEditItem={canEdit ? handleOpenEditDialog : undefined}
                     isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
                     showSupplierName={true}
-                    disableReturnButton={role === 'viewer'}
+                    disableReturnButton={!canReturn}
                     isSelected={selectedItemIds.has(item.id)}
-                    onSelectRow={isMultiSelectEnabled && role === 'admin' ? handleSelectRow : undefined}
-                    showCheckbox={isMultiSelectEnabled && role === 'admin'}
+                    onSelectRow={isMultiSelectEnabled && canReturn ? handleSelectRow : undefined}
+                    showCheckbox={isMultiSelectEnabled && canReturn}
                     costPrice={productsByBarcode.get(item.barcode)?.costPrice}
                     showCost={true}
                 />
@@ -471,10 +483,10 @@ export function ReturnableInventoryByStaffClient() {
                         item={item}
                         product={product}
                         onDetails={() => handleOpenDetailsDialog(item)}
-                        onEdit={role === 'admin' ? () => handleOpenEditDialog(item) : undefined}
-                        onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(item) : undefined}
+                        onEdit={canEdit ? () => handleOpenEditDialog(item) : undefined}
+                        onReturn={canReturn ? () => handleOpenReturnDialog(item) : undefined}
                         isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
-                        onSelect={isMultiSelectEnabled && role === 'admin' ? () => handleSelectRow(item.id) : undefined}
+                        onSelect={isMultiSelectEnabled && canReturn ? () => handleSelectRow(item.id) : undefined}
                         context="staff"
                     />
                 )})}
@@ -503,7 +515,7 @@ export function ReturnableInventoryByStaffClient() {
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         displayContext="returnByStaff"
-        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
+        onStartEdit={canEdit ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
         key={`edit-staff-${currentItemToEdit?.id || 'none'}`}
