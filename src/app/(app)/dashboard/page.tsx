@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest, type InventoryItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, Edit, Info, Hash, MapPin, Tag } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, Edit, Info, Hash, MapPin, Tag, ArrowRight } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -602,241 +602,30 @@ function ActiveAuthorizations() {
     );
 }
 
-function PendingSpecialEntryRequests() {
-    const { pendingRequests, approveRequest, rejectRequest } = useSpecialEntry();
-    const { inventoryItems, updateInventoryItem, refreshData } = useDataCache();
-    const { user: authUser } = useAuth();
-    const { toast } = useToast();
-
-    const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
-    const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-    const [isEditApproveDialogOpen, setIsEditApproveDialogOpen] = useState(false);
-    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-    const [duration, setDuration] = useState<string>("single");
-
-    const accessRequests = useMemo(() => 
-        pendingRequests.filter(r => r.type === 'single' || r.type === 'timed' || r.type === 'inventory_edit')
-    , [pendingRequests]);
-
-    if (accessRequests.length === 0) {
-        return null;
-    }
-
-    const handleApproveClick = (req: SpecialEntryRequest) => {
-        setSelectedRequest(req);
-        if (req.type === 'inventory_edit') {
-            setIsEditApproveDialogOpen(true);
-        } else {
-            setIsApproveDialogOpen(true);
-        }
-    };
-
-    const handleApproveSubmit = () => {
-        setIsApproveDialogOpen(false);
-        setIsEditApproveDialogOpen(false);
-        setIsAuthDialogOpen(true);
-    };
-
-    const handleAuthorizationSuccess = async () => {
-        if (!selectedRequest) return;
-        setIsAuthDialogOpen(false);
-
-        if (selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails) {
-            // Apply the actual edit
-            const details = selectedRequest.editDetails;
-            const formData = new FormData();
-            formData.append('itemId', details.itemId);
-            formData.append('location', details.location);
-            formData.append('itemType', details.itemType);
-            formData.append('userEmail', authUser?.email || 'Admin (Approved Edit)');
-            formData.append('quantity', String(details.quantity));
-            if (details.expiryDate) formData.append('expiryDate', details.expiryDate);
-
-            const result = await updateInventoryItemAction(undefined, formData);
-            if (result.success && result.data) {
-                toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
-                updateInventoryItem(result.data);
-                approveRequest(selectedRequest.id); // Mark request as approved/closed
-                refreshData();
-            } else {
-                toast({ title: 'Error', description: result.message || 'Failed to apply requested edit.', variant: 'destructive' });
-            }
-        } else {
-            approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
-        }
-        
-        setSelectedRequest(null);
-    };
+function PendingApprovalsSummary() {
+    const { pendingRequests } = useSpecialEntry();
+    
+    if (pendingRequests.length === 0) return null;
 
     return (
-        <div className="space-y-4 pt-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-primary flex items-center gap-2">
-                    <ShieldQuestion className="h-6 w-6" />
-                    Pending Authorizations
-                    <Badge className="ml-2 bg-destructive animate-pulse">{accessRequests.length}</Badge>
-                </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {accessRequests.map(req => {
-                    const isEdit = req.type === 'inventory_edit';
-                    return (
-                        <Card key={req.id} className={cn("border-primary/20 shadow-lg overflow-hidden flex flex-col", isEdit && "border-accent/40")}>
-                            <CardHeader className={cn("bg-primary/5 pb-3", isEdit && "bg-accent/5")}>
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-lg">{req.staffName}</CardTitle>
-                                        <CardDescription className={cn("text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1", isEdit && "text-accent-foreground")}>
-                                            {isEdit ? <Edit className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}
-                                            Request: {isEdit ? 'Inventory Edit' : (req.type === 'timed' ? 'Timed Access' : 'Single Entry')}
-                                        </CardDescription>
-                                    </div>
-                                    <span className="text-[10px] font-mono text-muted-foreground bg-background px-2 py-0.5 rounded border">
-                                        {format(parseISO(req.requestedAt), 'HH:mm')}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pt-4 flex-grow">
-                                {isEdit && req.editDetails ? (
-                                    <div className="space-y-3">
-                                        <p className="font-bold text-sm text-foreground">{req.editDetails.productName}</p>
-                                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                            <div className="bg-muted p-1.5 rounded">
-                                                <Label className="text-[8px] uppercase text-muted-foreground">Qty</Label>
-                                                <p className="font-bold">{req.editDetails.quantity} Units</p>
-                                            </div>
-                                            <div className="bg-muted p-1.5 rounded">
-                                                <Label className="text-[8px] uppercase text-muted-foreground">Location</Label>
-                                                <p className="font-bold truncate">{req.editDetails.location}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground italic mb-4">
-                                        {req.reason || '"No reason provided"'}
-                                    </p>
-                                )}
-                                <div className="mt-4 flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold">
-                                    <Users className="h-3 w-3" />
-                                    <span>Via: {req.userEmail}</span>
-                                </div>
-                            </CardContent>
-                            <div className="p-3 bg-muted/20 border-t flex gap-2">
-                                <Button variant="outline" size="sm" className="flex-1 h-8 text-xs text-destructive hover:bg-destructive/10" onClick={() => rejectRequest(req.id)}>
-                                    <X className="mr-1 h-3 w-3" /> Reject
-                                </Button>
-                                <Button size="sm" className="flex-1 h-8 text-xs font-bold" onClick={() => handleApproveClick(req)}>
-                                    <Check className="mr-1 h-3 w-3" /> Authorize
-                                </Button>
-                            </div>
-                        </Card>
-                    );
-                })}
-            </div>
-
-            <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Authorize Silent Entry</DialogTitle>
-                        <DialogDescription>
-                            Granting silent mode for <span className="font-bold text-foreground">{selectedRequest?.staffName}</span>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Access Duration</Label>
-                            <Select value={duration} onValueChange={setDuration}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="single">Single Log Only</SelectItem>
-                                    <SelectItem value="10">10 Minutes Window</SelectItem>
-                                    <SelectItem value="30">30 Minutes Window</SelectItem>
-                                    <SelectItem value="60">1 Hour Window</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+        <Card className="border-primary/20 bg-primary/5 shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary p-4 rounded-2xl shadow-lg shadow-primary/20">
+                        <ShieldQuestion className="h-8 w-8 text-primary-foreground" />
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleApproveSubmit}>
-                            Next: Admin Credentials
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={isEditApproveDialogOpen} onOpenChange={setIsEditApproveDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Edit className="h-5 w-5 text-accent-foreground" />
-                            Approve Edit Request
-                        </DialogTitle>
-                        <DialogDescription>
-                            Review changes requested by <span className="font-bold text-foreground">{selectedRequest?.userEmail}</span>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {selectedRequest?.editDetails && (
-                        <div className="py-4 space-y-4">
-                            <div className="rounded-lg border p-4 bg-muted/30 space-y-3">
-                                <div className="flex items-center gap-2 font-bold text-primary">
-                                    <Info className="h-4 w-4" />
-                                    <span>{selectedRequest.editDetails.productName}</span>
-                                </div>
-                                <Separator />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Quantity</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Hash className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span className="font-bold text-lg">{selectedRequest.editDetails.quantity}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location</Label>
-                                        <div className="flex items-center gap-2">
-                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span className="font-bold">{selectedRequest.editDetails.location}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Classification</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span className="font-bold">{selectedRequest.editDetails.itemType}</span>
-                                        </div>
-                                    </div>
-                                    {selectedRequest.editDetails.expiryDate && (
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Expiry Date</Label>
-                                            <div className="flex items-center gap-2">
-                                                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <span className="font-bold">{selectedRequest.editDetails.expiryDate}</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditApproveDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleApproveSubmit}>
-                            Confirm & Apply Edit
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <AuthorizeActionDialog 
-                isOpen={isAuthDialogOpen}
-                onOpenChange={setIsAuthDialogOpen}
-                onAuthorizationSuccess={handleAuthorizationSuccess}
-                actionDescription={selectedRequest?.type === 'inventory_edit' ? `Applying requested inventory changes. Credentials required.` : `Approving silent mode request. Credentials required.`}
-            />
-        </div>
+                    <div>
+                        <h3 className="text-xl font-black tracking-tight">Action Required</h3>
+                        <p className="text-muted-foreground font-medium">You have <span className="text-primary font-bold">{pendingRequests.length} pending requests</span> awaiting your review in the Approval Center.</p>
+                    </div>
+                </div>
+                <Button asChild className="w-full md:w-auto px-8 py-6 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
+                    <Link href="/approvals">
+                        Review Requests <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                </Button>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -984,8 +773,8 @@ export default function DashboardPage() {
         <QuickAuthorizeCard />
       </div>
 
+      <PendingApprovalsSummary />
       <ActiveAuthorizations />
-      <PendingSpecialEntryRequests />
 
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
         <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-3 overflow-hidden">
