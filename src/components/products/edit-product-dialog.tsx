@@ -50,7 +50,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const { updateProduct: updateProductInCache, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [supplierSearch, setSupplierSearch] = useState('');
   
   const nameRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
@@ -86,7 +86,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         supplierName: product.supplierName || '',
         costPrice: product.costPrice,
       });
-      setSearchTerm('');
+      setSupplierSearch('');
       setTimeout(() => nameRef.current?.focus(), 100);
     }
   }, [product, reset, isOpen]);
@@ -116,7 +116,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
     updateProductInCache(optimisticProduct);
     onOpenChange(false);
-    toast({ title: 'Registry Updated', description: 'Applying changes across logs in background...' });
+    toast({ title: 'Registry Updated', description: 'Applying changes in background...' });
 
     startActionTransition(async () => {
       const result = await saveProductAction(undefined, formData);
@@ -126,7 +126,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       } else {
         toast({
           title: 'Update Failed',
-          description: result.message || 'Could not sync changes to cloud.',
+          description: result.message || 'Could not sync changes.',
           variant: 'destructive',
         });
         refreshData();
@@ -191,9 +191,9 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between h-8 mb-1">
+                    <div className="flex items-center justify-between h-8">
                       <Label htmlFor="supplierName">Supplier</Label>
                       <Button
                           type="button"
@@ -222,11 +222,11 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                           <Command>
                             <CommandInput
                               placeholder="Search or type new..."
-                              value={searchTerm}
-                              onValueChange={setSearchTerm}
+                              value={supplierSearch}
+                              onValueChange={setSupplierSearch}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && searchTerm) {
-                                    setValue('supplierName', searchTerm, { shouldDirty: true });
+                                if (e.key === 'Enter' && supplierSearch) {
+                                    setValue('supplierName', supplierSearch, { shouldDirty: true });
                                     setSupplierComboboxOpen(false);
                                     setTimeout(() => costRef.current?.focus(), 100);
                                 }
@@ -234,17 +234,17 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             />
                             <CommandList>
                               <CommandEmpty>
-                                {searchTerm ? (
+                                {supplierSearch ? (
                                     <Button 
                                         variant="ghost" 
                                         className="w-full justify-start text-xs h-8 font-bold"
                                         onClick={() => {
-                                            setValue('supplierName', searchTerm, { shouldDirty: true });
+                                            setValue('supplierName', supplierSearch, { shouldDirty: true });
                                             setSupplierComboboxOpen(false);
                                             setTimeout(() => costRef.current?.focus(), 100);
                                         }}
                                     >
-                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{searchTerm}"
+                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
                                     </Button>
                                 ) : "Type to find vendor..."}
                               </CommandEmpty>
@@ -272,7 +272,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 </div>
 
                 <div className="space-y-2">
-                      <Label htmlFor="costPrice" className="h-8 flex items-center mb-1">Unit Cost (QAR)</Label>
+                      <Label htmlFor="costPrice" className="h-8 flex items-center">Unit Cost (QAR)</Label>
                       <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input

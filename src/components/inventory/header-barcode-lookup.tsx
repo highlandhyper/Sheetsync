@@ -108,7 +108,7 @@ export function HeaderBarcodeLookup() {
             toast({
                 variant: 'destructive',
                 title: 'Not Found',
-                description: `No inventory items found with barcode: ${barcodeToSearch}`,
+                description: `No active inventory items found with barcode: ${barcodeToSearch}`,
             });
         }
       });
@@ -193,7 +193,6 @@ export function HeaderBarcodeLookup() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    // results are now synced via useEffect
   }, []);
 
   const handleClear = () => {
@@ -231,21 +230,23 @@ export function HeaderBarcodeLookup() {
         </div>
       </div>
       
-      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="max-w-md w-full p-0">
-            <DialogHeader className="p-6 pb-2">
-                <DialogTitle>Scan Barcode</DialogTitle>
-                <DialogDescription>Point your camera at the product barcode to search.</DialogDescription>
-            </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
-            <DialogFooter className="p-6 pt-0">
-                <Button variant="outline" onClick={() => setIsScannerOpen(false)}>Cancel</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="hidden">
+        <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+            <DialogContent className="max-w-md w-full p-0">
+                <DialogHeader className="p-6 pb-2">
+                    <DialogTitle>Scan Barcode</DialogTitle>
+                    <DialogDescription>Point your camera at the product barcode to search.</DialogDescription>
+                </DialogHeader>
+                <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
+                <DialogFooter className="p-6 pt-0">
+                    <Button variant="outline" onClick={() => setIsScannerOpen(false)}>Cancel</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl w-full">
+        <DialogContent className="sm:max-w-4xl w-full">
           <DialogHeader>
             <DialogTitle>Inventory Log for: {lastSearchedBarcode}</DialogTitle>
             <DialogDescription>

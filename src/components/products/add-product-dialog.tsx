@@ -164,9 +164,9 @@ export function AddProductDialog() {
               {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                 <div className="space-y-2">
-                    <Label htmlFor="supplierName">Supplier</Label>
+                    <Label htmlFor="supplierName" className="h-8 flex items-center">Supplier</Label>
                     <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                         <PopoverTrigger asChild>
                         <Button
@@ -175,15 +175,13 @@ export function AddProductDialog() {
                             role="combobox"
                             aria-expanded={supplierComboboxOpen}
                             className={cn(
-                            "w-full justify-between font-normal",
+                            "w-full h-10 justify-between font-normal",
                             !supplierNameValue && "text-muted-foreground",
                             formErrors.supplierName && 'border-destructive'
                             )}
                         >
                             <span className="truncate">
-                                {supplierNameValue
-                                ? sortedSuppliers.find((supplier) => supplier.name.toLowerCase() === supplierNameValue.toLowerCase())?.name || supplierNameValue
-                                : "Select vendor..."}
+                                {supplierNameValue || "Select vendor..."}
                             </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -242,7 +240,7 @@ export function AddProductDialog() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="costPrice">Unit Cost (QAR)</Label>
+                    <Label htmlFor="costPrice" className="h-8 flex items-center">Unit Cost (QAR)</Label>
                     <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -261,7 +259,7 @@ export function AddProductDialog() {
                                     handleSubmit(processFormSubmit)();
                                 }
                             }}
-                            className={cn('pl-8', formErrors.costPrice && 'border-destructive')}
+                            className={cn('pl-8 h-10', formErrors.costPrice && 'border-destructive')}
                         />
                     </div>
                     {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users, MapPin } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users, MapPin, SwatchBook } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -14,6 +14,8 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
+import { ThemeCenter } from '@/components/settings/theme-center';
+import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -62,54 +64,66 @@ export default function SettingsPage() {
         <DialogCard
           icon={Palette}
           title="General Settings"
-          description="Manage theme, interface preferences, and other general application settings."
+          description="Manage theme, interface preferences, and other global application settings."
           triggerText="Manage General Settings"
           dialogClassName="sm:max-w-3xl"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-lg border p-4 flex flex-col">
-              <div className="flex-grow">
-                <h3 className="text-lg font-semibold mb-1">Theme</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Choose a light, dark, or system-default theme.
-                </p>
-              </div>
-              <ThemeToggle />
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <SwatchBook className="h-5 w-5 text-primary" />
+                Global Theme Preset
+              </h3>
+              <ThemeCenter />
             </div>
 
-            <div className="rounded-lg border p-4 flex flex-col">
-              <div className="flex-grow">
-                <h3 className="text-lg font-semibold mb-1">Multi-Select Mode</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Enable or disable checkboxes for bulk actions on inventory lists.
-                </p>
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border p-4 flex flex-col">
+                <div className="flex-grow">
+                  <h3 className="text-lg font-semibold mb-1 text-sm">Light/Dark Mode</h3>
+                  <p className="text-muted-foreground mb-4 text-xs">
+                    System preference or manual toggle.
+                  </p>
+                </div>
+                <ThemeToggle />
               </div>
-              <MultiSelectToggle />
+
+              <div className="rounded-lg border p-4 flex flex-col">
+                <div className="flex-grow">
+                  <h3 className="text-lg font-semibold mb-1 text-sm">Multi-Select Mode</h3>
+                  <p className="text-muted-foreground mb-4 text-xs">
+                    Enable checkboxes for bulk actions.
+                  </p>
+                </div>
+                <MultiSelectToggle />
+              </div>
+              
+              {role === 'admin' && (
+                <>
+                  <div className="rounded-lg border p-4 flex flex-col">
+                    <div className="flex-grow">
+                      <h3 className="text-lg font-semibold mb-1 text-sm flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary"/> Admin Welcome</h3>
+                      <p className="text-muted-foreground mb-4 text-xs">
+                        Show greeting screen on login.
+                      </p>
+                    </div>
+                    <AdminWelcomeToggle />
+                  </div>
+                  
+                  <div className="rounded-lg border p-4 flex flex-col">
+                    <div className="flex-grow">
+                      <h3 className="text-lg font-semibold mb-1 text-sm flex items-center gap-2"><Lock className="h-4 w-4 text-primary"/> Session Lock</h3>
+                      <p className="text-muted-foreground mb-4 text-xs">
+                        Auto-lock due to inactivity.
+                      </p>
+                    </div>
+                    <InactivityTimeoutInput />
+                  </div>
+                </>
+              )}
             </div>
-            
-            {role === 'admin' && (
-              <>
-                <div className="rounded-lg border p-4 flex flex-col">
-                  <div className="flex-grow">
-                    <h3 className="text-lg font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/> Admin Welcome</h3>
-                    <p className="text-muted-foreground mb-4 text-sm">
-                      Show the "Welcome back, Chief!" screen on login.
-                    </p>
-                  </div>
-                  <AdminWelcomeToggle />
-                </div>
-                
-                <div className="rounded-lg border p-4 flex flex-col">
-                  <div className="flex-grow">
-                    <h3 className="text-lg font-semibold mb-1 flex items-center gap-2"><Lock className="h-5 w-5 text-primary"/> Session Lock</h3>
-                    <p className="text-muted-foreground mb-4 text-sm">
-                      Manage automatic session locking for inactivity.
-                    </p>
-                  </div>
-                  <InactivityTimeoutInput />
-                </div>
-              </>
-            )}
           </div>
         </DialogCard>
 
@@ -118,7 +132,7 @@ export default function SettingsPage() {
             <DialogCard
                 icon={Users}
                 title="Staff Management"
-                description="Add, edit, or remove staff members from the active registry used for logging items."
+                description="Add, edit, or remove staff members from the active registry."
                 triggerText="Manage Staff Registry"
                 dialogClassName="sm:max-w-md"
             >
@@ -128,7 +142,7 @@ export default function SettingsPage() {
             <DialogCard
                 icon={MapPin}
                 title="Location Manager"
-                description="Customize the storage zones and warehouse locations available in your system."
+                description="Customize the storage zones and warehouse locations."
                 triggerText="Manage Locations"
                 dialogClassName="sm:max-w-md"
             >
@@ -140,7 +154,7 @@ export default function SettingsPage() {
         <DialogCard
           icon={KeyRound}
           title="Local Credentials"
-          description="Set the local username and password needed for critical inventory changes."
+          description="Set the username and password needed for critical changes."
           triggerText="Manage Credentials"
           dialogClassName="sm:max-w-md"
         >
@@ -151,7 +165,7 @@ export default function SettingsPage() {
           <DialogCard
             icon={ShieldCheck}
             title="User Access Control"
-            description="Enable or disable access to specific pages for the 'Viewer' role."
+            description="Control which pages the 'Viewer' role can access."
             triggerText="Manage Access"
             dialogClassName="sm:max-w-3xl"
           >
