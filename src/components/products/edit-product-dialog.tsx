@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Check, ChevronsUpDown, PlusCircle, DollarSign, Edit } from 'lucide-react';
+import { Loader2, Save, Check, ChevronsUpDown, PlusCircle, DollarSign, Edit, Image as ImageIcon, X } from 'lucide-react';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/command";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { saveProductAction } from '@/app/actions';
+import { saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -46,7 +47,7 @@ interface EditProductDialogProps {
 
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { updateProduct: updateProductInCache, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
@@ -58,6 +59,12 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
+
+  const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+  const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
+
+  const isViewer = role === 'viewer';
 
   const {
     register,
@@ -87,9 +94,34 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         costPrice: product.costPrice,
       });
       setSupplierSearch('');
-      setTimeout(() => nameRef.current?.focus(), 100);
+      setExternalData(null);
+      if (!isViewer) {
+        setTimeout(() => nameRef.current?.focus(), 100);
+      }
     }
-  }, [product, reset, isOpen]);
+  }, [product, reset, isOpen, isViewer]);
+
+  const handleFetchImage = async () => {
+    if (!product?.barcode) return;
+    setIsFetchingImage(true);
+    try {
+        const res = await fetchProductExternalDataAction(product.barcode);
+        if (res.success && res.data) {
+            setExternalData(res.data);
+            if (res.data.image) {
+                setIsImagePopupOpen(true);
+            } else {
+                toast({ title: "No Image", description: "No visual data found in global registries.", variant: "destructive" });
+            }
+        } else {
+            toast({ title: "Lookup Failed", description: res.message || "Product not found.", variant: "destructive" });
+        }
+    } catch (err) {
+        console.error("Failed to fetch image:", err);
+    } finally {
+        setIsFetchingImage(false);
+    }
+  };
 
   const processFormSubmit = (data: AddProductFormValues) => {
     if (!product) return;
@@ -106,7 +138,6 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     if (data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
     formData.append('editMode', 'edit');
 
-    // --- OPTIMISTIC UPDATE ---
     const optimisticProduct: Product = {
         ...product,
         productName: data.productName,
@@ -158,10 +189,24 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Product Catalog</DialogTitle>
-            <DialogDescription>
-              Modifying details for <span className="font-mono font-bold text-foreground">{product.barcode}</span>.
-            </DialogDescription>
+            <div className="flex items-center justify-between pr-8">
+                <div>
+                    <DialogTitle>{isViewer ? 'Product Details' : 'Edit Product Catalog'}</DialogTitle>
+                    <DialogDescription>
+                    Information for barcode: <span className="font-mono font-bold text-foreground">{product.barcode}</span>
+                    </DialogDescription>
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-[10px] font-black px-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" 
+                    onClick={handleFetchImage}
+                    disabled={isFetchingImage}
+                >
+                    {isFetchingImage ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ImageIcon className="mr-1 h-3 w-3" />}
+                    VIEW IMAGE
+                </Button>
+            </div>
           </DialogHeader>
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -179,13 +224,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             nameFormRef(e);
                             (nameRef as any).current = e;
                         }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                supplierTriggerRef.current?.focus();
-                            }
-                        }}
-                        className={cn("h-10", formErrors.productName && 'border-destructive')}
+                        readOnly={isViewer}
+                        className={cn("h-10", isViewer && "bg-muted cursor-not-allowed", formErrors.productName && 'border-destructive')}
                     />
                     {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
                 </div>
@@ -195,16 +235,18 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                 <div className="space-y-2">
                     <div className="flex items-center justify-between h-8">
                       <Label htmlFor="supplierName">Supplier</Label>
-                      <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditSupplierClick}
-                          disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
-                          className="text-[10px] uppercase font-bold h-7 px-2 hover:bg-primary/10 text-primary"
-                      >
-                          <Edit className="mr-1 h-3 w-3" /> Rename
-                      </Button>
+                      {!isViewer && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleEditSupplierClick}
+                            disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
+                            className="text-[10px] uppercase font-bold h-7 px-2 hover:bg-primary/10 text-primary"
+                        >
+                            <Edit className="mr-1 h-3 w-3" /> Rename
+                        </Button>
+                      )}
                     </div>
                       <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                         <PopoverTrigger asChild>
@@ -212,10 +254,11 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                             ref={supplierTriggerRef}
                             variant="outline"
                             role="combobox"
-                            className={cn("w-full h-10 justify-between font-normal", !supplierNameValue && "text-muted-foreground", formErrors.supplierName && 'border-destructive')}
+                            disabled={isViewer}
+                            className={cn("w-full h-10 justify-between font-normal", isViewer && "bg-muted cursor-not-allowed", !supplierNameValue && "text-muted-foreground", formErrors.supplierName && 'border-destructive')}
                           >
                             <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            {!isViewer && <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -224,13 +267,6 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                               placeholder="Search or type new..."
                               value={supplierSearch}
                               onValueChange={setSupplierSearch}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && supplierSearch) {
-                                    setValue('supplierName', supplierSearch, { shouldDirty: true });
-                                    setSupplierComboboxOpen(false);
-                                    setTimeout(() => costRef.current?.focus(), 100);
-                                }
-                              }}
                             />
                             <CommandList>
                               <CommandEmpty>
@@ -285,13 +321,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                   costFormRef(e);
                                   (costRef as any).current = e;
                               }}
-                              onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleSubmit(processFormSubmit)();
-                                  }
-                              }}
-                              className={cn('pl-8 h-10', formErrors.costPrice && 'border-destructive')}
+                              readOnly={isViewer}
+                              className={cn('pl-8 h-10', isViewer && "bg-muted cursor-not-allowed", formErrors.costPrice && 'border-destructive')}
                           />
                       </div>
                       {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
@@ -300,16 +331,50 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
             
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">{isViewer ? 'Close' : 'Cancel'}</Button>
               </DialogClose>
-              <Button type="submit" disabled={isActionPending}>
-                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Changes
-              </Button>
+              {!isViewer && (
+                <Button type="submit" disabled={isActionPending}>
+                    {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save Changes
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
+            <DialogHeader className="p-4 border-b bg-white">
+                <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{product.productName}</DialogTitle>
+                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
+                    {externalData?.brand || 'Product Verification Image'}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="relative w-full aspect-square flex items-center justify-center p-8 bg-white">
+                {externalData?.image ? (
+                    <Image 
+                        src={externalData.image} 
+                        alt={product.productName}
+                        fill
+                        className="object-contain p-6"
+                        unoptimized
+                    />
+                ) : null}
+                <button 
+                    onClick={() => setIsImagePopupOpen(false)}
+                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-50"
+                >
+                    <X className="h-5 w-5 text-slate-600" />
+                </button>
+            </div>
+            <div className="p-4 bg-slate-50 border-t flex flex-col items-center gap-1">
+                <p className="text-[10px] font-mono text-slate-500">Barcode: {product.barcode}</p>
+            </div>
+        </DialogContent>
+      </Dialog>
+
       {supplierToEdit && (
         <EditSupplierDialog isOpen={isSupplierEditDialogOpen} onOpenChange={setIsSupplierEditDialogOpen} supplier={supplierToEdit} />
       )}
