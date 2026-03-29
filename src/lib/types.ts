@@ -126,7 +126,7 @@ export interface AppNotification {
     barcode?: string;
     requestId?: string;
     otp?: string;
-    type?: 'add_product_request' | 'authorization';
+    type?: 'add_product_request' | 'authorization' | 'edit_request';
   };
 }
 
@@ -136,7 +136,7 @@ export interface SpecialEntryRequest {
   staffName: string;
   reason?: string;
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
-  type: 'single' | 'timed' | 'product_add';
+  type: 'single' | 'timed' | 'product_add' | 'inventory_edit';
   durationMinutes?: number;
   requestedAt: string;
   approvedAt?: string;
@@ -145,6 +145,14 @@ export interface SpecialEntryRequest {
   otp?: string; // Session-specific OTP for activation
   isDismissedByAdmin?: boolean; // NEW: Cross-device sync for admins
   isReadByUser?: boolean;      // NEW: Cross-device sync for requester
+  editDetails?: {
+    itemId: string;
+    productName: string;
+    location: string;
+    itemType: ItemType;
+    quantity: number;
+    expiryDate?: string;
+  };
 }
 
 export interface OfflineAction {
