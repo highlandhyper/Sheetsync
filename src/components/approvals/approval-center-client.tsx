@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, approveRequest, rejectRequest } = useSpecialEntry();
-    const { updateInventoryItem, refreshData, suppliers, addProduct } = useDataCache();
+    const { updateInventoryItem, refreshData } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
 
@@ -38,6 +38,7 @@ export function ApprovalCenterClient() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [duration, setDuration] = useState<string>("single");
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const filteredPending = useMemo(() => {
         const lower = searchTerm.toLowerCase();
@@ -58,35 +59,50 @@ export function ApprovalCenterClient() {
         setIsAuthDialogOpen(true);
     };
 
+    const handleRejectRequest = async (id: string) => {
+        try {
+            await rejectRequest(id);
+            toast({ title: 'Request Rejected', description: 'The submission has been declined.' });
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to reject request.', variant: 'destructive' });
+        }
+    };
+
     const handleAuthorizationSuccess = async () => {
         if (!selectedRequest) return;
         setIsAuthDialogOpen(false);
+        setIsProcessing(true);
 
-        if (selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails) {
-            const details = selectedRequest.editDetails;
-            const formData = new FormData();
-            formData.append('itemId', details.itemId);
-            formData.append('location', details.location);
-            formData.append('itemType', details.itemType);
-            formData.append('userEmail', authUser?.email || 'Admin');
-            formData.append('quantity', String(details.quantity));
-            if (details.expiryDate) formData.append('expiryDate', details.expiryDate);
+        try {
+            if (selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails) {
+                const details = selectedRequest.editDetails;
+                const formData = new FormData();
+                formData.append('itemId', details.itemId);
+                formData.append('location', details.location);
+                formData.append('itemType', details.itemType);
+                formData.append('userEmail', authUser?.email || 'Admin');
+                formData.append('quantity', String(details.quantity));
+                if (details.expiryDate) formData.append('expiryDate', details.expiryDate);
 
-            const result = await updateInventoryItemAction(undefined, formData);
-            if (result.success && result.data) {
-                toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
-                updateInventoryItem(result.data);
-                approveRequest(selectedRequest.id);
-                refreshData();
+                const result = await updateInventoryItemAction(undefined, formData);
+                if (result.success && result.data) {
+                    updateInventoryItem(result.data);
+                    await approveRequest(selectedRequest.id);
+                    toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
+                } else {
+                    toast({ title: 'Error', description: result.message || 'Failed to apply requested edit.', variant: 'destructive' });
+                }
             } else {
-                toast({ title: 'Error', description: result.message || 'Failed to apply requested edit.', variant: 'destructive' });
+                await approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
+                toast({ title: 'Authorized', description: `Request for ${selectedRequest.staffName} approved.` });
             }
-        } else {
-            approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
-            toast({ title: 'Authorized', description: `Request for ${selectedRequest.staffName} approved.` });
+        } catch (error) {
+            console.error("Approval error:", error);
+            toast({ title: 'Sync Error', description: 'Could not complete approval. Please try again.', variant: 'destructive' });
+        } finally {
+            setIsProcessing(false);
+            setSelectedRequest(null);
         }
-        
-        setSelectedRequest(null);
     };
 
     const ComparisonRow = ({ label, original, updated, icon: Icon }: { label: string, original: any, updated: any, icon: any }) => {
@@ -189,7 +205,7 @@ export function ApprovalCenterClient() {
                                                     variant="outline" 
                                                     size="sm" 
                                                     className="flex-1 text-destructive hover:bg-destructive/5 font-bold"
-                                                    onClick={() => rejectRequest(req.id)}
+                                                    onClick={() => handleRejectRequest(req.id)}
                                                 >
                                                     <X className="mr-1 h-3.5 w-3.5" /> Reject
                                                 </Button>
