@@ -86,9 +86,7 @@ export function ApprovalCenterClient() {
 
                 const result = await updateInventoryItemAction(undefined, formData);
                 if (result.success && result.data) {
-                    // Update cache immediately
                     updateInventoryItem(result.data);
-                    // Process request
                     await approveRequest(selectedRequest.id);
                     toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
                 } else {
@@ -263,7 +261,6 @@ export function ApprovalCenterClient() {
                 </TabsContent>
             </Tabs>
 
-            {/* ADVANCED REVIEW DIALOG */}
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>

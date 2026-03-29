@@ -266,6 +266,7 @@ export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[
         const success = await saveSpecialRequestsToSheet(requests);
         if (success) {
             revalidatePath('/dashboard');
+            revalidatePath('/approvals');
             return { success: true };
         }
         return { success: false, message: "Failed to save requests to sheet." };

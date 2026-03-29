@@ -222,7 +222,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => {
         setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) }));
-        refreshData(); // Metadata change propagates to logs, so we need a fresh fetch
+        refreshData(); 
     },
   }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
