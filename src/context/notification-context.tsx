@@ -55,6 +55,20 @@ export function NotificationProvider({ children }: PropsWithChildren) {
                 type: 'add_product_request'
               }
             });
+          } else if (req.type === 'inventory_edit') {
+            list.push({
+              id: `notif_${req.id}`,
+              title: 'Inventory Edit Requested',
+              message: `${req.staffName} wants to update ${req.editDetails?.productName}.`,
+              timestamp: req.requestedAt,
+              type: 'request',
+              isRead: false,
+              link: '/dashboard',
+              metadata: {
+                requestId: req.id,
+                type: 'edit_request'
+              }
+            });
           } else {
             list.push({
               id: `notif_${req.id}`,
@@ -73,16 +87,31 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       // We use case-insensitive matching for the email
       if (role === 'viewer' && reqEmail === currentEmail) {
         if (req.status === 'approved' || req.status === 'rejected') {
+          let title = '';
+          let message = '';
+          let link = undefined;
+
+          if (req.type === 'inventory_edit') {
+            title = req.status === 'approved' ? 'Edit Request Approved' : 'Edit Request Declined';
+            message = req.status === 'approved' 
+                ? `Your update for ${req.editDetails?.productName} has been applied to the catalog.`
+                : `Your edit request for ${req.editDetails?.productName} was declined.`;
+          } else {
+            title = req.status === 'approved' ? 'Access Authorized' : 'Request Declined';
+            message = req.status === 'approved' 
+              ? `Your silent mode request for ${req.staffName} was granted. Use the code below to activate.`
+              : `Your request for ${req.staffName} was declined by an administrator.`;
+            link = req.status === 'approved' ? '/inventory/add' : undefined;
+          }
+
           list.push({
             id: `notif_${req.id}`,
-            title: req.status === 'approved' ? 'Access Authorized' : 'Request Declined',
-            message: req.status === 'approved' 
-              ? `Your silent mode request for ${req.staffName} was granted. Use the code below to activate.`
-              : `Your request for ${req.staffName} was declined by an administrator.`,
+            title,
+            message,
             timestamp: req.approvedAt || req.requestedAt,
             type: req.status === 'approved' ? 'success' : 'error',
             isRead: !!req.isReadByUser,
-            link: req.status === 'approved' ? '/inventory/add' : undefined,
+            link,
             metadata: {
                 requestId: req.id,
                 otp: req.otp,

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, MessageSquare } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
+import { useSpecialEntry } from '@/context/special-entry-context';
 import { AuthorizeActionDialog } from './authorize-action-dialog';
 
 function parseDateStringLocal(dateStr?: string): Date | null {
@@ -64,15 +65,18 @@ function parseDateStringLocal(dateStr?: string): Date | null {
 
 export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess, uniqueLocationsFromDb }: { item: InventoryItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void, onSuccess?: () => void, uniqueLocationsFromDb: string[] }) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
   const { updateInventoryItem } = useDataCache();
+  const { requestInventoryEdit } = useSpecialEntry();
   
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
   const [quantityChanged, setQuantityChanged] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [stagedData, setStagedData] = useState<EditInventoryItemFormValues | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const isViewer = role === 'viewer';
 
   const {
     handleSubmit,
@@ -152,6 +156,26 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
       onOpenChange(false);
       return;
     }
+
+    if (isViewer) {
+        // Viewer Request Mode
+        startActionTransition(async () => {
+            if (!item) return;
+            await requestInventoryEdit(item, {
+                location: data.location,
+                itemType: data.itemType,
+                quantity: data.quantity,
+                expiryDate: data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : undefined
+            });
+            toast({
+                title: "Request Sent",
+                description: "Your edit request has been sent to the administrator.",
+            });
+            onOpenChange(false);
+        });
+        return;
+    }
+
     if (quantityChanged) {
         setStagedData(data);
         setIsAuthDialogOpen(true);
@@ -175,8 +199,12 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Inventory Item: {item.productName}</DialogTitle>
-          <DialogDescription>Update details for barcode: {item.barcode}</DialogDescription>
+          <DialogTitle>{isViewer ? 'Request Edit' : 'Edit Inventory Item'}: {item.productName}</DialogTitle>
+          <DialogDescription>
+            {isViewer 
+                ? "Changes will be submitted to an administrator for approval." 
+                : `Update details for barcode: ${item.barcode}`}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(handlePrimarySubmit)} className="space-y-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -226,7 +254,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         )}
                         />
                    </div>
-                  {quantityChanged && (
+                  {quantityChanged && !isViewer && (
                     <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-1.5 font-medium">
                       <ShieldQuestion className="h-3.5 w-3.5" />
                       <span>Authorization required.</span>
@@ -290,8 +318,14 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
               <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
             <Button type="submit" disabled={isActionPending}>
-                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Changes
+                {isActionPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : isViewer ? (
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                )}
+                {isViewer ? 'Submit Edit Request' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

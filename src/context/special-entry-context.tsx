@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
-import type { SpecialEntryRequest } from '@/lib/types';
+import type { SpecialEntryRequest, InventoryItem } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { useDataCache } from './data-cache-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
@@ -15,6 +15,7 @@ interface SpecialEntryContextType {
   isActivationDialogOpen: boolean;
   setActivationDialogOpen: (open: boolean) => void;
   requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => Promise<void>;
+  requestInventoryEdit: (item: InventoryItem, updatedValues: Partial<InventoryItem>) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
@@ -77,14 +78,14 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     // Alert the user if a new approval is detected
     if (myApprovedSessions.length > prevApprovedCountRef.current && role === 'viewer') {
         toast({
-            title: "Access Authorized!",
-            description: "Your silent mode request has been approved. Check notifications for your OTP.",
+            title: "Request Updated!",
+            description: "An administrator has processed your request. Check notifications for details.",
         });
     }
     prevApprovedCountRef.current = myApprovedSessions.length;
 
     const currentActive = myApprovedSessions.find(r => r.id === activatedSessionId);
-    const firstUnactivated = myApprovedSessions.find(r => r.id !== activatedSessionId);
+    const firstUnactivated = myApprovedSessions.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
 
     if (currentActive) {
         setActiveSession(currentActive);
@@ -109,6 +110,27 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       type,
       durationMinutes: type === 'timed' ? 5 : undefined,
       requestedAt: new Date().toISOString(),
+    };
+    await updateSpecialRequests([newRequest, ...specialRequests]);
+  }, [user, specialRequests, updateSpecialRequests]);
+
+  const requestInventoryEdit = useCallback(async (item: InventoryItem, updatedValues: Partial<InventoryItem>) => {
+    if (!user) return;
+    const newRequest: SpecialEntryRequest = {
+      id: `edit_${Date.now()}`,
+      userEmail: user.email!.toLowerCase().trim(),
+      staffName: item.staffName || 'VIEWER',
+      status: 'pending',
+      type: 'inventory_edit',
+      requestedAt: new Date().toISOString(),
+      editDetails: {
+        itemId: item.id,
+        productName: item.productName,
+        location: updatedValues.location || item.location,
+        itemType: updatedValues.itemType || item.itemType,
+        quantity: updatedValues.quantity !== undefined ? updatedValues.quantity : item.quantity,
+        expiryDate: updatedValues.expiryDate || item.expiryDate
+      }
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
@@ -152,7 +174,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         ...r, 
         status: 'approved' as const, 
         approvedAt: now.toISOString(), 
-        type: isTimed ? 'timed' : 'single', 
+        type: r.type === 'inventory_edit' ? r.type : (isTimed ? 'timed' : 'single'), 
         expiresAt: expiresAt,
         otp: otp,
       };
@@ -199,13 +221,14 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     isActivationDialogOpen,
     setActivationDialogOpen: setIsActivationDialogOpen,
     requestSpecialEntry, 
+    requestInventoryEdit,
     grantProactiveEntry, 
     approveRequest, 
     rejectRequest, 
     revokeRequest,
     consumeSpecialEntry,
     activateSession
-  }), [pendingRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
+  }), [pendingRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
 
   return (
     <SpecialEntryContext.Provider value={value}>

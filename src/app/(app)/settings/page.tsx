@@ -137,29 +137,27 @@ export default function SettingsPage() {
             >
                 <LocationManager />
             </DialogCard>
+
+            <DialogCard
+                icon={KeyRound}
+                title="Local Credentials"
+                description="Set the username and password needed for critical changes."
+                triggerText="Manage Credentials"
+                dialogClassName="sm:max-w-md"
+            >
+                <LocalCredentialsForm />
+            </DialogCard>
+
+            <DialogCard
+                icon={ShieldCheck}
+                title="User Access Control"
+                description="Control which pages the 'Viewer' role can access."
+                triggerText="Manage Access"
+                dialogClassName="sm:max-w-3xl"
+            >
+                <AccessControlManager />
+            </DialogCard>
           </>
-        )}
-
-        <DialogCard
-          icon={KeyRound}
-          title="Local Credentials"
-          description="Set the username and password needed for critical changes."
-          triggerText="Manage Credentials"
-          dialogClassName="sm:max-w-md"
-        >
-          <LocalCredentialsForm />
-        </DialogCard>
-
-        {role === 'admin' && (
-          <DialogCard
-            icon={ShieldCheck}
-            title="User Access Control"
-            description="Control which pages the 'Viewer' role can access."
-            triggerText="Manage Access"
-            dialogClassName="sm:max-w-3xl"
-          >
-            <AccessControlManager />
-          </DialogCard>
         )}
 
       </div>
