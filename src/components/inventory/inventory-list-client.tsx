@@ -90,6 +90,7 @@ export function InventoryListClient() {
   const [selectedGroup, setSelectedGroup] = useState<GroupedInventoryItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
+  const [shouldAutoFetchImage, setShouldAutoFetchImage] = useState(false);
 
   const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
@@ -322,7 +323,11 @@ export function InventoryListClient() {
   }
 
   const handleOpenGroupDetails = (group: GroupedInventoryItem) => { setSelectedGroup(group); setIsGroupDetailsOpen(true); };
-  const handleOpenDetailsDialog = (item: InventoryItem) => { setSelectedItemForDetails(item); setIsDetailsDialogOpen(true); };
+  const handleOpenDetailsDialog = (item: InventoryItem, autoFetch = false) => { 
+    setSelectedItemForDetails(item); 
+    setShouldAutoFetchImage(autoFetch);
+    setIsDetailsDialogOpen(true); 
+  };
   const handleOpenReturnDialog = (item: InventoryItem) => { if (role === 'viewer') return; setSelectedItemForReturn(item); setIsReturnDialogOpen(true); };
   const handleOpenEditDialog = (item: InventoryItem) => { if (role === 'viewer') return; setCurrentItemToEdit(item); setIsEditDialogOpen(true); };
   const handleOpenDeleteDialog = (item: InventoryItem) => { if (role !== 'admin') return; setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); };
@@ -496,7 +501,7 @@ export function InventoryListClient() {
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right">Total Value</TableHead>
+                    <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="w-[160px] text-right noprint">Last Logged</TableHead>
@@ -572,6 +577,7 @@ export function InventoryListClient() {
                         totalQuantity={group.totalQuantity}
                         individualItemCount={group.individualItems.length}
                         onDetails={group.individualItems.length === 1 ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)}
+                        onViewImage={() => handleOpenDetailsDialog(group.mainItem, true)}
                         onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
                         onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
                         isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
@@ -604,6 +610,7 @@ export function InventoryListClient() {
         item={selectedItemForDetails}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
+        autoFetchImage={shouldAutoFetchImage}
         onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
       />
       <ReturnQuantityDialog

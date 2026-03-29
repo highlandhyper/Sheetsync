@@ -60,6 +60,7 @@ export function ReturnableInventoryBySupplierClient() {
 
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
+  const [shouldAutoFetchImage, setShouldAutoFetchImage] = useState(false);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
@@ -79,7 +80,6 @@ export function ReturnableInventoryBySupplierClient() {
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
-  // Feature Flags
   const canExport = role === 'admin' || hasFeature('EXPORT_PDF');
   const canPrint = role === 'admin' || hasFeature('PRINT_RECORDS');
   const canReturn = role === 'admin' || hasFeature('PROCESS_RETURN');
@@ -128,8 +128,9 @@ export function ReturnableInventoryBySupplierClient() {
     setIsReturnDialogOpen(true);
   };
 
-  const handleOpenDetailsDialog = (item: InventoryItem) => {
+  const handleOpenDetailsDialog = (item: InventoryItem, autoFetch = false) => {
     setSelectedItemForDetails(item);
+    setShouldAutoFetchImage(autoFetch);
     setIsDetailsDialogOpen(true);
   };
 
@@ -565,6 +566,7 @@ export function ReturnableInventoryBySupplierClient() {
                             item={item}
                             product={product}
                             onDetails={() => handleOpenDetailsDialog(item)}
+                            onViewImage={() => handleOpenDetailsDialog(item, true)}
                             onEdit={canEdit ? () => handleOpenEditDialog(item) : undefined}
                             onReturn={canReturn ? () => handleOpenReturnDialog(item) : undefined}
                             isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
@@ -600,6 +602,7 @@ export function ReturnableInventoryBySupplierClient() {
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         displayContext="returnBySupplier" 
+        autoFetchImage={shouldAutoFetchImage}
         onStartEdit={canEdit ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog
