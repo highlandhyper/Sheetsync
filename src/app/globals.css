@@ -44,36 +44,6 @@ body {
     --sidebar-ring: 197 71% 53%;
   }
 
-  /* Minimal Theme Preset */
-  [data-theme='minimal'] {
-    --background: 0 0% 98%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --accent: 240 4.8% 95.9%;
-    --ring: 240 5.9% 10%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 10% 3.9%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-border: 240 5.9% 90%;
-  }
-
-  /* Emerald Theme Preset */
-  [data-theme='emerald'] {
-    --primary: 142 76% 36%;
-    --sidebar-primary: 142 76% 36%;
-    --ring: 142 76% 36%;
-  }
-
-  /* Midnight Theme Preset */
-  [data-theme='midnight'] {
-    --primary: 221 83% 53%;
-    --sidebar-primary: 221 83% 53%;
-    --ring: 221 83% 53%;
-  }
-
   .dark {
     --background: 220 20% 10%;
     --foreground: 210 25% 96%;
@@ -103,19 +73,6 @@ body {
     --sidebar-accent-foreground: 210 25% 96%;
     --sidebar-border: 220 20% 15%;
     --sidebar-ring: 170 80% 50%;
-  }
-
-  .dark[data-theme='minimal'] {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --accent: 240 3.7% 15.9%;
-    --border: 240 3.7% 15.9%;
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-border: 240 3.7% 15.9%;
   }
 }
 
