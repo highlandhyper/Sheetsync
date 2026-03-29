@@ -34,6 +34,7 @@ import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -46,6 +47,7 @@ interface EditProductDialogProps {
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { updateProduct: updateProductInCache, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,18 +106,30 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     if (data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
     formData.append('editMode', 'edit');
 
+    // --- OPTIMISTIC UPDATE ---
+    const optimisticProduct: Product = {
+        ...product,
+        productName: data.productName,
+        supplierName: data.supplierName,
+        costPrice: data.costPrice,
+    };
+
+    updateProductInCache(optimisticProduct);
+    onOpenChange(false);
+    toast({ title: 'Registry Updated', description: 'Applying changes across logs in background...' });
+
     startActionTransition(async () => {
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
-        toast({ title: 'Update Successful', description: result.message });
         onSuccess(result.data);
-        onOpenChange(false);
+        refreshData();
       } else {
         toast({
           title: 'Update Failed',
-          description: result.message || 'An unknown error occurred.',
+          description: result.message || 'Could not sync changes to cloud.',
           variant: 'destructive',
         });
+        refreshData();
       }
     });
   };

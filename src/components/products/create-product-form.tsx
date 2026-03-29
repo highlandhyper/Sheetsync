@@ -38,7 +38,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { products: cachedProducts, addProduct: addProductToCache, updateProduct: updateProductInCache } = useDataCache();
+  const { products: cachedProducts, addProduct: addProductToCache, updateProduct: updateProductInCache, refreshData } = useDataCache();
   const [isSavePending, startSaveTransition] = useTransition();
   const [isFetchPending, startFetchTransition] = useTransition();
   
@@ -140,16 +140,39 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if(data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
     formData.append('editMode', editMode);
     
+    // --- OPTIMISTIC UPDATE ---
+    const optimisticProduct: Product = {
+        id: searchedBarcode,
+        barcode: searchedBarcode,
+        productName: data.productName,
+        supplierName: data.supplierName,
+        costPrice: data.costPrice,
+    };
+
+    if (editMode === 'create') {
+        addProductToCache(optimisticProduct);
+    } else {
+        updateProductInCache(optimisticProduct);
+    }
+
+    toast({ 
+        title: 'Update Saved Locally', 
+        description: 'Changes reflected instantly. Syncing with cloud...' 
+    });
+
     startSaveTransition(async () => {
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
-        toast({ title: 'Registry Updated', description: result.message });
-        if (editMode === 'create') addProductToCache(result.data);
-        else updateProductInCache(result.data);
-        setEditMode('edit'); 
-        setProductNotFound(false);
+        // Success: Action completed. Cache already updated optimistically.
+        // We refresh data to ensure global metadata propagation is loaded.
+        refreshData();
       } else {
-          toast({ title: 'Registry Error', description: result.message || 'Failed to save changes.', variant: 'destructive' });
+          toast({ 
+              title: 'Sync Error', 
+              description: result.message || 'Cloud registry update failed. Reverting...', 
+              variant: 'destructive' 
+          });
+          refreshData(); // Revert optimistic changes
       }
     });
   };
