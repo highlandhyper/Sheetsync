@@ -26,13 +26,10 @@ import {
     Clock,
     KeyRound,
     CloudOff,
-    MessageSquare,
-    Image as ImageIcon,
-    X
+    MessageSquare
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
-import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +55,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '@/components/ui/badge';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
-import { addInventoryItemAction, fetchProductAction, fetchProductExternalDataAction } from '@/app/actions';
+import { addInventoryItemAction, fetchProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
@@ -165,10 +162,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   const SCANNER_REGION_ID = 'scanner';
 
-  const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
-  const [isFetchingImage, setIsFetchingImage] = useState(false);
-  const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
-
   const formRef = useRef<HTMLFormElement>(null);
 
   const {
@@ -198,26 +191,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         setValue('staffName', activeSession.staffName);
     }
   }, [activeSession, setValue, allFormValues.staffName]);
-
-  const handleFetchImage = async () => {
-    if (!allFormValues.barcode) return;
-    setIsFetchingImage(true);
-    try {
-        const res = await fetchProductExternalDataAction(allFormValues.barcode);
-        if (res.success && res.data) {
-            setExternalData(res.data);
-            if (res.data.image) {
-                setIsImagePopupOpen(true);
-            } else {
-                toast({ title: "No Image", description: "No visual data found.", variant: "destructive" });
-            }
-        }
-    } catch (err) {
-        console.error("Failed to fetch image:", err);
-    } finally {
-        setIsFetchingImage(false);
-    }
-  };
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
@@ -357,7 +330,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setShowRequestProductButton(true);
           return false;
       }
-  }, [cachedProducts, fetchProductAction]);
+  }, [cachedProducts]);
 
   const handleRequestProductAdd = () => {
     if (!allFormValues.barcode) return;
@@ -561,23 +534,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 </div>
 
                 <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
-                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between">
-                        <div>
-                            <h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p>
-                            <p className="text-xs font-mono text-muted-foreground mt-1">SKU: {allFormValues.barcode}</p>
-                        </div>
-                        <Button 
-                            type="button"
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-[10px] font-black bg-white border-primary/20 text-primary"
-                            onClick={handleFetchImage}
-                            disabled={isFetchingImage}
-                        >
-                            {isFetchingImage ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ImageIcon className="mr-1 h-3 w-3" />}
-                            VERIFY IMAGE
-                        </Button>
+                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                        <h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p>
+                        <p className="text-xs font-mono text-muted-foreground mt-1">SKU: {allFormValues.barcode}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -774,37 +734,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl sm:rounded-md font-bold">
                   Cancel Scanning
                 </Button>
-            </div>
-        </DialogContent>
-    </Dialog>
-
-    <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
-            <DialogHeader className="p-4 border-b bg-white">
-                <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{productName}</DialogTitle>
-                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
-                    {externalData?.brand || 'Product Verification Image'}
-                </DialogDescription>
-            </DialogHeader>
-            <div className="relative w-full aspect-square flex items-center justify-center p-8 bg-white">
-                {externalData?.image ? (
-                    <Image 
-                        src={externalData.image} 
-                        alt={productName}
-                        fill
-                        className="object-contain p-6"
-                        unoptimized
-                    />
-                ) : null}
-                <button 
-                    onClick={() => setIsImagePopupOpen(false)}
-                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-50"
-                >
-                    <X className="h-5 w-5 text-slate-600" />
-                </button>
-            </div>
-            <div className="p-4 bg-slate-50 border-t flex flex-col items-center gap-1">
-                <p className="text-[10px] font-mono text-slate-500">Barcode: {allFormValues.barcode}</p>
             </div>
         </DialogContent>
     </Dialog>
