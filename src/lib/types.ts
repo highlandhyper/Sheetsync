@@ -95,9 +95,12 @@ export interface DashboardMetrics {
 
 export type Role = 'admin' | 'viewer';
 
+export type ViewerFeature = 'EXPORT_PDF' | 'PRINT_RECORDS' | 'PROCESS_RETURN' | 'EDIT_INVENTORY' | 'DELETE_INVENTORY';
+
 export type Permissions = {
   admin: string[];
   viewer: string[];
+  viewerFeatures?: ViewerFeature[];
   viewerDefaultPath?: string;
 };
 

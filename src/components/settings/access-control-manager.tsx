@@ -6,56 +6,76 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { allNavItems, accountNavItems } from '@/lib/nav-config';
 import { Separator } from '../ui/separator';
-import { Layout } from 'lucide-react';
+import { Layout, ShieldCheck, FileText, Printer, Undo2, Edit, Trash2, KeyRound, Globe } from 'lucide-react';
+import type { ViewerFeature } from '@/lib/types';
 
 export function AccessControlManager() {
-  const { permissions, setPermission, setViewerDefaultPath } = useAccessControl();
+  const { permissions, setPermission, setFeaturePermission, setViewerDefaultPath } = useAccessControl();
 
   const mainNavItems = allNavItems.filter(item => item.href !== '/settings');
   const managementItems = accountNavItems.filter(item => item.href !== '/settings');
 
   const enabledViewerPaths = permissions.viewer || [];
+  const enabledViewerFeatures = permissions.viewerFeatures || [];
+
   const availableLandingPages = [...allNavItems, ...accountNavItems].filter(item => 
     enabledViewerPaths.includes(item.href)
   );
+
+  const viewerFeaturesList: { id: ViewerFeature; label: string; icon: any; description: string }[] = [
+    { id: 'EXPORT_PDF', label: 'Export PDF Reports', icon: FileText, description: 'Allows viewers to generate and download inventory PDFs.' },
+    { id: 'PRINT_RECORDS', label: 'Print Records', icon: Printer, description: 'Allows viewers to use the print dialogue for lists.' },
+    { id: 'PROCESS_RETURN', label: 'Process Returns', icon: Undo2, description: 'Allows viewers to return stock items to inventory.' },
+    { id: 'EDIT_INVENTORY', label: 'Edit Logs', icon: Edit, description: 'Allows viewers to modify existing inventory log entries.' },
+    { id: 'DELETE_INVENTORY', label: 'Delete Records', icon: Trash2, description: 'Allows viewers to permanently remove logs (Not Recommended).' },
+  ];
 
   const handlePermissionChange = (path: string, isEnabled: boolean) => {
     setPermission('viewer', path, isEnabled);
   };
 
+  const handleFeatureToggle = (feature: ViewerFeature, isEnabled: boolean) => {
+    setFeaturePermission(feature, isEnabled);
+  };
+
   const renderToggle = (item: typeof allNavItems[0]) => (
-    <div key={item.href} className="flex items-center justify-between rounded-lg border bg-card p-3">
+    <div key={item.href} className="flex items-center justify-between rounded-xl border bg-card p-4 hover:bg-muted/30 transition-colors">
         <div className="flex items-center gap-3">
-             <item.icon className="h-5 w-5 text-muted-foreground" />
-            <Label htmlFor={`perm-${item.href}`} className="cursor-pointer font-medium pr-2">
+             <div className="p-2 bg-primary/5 rounded-lg">
+                <item.icon className="h-5 w-5 text-primary" />
+             </div>
+            <Label htmlFor={`perm-${item.href}`} className="cursor-pointer font-bold pr-2 text-sm">
                 {item.label}
             </Label>
         </div>
         <Switch
-        id={`perm-${item.href}`}
-        checked={enabledViewerPaths.includes(item.href)}
-        onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
-        className="flex-shrink-0"
+            id={`perm-${item.href}`}
+            checked={enabledViewerPaths.includes(item.href)}
+            onCheckedChange={(checked) => handlePermissionChange(item.href, checked)}
+            className="flex-shrink-0"
         />
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border bg-primary/5 p-4 space-y-3">
-        <h4 className="font-bold text-primary flex items-center gap-2">
-            <Layout className="h-5 w-5" />
-            Viewer Default Landing Page
-        </h4>
-        <p className="text-sm text-muted-foreground">
-            Select the page Viewers are redirected to immediately after logging in.
-        </p>
+    <div className="space-y-8">
+      {/* SECTION 1: LANDING PAGE */}
+      <div className="rounded-2xl border bg-primary/5 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-xl">
+                <Globe className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+                <h4 className="font-black text-lg text-primary uppercase tracking-tighter">Default Entry Point</h4>
+                <p className="text-xs text-muted-foreground font-medium">Where Viewers land after a successful login.</p>
+            </div>
+        </div>
         <Select 
             value={permissions.viewerDefaultPath} 
             onValueChange={setViewerDefaultPath}
             disabled={availableLandingPages.length === 0}
         >
-            <SelectTrigger className="w-full bg-background">
+            <SelectTrigger className="w-full bg-background h-12 text-sm font-bold border-primary/20">
                 <SelectValue placeholder={availableLandingPages.length === 0 ? "Enable pages below first" : "Select landing page"} />
             </SelectTrigger>
             <SelectContent>
@@ -73,19 +93,48 @@ export function AccessControlManager() {
 
       <Separator />
 
+      {/* SECTION 2: PAGE ACCESS GRID */}
       <div>
-        <h4 className="font-semibold text-lg mb-3">Main Navigation Pages</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center gap-2 mb-4">
+            <Layout className="h-5 w-5 text-muted-foreground" />
+            <h4 className="font-black text-sm uppercase tracking-widest text-muted-foreground">Page Visibility Permissions</h4>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mainNavItems.map(renderToggle)}
+          {managementItems.map(renderToggle)}
         </div>
       </div>
       
       <Separator />
       
-       <div>
-        <h4 className="font-semibold text-lg mb-3">Management Pages</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {managementItems.map(renderToggle)}
+      {/* SECTION 3: FEATURE ACTIONS GRID */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+            <h4 className="font-black text-sm uppercase tracking-widest text-muted-foreground">Action & Feature Permissions</h4>
+        </div>
+        <div className="grid grid-cols-1 gap-3">
+          {viewerFeaturesList.map((feature) => (
+            <div key={feature.id} className="flex items-center justify-between rounded-xl border bg-card p-4 hover:bg-muted/30 transition-colors group">
+                <div className="flex items-start gap-4">
+                    <div className="p-3 bg-accent/10 rounded-xl group-hover:bg-accent/20 transition-colors">
+                        <feature.icon className="h-6 w-6 text-accent-foreground" />
+                    </div>
+                    <div>
+                        <Label htmlFor={`feature-${feature.id}`} className="cursor-pointer font-black text-base">
+                            {feature.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">{feature.description}</p>
+                    </div>
+                </div>
+                <Switch
+                    id={`feature-${feature.id}`}
+                    checked={enabledViewerFeatures.includes(feature.id)}
+                    onCheckedChange={(checked) => handleFeatureToggle(feature.id, checked)}
+                    className="flex-shrink-0"
+                />
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,9 +1,8 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useRef } from 'react';
 import { allNavItems, accountNavItems } from '@/lib/nav-config';
-import type { Permissions } from '@/lib/types';
+import type { Permissions, ViewerFeature } from '@/lib/types';
 import { getPermissionsAction, setPermissionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './auth-context';
@@ -13,8 +12,10 @@ interface AccessControlContextType {
   permissions: Permissions;
   isInitialized: boolean;
   setPermission: (role: 'viewer', path: string, isEnabled: boolean) => void;
+  setFeaturePermission: (feature: ViewerFeature, isEnabled: boolean) => void;
   setViewerDefaultPath: (path: string) => void;
   isAllowed: (role: 'admin' | 'viewer', path: string) => boolean;
+  hasFeature: (feature: ViewerFeature) => boolean;
 }
 
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ const getDefaultPermissions = (): Permissions => {
   return {
     admin: [...new Set(adminPaths)],
     viewer: [...new Set(viewerPaths)],
+    viewerFeatures: [],
     viewerDefaultPath: '/inventory/add',
   };
 };
@@ -46,10 +48,8 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // Resilience: Safety timeout for permission loading
     const safetyTimeout = setTimeout(() => {
       if (!isInitialized) {
-        console.warn("AccessControl: Safety timeout reached. Using defaults.");
         setIsInitialized(true);
       }
     }, 8000);
@@ -58,12 +58,15 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       try {
         const response = await getPermissionsAction();
         if (response.success && response.data) {
-          setPermissions(response.data);
+          setPermissions({
+              ...getDefaultPermissions(),
+              ...response.data,
+              viewerFeatures: response.data.viewerFeatures || []
+          });
         } else {
           setPermissions(getDefaultPermissions());
         }
       } catch (err) {
-        console.error("AccessControl: Critical failure loading permissions.", err);
         setPermissions(getDefaultPermissions());
       } finally {
         clearTimeout(safetyTimeout);
@@ -105,18 +108,26 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       setPermissionsAction(updatedPermissions).then(response => {
         if (response.success) {
           toast({ title: "Permissions Saved", description: `Access updated.` });
-        } else {
-          toast({
-            title: "Save Failed",
-            description: response.message || "Could not save settings.",
-            variant: "destructive",
-          });
         }
-      }).catch(err => {
-        console.error("Failed to save permissions:", err);
-      });
+      }).catch(console.error);
 
       return updatedPermissions;
+    });
+  }, [role, toast]);
+
+  const setFeaturePermission = useCallback((feature: ViewerFeature, isEnabled: boolean) => {
+    if (role !== 'admin') return;
+
+    setPermissions(prev => {
+        const currentFeatures = prev.viewerFeatures || [];
+        const newFeatures = isEnabled
+            ? [...new Set([...currentFeatures, feature])]
+            : currentFeatures.filter(f => f !== feature);
+        
+        const updated = { ...prev, viewerFeatures: newFeatures };
+        setPermissionsAction(updated).catch(console.error);
+        toast({ title: "Action Permission Updated" });
+        return updated;
     });
   }, [role, toast]);
 
@@ -139,9 +150,15 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     return userPermissions.includes(path);
   }, [permissions, isInitialized]);
 
+  const hasFeature = useCallback((feature: ViewerFeature): boolean => {
+    if (role === 'admin') return true;
+    if (!isInitialized) return false;
+    return (permissions.viewerFeatures || []).includes(feature);
+  }, [permissions, role, isInitialized]);
+
 
   return (
-    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setViewerDefaultPath, isAllowed }}>
+    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, isAllowed, hasFeature }}>
       {children}
     </AccessControlContext.Provider>
   );
