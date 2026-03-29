@@ -57,6 +57,7 @@ export function ReturnableInventoryByStaffClient() {
 
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
+  const [shouldAutoFetchImage, setShouldAutoFetchImage] = useState(false);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
@@ -119,8 +120,9 @@ export function ReturnableInventoryByStaffClient() {
     setIsReturnDialogOpen(true);
   };
 
-  const handleOpenDetailsDialog = (item: InventoryItem) => {
+  const handleOpenDetailsDialog = (item: InventoryItem, autoFetch = false) => {
     setSelectedItemForDetails(item);
+    setShouldAutoFetchImage(autoFetch);
     setIsDetailsDialogOpen(true);
   };
 
@@ -483,6 +485,7 @@ export function ReturnableInventoryByStaffClient() {
                         item={item}
                         product={product}
                         onDetails={() => handleOpenDetailsDialog(item)}
+                        onViewImage={() => handleOpenDetailsDialog(item, true)}
                         onEdit={canEdit ? () => handleOpenEditDialog(item) : undefined}
                         onReturn={canReturn ? () => handleOpenReturnDialog(item) : undefined}
                         isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
@@ -515,6 +518,7 @@ export function ReturnableInventoryByStaffClient() {
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         displayContext="returnByStaff"
+        autoFetchImage={shouldAutoFetchImage}
         onStartEdit={canEdit ? handleOpenEditDialog : undefined}
       />
       <EditInventoryItemDialog

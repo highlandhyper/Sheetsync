@@ -26,6 +26,7 @@ interface InventoryItemDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   onStartEdit?: (item: InventoryItem) => void; 
   displayContext?: 'returnByStaff' | 'default' | 'returnBySupplier';
+  autoFetchImage?: boolean;
 }
 
 export function InventoryItemDetailsDialog({
@@ -33,7 +34,8 @@ export function InventoryItemDetailsDialog({
   isOpen,
   onOpenChange,
   onStartEdit,
-  displayContext = 'default'
+  displayContext = 'default',
+  autoFetchImage = false,
 }: InventoryItemDetailsDialogProps) {
   const { toast } = useToast();
   const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
@@ -46,8 +48,10 @@ export function InventoryItemDetailsDialog({
         setExternalData(null);
         setIsFetchingImage(false);
         setIsImagePopupOpen(false);
+    } else if (autoFetchImage && item?.barcode) {
+        handleFetchImage();
     }
-  }, [isOpen]);
+  }, [isOpen, autoFetchImage, item?.barcode]);
 
   const handleFetchImage = async () => {
     if (!item?.barcode) return;
@@ -60,10 +64,10 @@ export function InventoryItemDetailsDialog({
             setExternalData(res.data);
             if (res.data.image) {
                 setIsImagePopupOpen(true);
-            } else {
+            } else if (!autoFetchImage) { // Only toast if user manually clicked
                 toast({ title: "No Image", description: "No visual data found in global registries.", variant: "destructive" });
             }
-        } else {
+        } else if (!autoFetchImage) {
             toast({ title: "Lookup Failed", description: res.message || "Product not found.", variant: "destructive" });
         }
     } catch (err) {
