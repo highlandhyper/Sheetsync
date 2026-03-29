@@ -164,8 +164,8 @@ export function InventoryItemGroupDetailsDialog({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0">
-        <div className="p-6 pb-2">
+      <DialogContent className="max-w-full sm:max-w-4xl max-h-screen sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <div className="p-4 sm:p-6 pb-2 shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <DialogHeader className="flex-grow">
                     <DialogTitle className="flex items-center text-xl">
@@ -188,7 +188,7 @@ export function InventoryItemGroupDetailsDialog({
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        className="h-8 text-[10px] font-bold px-3 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary w-full sm:w-auto" 
+                        className="h-9 sm:h-8 text-[10px] font-black px-3 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary w-full sm:w-auto" 
                         onClick={handleFetchImage}
                         disabled={isFetchingImage}
                     >
@@ -203,9 +203,9 @@ export function InventoryItemGroupDetailsDialog({
             </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto px-6 py-4">
+        <div className="flex-grow overflow-y-auto px-4 sm:px-6 py-4 bg-muted/5">
            {isMobile ? (
-              <div className="space-y-3 py-2">
+              <div className="space-y-3 py-2 pb-20 sm:pb-2">
                   {group.individualItems.map(renderItemDetails)}
               </div>
             ) : (
@@ -227,41 +227,41 @@ export function InventoryItemGroupDetailsDialog({
               </Table>
             )}
         </div>
-        <DialogFooter className="p-6 pt-2 border-t">
+        <DialogFooter className="p-4 sm:p-6 pt-2 border-t bg-background shrink-0">
           <DialogClose asChild>
-            <Button type="button" variant="outline" className="w-full sm:w-auto">Close</Button>
+            <Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 font-bold">Close Details</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
-            <DialogHeader className="p-4 border-b bg-white">
+        <DialogContent className="max-w-full sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl h-full sm:h-auto flex flex-col">
+            <DialogHeader className="p-4 border-b bg-white shrink-0">
                 <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{group.mainItem.productName}</DialogTitle>
                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
                     {externalData?.brand || 'Product Verification Image'}
                 </DialogDescription>
             </DialogHeader>
-            <div className="relative w-full aspect-square flex items-center justify-center p-8 bg-white">
+            <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-8 bg-white min-h-0">
                 {externalData?.image ? (
                     <Image 
                         src={externalData.image} 
                         alt={group.mainItem.productName}
                         fill
-                        className="object-contain p-6"
+                        className="object-contain p-4 sm:p-6"
                         unoptimized
                     />
                 ) : null}
                 <button 
                     onClick={() => setIsImagePopupOpen(false)}
-                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-50"
+                    className="absolute top-4 right-4 p-2 bg-slate-100/80 backdrop-blur hover:bg-slate-200 rounded-full transition-colors z-50 shadow-sm"
                 >
-                    <X className="h-5 w-5 text-slate-600" />
+                    <X className="h-6 w-6 text-slate-600" />
                 </button>
             </div>
-            <div className="p-4 bg-slate-50 border-t flex flex-col items-center gap-1">
-                <p className="text-[10px] font-mono text-slate-500">Barcode: {group.mainItem.barcode}</p>
+            <div className="p-4 bg-slate-50 border-t shrink-0 flex flex-col items-center gap-1">
+                <p className="text-[10px] font-mono text-slate-500 font-bold">Barcode: {group.mainItem.barcode}</p>
             </div>
         </DialogContent>
     </Dialog>

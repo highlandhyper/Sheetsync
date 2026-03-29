@@ -188,6 +188,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         otp: otp,
       };
     });
+    
+    // OPTIMISTIC UPDATE: Local state first
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 

@@ -227,32 +227,32 @@ export function InventoryItemDetailsDialog({
     </Dialog>
 
     <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
-            <DialogHeader className="p-4 border-b bg-white">
+        <DialogContent className="max-w-full sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl h-full sm:h-auto flex flex-col">
+            <DialogHeader className="p-4 border-b bg-white shrink-0">
                 <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{item.productName}</DialogTitle>
                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
                     {externalData?.brand || 'Product Verification Image'}
                 </DialogDescription>
             </DialogHeader>
-            <div className="relative w-full aspect-square flex items-center justify-center p-8 bg-white">
+            <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-8 bg-white min-h-0">
                 {externalData?.image ? (
                     <Image 
                         src={externalData.image} 
                         alt={item.productName}
                         fill
-                        className="object-contain p-6"
+                        className="object-contain p-4 sm:p-6"
                         unoptimized
                     />
                 ) : null}
                 <button 
                     onClick={() => setIsImagePopupOpen(false)}
-                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-50"
+                    className="absolute top-4 right-4 p-2 bg-slate-100/80 backdrop-blur hover:bg-slate-200 rounded-full transition-colors z-50 shadow-sm"
                 >
-                    <X className="h-5 w-5 text-slate-600" />
+                    <X className="h-6 w-6 text-slate-600" />
                 </button>
             </div>
-            <div className="p-4 bg-slate-50 border-t flex flex-col items-center gap-1">
-                <p className="text-[10px] font-mono text-slate-500">Barcode: {item.barcode}</p>
+            <div className="p-4 bg-slate-50 border-t shrink-0 flex flex-col items-center gap-1">
+                <p className="text-[10px] font-mono text-slate-500 font-bold">Barcode: {item.barcode}</p>
             </div>
         </DialogContent>
     </Dialog>
