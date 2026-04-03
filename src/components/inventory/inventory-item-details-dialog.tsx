@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -64,14 +65,27 @@ export function InventoryItemDetailsDialog({
             setExternalData(res.data);
             if (res.data.image) {
                 setIsImagePopupOpen(true);
-            } else if (!autoFetchImage) { // Only toast if user manually clicked
-                toast({ title: "No Image", description: "No visual data found in global registries.", variant: "destructive" });
+            } else {
+                toast({ 
+                    title: "No Image Found", 
+                    description: "No visual data available in global registries for this barcode.", 
+                    variant: "destructive" 
+                });
             }
-        } else if (!autoFetchImage) {
-            toast({ title: "Lookup Failed", description: res.message || "Product not found.", variant: "destructive" });
+        } else {
+            toast({ 
+                title: "Lookup Failed", 
+                description: res.message || "Could not retrieve product image.", 
+                variant: "destructive" 
+            });
         }
     } catch (err) {
-        console.error("Failed to fetch image:", err);
+        console.error("External lookup error:", err);
+        toast({ 
+            title: "Connection Error", 
+            description: "External registry service is currently unreachable.", 
+            variant: "destructive" 
+        });
     } finally {
         setIsFetchingImage(false);
     }
