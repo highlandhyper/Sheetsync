@@ -1,24 +1,27 @@
 {
-  "name": "SheetSync Inventory",
+  "name": "SheetSync Inventory System",
   "short_name": "SheetSync",
-  "description": "Next-Gen Inventory Management System",
+  "description": "Next-Gen Inventory Management with Google Sheets Sync",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#FFFFFF",
+  "background_color": "#ffffff",
+  "theme_color": "#29abe2",
   "orientation": "portrait",
   "icons": [
-    {
-      "src": "/logo-pwa.jpg",
-      "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
     {
       "src": "/logo-pwa.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [
+    {
+      "src": "/logo-pwa.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "label": "SheetSync Landing"
     }
   ]
 }

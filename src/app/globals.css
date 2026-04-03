@@ -85,16 +85,95 @@ body {
   }
 }
 
-/* Print Overrides */
+/* Print Enhancements */
 @media print {
+  @page {
+    margin: 1.5cm;
+    size: auto;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt !important;
+  }
+
+  .noprint,
+  header,
+  nav,
+  .sidebar,
+  .filters-card-noprint,
+  button,
+  .print-button-container,
+  [role="combobox"],
+  input[type="search"] {
+    display: none !important;
+  }
+
   .printable-area {
     visibility: visible !important;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
-  .noprint {
-    display: none !important;
+
+  .printable-area::before {
+    content: "SheetSync Inventory System - Official Report";
+    display: block;
+    font-size: 18pt;
+    font-weight: 900;
+    color: #29abe2;
+    text-align: center;
+    margin-bottom: 5mm;
+    border-bottom: 2px solid #29abe2;
+    padding-bottom: 2mm;
+  }
+
+  .printable-area::after {
+    content: "Generated automatically by SheetSync Cloud Registry.";
+    display: block;
+    font-size: 8pt;
+    color: #666;
+    text-align: center;
+    margin-top: 10mm;
+    font-style: italic;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: 1px solid #ddd !important;
+  }
+
+  th {
+    background-color: #f8f9fa !important;
+    color: black !important;
+    font-weight: bold !important;
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+    text-align: left !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  td {
+    border: 1px solid #ddd !important;
+    padding: 6px !important;
+  }
+
+  tr:nth-child(even) {
+    background-color: #fcfcfc !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Force display of text that might be hidden by utilities */
+  .text-primary {
+    color: black !important;
+    font-weight: bold !important;
   }
 }
