@@ -193,6 +193,7 @@ export async function addInventoryItemAction(
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Details: [Product: ${productDetails.productName}], [Qty: ${validatedItemData.quantity}], [Loc: ${validatedItemData.location}]${disableNotification ? ' (Silent Entry)' : ''}`);
     revalidatePath('/inventory');
+    revalidatePath('/dashboard');
 
     return {
       success: true,
@@ -255,8 +256,10 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         const rawData = Object.fromEntries(formData.entries());
         const result = await dbUpdateInventoryItemDetails(userEmail, itemId, rawData);
         revalidatePath('/inventory');
+        revalidatePath('/dashboard');
         return { success: true, message: "Item updated successfully.", data: result as InventoryItem };
     } catch (e) {
+        console.error("updateInventoryItemAction error:", e);
         return { success: false, message: "Failed to update item." };
     }
 }
@@ -271,6 +274,7 @@ export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[
         }
         return { success: false, message: "Failed to save requests to sheet." };
     } catch (e) {
+        console.error("updateSpecialRequestsAction error:", e);
         return { success: false, message: "Error updating requests." };
     }
 }
@@ -295,15 +299,51 @@ export async function saveLocationListAction(locations: string[]) {
     }
 }
 
-export async function fetchDashboardMetricsAction() { return { success: true, data: await getDashboardMetrics() }; }
-export async function getPermissionsAction() { return { success: true, data: await loadPermissionsFromSheet() }; }
-export async function setPermissionsAction(p: any) { await savePermissionsToSheet(p); return { success: true }; }
-export async function fetchAuditLogsAction() { return { success: true, data: await getAuditLogs() }; }
-export async function fetchInventoryLogEntriesByBarcodeAction(b: string) { 
-    return { success: true, data: await getInventoryLogEntriesByBarcode(b) }; 
+export async function fetchDashboardMetricsAction() { 
+    try {
+        const data = await getDashboardMetrics();
+        return { success: true, data }; 
+    } catch (e) {
+        console.error("fetchDashboardMetricsAction error:", e);
+        return { success: false, message: "Metrics calculation failed." };
+    }
 }
 
-export async function addProductAction(p: any, f: FormData) { return saveProductAction(p, f); }
+export async function getPermissionsAction() { 
+    try {
+        const data = await loadPermissionsFromSheet();
+        return { success: true, data };
+    } catch (e) {
+        return { success: false, message: "Permissions load failed." };
+    }
+}
+
+export async function setPermissionsAction(p: any) { 
+    try {
+        await savePermissionsToSheet(p); 
+        return { success: true }; 
+    } catch (e) {
+        return { success: false, message: "Permissions save failed." };
+    }
+}
+
+export async function fetchAuditLogsAction() { 
+    try {
+        const data = await getAuditLogs();
+        return { success: true, data }; 
+    } catch (e) {
+        return { success: false, message: "Logs fetch failed." };
+    }
+}
+
+export async function fetchInventoryLogEntriesByBarcodeAction(b: string) { 
+    try {
+        const data = await getInventoryLogEntriesByBarcode(b);
+        return { success: true, data }; 
+    } catch (e) {
+        return { success: false, message: "Barcode lookup failed." };
+    }
+}
 
 export async function addSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse<Supplier>> {
     try {
@@ -338,6 +378,7 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
         revalidatePath('/suppliers');
         revalidatePath('/products/list');
         revalidatePath('/inventory');
+        revalidatePath('/dashboard');
         
         return { success: true, message: "Supplier renamed successfully across all catalog products and inventory logs." };
     } catch (e) {
@@ -347,28 +388,50 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
 }
 
 export async function returnInventoryItemAction(e: string, i: string, q: number, s: string) { 
-    await dbProcessReturn(e, i, q, s);
-    revalidatePath('/inventory');
-    return { success: true, message: "Return processed." }; 
+    try {
+        await dbProcessReturn(e, i, q, s);
+        revalidatePath('/inventory');
+        revalidatePath('/dashboard');
+        return { success: true, message: "Return processed." }; 
+    } catch (err) {
+        return { success: false, message: "Return failed." };
+    }
 }
-export async function editInventoryItemAction(p: any, f: FormData) { return updateInventoryItemAction(p, f); }
+
 export async function deleteInventoryItemAction(e: string, i: string) { 
-    await dbDeleteInventoryItemById(e, i);
-    revalidatePath('/inventory');
-    return { success: true, message: "Item deleted." }; 
+    try {
+        await dbDeleteInventoryItemById(e, i);
+        revalidatePath('/inventory');
+        revalidatePath('/dashboard');
+        return { success: true, message: "Item deleted." }; 
+    } catch (err) {
+        return { success: false, message: "Delete failed." };
+    }
 }
+
 export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
-    for (const id of ids) {
-        await dbDeleteInventoryItemById(e, id);
+    try {
+        for (const id of ids) {
+            await dbDeleteInventoryItemById(e, id);
+        }
+        revalidatePath('/inventory');
+        revalidatePath('/dashboard');
+        return { success: true, message: `${ids.length} items deleted.` }; 
+    } catch (err) {
+        return { success: false, message: "Bulk delete failed." };
     }
-    revalidatePath('/inventory');
-    return { success: true, message: `${ids.length} items deleted.` }; 
 }
+
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
-    for (const id of ids) {
-        const quantityToReturn = t === 'all' ? undefined : q;
-        await dbProcessReturn(e, id, quantityToReturn, s);
+    try {
+        for (const id of ids) {
+            const quantityToReturn = t === 'all' ? undefined : q;
+            await dbProcessReturn(e, id, quantityToReturn, s);
+        }
+        revalidatePath('/inventory');
+        revalidatePath('/dashboard');
+        return { success: true, message: `${ids.length} returns processed.` }; 
+    } catch (err) {
+        return { success: false, message: "Bulk return failed." };
     }
-    revalidatePath('/inventory');
-    return { success: true, message: `${ids.length} returns processed.` }; 
 }

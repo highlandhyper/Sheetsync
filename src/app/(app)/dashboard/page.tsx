@@ -1,13 +1,13 @@
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest, type InventoryItem } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest, type InventoryItem, type AuditLogEntry } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, Edit, Info, Hash, MapPin, Tag, ArrowRight } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, Edit, Info, Hash, MapPin, Tag, ArrowRight, History } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { fetchDashboardMetricsAction, updateInventoryItemAction } from '@/app/actions';
+import { fetchDashboardMetricsAction, fetchAuditLogsAction } from '@/app/actions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
@@ -350,102 +350,43 @@ function StockTrendDetailedDialog({
     );
 }
 
-function ProactiveGrantDialog({ 
-    isOpen, 
-    onOpenChange, 
-    staffName, 
-    onGrant 
-}: { 
-    isOpen: boolean; 
-    onOpenChange: (open: boolean) => void; 
-    staffName: string;
-    onGrant: (duration?: number) => void;
-}) {
-    const [selectedDuration, setSelectedDuration] = useState<string>("single");
-    const [customMins, setCustomMins] = useState("15");
-
-    const handleGrant = () => {
-        let duration: number | undefined;
-        if (selectedDuration === "10") duration = 10;
-        else if (selectedDuration === "30") duration = 30;
-        else if (selectedDuration === "custom") duration = parseInt(customMins);
-        
-        onGrant(duration);
-        onOpenChange(false);
-    };
-
+function RecentActivityList({ logs }: { logs: AuditLogEntry[] }) {
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-primary" />
-                        Authorize Silent Mode
-                    </DialogTitle>
-                    <DialogDescription>
-                        Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>. 
-                        A unique 4-digit OTP will be sent to their notifications.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                    <div className="space-y-3">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Access Type</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button 
-                                variant={selectedDuration === 'single' ? 'default' : 'outline'} 
-                                onClick={() => setSelectedDuration('single')}
-                                className="h-14 flex flex-col gap-1"
-                            >
-                                <Check className="h-4 w-4" />
-                                <span className="text-xs">Single Entry</span>
-                            </Button>
-                            <Button 
-                                variant={selectedDuration === '10' ? 'default' : 'outline'} 
-                                onClick={() => setSelectedDuration('10')}
-                                className="h-14 flex flex-col gap-1"
-                            >
-                                <Clock className="h-4 w-4" />
-                                <span className="text-xs">10 Minutes</span>
-                            </Button>
-                            <Button 
-                                variant={selectedDuration === '30' ? 'default' : 'outline'} 
-                                onClick={() => setSelectedDuration('30')}
-                                className="h-14 flex flex-col gap-1"
-                            >
-                                <Clock className="h-4 w-4" />
-                                <span className="text-xs">30 Minutes</span>
-                            </Button>
-                            <Button 
-                                variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
-                                onClick={() => setSelectedDuration('custom')}
-                                className="h-14 flex flex-col gap-1"
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span className="text-xs">Custom Time</span>
-                            </Button>
-                        </div>
-                        {selectedDuration === 'custom' && (
-                            <div className="pt-2">
-                                <Label htmlFor="custom-mins" className="text-[10px] uppercase font-bold text-muted-foreground">Minutes</Label>
-                                <Input 
-                                    id="custom-mins" 
-                                    type="number" 
-                                    value={customMins} 
-                                    onChange={(e) => setCustomMins(e.target.value)}
-                                    className="mt-1"
-                                />
+        <Card className="shadow-lg rounded-xl border-border/50 bg-card overflow-hidden">
+            <CardHeader className="pb-3 border-b bg-muted/10">
+                <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <History className="h-4 w-4 text-primary" />
+                    System Activity
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="divide-y">
+                    {logs.slice(0, 5).map((log) => (
+                        <div key={log.id} className="p-4 flex items-start gap-3 hover:bg-muted/5 transition-colors">
+                            <div className="p-2 rounded-full bg-primary/5">
+                                <Activity className="h-3.5 w-3.5 text-primary" />
                             </div>
-                        )}
-                    </div>
+                            <div className="flex-1 space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-xs font-bold">{log.action.replace('_', ' ')}</p>
+                                    <span className="text-[10px] text-muted-foreground">{format(parseISO(log.timestamp), 'HH:mm')}</span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground line-clamp-1 italic">"{log.details}"</p>
+                                <p className="text-[9px] font-black text-primary/60 uppercase tracking-tighter">{log.user}</p>
+                            </div>
+                        </div>
+                    ))}
+                    {logs.length === 0 && (
+                        <div className="p-12 text-center text-xs text-muted-foreground italic">No recent logs found.</div>
+                    )}
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleGrant}>
-                        Next: Verify Admin
+                {logs.length > 0 && (
+                    <Button asChild variant="ghost" className="w-full h-10 rounded-none border-t text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary">
+                        <Link href="/audit-log">View All Logs <ArrowRight className="ml-1.5 h-3 w-3" /></Link>
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -629,6 +570,105 @@ function PendingApprovalsSummary() {
     );
 }
 
+function ProactiveGrantDialog({ 
+    isOpen, 
+    onOpenChange, 
+    staffName, 
+    onGrant 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    staffName: string;
+    onGrant: (duration?: number) => void;
+}) {
+    const [selectedDuration, setSelectedDuration] = useState<string>("single");
+    const [customMins, setCustomMins] = useState("15");
+
+    const handleGrant = () => {
+        let duration: number | undefined;
+        if (selectedDuration === "10") duration = 10;
+        else if (selectedDuration === "30") duration = 30;
+        else if (selectedDuration === "custom") duration = parseInt(customMins);
+        
+        onGrant(duration);
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        Authorize Silent Mode
+                    </DialogTitle>
+                    <DialogDescription>
+                        Granting proactive silent access for <span className="font-bold text-foreground">{staffName}</span>. 
+                        A unique 4-digit OTP will be sent to their notifications.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground">Access Type</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                                variant={selectedDuration === 'single' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('single')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Check className="h-4 w-4" />
+                                <span className="text-xs">Single Entry</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === '10' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('10')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Clock className="h-4 w-4" />
+                                <span className="text-xs">10 Minutes</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === '30' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('30')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Clock className="h-4 w-4" />
+                                <span className="text-xs">30 Minutes</span>
+                            </Button>
+                            <Button 
+                                variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
+                                onClick={() => setSelectedDuration('custom')}
+                                className="h-14 flex flex-col gap-1"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="text-xs">Custom Time</span>
+                            </Button>
+                        </div>
+                        {selectedDuration === 'custom' && (
+                            <div className="pt-2">
+                                <Label htmlFor="custom-mins" className="text-[10px] uppercase font-bold text-muted-foreground">Minutes</Label>
+                                <Input 
+                                    id="custom-mins" 
+                                    type="number" 
+                                    value={customMins} 
+                                    onChange={(e) => setCustomMins(e.target.value)}
+                                    className="mt-1"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleGrant}>
+                        Next: Verify Admin
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-10">
@@ -655,21 +695,27 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [recentLogs, setRecentLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
 
   useEffect(() => {
-    async function getMetrics() {
+    async function getData() {
       setIsLoading(true);
-      const response = await fetchDashboardMetricsAction();
-      if (response.success && response.data) {
-        setMetrics(response.data);
-      } else {
-        console.error("Failed to fetch dashboard metrics:", response.message);
+      const [metricsRes, logsRes] = await Promise.all([
+        fetchDashboardMetricsAction(),
+        fetchAuditLogsAction()
+      ]);
+      
+      if (metricsRes.success && metricsRes.data) {
+        setMetrics(metricsRes.data);
+      }
+      if (logsRes.success && logsRes.data) {
+        setRecentLogs(logsRes.data);
       }
       setIsLoading(false);
     }
-    getMetrics();
+    getData();
   }, []);
 
   if (isLoading || !metrics) {
@@ -715,10 +761,16 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-10">
-      <h1 className="text-xl font-bold mb-4 text-primary flex items-center tracking-tight">
-        <Activity className="mr-3 h-6 w-6" />
-        Command Center
-      </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl font-bold text-primary flex items-center tracking-tight">
+            <Activity className="mr-3 h-6 w-6" />
+            Command Center
+        </h1>
+        <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-background">Live Data</Badge>
+            <span className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(), 'PP')}</span>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
         <MetricCard 
@@ -776,19 +828,16 @@ export default function DashboardPage() {
       <PendingApprovalsSummary />
       <ActiveAuthorizations />
 
-      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-3 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-2 overflow-hidden hidden sm:block">
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <CardTitle className="text-xl font-bold flex items-center tracking-tight">
+                    <CardTitle className="text-lg font-bold flex items-center tracking-tight">
                     <TrendingUp className="mr-2 h-5 w-5 text-primary" />
                     Stock Volume by Supplier
                     </CardTitle>
                     <CardDescription className="font-medium">Total unit distribution across registered vendors</CardDescription>
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                    <Badge variant="outline" className="bg-background">Live Data</Badge>
                 </div>
             </div>
           </CardHeader>
@@ -798,6 +847,8 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        <RecentActivityList logs={recentLogs} />
       </div>
 
       {metrics.stockTrend && (
