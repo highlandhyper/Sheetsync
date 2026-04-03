@@ -26,6 +26,14 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'SheetSync',
   description: 'Next-Gen Inventory Management',
+  manifest: '/manifest.json',
+  themeColor: '#29abe2',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SheetSync',
+  },
   icons: {
     icon: '/logo.ico',
     apple: '/logo-pwa.jpg',
@@ -40,13 +48,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-        <meta name="theme-color" content="#FFFFFF" />
+        <link rel="icon" href="/logo.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
-        <link rel="apple-touch-startup-image" href="/logo-pwa.jpg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
