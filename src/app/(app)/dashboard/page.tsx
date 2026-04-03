@@ -718,10 +718,6 @@ export default function DashboardPage() {
             <Activity className="mr-3 h-6 w-6" />
             Command Center
         </h1>
-        <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-background">Live Data</Badge>
-            <span className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(), 'PP')}</span>
-        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
@@ -790,6 +786,10 @@ export default function DashboardPage() {
                     Stock Volume by Supplier
                     </CardTitle>
                     <CardDescription className="font-medium">Total unit distribution across registered vendors</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-background text-[10px] h-6">Live Data</Badge>
+                    <span className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(), 'PP')}</span>
                 </div>
             </div>
           </CardHeader>
