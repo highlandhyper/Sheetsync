@@ -8,8 +8,8 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3 // Increased limit to ensure multiple notifications (e.g. Sync + Image Error) are seen
+const TOAST_REMOVE_DELAY = 5000 // Reduced from infinity to make it more interactive
 
 type ToasterToast = ToastProps & {
   id: string
@@ -93,8 +93,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
@@ -163,6 +161,11 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss logic
+  setTimeout(() => {
+    dismiss();
+  }, props.variant === 'destructive' ? 6000 : 3000);
 
   return {
     id: id,

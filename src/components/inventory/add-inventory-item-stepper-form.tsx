@@ -218,7 +218,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
     setIsSuccessDialogOpen(true);
-    setTimeout(() => setIsSuccessDialogOpen(false), 5000);
+    setTimeout(() => setIsSuccessDialogOpen(false), 3000); // Reduced to 3s for faster scanning
 
     const savedStaffName = data.staffName; 
     reset();
@@ -643,6 +643,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
+                                <CommandInput placeholder="Search location..." />
                                 <CommandList>
                                     <CommandEmpty>No location found.</CommandEmpty>
                                     <CommandGroup>
