@@ -1,13 +1,13 @@
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest, type InventoryItem, type AuditLogEntry } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type SpecialEntryRequest, type InventoryItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, X, Clock, MessageSquare, Plus, KeyRound, UserPlus, ShieldQuestion, UserCheck, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, Edit, Info, Hash, MapPin, Tag, ArrowRight, History } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { fetchDashboardMetricsAction, fetchAuditLogsAction } from '@/app/actions';
+import { fetchDashboardMetricsAction } from '@/app/actions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
@@ -22,7 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -192,7 +191,7 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
     <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
-            <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="colorStock" x1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
             </linearGradient>
@@ -347,46 +346,6 @@ function StockTrendDetailedDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
-}
-
-function RecentActivityList({ logs }: { logs: AuditLogEntry[] }) {
-    return (
-        <Card className="shadow-lg rounded-xl border-border/50 bg-card overflow-hidden">
-            <CardHeader className="pb-3 border-b bg-muted/10">
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <History className="h-4 w-4 text-primary" />
-                    System Activity
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="divide-y">
-                    {logs.slice(0, 5).map((log) => (
-                        <div key={log.id} className="p-4 flex items-start gap-3 hover:bg-muted/5 transition-colors">
-                            <div className="p-2 rounded-full bg-primary/5">
-                                <Activity className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-xs font-bold">{log.action.replace('_', ' ')}</p>
-                                    <span className="text-[10px] text-muted-foreground">{format(parseISO(log.timestamp), 'HH:mm')}</span>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground line-clamp-1 italic">"{log.details}"</p>
-                                <p className="text-[9px] font-black text-primary/60 uppercase tracking-tighter">{log.user}</p>
-                            </div>
-                        </div>
-                    ))}
-                    {logs.length === 0 && (
-                        <div className="p-12 text-center text-xs text-muted-foreground italic">No recent logs found.</div>
-                    )}
-                </div>
-                {logs.length > 0 && (
-                    <Button asChild variant="ghost" className="w-full h-10 rounded-none border-t text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary">
-                        <Link href="/audit-log">View All Logs <ArrowRight className="ml-1.5 h-3 w-3" /></Link>
-                    </Button>
-                )}
-            </CardContent>
-        </Card>
     );
 }
 
@@ -695,23 +654,16 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [recentLogs, setRecentLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
 
   useEffect(() => {
     async function getData() {
       setIsLoading(true);
-      const [metricsRes, logsRes] = await Promise.all([
-        fetchDashboardMetricsAction(),
-        fetchAuditLogsAction()
-      ]);
+      const metricsRes = await fetchDashboardMetricsAction();
       
       if (metricsRes.success && metricsRes.data) {
         setMetrics(metricsRes.data);
-      }
-      if (logsRes.success && logsRes.data) {
-        setRecentLogs(logsRes.data);
       }
       setIsLoading(false);
     }
@@ -828,8 +780,8 @@ export default function DashboardPage() {
       <PendingApprovalsSummary />
       <ActiveAuthorizations />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 lg:col-span-2 overflow-hidden hidden sm:block">
+      <div className="grid grid-cols-1 gap-6 pt-4">
+        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 overflow-hidden hidden sm:block">
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center justify-between">
                 <div>
@@ -847,8 +799,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
-        <RecentActivityList logs={recentLogs} />
       </div>
 
       {metrics.stockTrend && (
