@@ -19,6 +19,7 @@ interface AccessControlContextType {
 }
 
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
+const PERMISSIONS_CACHE_KEY = 'sheetSync_permissions_cache';
 
 const getDefaultPermissions = (): Permissions => {
   const adminPaths = [...allNavItems, ...accountNavItems]
@@ -38,45 +39,50 @@ const getDefaultPermissions = (): Permissions => {
 };
 
 export function AccessControlProvider({ children }: PropsWithChildren) {
-  const [permissions, setPermissions] = useState<Permissions>(getDefaultPermissions());
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [permissions, setPermissions] = useState<Permissions>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(PERMISSIONS_CACHE_KEY);
+      return saved ? JSON.parse(saved) : getDefaultPermissions();
+    }
+    return getDefaultPermissions();
+  });
+  
+  const [isInitialized, setIsInitialized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem(PERMISSIONS_CACHE_KEY);
+    }
+    return false;
+  });
+
   const { toast } = useToast();
   const { role } = useAuth();
-  const initializedRef = useRef(false);
+  const fetchLockRef = useRef(false);
 
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
-    const safetyTimeout = setTimeout(() => {
-      if (!isInitialized) {
-        setIsInitialized(true);
-      }
-    }, 8000);
+    if (fetchLockRef.current) return;
+    fetchLockRef.current = true;
 
     async function loadPermissions() {
       try {
         const response = await getPermissionsAction();
         if (response.success && response.data) {
-          setPermissions({
+          const newPermissions = {
               ...getDefaultPermissions(),
               ...response.data,
               viewerFeatures: response.data.viewerFeatures || []
-          });
-        } else {
-          setPermissions(getDefaultPermissions());
+          };
+          setPermissions(newPermissions);
+          localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newPermissions));
         }
       } catch (err) {
-        setPermissions(getDefaultPermissions());
+        console.error("AccessControl: Sync failed.", err);
       } finally {
-        clearTimeout(safetyTimeout);
         setIsInitialized(true);
       }
     }
 
     loadPermissions();
-    return () => clearTimeout(safetyTimeout);
-  }, [isInitialized]);
+  }, []);
 
   const setPermission = useCallback((roleToSet: 'viewer', path: string, isEnabled: boolean) => {
     if (role !== 'admin') {
@@ -105,6 +111,8 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
           viewerDefaultPath: newDefaultPath
       };
       
+      localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(updatedPermissions));
+      
       setPermissionsAction(updatedPermissions).then(response => {
         if (response.success) {
           toast({ title: "Permissions Saved", description: `Access updated.` });
@@ -125,6 +133,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
             : currentFeatures.filter(f => f !== feature);
         
         const updated = { ...prev, viewerFeatures: newFeatures };
+        localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(updated));
         setPermissionsAction(updated).catch(console.error);
         toast({ title: "Action Permission Updated" });
         return updated;
@@ -136,6 +145,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
 
     setPermissions(prev => {
         const updated = { ...prev, viewerDefaultPath: path };
+        localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(updated));
         setPermissionsAction(updated).catch(console.error);
         toast({ title: "Default Page Updated" });
         return updated;
@@ -145,16 +155,15 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
 
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string): boolean => {
     if (userRole === 'admin') return true;
-    if (!isInitialized) return false;
+    if (!userRole) return false;
     const userPermissions = permissions[userRole] || [];
     return userPermissions.includes(path);
-  }, [permissions, isInitialized]);
+  }, [permissions]);
 
   const hasFeature = useCallback((feature: ViewerFeature): boolean => {
     if (role === 'admin') return true;
-    if (!isInitialized) return false;
     return (permissions.viewerFeatures || []).includes(feature);
-  }, [permissions, role, isInitialized]);
+  }, [permissions, role]);
 
 
   return (
