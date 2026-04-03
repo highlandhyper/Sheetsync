@@ -34,26 +34,20 @@ export function GeneralSettingsProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const safetyTimer = setTimeout(() => {
-        if (!isInitialized) setIsInitialized(true);
-    }, 5000);
-
     try {
       if (typeof window !== 'undefined') {
         const storedValue = localStorage.getItem(SETTINGS_STORAGE_KEY);
         if (storedValue) {
           const storedSettings = JSON.parse(storedValue);
-          const finalSettings = { ...defaultSettings, ...storedSettings };
-          setSettings(finalSettings);
+          setSettings({ ...defaultSettings, ...storedSettings });
         }
       }
     } catch (error) {
       console.warn('GeneralSettings: Could not access storage.', error);
     } finally {
-      clearTimeout(safetyTimer);
       setIsInitialized(true);
     }
-  }, [isInitialized]);
+  }, []);
 
   const setSetting = useCallback(<K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     setSettings(prevSettings => {

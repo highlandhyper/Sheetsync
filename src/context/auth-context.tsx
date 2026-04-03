@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren} from 'react';
@@ -35,10 +34,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const VIEWER_EMAIL = 'viewer@example.com';
+const ROLE_CACHE_KEY = 'sheetSync_cached_role';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRole] = useState<UserRole>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(ROLE_CACHE_KEY) as UserRole;
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const initializedRef = useRef(false);
@@ -49,16 +54,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setLoading(true);
 
-    // Resilience: Fallback timeout to ensure app doesn't hang if SDK fails to respond
     const safetyTimeout = setTimeout(() => {
       if (loading) {
-        console.warn("AuthContext: Safety timeout reached. Forcing loading state to false.");
         setLoading(false);
       }
-    }, 10000);
+    }, 8000);
 
     if (!auth) {
-      console.error("AuthContext: Firebase Auth object is NOT available.");
       setLoading(false);
       clearTimeout(safetyTimeout);
       return;
@@ -68,20 +70,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       clearTimeout(safetyTimeout);
       setUser(currentUser);
       if (currentUser) {
-        if (currentUser.email === VIEWER_EMAIL) {
-          setRole('viewer');
-        } else {
-          setRole('admin');
-        }
+        const determinedRole = currentUser.email === VIEWER_EMAIL ? 'viewer' : 'admin';
+        setRole(determinedRole);
+        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
       } else {
         setRole(null);
+        localStorage.removeItem(ROLE_CACHE_KEY);
       }
       setLoading(false);
     }, (error) => {
       clearTimeout(safetyTimeout);
-      console.error("AuthContext: Error in onAuthStateChanged:", error);
       setUser(null);
       setRole(null);
+      localStorage.removeItem(ROLE_CACHE_KEY);
       setLoading(false);
     });
 
@@ -99,6 +100,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       let determinedRole: UserRole = null;
       if (userCredential.user) {
         determinedRole = userCredential.user.email === VIEWER_EMAIL ? 'viewer' : 'admin';
+        setRole(determinedRole);
+        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
       }
       return { success: true, role: determinedRole };
     } catch (error: any) {
@@ -119,6 +122,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const logout = useCallback(async () => {
+    localStorage.removeItem(ROLE_CACHE_KEY);
     if (!auth) {
       setUser(null);
       setRole(null);
