@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -24,7 +23,7 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
-  const { setOpenMobile, isMobile } = useSidebar(); // Get the function to close the mobile sidebar and isMobile state
+  const { setOpenMobile, isMobile } = useSidebar();
 
   const navItems = allNavItems.filter(item => {
     if (item.mobileOnly && !isMobile) return false;
@@ -32,7 +31,6 @@ export function AppSidebar({ className }: { className?: string }) {
   });
 
   const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
-
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -76,7 +74,7 @@ export function AppSidebar({ className }: { className?: string }) {
       <SidebarContent className="p-2">
         <SidebarMenu className="list-none space-y-1">
           {navItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
+            <SidebarMenuItem key={`${item.href}-${item.label}`}>
               <SidebarMenuButton
                 asChild
                 isActive={isNavItemActive(item, pathname)}
@@ -95,7 +93,7 @@ export function AppSidebar({ className }: { className?: string }) {
         <SidebarFooter className="p-2">
            <SidebarMenu className="list-none space-y-1">
              {filteredAccountNavItems.map((item) => (
-               <SidebarMenuItem key={item.href}>
+               <SidebarMenuItem key={`${item.href}-${item.label}`}>
                  <SidebarMenuButton
                    asChild
                    isActive={isNavItemActive(item, pathname)}

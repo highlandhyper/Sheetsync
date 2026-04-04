@@ -14,7 +14,6 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
-import { UserManager } from '@/components/settings/user-manager';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -118,16 +117,6 @@ export default function SettingsPage() {
 
         {role === 'admin' && (
           <>
-            <DialogCard
-                icon={UserPlus}
-                title="User Management"
-                description="Manage team accounts, registry sync, and system-wide roles."
-                triggerText="Control Registry"
-                dialogClassName="sm:max-w-6xl"
-            >
-                <UserManager />
-            </DialogCard>
-
             <DialogCard
                 icon={Users}
                 title="Staff Registry"
