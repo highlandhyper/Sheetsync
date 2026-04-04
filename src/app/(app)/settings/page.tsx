@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -28,7 +27,7 @@ export default function SettingsPage() {
             {React.createElement(icon, { className: "h-6 w-6 text-primary" })}
           </div>
           <div>
-            <CardTitle className="text-xl mb-1">{title}</CardTitle>
+            <CardTitle className="text-xl mb-1 tracking-tight">{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
         </div>
@@ -122,9 +121,9 @@ export default function SettingsPage() {
             <DialogCard
                 icon={UserPlus}
                 title="User Management"
-                description="Add new personnel to the Firebase Authentication system."
-                triggerText="Manage Accounts"
-                dialogClassName="sm:max-w-md"
+                description="Manage team accounts, registry sync, and system-wide roles."
+                triggerText="Control Registry"
+                dialogClassName="sm:max-w-6xl"
             >
                 <UserManager />
             </DialogCard>

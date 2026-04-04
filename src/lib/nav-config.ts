@@ -1,4 +1,4 @@
-import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, FileText, BellDot, Package, ShieldCheck } from 'lucide-react';
+import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, FileText, BellDot, Package, ShieldCheck, Users } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -22,6 +22,7 @@ export const allNavItems: NavItem[] = [
 ];
 
 export const accountNavItems: NavItem[] = [
+   { href: '/settings', label: 'User Management', icon: Users, roles: ['admin'] },
    { href: '/products/manage', label: 'Manage Products', icon: ManageProductsIcon, roles: ['admin'] },
    { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'viewer'], exact: true },
 ];
