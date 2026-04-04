@@ -11,7 +11,7 @@ import {
     AlertTriangle, Edit, PackagePlus, MessageSquare, 
     ArrowRight, Info, Key, CheckCircle2, Ban,
     Search, FilterX, Hash, MapPin, Tag, Calendar as CalendarIcon,
-    ArrowLeftRight, AlertCircle
+    ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -27,12 +27,14 @@ import { updateInventoryItemAction } from '@/app/actions';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, approveRequest, rejectRequest } = useSpecialEntry();
     const { updateInventoryItem, refreshData } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
@@ -46,7 +48,8 @@ export function ApprovalCenterClient() {
         return pendingRequests.filter(r => 
             r.staffName.toLowerCase().includes(lower) || 
             r.userEmail.toLowerCase().includes(lower) ||
-            (r.editDetails?.productName.toLowerCase().includes(lower))
+            (r.editDetails?.productName.toLowerCase().includes(lower)) ||
+            (r.suggestedProductName?.toLowerCase().includes(lower))
         );
     }, [pendingRequests, searchTerm]);
 
@@ -67,6 +70,13 @@ export function ApprovalCenterClient() {
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to reject request.', variant: 'destructive' });
         }
+    };
+
+    const handleQuickRegister = (barcode: string, suggestedName?: string) => {
+        const queryParams = new URLSearchParams();
+        queryParams.append('barcode', barcode);
+        if (suggestedName) queryParams.append('name', suggestedName);
+        router.push(`/products/manage?${queryParams.toString()}`);
     };
 
     const handleAuthorizationSuccess = async () => {
@@ -141,7 +151,7 @@ export function ApprovalCenterClient() {
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Search by personnel, email or product name..." 
+                        placeholder="Search by personnel, email, product or barcode..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10 h-12 bg-muted/20"
@@ -192,12 +202,20 @@ export function ApprovalCenterClient() {
                                                     <p className="text-[10px] text-muted-foreground font-medium italic line-clamp-2">"Authorizing modification of quantity, location or properties."</p>
                                                 </div>
                                             ) : isProduct ? (
-                                                <div className="space-y-2">
+                                                <div className="space-y-3">
                                                     <div className="flex items-center gap-2 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl">
                                                         <PackagePlus className="h-5 w-5 text-orange-600" />
                                                         <span className="text-sm font-black font-mono tracking-tight">{req.reason}</span>
                                                     </div>
-                                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center mt-2">Unregistered Barcode Found</p>
+                                                    {req.suggestedProductName && (
+                                                        <div className="px-3 py-2 bg-muted/50 rounded-lg border flex items-start gap-2">
+                                                            <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Suggested Name</p>
+                                                                <p className="text-xs font-bold">{req.suggestedProductName}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="space-y-2">
@@ -338,28 +356,34 @@ export function ApprovalCenterClient() {
                                         </div>
                                     </div>
                                 ) : selectedRequest.type === 'product_add' ? (
-                                    <div className="space-y-4">
-                                        <Alert className="bg-orange-500/10 border-orange-500/20 py-6">
-                                            <PackagePlus className="h-6 w-6 text-orange-600" />
-                                            <AlertTitle className="font-black uppercase tracking-tighter text-lg ml-2">Barcode Not Registered</AlertTitle>
-                                            <AlertDescription className="text-sm mt-2 ml-2">
-                                                The user attempted to log a product with barcode <span className="font-mono font-bold text-orange-600 bg-orange-500/10 px-2 py-0.5 rounded">{selectedRequest.reason}</span> which does not exist in your cloud registry.
+                                    <div className="space-y-6">
+                                        <Alert className="bg-orange-500/10 border-orange-500/20 py-6 rounded-3xl">
+                                            <PackagePlus className="h-8 w-8 text-orange-600" />
+                                            <AlertTitle className="font-black uppercase tracking-tighter text-xl ml-2">Unregistered SKU Identified</AlertTitle>
+                                            <AlertDescription className="text-sm mt-3 ml-2 space-y-4">
+                                                <p>The barcode <span className="font-mono font-black text-orange-600 bg-orange-500/10 px-2 py-0.5 rounded text-base">{selectedRequest.reason}</span> was scanned but is not in your catalog.</p>
+                                                
+                                                {selectedRequest.suggestedProductName && (
+                                                    <div className="bg-background/80 p-4 rounded-2xl border-2 border-orange-500/10 shadow-sm">
+                                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">User Identified As:</p>
+                                                        <p className="text-lg font-black text-foreground">{selectedRequest.suggestedProductName}</p>
+                                                    </div>
+                                                )}
                                             </AlertDescription>
                                         </Alert>
-                                        <div className="p-6 rounded-2xl bg-muted/20 border-2 border-dashed space-y-3">
-                                            <p className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                                <Info className="h-3.5 w-3.5" /> Administrator Recommendation
-                                            </p>
-                                            <ol className="text-sm space-y-2 font-medium">
-                                                <li className="flex items-start gap-2">
-                                                    <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-black shrink-0">1</span>
-                                                    <span>Approve this request to clear it from the queue.</span>
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-black shrink-0">2</span>
-                                                    <span>Navigate to <strong>Manage Products</strong> to register this barcode permanently.</span>
-                                                </li>
-                                            </ol>
+
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <Button 
+                                                className="h-16 text-lg font-black uppercase tracking-tighter shadow-xl shadow-orange-500/20 bg-orange-500 hover:bg-orange-600"
+                                                onClick={() => handleQuickRegister(selectedRequest.reason!, selectedRequest.suggestedProductName)}
+                                            >
+                                                <PlusCircle className="mr-2 h-6 w-6" />
+                                                Register Product Now
+                                            </Button>
+                                            <div className="p-4 rounded-2xl bg-muted/20 border-2 border-dashed flex items-center justify-center gap-2">
+                                                <Info className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-xs font-bold text-muted-foreground">Registering the product will allow future logs for this SKU.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -393,7 +417,8 @@ export function ApprovalCenterClient() {
                     <DialogFooter className="p-6 border-t bg-background shrink-0 gap-3">
                         <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)} className="font-bold">Close Review</Button>
                         <Button onClick={handleConfirmApproval} className="font-black shadow-lg shadow-primary/30 px-8 bg-primary hover:bg-primary/90">
-                            <ShieldCheck className="mr-2 h-4 w-4" /> Authorize Submission
+                            <ShieldCheck className="mr-2 h-4 w-4" /> 
+                            {selectedRequest?.type === 'product_add' ? 'Mark as Processed' : 'Authorize Submission'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -403,7 +428,7 @@ export function ApprovalCenterClient() {
                 isOpen={isAuthDialogOpen}
                 onOpenChange={setIsAuthDialogOpen}
                 onAuthorizationSuccess={handleAuthorizationSuccess}
-                actionDescription={selectedRequest?.type === 'inventory_edit' ? `Finalizing data override for ${selectedRequest?.editDetails?.productName}. Credentials required.` : `Approving authorization request. This will generate a 4-digit OTP.`}
+                actionDescription={selectedRequest?.type === 'inventory_edit' ? `Finalizing data override for ${selectedRequest?.editDetails?.productName}. Credentials required.` : selectedRequest?.type === 'product_add' ? 'Confirming barcode registration request is handled. Administrator credentials required.' : `Approving authorization request. This will generate a 4-digit OTP.`}
             />
         </div>
     );
