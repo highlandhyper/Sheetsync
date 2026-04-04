@@ -26,7 +26,9 @@ import {
     Clock,
     KeyRound,
     CloudOff,
-    MessageSquare
+    MessageSquare,
+    PackageSearch,
+    SendHorizontal
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -53,6 +55,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
 import { addInventoryItemAction, fetchProductAction } from '@/app/actions';
@@ -153,6 +156,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
   const [showRequestProductButton, setShowRequestProductButton] = useState(false);
+  const [suggestedProductName, setSuggestedProductName] = useState('');
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
 
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -199,7 +203,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     submitLockRef.current = true;
 
     const now = new Date();
-    const tempId = `opt_${now.getTime()}`;
+    const tempId = `log_${now.getTime()}`;
     const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
 
     const optimisticItem: InventoryItem = {
@@ -218,7 +222,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
     setIsSuccessDialogOpen(true);
-    setTimeout(() => setIsSuccessDialogOpen(false), 3000); // Reduced to 3s for faster scanning
+    setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
 
     const savedStaffName = data.staffName; 
     reset();
@@ -227,6 +231,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setProductSupplier('');
     setProductLookupError('');
     setShowRequestProductButton(false);
+    setSuggestedProductName('');
     setHasRequestedProduct(false);
     setCurrentStep(0);
 
@@ -304,6 +309,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setProductSupplier('');
       setShowRequestProductButton(false);
       setHasRequestedProduct(false);
+      setSuggestedProductName('');
       
       const cachedProduct = cachedProducts.find(p => p.barcode === barcode);
       if (cachedProduct) {
@@ -326,7 +332,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setProductSupplier(response.data.supplierName || 'N/A');
           return true;
       } else {
-          setProductLookupError(response.message || 'Product not found in system.');
+          setProductLookupError('This product is not registered in the system catalog.');
           setShowRequestProductButton(true);
           return false;
       }
@@ -337,12 +343,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     requestSpecialEntry(
         allFormValues.staffName || 'Viewer', 
         'product_add', 
-        allFormValues.barcode
+        allFormValues.barcode,
+        suggestedProductName
     );
     setHasRequestedProduct(true);
     toast({
         title: "Request Sent",
-        description: "Administrators have been notified.",
+        description: "Administrators have been notified about this new product.",
     });
   };
 
@@ -505,30 +512,45 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </Button>
                     </div>
                     
-                    <div className="min-h-[24px] space-y-3">
+                    <div className="min-h-[24px]">
                         {productLookupError && !isFetchingProduct && (
-                            <div className="space-y-3">
-                                <p className="text-sm text-destructive font-medium flex items-center gap-1">
-                                    <AlertTriangle className="h-4 w-4" /> {productLookupError}
-                                </p>
-                                {showRequestProductButton && !hasRequestedProduct && (
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="w-full text-xs font-bold border-primary/20 text-primary hover:bg-primary/5"
-                                        onClick={handleRequestProductAdd}
-                                    >
-                                        <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                                        Request Admin to Add Product
-                                    </Button>
-                                )}
-                                {hasRequestedProduct && (
-                                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20 text-green-600 text-[10px] font-black uppercase text-center">
-                                        Request Sent to Admin
-                                    </div>
-                                )}
-                            </div>
+                            <Alert variant="destructive" className="bg-destructive/5 border-destructive/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <PackageSearch className="h-4 w-4" />
+                                <AlertTitle className="font-bold text-xs uppercase tracking-widest">Unregistered Barcode</AlertTitle>
+                                <AlertDescription className="space-y-4 pt-2">
+                                    <p className="text-xs font-medium text-muted-foreground">{productLookupError}</p>
+                                    
+                                    {!hasRequestedProduct ? (
+                                        <div className="space-y-3 bg-background/50 p-3 rounded-xl border border-destructive/10">
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="suggestedName" className="text-[10px] font-black uppercase text-muted-foreground">Product Identification (Optional)</Label>
+                                                <Input 
+                                                    id="suggestedName"
+                                                    placeholder="Enter product name if known..."
+                                                    value={suggestedProductName}
+                                                    onChange={(e) => setSuggestedProductName(e.target.value)}
+                                                    className="h-9 text-xs"
+                                                />
+                                            </div>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="w-full text-xs font-black uppercase tracking-tighter h-9 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                                                onClick={handleRequestProductAdd}
+                                            >
+                                                <SendHorizontal className="mr-2 h-3.5 w-3.5" />
+                                                Notify Administrator
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center justify-center gap-2">
+                                            <ShieldCheck className="h-4 w-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Admin Notification Sent</span>
+                                        </div>
+                                    )}
+                                </AlertDescription>
+                            </Alert>
                         )}
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare, Key, X } from 'lucide-react';
+import { Bell, BellDot, CheckCheck, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, MessageSquare, Key, X, PackagePlus } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -140,6 +140,14 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                             </div>
                         )}
 
+                        {/* PRODUCT REQUEST CONTEXT */}
+                        {n.metadata?.type === 'add_product_request' && (
+                            <div className="mt-2 py-2 px-3 bg-orange-500/5 border border-orange-500/10 rounded-lg flex items-center gap-2">
+                                <PackagePlus className="h-3 w-3 text-orange-600" />
+                                <span className="text-[10px] font-bold text-orange-700 truncate">SKU: {n.metadata.barcode}</span>
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between pt-2">
                             <span className="text-[10px] text-muted-foreground/60 font-black uppercase tracking-tighter">
                                 {formatDistanceToNow(parseISO(n.timestamp), { addSuffix: true })}
@@ -147,7 +155,7 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
                             
                             {n.metadata?.type === 'add_product_request' ? (
                                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary">
-                                    Pending Request
+                                    Review Barcode
                                 </Badge>
                             ) : n.link && (
                                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary">

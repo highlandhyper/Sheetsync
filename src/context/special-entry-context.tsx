@@ -15,7 +15,7 @@ interface SpecialEntryContextType {
   pendingActivationSession: SpecialEntryRequest | null;
   isActivationDialogOpen: boolean;
   setActivationDialogOpen: (open: boolean) => void;
-  requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => Promise<void>;
+  requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => Promise<void>;
   requestInventoryEdit: (item: InventoryItem, updatedValues: Partial<InventoryItem>) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
@@ -102,13 +102,14 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [specialRequests, user, activatedSessionId, isInitialized, role, toast]);
 
-  const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string) => {
+  const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => {
     if (!user) return;
     const newRequest: SpecialEntryRequest = {
       id: `req_${Date.now()}`,
       userEmail: user.email!.toLowerCase().trim(),
       staffName: staffName.toUpperCase(),
       reason,
+      suggestedProductName: suggestedName,
       status: 'pending',
       type,
       durationMinutes: type === 'timed' ? 5 : undefined,

@@ -135,6 +135,7 @@ export interface SpecialEntryRequest {
   userEmail: string;
   staffName: string;
   reason?: string;
+  suggestedProductName?: string; // NEW: Help admin know what product to add
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
   type: 'single' | 'timed' | 'product_add' | 'inventory_edit';
   durationMinutes?: number;
