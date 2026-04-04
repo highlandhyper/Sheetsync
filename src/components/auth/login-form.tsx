@@ -18,7 +18,7 @@ export function LoginForm() {
   const { toast } = useToast();
   const { login, loading: authIsLoading } = useAuth();
   const [formIsSubmitting, setFormIsSubmitting] = useState(false);
-  const [showPassword, setShowFormPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -89,7 +89,7 @@ export function LoginForm() {
               />
               <button
                 type="button"
-                onClick={() => setShowFormPassword(!showPassword)}
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >

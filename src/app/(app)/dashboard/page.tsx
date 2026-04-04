@@ -656,8 +656,10 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
+  const [mountedDate, setMountedDate] = useState<string>('');
 
   useEffect(() => {
+    setMountedDate(format(new Date(), 'PP'));
     async function getData() {
       setIsLoading(true);
       const metricsRes = await fetchDashboardMetricsAction();
@@ -789,7 +791,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant="outline" className="bg-background text-[10px] h-6">Live Data</Badge>
-                    <span className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(), 'PP')}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase font-black">{mountedDate}</span>
                 </div>
             </div>
           </CardHeader>

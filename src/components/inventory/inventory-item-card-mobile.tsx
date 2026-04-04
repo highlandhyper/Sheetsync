@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
+import { format, parseISO, isValid, startOfDay, isSameDay } from 'date-fns';
 import {
   Barcode,
   Building,
@@ -75,7 +75,6 @@ export function InventoryItemCardMobile({
     }
   }
 
-  // For grouped view, if there are multiple expiry dates, show "Multiple"
   if (context === 'inventory' && individualItemCount && individualItemCount > 1) {
       formattedExpiryDate = "Multiple";
   }
