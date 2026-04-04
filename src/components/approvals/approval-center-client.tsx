@@ -28,10 +28,11 @@ import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
+import { CreateProductFromInventoryDialog } from '@/components/products/create-product-from-inventory-dialog';
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, approveRequest, rejectRequest } = useSpecialEntry();
-    const { updateInventoryItem, refreshData } = useDataCache();
+    const { updateInventoryItem, refreshData, suppliers, addProduct } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
@@ -42,6 +43,10 @@ export function ApprovalCenterClient() {
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [duration, setDuration] = useState<string>("single");
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // New states for the inline product creation
+    const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
+    const [productBarcodeForDialog, setProductBarcodeForDialog] = useState('');
 
     const filteredPending = useMemo(() => {
         const lower = searchTerm.toLowerCase();
@@ -72,11 +77,23 @@ export function ApprovalCenterClient() {
         }
     };
 
-    const handleQuickRegister = (barcode: string, suggestedName?: string) => {
-        const queryParams = new URLSearchParams();
-        queryParams.append('barcode', barcode);
-        if (suggestedName) queryParams.append('name', suggestedName);
-        router.push(`/products/manage?${queryParams.toString()}`);
+    const handleQuickRegister = (barcode: string) => {
+        setProductBarcodeForDialog(barcode);
+        setIsCreateProductDialogOpen(true);
+    };
+
+    const handleProductCreateSuccess = async (p: any) => {
+        addProduct(p);
+        
+        // If we were processing a request, mark it as approved now
+        if (selectedRequest) {
+            await approveRequest(selectedRequest.id);
+            toast({ title: 'Product Registered', description: `Request for barcode ${p.barcode} has been processed.` });
+            setIsDetailDialogOpen(false);
+            setSelectedRequest(null);
+        }
+        
+        refreshData();
     };
 
     const handleAuthorizationSuccess = async () => {
@@ -379,7 +396,7 @@ export function ApprovalCenterClient() {
                                         <div className="grid grid-cols-1 gap-3">
                                             <Button 
                                                 className="h-16 text-lg font-black uppercase tracking-tighter shadow-xl shadow-orange-500/20 bg-orange-500 hover:bg-orange-600"
-                                                onClick={() => handleQuickRegister(selectedRequest.reason!, selectedRequest.suggestedProductName)}
+                                                onClick={() => handleQuickRegister(selectedRequest.reason!)}
                                             >
                                                 <PlusCircle className="mr-2 h-6 w-6" />
                                                 Register Product Now
@@ -434,6 +451,16 @@ export function ApprovalCenterClient() {
                 onAuthorizationSuccess={handleAuthorizationSuccess}
                 actionDescription={selectedRequest?.type === 'inventory_edit' ? `Finalizing data override for ${selectedRequest?.editDetails?.productName}. Credentials required.` : selectedRequest?.type === 'product_add' ? 'Confirming barcode registration request is handled. Administrator credentials required.' : `Approving authorization request. This will generate a 4-digit OTP.`}
             />
+
+            {productBarcodeForDialog && (
+                <CreateProductFromInventoryDialog 
+                    isOpen={isCreateProductDialogOpen}
+                    onOpenChange={setIsCreateProductDialogOpen}
+                    barcode={productBarcodeForDialog}
+                    allSuppliers={suppliers}
+                    onSuccess={handleProductCreateSuccess}
+                />
+            )}
         </div>
     );
 }
