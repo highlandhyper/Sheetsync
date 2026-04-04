@@ -160,7 +160,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-4 md:px-6 gap-4 overflow-hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-4 md:px-6 gap-4">
         <div 
           className={cn(
             "absolute top-0 left-0 h-[2px] bg-primary transition-all duration-1000 ease-in-out",
