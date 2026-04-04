@@ -527,30 +527,26 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 {!hasRequestedProduct ? (
                                     <Button 
                                         type="button" 
-                                        className="w-full h-20 text-lg font-black uppercase tracking-tighter shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 flex flex-col items-center justify-center py-4 rounded-2xl"
+                                        variant="default"
+                                        className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl"
                                         onClick={handleRequestProductAdd}
                                     >
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <SendHorizontal className="h-6 w-6" />
-                                            {suggestedProductName ? "Product Found Globally" : "Unregistered Barcode"}
-                                        </div>
-                                        <div className="text-[10px] font-bold opacity-80 flex items-center gap-1.5">
-                                            {suggestedProductName ? (
-                                                <>
-                                                    <Globe className="h-3 w-3" />
-                                                    ONE-CLICK REQUEST: {suggestedProductName}
-                                                </>
-                                            ) : (
-                                                "ONE-CLICK REQUEST TO ADMINISTRATOR"
-                                            )}
-                                        </div>
+                                        <SendHorizontal className="mr-2 h-4 w-4" />
+                                        {suggestedProductName ? (
+                                            <span className="flex items-center gap-2">
+                                                Request: {suggestedProductName}
+                                                <Globe className="h-3.5 w-3.5 opacity-70" />
+                                            </span>
+                                        ) : (
+                                            "Notify Admin: New Barcode"
+                                        )}
                                     </Button>
                                 ) : (
-                                    <div className="p-6 rounded-3xl bg-green-500/10 border-2 border-green-500/20 text-green-600 flex flex-col items-center justify-center gap-3 animate-in zoom-in-95 duration-300">
-                                        <ShieldCheck className="h-10 w-10" />
-                                        <div className="text-center">
-                                            <span className="text-sm font-black uppercase tracking-widest block mb-1">Request Sent to Chief</span>
-                                            <p className="text-xs font-medium opacity-80">Check notifications for approval status.</p>
+                                    <div className="py-3 px-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center gap-3 animate-in zoom-in-95 duration-300">
+                                        <ShieldCheck className="h-5 w-5 shrink-0" />
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-0.5">Notification Sent</p>
+                                            <p className="text-[9px] font-medium opacity-80 leading-none">Awaiting Admin catalog update.</p>
                                         </div>
                                     </div>
                                 )}
