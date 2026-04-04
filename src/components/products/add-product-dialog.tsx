@@ -114,7 +114,11 @@ export function AddProductDialog() {
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent 
+        className="sm:max-w-[480px]"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
           <DialogDescription>

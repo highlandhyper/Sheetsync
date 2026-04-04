@@ -293,7 +293,11 @@ export function ApprovalCenterClient() {
             </Tabs>
 
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogContent 
+                    className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden"
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                >
                     <div className="p-6 pb-2 shrink-0">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter">
