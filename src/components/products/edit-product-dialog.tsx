@@ -345,32 +345,46 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       </Dialog>
 
       <Dialog open={isImagePopupOpen} onOpenChange={setIsImagePopupOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border-none shadow-2xl">
-            <DialogHeader className="p-4 border-b bg-white">
-                <DialogTitle className="text-sm font-bold truncate pr-8 text-slate-900">{product.productName}</DialogTitle>
-                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">
-                    {externalData?.brand || 'Product Verification Image'}
-                </DialogDescription>
+        <DialogContent className="max-w-full sm:max-w-4xl p-0 overflow-hidden bg-white border-none shadow-2xl h-[90vh] sm:h-auto flex flex-col">
+            <DialogHeader className="p-6 border-b bg-white shrink-0">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-xl font-bold truncate pr-12 text-slate-900">{product.productName}</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary flex items-center gap-2 mt-1">
+                            {externalData?.brand || 'Product Verification Image'}
+                            <span className="h-1 w-1 rounded-full bg-slate-300" />
+                            <span className="font-mono text-slate-500">{product.barcode}</span>
+                        </DialogDescription>
+                    </div>
+                    <button 
+                        onClick={() => setIsImagePopupOpen(false)}
+                        className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors shadow-sm"
+                    >
+                        <X className="h-6 w-6 text-slate-600" />
+                    </button>
+                </div>
             </DialogHeader>
-            <div className="relative w-full aspect-square flex items-center justify-center p-8 bg-white">
+            <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-12 bg-white min-h-0 overflow-hidden">
                 {externalData?.image ? (
-                    <Image 
-                        src={externalData.image} 
-                        alt={product.productName}
-                        fill
-                        className="object-contain p-6"
-                        unoptimized
-                    />
-                ) : null}
-                <button 
-                    onClick={() => setIsImagePopupOpen(false)}
-                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-50"
-                >
-                    <X className="h-5 w-5 text-slate-600" />
-                </button>
+                    <div className="relative w-full h-full max-h-[70vh]">
+                        <Image 
+                            src={externalData.image} 
+                            alt={product.productName}
+                            fill
+                            className="object-contain"
+                            unoptimized
+                            priority
+                        />
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400 gap-4">
+                        <ImageIcon className="h-20 w-20 opacity-20" />
+                        <p className="font-medium">No Image Available</p>
+                    </div>
+                )}
             </div>
-            <div className="p-4 bg-slate-50 border-t flex flex-col items-center gap-1">
-                <p className="text-[10px] font-mono text-slate-500">Barcode: {product.barcode}</p>
+            <div className="p-4 bg-slate-50 border-t shrink-0 flex justify-center">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter italic">High Resolution Visual Verification Asset</p>
             </div>
         </DialogContent>
       </Dialog>
