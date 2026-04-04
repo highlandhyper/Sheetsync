@@ -257,7 +257,7 @@ export function InventoryItemGroupDetailsDialog({
             </DialogHeader>
             <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-12 bg-white min-h-0 overflow-hidden">
                 {externalData?.image ? (
-                    <div className="relative w-full h-full max-h-[70vh]">
+                    <div className="relative w-full h-[60vh] sm:h-[75vh]">
                         <Image 
                             src={externalData.image} 
                             alt={group.mainItem.productName}
@@ -265,10 +265,11 @@ export function InventoryItemGroupDetailsDialog({
                             className="object-contain"
                             unoptimized
                             priority
+                            sizes="(max-width: 768px) 100vw, 80vw"
                         />
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center text-slate-400 gap-4">
+                    <div className="flex flex-col items-center justify-center text-slate-400 gap-4 min-h-[300px]">
                         <ImageIcon className="h-20 w-20 opacity-20" />
                         <p className="font-medium">No Image Available</p>
                     </div>
