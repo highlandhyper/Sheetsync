@@ -12,7 +12,7 @@ import {
   type UserCredential
 } from 'firebase/auth';
 import type { LoginFormValues } from '@/lib/schemas';
-import { fetchAllDataAction } from '@/app/actions';
+import { fetchAllDataAction, saveUserRegistryAction } from '@/app/actions';
 import type { Role, AppUser } from '@/lib/types';
 
 interface AuthContextLoginResponse {
@@ -76,10 +76,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const matchedUser = registry.find(u => u.email.toLowerCase().trim() === lowerEmail);
     if (matchedUser) return matchedUser.role;
 
-    // Fallback logic: If registry is empty or this is the first login, 
-    // the very first user is likely the admin. 
-    // For safety in this specific prototype, any email OTHER than 
-    // the hardcoded viewer@example.com is an admin if NOT in registry.
+    // FALLBACK: If they exist in Firebase Auth but NOT in the registry yet,
+    // they are likely an Admin (Owner) or the specific viewer@example.com account.
     if (lowerEmail === 'viewer@example.com') return 'viewer';
     return 'admin'; 
   }, []);
@@ -95,6 +93,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         // Sync registry first to get latest roles
         const freshRegistry = await refreshRegistry();
         const determinedRole = determineRole(currentUser.email, freshRegistry);
+        
+        // AUTO-BOOTSTRAP: If registry is empty or missing current user, add them as admin
+        if (determinedRole === 'admin' && !freshRegistry.some(u => u.email.toLowerCase() === currentUser.email?.toLowerCase())) {
+            const newUser: AppUser = {
+                email: currentUser.email!.toLowerCase(),
+                role: 'admin',
+                createdAt: new Date().toISOString()
+            };
+            saveUserRegistryAction([...freshRegistry, newUser]).catch(console.error);
+        }
+
         setRole(determinedRole);
         localStorage.setItem(ROLE_CACHE_KEY, determinedRole || '');
       } else {
