@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -12,56 +11,92 @@ import {
   signOut as firebaseSignOut,
   type UserCredential
 } from 'firebase/auth';
-import type { LoginFormValues, SignupFormValues } from '@/lib/schemas';
-
-type UserRole = 'admin' | 'viewer' | null;
+import type { LoginFormValues } from '@/lib/schemas';
+import { fetchAllDataAction } from '@/app/actions';
+import type { Role, AppUser } from '@/lib/types';
 
 interface AuthContextLoginResponse {
   success: boolean;
   error?: string;
-  role?: UserRole;
+  role?: Role | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  role: UserRole;
+  role: Role | null;
   loading: boolean;
+  userRegistry: AppUser[];
   login: (values: LoginFormValues) => Promise<AuthContextLoginResponse>;
   logout: () => Promise<void>;
+  refreshRegistry: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const VIEWER_EMAIL = 'viewer@example.com';
 const ROLE_CACHE_KEY = 'sheetSync_cached_role';
+const REGISTRY_CACHE_KEY = 'sheetSync_user_registry';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<UserRole>(() => {
+  const [role, setRole] = useState<Role | null>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(ROLE_CACHE_KEY) as UserRole;
+      return localStorage.getItem(ROLE_CACHE_KEY) as Role;
     }
     return null;
+  });
+  const [userRegistry, setUserRegistry] = useState<AppUser[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(REGISTRY_CACHE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
   });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const initializedRef = useRef(false);
 
+  const refreshRegistry = useCallback(async () => {
+    try {
+      const response = await fetchAllDataAction();
+      if (response.success && response.data?.users) {
+        setUserRegistry(response.data.users);
+        localStorage.setItem(REGISTRY_CACHE_KEY, JSON.stringify(response.data.users));
+        return response.data.users;
+      }
+    } catch (err) {
+      console.warn("Auth: Registry sync failed.");
+    }
+    return userRegistry;
+  }, [userRegistry]);
+
+  const determineRole = useCallback((email: string | null, registry: AppUser[]): Role | null => {
+    if (!email) return null;
+    const lowerEmail = email.toLowerCase().trim();
+    
+    const matchedUser = registry.find(u => u.email.toLowerCase().trim() === lowerEmail);
+    if (matchedUser) return matchedUser.role;
+
+    // Fallback logic: If registry is empty or this is the first login, 
+    // the very first user is likely the admin. 
+    // For safety in this specific prototype, any email OTHER than 
+    // the hardcoded viewer@example.com is an admin if NOT in registry.
+    if (lowerEmail === 'viewer@example.com') return 'viewer';
+    return 'admin'; 
+  }, []);
+
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
       setUser(currentUser);
+      
       if (currentUser) {
-        const determinedRole = currentUser.email === VIEWER_EMAIL ? 'viewer' : 'admin';
+        // Sync registry first to get latest roles
+        const freshRegistry = await refreshRegistry();
+        const determinedRole = determineRole(currentUser.email, freshRegistry);
         setRole(determinedRole);
-        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
+        localStorage.setItem(ROLE_CACHE_KEY, determinedRole || '');
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
@@ -70,24 +105,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [refreshRegistry, determineRole]);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
     if (!auth) return { success: false, error: "Auth service unavailable." };
 
     try {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      let determinedRole: UserRole = null;
-      if (userCredential.user) {
-        determinedRole = userCredential.user.email === VIEWER_EMAIL ? 'viewer' : 'admin';
-        setRole(determinedRole);
-        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-      }
+      
+      // Post-login registry sync
+      const freshRegistry = await refreshRegistry();
+      const determinedRole = determineRole(userCredential.user.email, freshRegistry);
+      
+      setRole(determinedRole);
+      localStorage.setItem(ROLE_CACHE_KEY, determinedRole || '');
+      
       return { success: true, role: determinedRole };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
-  }, []);
+  }, [refreshRegistry, determineRole]);
 
   const logout = useCallback(async () => {
     localStorage.removeItem(ROLE_CACHE_KEY);
@@ -100,7 +137,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, userRegistry, login, logout, refreshRegistry }}>
       {children}
     </AuthContext.Provider>
   );
