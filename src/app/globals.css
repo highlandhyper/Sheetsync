@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,7 +13,6 @@ body {
 
 @layer base {
   :root {
-    /* Base Variables */
     --background: 208 100% 97%;
     --foreground: 220 13% 10%;
     --card: 0 0% 100%;
@@ -85,10 +85,10 @@ body {
   }
 }
 
-/* Print Enhancements */
+/* Print Overhaul */
 @media print {
   @page {
-    margin: 1.5cm;
+    margin: 1cm;
     size: auto;
   }
 
@@ -101,9 +101,9 @@ body {
   .noprint,
   header,
   nav,
-  .sidebar,
-  .filters-card-noprint,
+  [data-sidebar="sidebar"],
   button,
+  .filters-card-noprint,
   .print-button-container,
   [role="combobox"],
   input[type="search"] {
@@ -119,7 +119,7 @@ body {
   }
 
   .printable-area::before {
-    content: "SheetSync Inventory System - Official Report";
+    content: "SheetSync Inventory System - Physical Report";
     display: block;
     font-size: 18pt;
     font-weight: 900;
@@ -130,49 +130,28 @@ body {
     padding-bottom: 2mm;
   }
 
-  .printable-area::after {
-    content: "Generated automatically by SheetSync Cloud Registry.";
-    display: block;
-    font-size: 8pt;
-    color: #666;
-    text-align: center;
-    margin-top: 10mm;
-    font-style: italic;
-  }
-
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    border: 1px solid #ddd !important;
+    border: 1px solid #000 !important;
   }
 
   th {
-    background-color: #f8f9fa !important;
+    background-color: #f0f0f0 !important;
     color: black !important;
-    font-weight: bold !important;
-    border: 1px solid #ddd !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    border: 1px solid #000 !important;
     padding: 8px !important;
-    text-align: left !important;
-    -webkit-print-color-adjust: exact;
   }
 
   td {
-    border: 1px solid #ddd !important;
+    border: 1px solid #000 !important;
     padding: 6px !important;
   }
 
-  tr:nth-child(even) {
-    background-color: #fcfcfc !important;
-    -webkit-print-color-adjust: exact;
-  }
-
   .card {
-    border: none !important;
+    border: 1px solid #eee !important;
     box-shadow: none !important;
-  }
-
-  .text-primary {
-    color: black !important;
-    font-weight: bold !important;
   }
 }
