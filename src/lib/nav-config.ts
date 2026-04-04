@@ -11,7 +11,6 @@ export interface NavItem {
 
 export const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'], exact: true },
-  { href: '/users', label: 'User Management', icon: Users, roles: ['admin'], exact: true },
   { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, roles: ['admin'], exact: true },
   { href: '/products/list', label: 'Product Catalog', icon: Package, roles: ['admin', 'viewer'] },
   { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, roles: ['admin'] },
