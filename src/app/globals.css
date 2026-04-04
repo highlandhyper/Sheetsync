@@ -171,7 +171,6 @@ body {
     box-shadow: none !important;
   }
 
-  /* Force display of text that might be hidden by utilities */
   .text-primary {
     color: black !important;
     font-weight: bold !important;
