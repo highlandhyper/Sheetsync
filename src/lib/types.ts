@@ -169,7 +169,9 @@ export interface OfflineAction {
 }
 
 export interface AppUser {
+  uid?: string;
   email: string;
   role: Role;
   createdAt: string;
+  lastLoginAt?: string;
 }
