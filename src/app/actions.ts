@@ -30,9 +30,10 @@ import {
   saveStaffListToSheet,
   saveLocationListToSheet,
   getAppMetaData,
-  getInventoryLogEntriesByBarcode
+  getInventoryLogEntriesByBarcode,
+  saveUserRegistryToSheet
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem, AppUser } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
 
 const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
@@ -52,6 +53,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
+  users: AppUser[];
 }>> {
   try {
     const [
@@ -78,6 +80,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
         uniqueStaffNames: meta.staff || [],
         auditLogs: auditLogs || [],
         specialRequests: meta.specialRequests || [],
+        users: meta.users || [],
       }
     };
   } catch (error) {
@@ -324,6 +327,15 @@ export async function setPermissionsAction(p: any) {
         return { success: true }; 
     } catch (e) {
         return { success: false, message: "Permissions save failed." };
+    }
+}
+
+export async function saveUserRegistryAction(users: AppUser[]) {
+    try {
+        await saveUserRegistryToSheet(users);
+        return { success: true };
+    } catch (e) {
+        return { success: false, message: "Registry save failed." };
     }
 }
 

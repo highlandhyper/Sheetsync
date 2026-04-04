@@ -3,8 +3,8 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction } from '@/app/actions';
-import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry, SpecialEntryRequest, OfflineAction } from '@/lib/types';
+import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction, saveUserRegistryAction } from '@/app/actions';
+import type { Product, Supplier, InventoryItem, ReturnedItem, AuditLogEntry, SpecialEntryRequest, OfflineAction, AppUser } from '@/lib/types';
 import { useAuth } from './auth-context';
 
 interface AppData {
@@ -15,6 +15,7 @@ interface AppData {
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
+  users: AppUser[];
   lastSync: number | null;
 }
 
@@ -34,6 +35,7 @@ interface DataCacheContextType extends AppData {
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
   updateStaffList: (staff: string[]) => Promise<void>;
   updateLocationList: (locations: string[]) => Promise<void>;
+  updateUserRegistry: (users: AppUser[]) => Promise<void>;
   refreshData: () => Promise<void>;
   queueAction: (action: Omit<OfflineAction, 'id' | 'timestamp'>) => void;
 }
@@ -45,7 +47,7 @@ const OFFLINE_KEY = 'sheetSync_offlineActions';
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshRegistry } = useAuth();
   const [data, setData] = useState<AppData>({
     inventoryItems: [],
     products: [],
@@ -54,6 +56,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     uniqueStaffNames: [],
     auditLogs: [],
     specialRequests: [],
+    users: [],
     lastSync: null,
   });
   
@@ -155,7 +158,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setData({ inventoryItems: [], products: [], suppliers: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], lastSync: null });
+      setData({ inventoryItems: [], products: [], suppliers: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], users: [], lastSync: null });
       return;
     }
     fetchDataAndCache(false);
@@ -192,6 +195,14 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       }
   }, []);
 
+  const updateUserRegistry = useCallback(async (users: AppUser[]) => {
+      setData(prev => ({ ...prev, users }));
+      if (navigator.onLine) {
+          await saveUserRegistryAction(users);
+          await refreshRegistry(); // Keep auth in sync
+      }
+  }, [refreshRegistry]);
+
   const queueAction = useCallback((action: Omit<OfflineAction, 'id' | 'timestamp'>) => {
       const newAction: OfflineAction = {
           ...action,
@@ -212,6 +223,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateSpecialRequests,
     updateStaffList,
     updateLocationList,
+    updateUserRegistry,
     queueAction,
     updateInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: p.inventoryItems.map(x => x.id === i.id ? { ...x, ...i } : x) })),
     addInventoryItem: (i: any) => setData(p => ({ ...p, inventoryItems: [i, ...p.inventoryItems] })),
@@ -224,7 +236,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) }));
         refreshData(); 
     },
-  }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
+  }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, updateUserRegistry, queueAction]);
 
   return (
     <DataCacheContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
+import { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, AppUser, Role } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -45,6 +45,7 @@ const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
+const USER_REGISTRY_KEY = 'userRegistry';
 
 function parseFlexibleTimestamp(timestampValue: any): Date | null {
   if (!timestampValue || String(timestampValue).trim() === '') return null;
@@ -151,6 +152,7 @@ export async function getAppMetaData() {
     specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
     staff: (findJson(STAFF_LIST_KEY) as string[]) || ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"],
     locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"],
+    users: (findJson(USER_REGISTRY_KEY) as AppUser[]) || [],
   };
 }
 
@@ -193,6 +195,15 @@ export async function saveLocationListToSheet(locations: string[]) {
     return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(locations)]]);
   }
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
+}
+
+export async function saveUserRegistryToSheet(users: AppUser[]) {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === USER_REGISTRY_KEY);
+  if (idx !== undefined && idx !== -1) {
+    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(users)]]);
+  }
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[USER_REGISTRY_KEY, JSON.stringify(users)]]);
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {

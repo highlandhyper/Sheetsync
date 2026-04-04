@@ -167,3 +167,9 @@ export interface OfflineAction {
   data: any;
   timestamp: string;
 }
+
+export interface AppUser {
+  email: string;
+  role: Role;
+  createdAt: string;
+}
