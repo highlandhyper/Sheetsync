@@ -187,7 +187,11 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent 
+          className="sm:max-w-lg"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <div className="flex items-center justify-between pr-8">
                 <div>
