@@ -157,7 +157,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productName, setProductName] = useState('');
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
-  const [showRequestProductButton, setShowRequestProductButton] = useState(false);
   const [suggestedProductName, setSuggestedProductName] = useState('');
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
   const [foundInGlobalRegistry, setFoundInGlobalRegistry] = useState(false);
@@ -233,7 +232,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     setProductName('');
     setProductSupplier('');
     setProductLookupError('');
-    setShowRequestProductButton(false);
     setSuggestedProductName('');
     setHasRequestedProduct(false);
     setFoundInGlobalRegistry(false);
@@ -311,7 +309,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setProductLookupError('');
       setProductName('');
       setProductSupplier('');
-      setShowRequestProductButton(false);
       setHasRequestedProduct(false);
       setSuggestedProductName('');
       setFoundInGlobalRegistry(false);
@@ -338,15 +335,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setIsFetchingProduct(false);
           return true;
       } else {
-          // NEW: If not in local catalog, try external global lookup automatically to make request easier
           const externalRes = await fetchProductExternalDataAction(barcode);
           if (externalRes.success && externalRes.data?.name) {
               setSuggestedProductName(externalRes.data.name);
               setFoundInGlobalRegistry(true);
           }
           
-          setProductLookupError('This product is not registered in the system catalog.');
-          setShowRequestProductButton(true);
+          setProductLookupError('Product not found in system.');
           setIsFetchingProduct(false);
           return false;
       }
@@ -528,54 +523,38 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     
                     <div className="min-h-[24px]">
                         {productLookupError && !isFetchingProduct && (
-                            <Alert variant="destructive" className="bg-destructive/5 border-destructive/20 animate-in fade-in slide-in-from-top-2 duration-300 rounded-3xl p-6">
-                                <PackageSearch className="h-5 w-5" />
-                                <AlertTitle className="font-black text-sm uppercase tracking-widest ml-2">Barcode Not Registered</AlertTitle>
-                                <AlertDescription className="space-y-4 pt-3 ml-2">
-                                    <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                        The barcode <span className="font-bold text-foreground">{allFormValues.barcode}</span> was not found in our catalog. Would you like to request an administrator to register it?
-                                    </p>
-                                    
-                                    {!hasRequestedProduct ? (
-                                        <div className="space-y-4 bg-background/80 p-4 rounded-2xl border border-destructive/10 shadow-sm">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <Label htmlFor="suggestedName" className="text-[10px] font-black uppercase text-muted-foreground tracking-tight">Product Identification</Label>
-                                                    {foundInGlobalRegistry && (
-                                                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20 text-[8px] uppercase font-black px-1.5 h-4">
-                                                            <Globe className="h-2 w-2 mr-1" /> Global Match found
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                <div className="relative">
-                                                    <Zap className={cn("absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-yellow-500 transition-opacity", foundInGlobalRegistry ? "opacity-100" : "opacity-0")} />
-                                                    <Input 
-                                                        id="suggestedName"
-                                                        placeholder="Enter product name if known..."
-                                                        value={suggestedProductName}
-                                                        onChange={(e) => setSuggestedProductName(e.target.value)}
-                                                        className="h-10 text-xs font-bold bg-white"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <Button 
-                                                type="button" 
-                                                className="w-full text-xs font-black uppercase tracking-tighter h-11 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
-                                                onClick={handleRequestProductAdd}
-                                            >
-                                                <SendHorizontal className="mr-2 h-4 w-4" />
-                                                Notify Administrator
-                                            </Button>
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                {!hasRequestedProduct ? (
+                                    <Button 
+                                        type="button" 
+                                        className="w-full h-20 text-lg font-black uppercase tracking-tighter shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 flex flex-col items-center justify-center py-4 rounded-2xl"
+                                        onClick={handleRequestProductAdd}
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <SendHorizontal className="h-6 w-6" />
+                                            {suggestedProductName ? "Product Found Globally" : "Unregistered Barcode"}
                                         </div>
-                                    ) : (
-                                        <div className="p-4 rounded-2xl bg-green-500/10 border-2 border-green-500/20 text-green-600 flex flex-col items-center justify-center gap-2 animate-in zoom-in-95 duration-300">
-                                            <ShieldCheck className="h-8 w-8" />
-                                            <span className="text-xs font-black uppercase tracking-widest text-center">Notification Sent to Chief</span>
-                                            <p className="text-[10px] text-center opacity-80">You can proceed with another scan once they add it.</p>
+                                        <div className="text-[10px] font-bold opacity-80 flex items-center gap-1.5">
+                                            {suggestedProductName ? (
+                                                <>
+                                                    <Globe className="h-3 w-3" />
+                                                    ONE-CLICK REQUEST: {suggestedProductName}
+                                                </>
+                                            ) : (
+                                                "ONE-CLICK REQUEST TO ADMINISTRATOR"
+                                            )}
                                         </div>
-                                    )}
-                                </AlertDescription>
-                            </Alert>
+                                    </Button>
+                                ) : (
+                                    <div className="p-6 rounded-3xl bg-green-500/10 border-2 border-green-500/20 text-green-600 flex flex-col items-center justify-center gap-3 animate-in zoom-in-95 duration-300">
+                                        <ShieldCheck className="h-10 w-10" />
+                                        <div className="text-center">
+                                            <span className="text-sm font-black uppercase tracking-widest block mb-1">Request Sent to Chief</span>
+                                            <p className="text-xs font-medium opacity-80">Check notifications for approval status.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

@@ -263,7 +263,7 @@ export function InventoryItemDetailsDialog({
                     </button>
                 </div>
             </DialogHeader>
-            <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-12 bg-white min-h-0 overflow-hidden">
+            <div className="relative flex-1 w-full flex items-center justify-center p-4 sm:p-12 bg-white min-h-[300px] overflow-hidden">
                 {externalData?.image ? (
                     <div className="relative w-full h-[60vh] sm:h-[75vh]">
                         <Image 
