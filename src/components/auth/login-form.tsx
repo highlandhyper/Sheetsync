@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -41,7 +42,7 @@ export function LoginForm() {
         description = 'Welcome back, Chief!';
         router.push('/dashboard');
       } else if (determinedRole === 'viewer') {
-        router.push('/products');
+        router.push('/inventory/add');
       } else {
         router.push('/dashboard');
       }
@@ -61,7 +62,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm shadow-xl border-primary/10">
       <CardHeader>
-        <CardTitle className="text-2xl font-black tracking-tight">Account Login</CardTitle>
+        <CardTitle className="text-2xl font-black tracking-tight uppercase">Account Login</CardTitle>
         <CardDescription>Enter your credentials to access the application.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -75,7 +76,7 @@ export function LoginForm() {
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
             />
-            {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
@@ -96,13 +97,13 @@ export function LoginForm() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-stretch gap-4">
-          <Button type="submit" disabled={isLoading} className="w-full h-11 font-bold">
+          <Button type="submit" disabled={isLoading} className="w-full h-11 font-black uppercase tracking-tighter shadow-lg shadow-primary/20">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-            Login
+            Authenticate
           </Button>
         </CardFooter>
       </form>

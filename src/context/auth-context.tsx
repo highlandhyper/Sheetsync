@@ -1,13 +1,13 @@
+
 'use client';
 
-import type { PropsWithChildren} from 'react';
+import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
 import {
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   type UserCredential
@@ -27,7 +27,6 @@ interface AuthContextType {
   role: UserRole;
   loading: boolean;
   login: (values: LoginFormValues) => Promise<AuthContextLoginResponse>;
-  signup: (values: SignupFormValues) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -52,22 +51,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    setLoading(true);
-
-    const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-      }
-    }, 8000);
-
     if (!auth) {
       setLoading(false);
-      clearTimeout(safetyTimeout);
       return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      clearTimeout(safetyTimeout);
       setUser(currentUser);
       if (currentUser) {
         const determinedRole = currentUser.email === VIEWER_EMAIL ? 'viewer' : 'admin';
@@ -78,22 +67,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         localStorage.removeItem(ROLE_CACHE_KEY);
       }
       setLoading(false);
-    }, (error) => {
-      clearTimeout(safetyTimeout);
-      setUser(null);
-      setRole(null);
-      localStorage.removeItem(ROLE_CACHE_KEY);
-      setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-      clearTimeout(safetyTimeout);
-    };
+    return () => unsubscribe();
   }, []);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
-    if (!auth) return { success: false, error: "Authentication service not initialized." };
+    if (!auth) return { success: false, error: "Auth service unavailable." };
 
     try {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
@@ -109,38 +89,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const signup = useCallback(async (values: SignupFormValues) => {
-    if (!auth) return { success: false, error: "Authentication service not initialized." };
-    setLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
-      return { success: true };
-    } catch (error: any) {
-      setLoading(false);
-      return { success: false, error: error.message };
-    }
-  }, []);
-
   const logout = useCallback(async () => {
     localStorage.removeItem(ROLE_CACHE_KEY);
-    if (!auth) {
-      setUser(null);
-      setRole(null);
-      router.push('/login');
-      return;
-    }
-    setLoading(true);
-    try {
+    if (auth) {
       await firebaseSignOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      setLoading(false);
     }
+    setUser(null);
+    setRole(null);
+    router.push('/login');
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

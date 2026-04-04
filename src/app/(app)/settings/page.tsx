@@ -1,8 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, ListChecks, Settings2, Lock, Users, MapPin } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, Settings2, Lock, Users, MapPin, UserPlus } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -14,7 +15,7 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
-import { Separator } from '@/components/ui/separator';
+import { UserManager } from '@/components/settings/user-manager';
 
 export default function SettingsPage() {
   const { role } = useAuth();
@@ -35,7 +36,7 @@ export default function SettingsPage() {
       <CardContent className="flex-grow flex items-end">
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full mt-auto">
+            <Button variant="outline" className="w-full mt-auto font-bold">
                 <Settings2 className="mr-2 h-4 w-4" />
                 {triggerText}
             </Button>
@@ -54,9 +55,9 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
-      <h1 className="text-3xl font-bold mb-8 text-primary flex items-center">
-        <Cog className="mr-3 h-8 w-8" />
-        Application Settings
+      <h1 className="text-3xl font-black mb-8 text-primary flex items-center tracking-tight uppercase">
+        < Cog className="mr-3 h-8 w-8" />
+        System Settings
       </h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         
@@ -64,7 +65,7 @@ export default function SettingsPage() {
           icon={Palette}
           title="General Settings"
           description="Manage theme, interface preferences, and other global application settings."
-          triggerText="Manage General Settings"
+          triggerText="Manage Preferences"
           dialogClassName="sm:max-w-xl"
         >
           <div className="space-y-6">
@@ -119,10 +120,20 @@ export default function SettingsPage() {
         {role === 'admin' && (
           <>
             <DialogCard
+                icon={UserPlus}
+                title="User Management"
+                description="Add new personnel to the Firebase Authentication system."
+                triggerText="Manage Accounts"
+                dialogClassName="sm:max-w-md"
+            >
+                <UserManager />
+            </DialogCard>
+
+            <DialogCard
                 icon={Users}
-                title="Staff Management"
-                description="Add, edit, or remove staff members from the active registry."
-                triggerText="Manage Staff Registry"
+                title="Staff Registry"
+                description="Add, edit, or remove staff members from the logging catalog."
+                triggerText="Manage Names"
                 dialogClassName="sm:max-w-md"
             >
                 <StaffManager />
@@ -142,7 +153,7 @@ export default function SettingsPage() {
                 icon={KeyRound}
                 title="Local Credentials"
                 description="Set the username and password needed for critical changes."
-                triggerText="Manage Credentials"
+                triggerText="Manage Local Key"
                 dialogClassName="sm:max-w-md"
             >
                 <LocalCredentialsForm />
@@ -150,7 +161,7 @@ export default function SettingsPage() {
 
             <DialogCard
                 icon={ShieldCheck}
-                title="User Access Control"
+                title="Viewer Access"
                 description="Control which pages the 'Viewer' role can access."
                 triggerText="Manage Access"
                 dialogClassName="sm:max-w-3xl"
