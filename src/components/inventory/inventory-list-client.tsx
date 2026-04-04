@@ -230,14 +230,23 @@ export function InventoryListClient() {
         result.push({ mainItem: groupData.individualItems[0], individualItems: groupData.individualItems, totalQuantity: groupData.totalQuantity });
     }
 
+    const sortOrder = searchParams.get('sort') || 'newest';
+
     result.sort((a, b) => {
-        const dateA = a.mainItem.timestamp ? parseISO(a.mainItem.timestamp).getTime() : 0;
-        const dateB = b.mainItem.timestamp ? parseISO(b.mainItem.timestamp).getTime() : 0;
-        return dateB - dateA;
+        if (sortOrder === 'newest') {
+            const dateA = a.mainItem.timestamp ? parseISO(a.mainItem.timestamp).getTime() : 0;
+            const dateB = b.mainItem.timestamp ? parseISO(b.mainItem.timestamp).getTime() : 0;
+            return dateB - dateA;
+        } else if (sortOrder === 'name') {
+            return a.mainItem.productName.localeCompare(b.mainItem.productName);
+        } else if (sortOrder === 'qty') {
+            return b.totalQuantity - a.totalQuantity;
+        }
+        return 0;
     });
 
     return result;
-  }, [filteredItemsBySearchAndSupplierAndDate]);
+  }, [filteredItemsBySearchAndSupplierAndDate, searchParams]);
 
   useEffect(() => {
     if (isGroupDetailsOpen && selectedGroup) {
@@ -498,7 +507,7 @@ export function InventoryListClient() {
                     </TableHead>
                     )}
                     <TableHead>Product Name</TableHead>
-                    <TableHead>Supplier</TableHead>
+                    <TableHead>Barcode</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
@@ -522,27 +531,29 @@ export function InventoryListClient() {
                             <Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} />
                         </TableCell>
                         )}
-                        <TableCell className="font-medium p-0">
-                            <div className="group/name relative h-12 flex items-center px-4 cursor-help overflow-hidden">
-                                <span className="group-hover/name:hidden transition-all duration-300 truncate">
+                        <TableCell className="py-2.5">
+                            <div className="flex flex-col min-w-0 px-2">
+                                <span className="font-bold text-sm truncate leading-none mb-1">
                                     {mainItem.productName}
                                 </span>
-                                <span className="hidden group-hover/name:flex items-center gap-2 font-mono text-xs text-primary animate-in fade-in slide-in-from-left-2 duration-300">
-                                    <Barcode className="h-3 w-3" /> {mainItem.barcode}
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate">
+                                    {mainItem.supplierName || 'No Registered Supplier'}
                                 </span>
                             </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{mainItem.supplierName || 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{totalQuantity}</TableCell>
-                        <TableCell className="text-right">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="font-mono text-[11px] text-muted-foreground">
+                            {mainItem.barcode}
+                        </TableCell>
+                        <TableCell className="text-right font-black text-primary/80">{totalQuantity}</TableCell>
+                        <TableCell className="text-right text-xs">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{cost ? `QAR ${(cost * totalQuantity).toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell>{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
-                        <TableCell className={mainItem.expiryDate && isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) ? "text-destructive font-bold" : ""}>
+                        <TableCell className="text-xs">{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
+                        <TableCell className={cn("text-xs", mainItem.expiryDate && isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) ? "text-destructive font-bold" : "")}>
                             {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
-                                <span className="text-xs text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap">
+                                <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
                                     {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
