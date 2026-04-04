@@ -38,22 +38,22 @@ const REGISTRY_CACHE_KEY = 'sheetSync_user_registry';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(ROLE_CACHE_KEY) as Role;
-    }
-    return null;
-  });
-  const [userRegistry, setUserRegistry] = useState<AppUser[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(REGISTRY_CACHE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  const [role, setRole] = useState<Role | null>(null);
+  const [userRegistry, setUserRegistry] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const initializedRef = useRef(false);
+
+  // 1. Initial hydration from localStorage to prevent flash
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
+      if (cachedRole) setRole(cachedRole as Role);
+      
+      const cachedRegistry = localStorage.getItem(REGISTRY_CACHE_KEY);
+      if (cachedRegistry) setUserRegistry(JSON.parse(cachedRegistry));
+    }
+  }, []);
 
   const refreshRegistry = useCallback(async () => {
     try {
@@ -79,14 +79,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const now = new Date().toISOString();
 
     if (existingIndex > -1) {
-        // Update last login
+        // Update UID and last login if missing or old
         updatedRegistry[existingIndex] = {
             ...updatedRegistry[existingIndex],
             uid: currentUser.uid,
             lastLoginAt: now
         };
     } else {
-        // New user from Auth, default to Viewer if not first user
+        // User created in Firebase Console but missing in Registry
+        // First user ever becomes Admin, others become Viewer
         const newRole: Role = currentRegistry.length === 0 ? 'admin' : 'viewer';
         updatedRegistry.push({
             uid: currentUser.uid,
@@ -109,13 +110,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const determineRole = useCallback((email: string | null, registry: AppUser[]): Role | null => {
     if (!email) return null;
     const lowerEmail = email.toLowerCase().trim();
-    
     const matchedUser = registry.find(u => u.email.toLowerCase().trim() === lowerEmail);
-    if (matchedUser) return matchedUser.role;
-
-    // FALLBACK: If they exist in Firebase Auth but NOT in the registry yet,
-    // we let them in but wait for the sync to grant them a default role
-    return null; 
+    return matchedUser ? matchedUser.role : null;
   }, []);
 
   useEffect(() => {
@@ -126,13 +122,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser(currentUser);
       
       if (currentUser) {
+        // Fetch fresh registry immediately on state change
         const freshRegistry = await refreshRegistry();
         await syncUserToRegistry(currentUser, freshRegistry);
         
-        // Re-read registry after sync
         const determinedRole = determineRole(currentUser.email, freshRegistry);
         setRole(determinedRole);
-        localStorage.setItem(ROLE_CACHE_KEY, determinedRole || '');
+        if (determinedRole) {
+            localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
+        }
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
@@ -149,12 +147,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     try {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       
+      // Ensure registry is up to date BEFORE completing login
       const freshRegistry = await refreshRegistry();
       await syncUserToRegistry(userCredential.user, freshRegistry);
       
       const determinedRole = determineRole(userCredential.user.email, freshRegistry);
       setRole(determinedRole);
-      localStorage.setItem(ROLE_CACHE_KEY, determinedRole || '');
       
       return { success: true, role: determinedRole };
     } catch (error: any) {

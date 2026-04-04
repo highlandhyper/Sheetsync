@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
     Loader2, UserPlus, ShieldAlert, Eye, EyeOff, Mail, KeyRound, 
     ShieldCheck, User as UserIcon, Trash2, ArrowLeftRight, 
-    AlertTriangle, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink
+    AlertTriangle, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink, Info
 } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 const createUserSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -83,8 +84,9 @@ export function UserManager() {
   const onSubmit = async (data: CreateUserFormValues) => {
     setIsSubmitting(true);
     
+    // Check if email already in Registry
     if (users.some(u => u.email.toLowerCase() === data.email.toLowerCase())) {
-        toast({ variant: "destructive", title: "Already Registered", description: "This user is already in your app registry." });
+        toast({ variant: "destructive", title: "Duplicate Entry", description: "This user is already in your personnel registry." });
         setIsSubmitting(false);
         return;
     }
@@ -95,6 +97,8 @@ export function UserManager() {
     try {
       tempApp = initializeApp(firebaseConfig as any, tempAppName);
       const tempAuth = getAuth(tempApp);
+      
+      // Attempt to create in Firebase Auth
       const credential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
       
       const newRegistryUser: AppUser = {
@@ -105,11 +109,12 @@ export function UserManager() {
       };
       
       await updateUserRegistry([...users, newRegistryUser]);
-      toast({ title: "Account Created", description: `User added to Firebase and the app registry.` });
+      toast({ title: "Account Provisioned", description: `User created in Firebase and added to Registry.` });
       reset();
     } catch (error: any) {
+      // HANDLE EXISTING FIREBASE USER (e.g. created in console)
       if (error.code === 'auth/email-already-in-use') {
-          toast({ title: "Account Linked", description: "Found in Firebase. Granting app access..." });
+          toast({ title: "Account Identified", description: "Found existing account in Firebase. Linking to Registry..." });
           const newUser: AppUser = {
               email: data.email.toLowerCase().trim(),
               role: data.role,
@@ -118,7 +123,7 @@ export function UserManager() {
           await updateUserRegistry([...users, newUser]);
           reset();
       } else {
-          toast({ variant: "destructive", title: "Action Failed", description: error.message });
+          toast({ variant: "destructive", title: "Provisioning Failed", description: error.message });
       }
     } finally {
       if (tempApp) await deleteApp(tempApp);
@@ -128,35 +133,45 @@ export function UserManager() {
 
   const handleToggleRole = async (user: AppUser) => {
     if (user.email === currentUser?.email) {
-        toast({ title: "Action Blocked", description: "You cannot change your own role.", variant: "destructive" });
+        toast({ title: "Action Blocked", description: "You cannot modify your own administrative rights.", variant: "destructive" });
         return;
     }
     const newRole: Role = user.role === 'admin' ? 'viewer' : 'admin';
     const updatedRegistry = users.map(u => u.email === user.email ? { ...u, role: newRole } : u);
     await updateUserRegistry(updatedRegistry);
-    toast({ title: "Role Modified", description: `${user.email} is now a ${newRole.toUpperCase()}.` });
+    toast({ title: "Permissions Updated", description: `${user.email} is now a ${newRole.toUpperCase()}.` });
   };
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
     const updated = users.filter(u => u.email !== userToDelete.email);
     await updateUserRegistry(updated);
-    toast({ title: "Access Revoked", description: `${userToDelete.email} removed from system registry.` });
+    toast({ title: "Access Revoked", description: `${userToDelete.email} has been stripped of all roles.` });
     setUserToDelete(null);
   };
 
   const openConsole = () => {
-    window.open(`https://console.firebase.google.com/project/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/authentication/users`, '_blank');
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    window.open(`https://console.firebase.google.com/project/${projectId}/authentication/users`, '_blank');
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* AUTH SYNC ALERT */}
+      <Alert className="bg-primary/5 border-primary/20 rounded-2xl">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertTitle className="text-xs font-black uppercase tracking-widest text-primary">Unified Authentication Sync</AlertTitle>
+        <AlertDescription className="text-xs font-medium text-muted-foreground">
+            This dashboard manages <strong>App Roles</strong>. Accounts created in the Firebase Console will automatically sync here upon their first login.
+        </AlertDescription>
+      </Alert>
+
       {/* STATS OVERVIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-primary/5 border-primary/10 shadow-none">
             <CardContent className="p-4 flex items-center gap-4">
                 <div className="bg-primary/10 p-2 rounded-lg"><UsersIcon className="h-5 w-5 text-primary" /></div>
-                <div><p className="text-[10px] font-black uppercase text-primary tracking-widest">Total Active</p><p className="text-2xl font-black">{stats.total}</p></div>
+                <div><p className="text-[10px] font-black uppercase text-primary tracking-widest">Authenticated</p><p className="text-2xl font-black">{stats.total}</p></div>
             </CardContent>
         </Card>
         <Card className="bg-muted/30 border-muted-foreground/10 shadow-none">
@@ -174,14 +189,14 @@ export function UserManager() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* ADD USER FORM */}
+        {/* PROVISIONING FORM */}
         <div className="lg:col-span-1 space-y-4">
             <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                <UserPlus className="h-4 w-4" /> Provision Account
+                <UserPlus className="h-4 w-4" /> Provision Personnel
             </h3>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6 border-2 border-primary/10 rounded-3xl bg-muted/10 shadow-inner">
                 <div className="space-y-2">
-                    <Label htmlFor="new-email" className="text-xs font-bold uppercase text-muted-foreground">User Identity (Email)</Label>
+                    <Label htmlFor="new-email" className="text-xs font-bold uppercase text-muted-foreground">Login ID (Email)</Label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input id="new-email" type="email" placeholder="user@example.com" {...register('email')} className="pl-9 h-11" />
@@ -190,7 +205,7 @@ export function UserManager() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="new-password" className="text-xs font-bold uppercase text-muted-foreground">Initial Key</Label>
+                    <Label htmlFor="new-password" className="text-xs font-bold uppercase text-muted-foreground">Initial Key (Min 6 chars)</Label>
                     <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input id="new-password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...register('password')} className="pl-9 pr-10 h-11" />
@@ -202,37 +217,37 @@ export function UserManager() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Permission Level</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">Access Permissions</Label>
                     <Select value={selectedRole} onValueChange={(v: any) => setValue('role', v)}>
                         <SelectTrigger className="h-11 font-medium"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="viewer">Viewer (Logging Only)</SelectItem>
-                            <SelectItem value="admin">Administrator (Full Access)</SelectItem>
+                            <SelectItem value="viewer">Viewer (Restricted)</SelectItem>
+                            <SelectItem value="admin">Administrator (Global)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting} className="w-full h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                    Create & Register
+                    Sync & Register
                 </Button>
             </form>
         </div>
 
-        {/* USER TABLE */}
+        {/* REGISTRY TABLE */}
         <div className="lg:col-span-2 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" /> Unified Personnel Registry
+                    <ShieldCheck className="h-4 w-4" /> Personnel Registry
                 </h3>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black uppercase" onClick={openConsole}>
+                    <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black uppercase bg-primary/5 border-primary/20 text-primary" onClick={openConsole}>
                         <ExternalLink className="mr-2 h-3.5 w-3.5" /> Firebase Console
                     </Button>
                     <div className="relative flex-grow sm:w-48">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Filter email..." 
+                            placeholder="Filter registry..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9 h-9 text-xs"
@@ -245,9 +260,9 @@ export function UserManager() {
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
-                            <TableHead className="text-[10px] uppercase font-black">User Email</TableHead>
+                            <TableHead className="text-[10px] uppercase font-black">User Identity</TableHead>
                             <TableHead className="text-[10px] uppercase font-black text-center">Role</TableHead>
-                            <TableHead className="text-[10px] uppercase font-black">Status / Last Sync</TableHead>
+                            <TableHead className="text-[10px] uppercase font-black">Sync Status</TableHead>
                             <TableHead className="text-right text-[10px] uppercase font-black">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -261,7 +276,7 @@ export function UserManager() {
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-bold text-sm truncate max-w-[150px] sm:max-w-none">{user.email}</span>
-                                            {user.uid && <span className="text-[8px] font-mono text-muted-foreground opacity-50">{user.uid}</span>}
+                                            {user.uid && <span className="text-[8px] font-mono text-muted-foreground opacity-50 uppercase tracking-tighter">ID: {user.uid}</span>}
                                         </div>
                                     </div>
                                 </TableCell>
@@ -270,12 +285,12 @@ export function UserManager() {
                                         {user.role}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-muted-foreground text-[10px] font-medium italic">
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
+                                <TableCell className="text-muted-foreground text-[10px] font-bold uppercase tracking-tight">
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock className="h-3 w-3 text-primary" />
                                         {user.lastLoginAt 
                                             ? `Logged in ${formatDistanceToNow(parseISO(user.lastLoginAt), { addSuffix: true })}` 
-                                            : `Added ${formatDistanceToNow(parseISO(user.createdAt), { addSuffix: true })}`}
+                                            : `Awaiting First Sync`}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -284,7 +299,7 @@ export function UserManager() {
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-8 w-8 text-primary hover:bg-primary/5"
-                                            title="Modify Access Level"
+                                            title="Toggle Role"
                                             onClick={() => handleToggleRole(user)}
                                             disabled={user.email === currentUser?.email || isSyncing}
                                         >
@@ -294,7 +309,7 @@ export function UserManager() {
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-8 w-8 text-destructive hover:bg-destructive/5"
-                                            title="Revoke Permission"
+                                            title="Revoke Access"
                                             onClick={() => setUserToDelete(user)}
                                             disabled={user.email === currentUser?.email || isSyncing}
                                         >
@@ -306,7 +321,7 @@ export function UserManager() {
                         )) : (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">
-                                    No registered personnel matching your search.
+                                    No personnel records match your criteria.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -315,7 +330,7 @@ export function UserManager() {
             </div>
             {isSyncing && (
                 <div className="flex items-center justify-center gap-2 text-[10px] text-primary animate-pulse uppercase font-black tracking-widest pt-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Pushing Registry Updates...
+                    <Loader2 className="h-3 w-3 animate-spin" /> Finalizing Registry Write...
                 </div>
             )}
         </div>
@@ -329,15 +344,15 @@ export function UserManager() {
                 Revoke App Access
             </AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
-              Are you sure you want to block <span className="font-bold text-foreground">"{userToDelete?.email}"</span>? 
+              Confirm access revocation for <span className="font-bold text-foreground">"{userToDelete?.email}"</span>. 
               <br /><br />
-              <strong>What happens:</strong> The user is removed from the app registry and will be blocked from logging in.
+              <strong>Immediate Effect:</strong> This user will be stripped of their role and blocked from all app features instantly.
               <br /><br />
-              <strong>Permanent Deletion:</strong> For complete security compliance, you must still manually delete their credentials from the <button onClick={openConsole} className="text-primary font-bold hover:underline">Firebase Console</button>.
+              <strong>Complete Removal:</strong> To permanently delete their Firebase identity, please use the <button onClick={openConsole} className="text-primary font-bold hover:underline">Firebase Console</button>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Keep User</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest text-[10px]">
               Revoke & Block Access
             </AlertDialogAction>
