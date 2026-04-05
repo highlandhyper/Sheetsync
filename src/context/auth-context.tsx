@@ -12,7 +12,7 @@ import {
   type UserCredential
 } from 'firebase/auth';
 import type { LoginFormValues } from '@/lib/schemas';
-import { fetchAllDataAction, saveUserRegistryAction } from '@/app/actions';
+import { fetchUserRegistryAction, saveUserRegistryAction } from '@/app/actions';
 import type { Role, AppUser } from '@/lib/types';
 
 interface AuthContextLoginResponse {
@@ -57,11 +57,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshRegistry = useCallback(async () => {
     try {
-      const response = await fetchAllDataAction();
-      if (response.success && response.data?.users) {
-        setUserRegistry(response.data.users);
-        localStorage.setItem(REGISTRY_CACHE_KEY, JSON.stringify(response.data.users));
-        return response.data.users;
+      // Use lightweight action for startup
+      const response = await fetchUserRegistryAction();
+      if (response.success && response.data) {
+        setUserRegistry(response.data);
+        localStorage.setItem(REGISTRY_CACHE_KEY, JSON.stringify(response.data));
+        return response.data;
       }
     } catch (err) {
       console.warn("Auth: Registry sync failed.");
@@ -79,15 +80,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const now = new Date().toISOString();
 
     if (existingIndex > -1) {
-        // Update UID and last login if missing or old
         updatedRegistry[existingIndex] = {
             ...updatedRegistry[existingIndex],
             uid: currentUser.uid,
             lastLoginAt: now
         };
     } else {
-        // User created in Firebase Console but missing in Registry
-        // First user ever becomes Admin, others become Viewer
         const newRole: Role = currentRegistry.length === 0 ? 'admin' : 'viewer';
         updatedRegistry.push({
             uid: currentUser.uid,
@@ -118,27 +116,39 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // FAIL-SAFE: If Firebase or networking is hanging, unblock the UI after 3.5s
+    const safetyTimer = setTimeout(() => {
+        setLoading(false);
+    }, 3500);
+
     const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
-        // Fetch fresh registry immediately on state change
+        // Optimized: Fetch registry ONLY (much faster than full data sync)
         const freshRegistry = await refreshRegistry();
-        await syncUserToRegistry(currentUser, freshRegistry);
         
         const determinedRole = determineRole(currentUser.email, freshRegistry);
         setRole(determinedRole);
         if (determinedRole) {
             localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
         }
+
+        // Run sync in background without blocking initial transition
+        syncUserToRegistry(currentUser, freshRegistry);
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
       }
+      
       setLoading(false);
+      clearTimeout(safetyTimer);
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribe();
+        clearTimeout(safetyTimer);
+    };
   }, [refreshRegistry, determineRole, syncUserToRegistry]);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
@@ -146,14 +156,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     try {
       const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      
-      // Ensure registry is up to date BEFORE completing login
       const freshRegistry = await refreshRegistry();
       await syncUserToRegistry(userCredential.user, freshRegistry);
-      
       const determinedRole = determineRole(userCredential.user.email, freshRegistry);
       setRole(determinedRole);
-      
       return { success: true, role: determinedRole };
     } catch (error: any) {
       return { success: false, error: error.message };
