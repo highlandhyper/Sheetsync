@@ -38,18 +38,23 @@ const REGISTRY_CACHE_KEY = 'sheetSync_user_registry';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
   const [userRegistry, setUserRegistry] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const initializedRef = useRef(false);
 
-  // 1. Synchronous Restoration from localStorage to prevent "Initializing" hang
+  // Synchronous Role Recovery: Prevents the "Initialization Hang"
+  const [role, setRole] = useState<Role | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
+      } catch (e) { return null; }
+    }
+    return null;
+  });
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
-      if (cachedRole) setRole(cachedRole as Role);
-      
       const cachedRegistry = localStorage.getItem(REGISTRY_CACHE_KEY);
       if (cachedRegistry) setUserRegistry(JSON.parse(cachedRegistry));
     }
@@ -64,7 +69,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return response.data;
       }
     } catch (err) {
-      console.warn("Auth: Registry sync failed.");
+      console.warn("Auth: Registry sync delayed. Using local cache.");
     }
     return userRegistry;
   }, [userRegistry]);
@@ -115,20 +120,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // FAIL-SAFE: Unblock the UI after 3 seconds if Firebase or registry is slow
+    // FAIL-SAFE: Unblock the UI after 2.5 seconds regardless of network response
     const safetyTimer = setTimeout(() => {
         setLoading(false);
-    }, 3000);
+    }, 2500);
 
     const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
+        // Hydrate from cache immediately to unblock UI
+        const cachedRole = localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
+        if (cachedRole) setRole(cachedRole);
+
         // Fetch fresh registry in background
         refreshRegistry().then(freshRegistry => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
-            setRole(determinedRole);
             if (determinedRole) {
+                setRole(determinedRole);
                 localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
             }
             syncUserToRegistry(currentUser, freshRegistry);
@@ -138,7 +147,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         localStorage.removeItem(ROLE_CACHE_KEY);
       }
       
-      // CRITICAL: Unblock UI immediately after auth state is known
+      // CRITICAL: Unblock UI as soon as the session is detected. 
+      // Do not await the Google Sheets registry fetch.
       setLoading(false);
       clearTimeout(safetyTimer);
     });
@@ -157,7 +167,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const freshRegistry = await refreshRegistry();
       await syncUserToRegistry(userCredential.user, freshRegistry);
       const determinedRole = determineRole(userCredential.user.email, freshRegistry);
-      setRole(determinedRole);
+      if (determinedRole) {
+          setRole(determinedRole);
+          localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
+      }
       return { success: true, role: determinedRole };
     } catch (error: any) {
       return { success: false, error: error.message };
