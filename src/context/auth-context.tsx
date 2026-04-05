@@ -47,7 +47,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [role, setRole] = useState<Role | null>(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
+        const cached = localStorage.getItem(ROLE_CACHE_KEY);
+        return cached as Role | null;
       } catch (e) { return null; }
     }
     return null;
@@ -128,10 +129,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const cachedRole = localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
         if (cachedRole) {
             setRole(cachedRole);
-            setLoading(false);
+            setLoading(false); // Unblock the UI immediately if we have a cached role
         }
 
-        // Fetch fresh registry
+        // Fetch fresh registry in background
         refreshRegistry().then(async (freshRegistry) => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
             if (determinedRole) {
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
             }
             await syncUserToRegistry(currentUser, freshRegistry);
-            setLoading(false);
+            setLoading(false); // Ensure loading is false even if no cache was found
         }).catch(() => {
             setLoading(false);
         });

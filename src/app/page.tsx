@@ -14,13 +14,16 @@ export default function HomePage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
+        // AGGRESSIVE REDIRECTION: Don't hang if role is null but user exists
+        // Redirect to a safe default while role is confirming
         if (role === 'admin') {
           router.replace('/dashboard');
         } else if (role === 'viewer') {
           const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
           router.replace(defaultPath);
-        } else if (user.email) {
-          // If role is still loading or user is unknown, default to a safe start
+        } else {
+          // If we have a user but role is still initializing, move to Log New Item
+          // which is the most common entry point and safer than a white screen.
           router.replace('/inventory/add');
         }
       } else {
@@ -40,7 +43,7 @@ export default function HomePage() {
         SheetSync
       </h1>
       <p className="text-muted-foreground animate-pulse font-medium">
-        Verifying Identity & Security Credentials...
+        Verifying Security Credentials...
       </p>
     </div>
   );
