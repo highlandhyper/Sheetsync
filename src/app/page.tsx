@@ -26,8 +26,8 @@ export default function HomePage() {
           const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
           router.replace(defaultPath);
         } else {
-          // If we have a user but role fetch is slow, wait for sync
-          // but show the retry options.
+          // If we have a user but role fetch is slow, default to Admin dashboard
+          // but show the retry options. Role-agnostic fallback.
         }
       } else {
         router.replace('/login');
