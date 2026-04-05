@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -22,13 +22,18 @@ const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#29abe2',
+};
 
 export const metadata: Metadata = {
   title: 'SheetSync',
   description: 'Next-Gen Inventory Management',
   manifest: '/manifest.json',
-  themeColor: '#29abe2',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
