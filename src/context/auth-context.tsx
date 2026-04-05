@@ -125,14 +125,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser(currentUser);
       
       if (currentUser) {
-        // Hydrate from cache immediately to unblock UI
+        // 1. HYDRATE ROLE FROM CACHE IMMEDIATELY
         const cachedRole = localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
         if (cachedRole) {
             setRole(cachedRole);
-            setLoading(false); // Unblock the UI immediately if we have a cached role
         }
 
-        // Fetch fresh registry in background
+        // 2. UNBLOCK INITIALIZATION IMMEDIATELY
+        // We set loading to false here so the app can start routing.
+        // The registry sync will happen in the background.
+        setLoading(false);
+
+        // 3. BACKGROUND SYNC
         refreshRegistry().then(async (freshRegistry) => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
             if (determinedRole) {
@@ -140,9 +144,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
             }
             await syncUserToRegistry(currentUser, freshRegistry);
-            setLoading(false); // Ensure loading is false even if no cache was found
-        }).catch(() => {
-            setLoading(false);
+        }).catch((err) => {
+            console.warn("Background registry sync failed:", err);
         });
       } else {
         setRole(null);
