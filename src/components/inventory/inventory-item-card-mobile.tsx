@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   User,
   Eye,
-  Edit,
+  Pencil,
   Undo2,
   Trash2,
   PlusCircle,
@@ -189,7 +189,7 @@ export function InventoryItemCardMobile({
           )
         ) : isProductFound ? (
           <>
-            {onEdit && <Button variant="ghost" size="sm" onClick={onEdit} className="font-bold"><Edit className="mr-2 h-4 w-4" />Edit</Button>}
+            {onEdit && <Button variant="ghost" size="sm" onClick={onEdit} className="font-bold"><Pencil className="mr-2 h-4 w-4" />Edit</Button>}
             {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0} className="font-bold"><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
             {onDelete && <Button variant="destructive" size="sm" onClick={onDelete} className="font-bold"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
           </>
