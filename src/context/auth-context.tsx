@@ -43,17 +43,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const initializedRef = useRef(false);
 
-  // Synchronous Role Recovery: Prevents the "Initialization Hang"
+  // INSTANT ROLE RESTORATION: Read from cache immediately during render
   const [role, setRole] = useState<Role | null>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const cached = localStorage.getItem(ROLE_CACHE_KEY);
-        return cached as Role | null;
+        return localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
       } catch (e) { return null; }
     }
     return null;
   });
 
+  // HYDRATE REGISTRY FROM CACHE
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const cachedRegistry = localStorage.getItem(REGISTRY_CACHE_KEY);
@@ -121,15 +121,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // FAIL-SAFE: Unblock the application UI after a hard timeout 
-    // if Firebase or the network is being extremely slow.
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
-
     if (!auth) {
       setLoading(false);
-      clearTimeout(safetyTimer);
       return;
     }
 
@@ -137,18 +130,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser(currentUser);
       
       if (currentUser) {
-        // 1. HYDRATE ROLE FROM CACHE IMMEDIATELY
-        const cachedRole = localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
-        if (cachedRole) {
-            setRole(cachedRole);
-        }
-
-        // 2. UNBLOCK INITIALIZATION IMMEDIATELY
-        // We set loading to false here so the app can start routing to the cached destination.
+        // 1. NON-BLOCKING INITIALIZATION
+        // We clear the loading state as soon as we have a user. 
+        // The redirection logic in page.tsx will handle the routing based on cached or fresh roles.
         setLoading(false);
-        clearTimeout(safetyTimer);
 
-        // 3. BACKGROUND SYNC (Silent)
+        // 2. BACKGROUND SECURITY SYNC
+        // This runs silently and updates the UI/Role when ready.
         refreshRegistry().then(async (freshRegistry) => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
             if (determinedRole) {
@@ -163,14 +151,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
         setLoading(false);
-        clearTimeout(safetyTimer);
       }
     });
 
-    return () => {
-        unsubscribe();
-        clearTimeout(safetyTimer);
-    };
+    return () => unsubscribe();
   }, [refreshRegistry, determineRole, syncUserToRegistry]);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
