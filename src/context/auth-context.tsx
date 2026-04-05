@@ -44,7 +44,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const initializedRef = useRef(false);
 
-  // 1. Initial hydration from localStorage to prevent flash
+  // 1. Synchronous Restoration from localStorage to prevent "Initializing" hang
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
@@ -57,7 +57,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshRegistry = useCallback(async () => {
     try {
-      // Use lightweight action for startup
       const response = await fetchUserRegistryAction();
       if (response.success && response.data) {
         setUserRegistry(response.data);
@@ -116,31 +115,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // FAIL-SAFE: If Firebase or networking is hanging, unblock the UI after 3.5s
+    // FAIL-SAFE: Unblock the UI after 3 seconds if Firebase or registry is slow
     const safetyTimer = setTimeout(() => {
         setLoading(false);
-    }, 3500);
+    }, 3000);
 
     const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
-        // Optimized: Fetch registry ONLY (much faster than full data sync)
-        const freshRegistry = await refreshRegistry();
-        
-        const determinedRole = determineRole(currentUser.email, freshRegistry);
-        setRole(determinedRole);
-        if (determinedRole) {
-            localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-        }
-
-        // Run sync in background without blocking initial transition
-        syncUserToRegistry(currentUser, freshRegistry);
+        // Fetch fresh registry in background
+        refreshRegistry().then(freshRegistry => {
+            const determinedRole = determineRole(currentUser.email, freshRegistry);
+            setRole(determinedRole);
+            if (determinedRole) {
+                localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
+            }
+            syncUserToRegistry(currentUser, freshRegistry);
+        });
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
       }
       
+      // CRITICAL: Unblock UI immediately after auth state is known
       setLoading(false);
       clearTimeout(safetyTimer);
     });
@@ -166,14 +164,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [refreshRegistry, determineRole, syncUserToRegistry]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(ROLE_CACHE_KEY);
     if (auth) {
-      await firebaseSignOut(auth);
+      firebaseSignOut(auth).then(() => {
+        setUser(null);
+        setRole(null);
+        router.push('/login');
+      });
     }
-    setUser(null);
-    setRole(null);
-    router.push('/login');
   }, [router]);
 
   return (

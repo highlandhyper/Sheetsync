@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -15,17 +14,22 @@ export default function HomePage() {
   const [showRetry, setShowRetry] = useState(false);
 
   useEffect(() => {
-    // Show a retry button if stuck for more than 8 seconds
-    const timer = setTimeout(() => setShowRetry(true), 8000);
+    // Show a retry button if stuck for more than 6 seconds
+    const timer = setTimeout(() => setShowRetry(true), 6000);
 
     if (!loading && isInitialized) {
       if (user) {
+        // We have a user. If role is still null (first sync), 
+        // we wait a moment or fallback to dashboard for admins
         if (role === 'admin') {
           router.replace('/dashboard');
         } else if (role === 'viewer') {
           const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
           router.replace(defaultPath);
+        } else if (role === null && !showRetry) {
+          // Still waiting for registry sync... page stays on loader
         } else {
+          // If we have a user but no role after 6s, go to login to force re-auth
           router.replace('/login');
         }
       } else {
@@ -34,7 +38,7 @@ export default function HomePage() {
     }
 
     return () => clearTimeout(timer);
-  }, [user, loading, role, router, permissions, isInitialized]);
+  }, [user, loading, role, router, permissions, isInitialized, showRetry]);
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-background p-4 text-center">
@@ -47,28 +51,28 @@ export default function HomePage() {
         SheetSync
       </h1>
       <p className="text-muted-foreground animate-pulse font-medium">
-        Initializing secure environment...
+        Verifying Identity & Role Registry...
       </p>
 
       {showRetry && (
         <div className="mt-12 space-y-4 max-w-xs animate-fade-in">
           <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium">
             <AlertCircle className="h-4 w-4" />
-            Initialization is taking longer than expected.
+            Registry sync is taking longer than expected.
           </div>
           <Button 
             variant="outline" 
             className="w-full font-bold" 
             onClick={() => window.location.reload()}
           >
-            Refresh Application
+            Force Restart Application
           </Button>
           <Button 
             variant="ghost" 
             className="w-full text-xs text-muted-foreground" 
             onClick={() => router.push('/login')}
           >
-            Force Go to Login
+            Go to Login Page
           </Button>
         </div>
       )}
