@@ -121,7 +121,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
+    // FAIL-SAFE: Unblock the application UI after a hard timeout 
+    // if Firebase or the network is being extremely slow.
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
+    if (!auth) {
+      setLoading(false);
+      clearTimeout(safetyTimer);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
@@ -132,11 +144,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         // 2. UNBLOCK INITIALIZATION IMMEDIATELY
-        // We set loading to false here so the app can start routing.
-        // The registry sync will happen in the background.
+        // We set loading to false here so the app can start routing to the cached destination.
         setLoading(false);
+        clearTimeout(safetyTimer);
 
-        // 3. BACKGROUND SYNC
+        // 3. BACKGROUND SYNC (Silent)
         refreshRegistry().then(async (freshRegistry) => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
             if (determinedRole) {
@@ -151,11 +163,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
         setLoading(false);
+        clearTimeout(safetyTimer);
       }
     });
 
     return () => {
         unsubscribe();
+        clearTimeout(safetyTimer);
     };
   }, [refreshRegistry, determineRole, syncUserToRegistry]);
 
