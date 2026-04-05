@@ -8,10 +8,9 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Header } from '@/components/layout/header';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
-import { Loader2, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
-import { Button } from '@/components/ui/button';
 
 const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
 
@@ -23,18 +22,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [showSafetyButton, setShowSafetyButton] = useState(false);
   const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
   const loading = authLoading || !permissionsInitialized || !settingsInitialized;
   const INACTIVITY_TIMEOUT_MS = (generalSettings.inactivityTimeout || 5) * 60 * 1000;
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) setShowSafetyButton(true);
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [loading]);
 
   const handleLock = useCallback(() => {
     setIsLocked(true);
@@ -114,42 +105,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-lg font-medium text-muted-foreground animate-pulse">Establishing connection...</p>
-        
-        {showSafetyButton && (
-          <div className="mt-8 animate-fade-in space-y-6 max-w-sm border-t pt-8">
-            <div className="flex flex-col items-center gap-3">
-              <div className="bg-destructive/10 p-3 rounded-full">
-                <AlertCircle className="h-6 w-6 text-destructive" />
-              </div>
-              <p className="text-sm font-semibold text-destructive">
-                Sync mismatch or network delay detected.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Your browser is struggling to fetch the latest application chunks. A hard refresh is recommended.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button 
-                variant="default" 
-                className="w-full font-black h-12 shadow-lg shadow-primary/20"
-                onClick={() => {
-                  if ('caches' in window) {
-                    caches.keys().then(names => {
-                      for (let name of names) caches.delete(name);
-                    });
-                  }
-                  window.location.reload(true);
-                }}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Force Clean Reload
-              </Button>
-              <Button variant="ghost" className="text-xs" onClick={() => router.push('/login')}>
-                Go to Login Page
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }

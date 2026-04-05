@@ -120,42 +120,38 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // FAIL-SAFE: Unblock the UI after 2.5 seconds regardless of network response
-    const safetyTimer = setTimeout(() => {
-        setLoading(false);
-    }, 2500);
-
     const unsubscribe = onAuthStateChanged(auth!, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
         // Hydrate from cache immediately to unblock UI
         const cachedRole = localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
-        if (cachedRole) setRole(cachedRole);
+        if (cachedRole) {
+            setRole(cachedRole);
+            setLoading(false);
+        }
 
-        // Fetch fresh registry in background
-        refreshRegistry().then(freshRegistry => {
+        // Fetch fresh registry
+        refreshRegistry().then(async (freshRegistry) => {
             const determinedRole = determineRole(currentUser.email, freshRegistry);
             if (determinedRole) {
                 setRole(determinedRole);
                 localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
             }
-            syncUserToRegistry(currentUser, freshRegistry);
+            await syncUserToRegistry(currentUser, freshRegistry);
+            setLoading(false);
+        }).catch(() => {
+            setLoading(false);
         });
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
+        setLoading(false);
       }
-      
-      // CRITICAL: Unblock UI as soon as the session is detected. 
-      // Do not await the Google Sheets registry fetch.
-      setLoading(false);
-      clearTimeout(safetyTimer);
     });
 
     return () => {
         unsubscribe();
-        clearTimeout(safetyTimer);
     };
   }, [refreshRegistry, determineRole, syncUserToRegistry]);
 
