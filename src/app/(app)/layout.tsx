@@ -24,7 +24,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const [isLocked, setIsLocked] = useState(false);
   const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
-  const loading = authLoading || !permissionsInitialized || !settingsInitialized;
+  // WE DO NOT BLOCK ON permissionsInitialized or settingsInitialized here
+  // because we want the Sidebar and Header to render instantly.
+  // The internal components of Sidebar/Header handle their own loading states.
+  const loading = authLoading;
   const INACTIVITY_TIMEOUT_MS = (generalSettings.inactivityTimeout || 5) * 60 * 1000;
 
   const handleLock = useCallback(() => {
