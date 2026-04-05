@@ -1,40 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context'; 
 import { useAccessControl } from '@/context/access-control-context';
-import { Loader2, AlertCircle, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, loading, role } = useAuth(); 
   const { permissions } = useAccessControl();
-  const [showRetry, setShowRetry] = useState(false);
 
   useEffect(() => {
-    // Show escape button if stuck for more than 4 seconds
-    const timer = setTimeout(() => setShowRetry(true), 4000);
-
     if (!loading) {
       if (user) {
-        // If we have a user and a role (even if cached), route them.
         if (role === 'admin') {
           router.replace('/dashboard');
         } else if (role === 'viewer') {
           const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
           router.replace(defaultPath);
-        } else {
-          // If we have a user but role fetch is slow, default to Admin dashboard
-          // but show the retry options. Role-agnostic fallback.
+        } else if (user.email) {
+          // If role is still loading or user is unknown, default to a safe start
+          router.replace('/inventory/add');
         }
       } else {
         router.replace('/login');
       }
     }
-
-    return () => clearTimeout(timer);
   }, [user, loading, role, router, permissions]);
 
   return (
@@ -50,43 +42,6 @@ export default function HomePage() {
       <p className="text-muted-foreground animate-pulse font-medium">
         Verifying Identity & Security Credentials...
       </p>
-
-      {showRetry && (
-        <div className="mt-12 space-y-4 max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-center gap-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 text-primary text-sm font-medium">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            Registry sync is slow due to large data volumes.
-          </div>
-          
-          <div className="grid grid-cols-1 gap-2">
-            {user && (
-                <Button 
-                    variant="default" 
-                    className="w-full font-black h-12 rounded-xl shadow-lg shadow-primary/20"
-                    onClick={() => router.replace('/dashboard')}
-                >
-                    Continue anyway <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            )}
-            
-            <Button 
-                variant="outline" 
-                className="w-full font-bold h-12 rounded-xl" 
-                onClick={() => window.location.reload()}
-            >
-                Retry Connection
-            </Button>
-            
-            <Button 
-                variant="ghost" 
-                className="w-full text-xs text-muted-foreground" 
-                onClick={() => router.push('/login')}
-            >
-                Back to Login
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
