@@ -45,6 +45,15 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
+export async function fetchUserRegistryAction(): Promise<ActionResponse<AppUser[]>> {
+  try {
+    const meta = await getAppMetaData();
+    return { success: true, data: meta.users || [] };
+  } catch (error) {
+    return { success: false, message: "Registry fetch failed." };
+  }
+}
+
 export async function fetchAllDataAction(): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products: Product[];
