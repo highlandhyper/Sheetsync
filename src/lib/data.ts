@@ -1,6 +1,5 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
-import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange } from './google-sheets-client';
+import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -258,6 +257,33 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
     return true;
   }
   return false;
+}
+
+/**
+ * Optimised bulk product deletion.
+ * Reads the barcode column once and performs a batch row deletion.
+ */
+export async function deleteProductsByBarcodes(email: string, barcodes: string[]) {
+  const sheetData = await readSheetData(DB_READ_RANGE);
+  if (!sheetData || sheetData.length === 0) return false;
+
+  const barcodeSet = new Set(barcodes.map(b => b.trim()));
+  const rowIndicesToDelete: number[] = [];
+
+  sheetData.forEach((row, i) => {
+    const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
+    if (barcodeSet.has(rowBarcode)) {
+      rowIndicesToDelete.push(i + 2); // 1-based index + header offset
+    }
+  });
+
+  if (rowIndicesToDelete.length === 0) return false;
+
+  const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
+  if (success) {
+    await logAuditEvent(email, 'BULK_DELETE_PRODUCT', barcodes.join(','), `Batch removal of ${rowIndicesToDelete.length} SKUs.`);
+  }
+  return success;
 }
 
 export async function addInventoryItemToSheet(i: InventoryItem) {

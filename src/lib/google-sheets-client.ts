@@ -1,4 +1,3 @@
-
 // src/lib/google-sheets-client.ts
 import { google, type sheets_v4 } from 'googleapis';
 import { JWT } from 'google-auth-library';
@@ -306,6 +305,55 @@ export async function deleteSheetRowsRange(sheetName: string, startIndex: number
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`Error deleting rows in sheet "${sheetName}" (took ${duration}ms): ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Deletes multiple non-contiguous rows in a single API call.
+ * Indices are 1-based row numbers as seen in Google Sheets UI.
+ */
+export async function deleteSheetRowsBatch(sheetName: string, rowIndices: number[]): Promise<boolean> {
+  const currentSheetsClient = await getSheetsClient();
+  if (!currentSheetsClient || !GOOGLE_SHEET_ID) {
+    console.error(`deleteSheetRowsBatch: Sheets client or GOOGLE_SHEET_ID not available for sheet '${sheetName}'.`);
+    return false;
+  }
+
+  const numericSheetId = await getSheetGid(sheetName);
+  if (numericSheetId === null) {
+    console.error(`deleteSheetRowsBatch: Could not get GID for sheet "${sheetName}".`);
+    return false;
+  }
+
+  // CRITICAL: Sort indices in descending order to avoid index shifting during sequential deletion within the batch
+  const sortedIndices = [...rowIndices].sort((a, b) => b - a);
+
+  const startTime = Date.now();
+  try {
+    const requests = sortedIndices.map(index => ({
+      deleteDimension: {
+        range: {
+          sheetId: numericSheetId,
+          dimension: 'ROWS',
+          startIndex: index - 1,
+          endIndex: index,
+        },
+      },
+    }));
+
+    await currentSheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      requestBody: {
+        requests: requests,
+      },
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(`Successfully batch deleted ${rowIndices.length} rows from sheet "${sheetName}" in ${duration}ms.`);
+    return true;
+  } catch (error: any) {
+    console.error(`Error batch deleting rows in sheet "${sheetName}": ${error.message}`);
     return false;
   }
 }
