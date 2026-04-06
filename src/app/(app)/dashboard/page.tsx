@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -26,6 +26,7 @@ import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay } from 
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
@@ -357,6 +358,7 @@ function QuickAuthorizeCard() {
     const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
+    const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
 
     const handleOpenGrant = () => {
         if (!selectedStaff) return;
@@ -387,16 +389,46 @@ function QuickAuthorizeCard() {
                 <CardDescription className="text-[10px]">Proactive silent entry grant</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
-                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                    <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="Select Staff Member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {uniqueStaffNames.map(name => (
-                            <SelectItem key={name} value={name}>{name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button 
+                            variant="outline" 
+                            role="combobox" 
+                            className="w-full h-9 text-xs justify-between font-bold"
+                        >
+                            <div className="flex items-center gap-2 truncate">
+                                <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                                {selectedStaff || "Select Staff Member"}
+                            </div>
+                            <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                            <CommandInput placeholder="Search staff..." className="h-8 text-xs" />
+                            <CommandList>
+                                <CommandEmpty className="text-xs py-2 text-center">No personnel found.</CommandEmpty>
+                                <CommandGroup>
+                                    {uniqueStaffNames.map(name => (
+                                        <CommandItem 
+                                            key={name} 
+                                            value={name} 
+                                            onSelect={() => {
+                                                setSelectedStaff(name);
+                                                setStaffPopoverOpen(false);
+                                            }}
+                                            className="text-xs font-bold"
+                                        >
+                                            <Check className={cn("mr-2 h-3 w-3", selectedStaff === name ? "opacity-100" : "opacity-0")} />
+                                            {name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+                
                 <Button 
                     className="w-full h-9 text-xs font-bold" 
                     disabled={!selectedStaff}

@@ -12,14 +12,15 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2, User } from 'lucide-react';
+import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
+import { cn } from '@/lib/utils';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
   const [staffName, setStaffName] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -131,21 +133,46 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <div className="space-y-4 py-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identify Personnel</Label>
-                    <Select value={staffName} onValueChange={setStaffName}>
-                        <SelectTrigger className="h-12 bg-muted/20 border-primary/10">
-                            <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <SelectValue placeholder="Select staff member..." />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {uniqueStaffNames.map(name => (
-                                <SelectItem key={name} value={name} className="font-bold">
-                                    {name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                role="combobox" 
+                                aria-expanded={staffPopoverOpen}
+                                className="w-full h-12 justify-between font-bold bg-muted/20 border-primary/10 px-4"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-primary" />
+                                    {staffName || "Select staff member..."}
+                                </div>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                                <CommandInput placeholder="Search personnel..." />
+                                <CommandList>
+                                    <CommandEmpty>No personnel found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {uniqueStaffNames.map(name => (
+                                            <CommandItem 
+                                                key={name} 
+                                                value={name} 
+                                                onSelect={() => {
+                                                    setStaffName(name);
+                                                    setStaffPopoverOpen(false);
+                                                }}
+                                                className="font-bold"
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
+                                                {name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 </div>
             </div>
             <DialogFooter className="grid grid-cols-2 gap-3 pt-2">
