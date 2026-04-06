@@ -14,14 +14,16 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider swipeDirection="up">
+    <ToastProvider swipeDirection="right">
       <ToastViewport />
       {toasts.map(function ({ id, title, description, action, onOpenChange, ...props }) {
         return (
-          <Toast key={id} onOpenChange={onOpenChange} {...props} duration={3000}>
-            <div className="flex flex-col justify-center min-w-0 pr-2 overflow-hidden">
+          <Toast key={id} onOpenChange={onOpenChange} {...props} duration={4000}>
+            <div className="flex flex-col justify-center min-w-0 pr-2">
               {title && <ToastTitle variant={props.variant}>{title}</ToastTitle>}
-              {description && <ToastDescription>{description}</ToastDescription>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
             </div>
             {action}
             <ToastClose />
