@@ -16,17 +16,14 @@ const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
 
 export default function AppLayout({ children }: PropsWithChildren) {
   const { user, loading: authLoading, role } = useAuth();
-  const { isAllowed, isInitialized: permissionsInitialized, permissions } = useAccessControl();
-  const { settings: generalSettings, isInitialized: settingsInitialized } = useGeneralSettings();
+  const { isAllowed, permissions } = useAccessControl();
+  const { settings: generalSettings } = useGeneralSettings();
   const router = useRouter();
   const pathname = usePathname();
   const [showAdminWelcomeScreen, setShowAdminWelcomeScreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const inactivityTimerRef = useRef<NodeJS.Timeout>();
 
-  // WE DO NOT BLOCK ON permissionsInitialized or settingsInitialized here
-  // because we want the Sidebar and Header to render instantly.
-  // The internal components of Sidebar/Header handle their own loading states.
   const loading = authLoading;
   const INACTIVITY_TIMEOUT_MS = (generalSettings.inactivityTimeout || 5) * 60 * 1000;
 
@@ -107,7 +104,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-lg font-medium text-muted-foreground animate-pulse">Establishing connection...</p>
+        <p className="text-lg font-medium text-muted-foreground animate-pulse">Establishing Secure Connection...</p>
       </div>
     );
   }

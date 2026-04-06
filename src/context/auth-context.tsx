@@ -7,10 +7,11 @@ import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
 import {
   onAuthStateChanged,
-  signOut as firebaseSignOut
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+  type UserCredential
 } from 'firebase/auth';
 import type { LoginFormValues } from '@/lib/schemas';
-import { signInWithEmailAndPassword, type UserCredential } from 'firebase/auth';
 import type { Role } from '@/lib/types';
 
 interface AuthContextLoginResponse {
@@ -37,11 +38,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const initializedRef = useRef(false);
 
-  // Synchronous Role Determination: Hardcoded Logic
+  // SECURE HARDCODED LOGIC: Zero-latency role determination
   const determineRole = useCallback((email: string | null): Role => {
     if (!email) return 'viewer';
     const lowerEmail = email.toLowerCase().trim();
-    // HARDCODED: viewer@example.com is the only viewer, all others are admins
+    // viewer@example.com is restricted, all others are global admins
     if (lowerEmail === 'viewer@example.com') return 'viewer';
     return 'admin';
   }, []);
@@ -69,13 +70,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const determinedRole = determineRole(currentUser.email);
         setRole(determinedRole);
         localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-        // Instant unblock
-        setLoading(false);
       } else {
         setRole(null);
         localStorage.removeItem(ROLE_CACHE_KEY);
-        setLoading(false);
       }
+      
+      // CRITICAL: Unblock initialization immediately. 
+      // No background registry sync is required for hardcoded roles.
+      setLoading(false);
     });
 
     return () => unsubscribe();
