@@ -84,14 +84,13 @@ body {
   }
 }
 
-/* Print Overhaul: Forces High-Contrast Black on White */
+/* Print Optimization: Forces full-width layout and removes sidebar artifacts */
 @media print {
   @page {
     margin: 1cm;
     size: auto;
   }
 
-  /* Reset layout variables to zero to reclaim space */
   :root {
     --sidebar-width: 0px !important;
     --sidebar-width-icon: 0px !important;
@@ -111,7 +110,6 @@ body {
     font-size: 10pt !important;
   }
 
-  /* Target all sidebar elements and their layout peers */
   .noprint,
   header,
   nav,
@@ -128,18 +126,21 @@ body {
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
 
-  /* Reclaim the content area space */
   main,
   .flex-1,
   .container,
-  [data-sidebar-inset="true"] {
+  [data-sidebar-inset="true"],
+  .sidebar-inset {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: none !important;
     position: static !important;
+    transform: none !important;
   }
 
   .printable-area {
@@ -151,7 +152,7 @@ body {
   }
 
   .printable-area::before {
-    content: "SheetSync Inventory System - Professional Report";
+    content: "SheetSync Inventory System - Official Report";
     display: block;
     font-size: 18pt;
     font-weight: 900;
