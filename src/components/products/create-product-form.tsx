@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown, DollarSign, Edit } from 'lucide-react';
+import { PlusCircle, Loader2, Search, Save, Check, ChevronsUpDown, DollarSign, Edit, Zap, Globe } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/command";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { fetchProductAction, saveProductAction } from '@/app/actions';
+import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const { products: cachedProducts, addProduct: addProductToCache, updateProduct: updateProductInCache, refreshData } = useDataCache();
   const [isSavePending, startSaveTransition] = useTransition();
   const [isFetchPending, startFetchTransition] = useTransition();
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
   
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchedBarcode, setSearchedBarcode] = useState(''); 
@@ -83,6 +84,25 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       handleSearchBarcode(barcodeFromUrl);
     }
   }, [searchParams]);
+
+  const handleMagicLookup = async () => {
+    if (!searchedBarcode) return;
+    setIsMagicLoading(true);
+    try {
+        const res = await fetchProductExternalDataAction(searchedBarcode);
+        if (res.success && res.data) {
+            if (res.data.name) setValue('productName', res.data.name, { shouldValidate: true });
+            if (res.data.brand) setValue('supplierName', res.data.brand, { shouldValidate: true });
+            toast({ title: "Magic Lookup Success", description: `Retrieved product identity from global registry.` });
+        } else {
+            toast({ title: "No Result", description: "Barcode not found in global registry.", variant: "destructive" });
+        }
+    } catch (e) {
+        toast({ title: "Error", description: "Could not reach global database.", variant: "destructive" });
+    } finally {
+        setIsMagicLoading(false);
+    }
+  };
 
   const handleSearchBarcode = async (barcode?: string) => {
     const barcodeToUse = barcode || barcodeToSearch;
@@ -140,7 +160,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if(data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
     formData.append('editMode', editMode);
     
-    // --- OPTIMISTIC UPDATE ---
     const optimisticProduct: Product = {
         id: searchedBarcode,
         barcode: searchedBarcode,
@@ -163,8 +182,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     startSaveTransition(async () => {
       const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
-        // Success: Action completed. Cache already updated optimistically.
-        // We refresh data to ensure global metadata propagation is loaded.
         refreshData();
       } else {
           toast({ 
@@ -172,7 +189,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
               description: result.message || 'Cloud registry update failed. Reverting...', 
               variant: 'destructive' 
           });
-          refreshData(); // Revert optimistic changes
+          refreshData(); 
       }
     });
   };
@@ -230,16 +247,29 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         {showForm && (
           <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 border-t pt-6 mt-6">
               {productNotFound ? (
-                <Alert className="bg-primary/10 border-primary/50">
+                <Alert className="bg-primary/5 border-primary/20 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleMagicLookup}
+                            disabled={isMagicLoading}
+                            className="h-8 text-[10px] font-black uppercase bg-white/50 border-primary/30"
+                        >
+                            {isMagicLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Zap className="mr-1 h-3 w-3 fill-primary text-primary" />}
+                            Magic Lookup
+                        </Button>
+                    </div>
                     <PlusCircle className="h-4 w-4 !text-primary" />
-                    <AlertTitle>New Product Detected</AlertTitle>
-                    <AlertDescription>Barcode <span className="font-mono font-bold">{searchedBarcode}</span> is unregistered.</AlertDescription>
+                    <AlertTitle className="font-black uppercase text-xs tracking-widest text-primary">Unregistered Barcode</AlertTitle>
+                    <AlertDescription className="text-xs font-medium">Barcode <span className="font-mono font-bold">{searchedBarcode}</span> is new. Use Magic Lookup to find it globally.</AlertDescription>
                 </Alert>
               ) : (
-                <Alert className="bg-accent/20 border-accent/50">
+                <Alert className="bg-accent/20 border-accent/50 rounded-2xl">
                     <Save className="h-4 w-4 !text-accent-foreground" />
-                    <AlertTitle>Editing Existing Product</AlertTitle>
-                    <AlertDescription>Updating details for <span className="font-mono font-bold">{searchedBarcode}</span>.</AlertDescription>
+                    <AlertTitle className="font-black uppercase text-xs tracking-widest">Editing SKU</AlertTitle>
+                    <AlertDescription className="text-xs font-medium">Updating global definition for <span className="font-mono font-bold">{searchedBarcode}</span>.</AlertDescription>
                 </Alert>
               )}
 
@@ -377,7 +407,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
               </div>
 
               <CardFooter className="flex justify-end p-0 pt-6">
-                <Button type="submit" disabled={isSavePending} className="w-full sm:w-auto">
+                <Button type="submit" disabled={isSavePending} className="w-full sm:w-auto font-black uppercase tracking-tighter shadow-lg shadow-primary/20">
                   {isSavePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (editMode === 'create' ? <PlusCircle className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
                   {editMode === 'create' ? 'Register Product' : 'Save Changes'}
                 </Button>

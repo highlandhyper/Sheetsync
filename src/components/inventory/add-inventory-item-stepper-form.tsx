@@ -525,22 +525,30 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         {productLookupError && !isFetchingProduct && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                 {!hasRequestedProduct ? (
-                                    <Button 
-                                        type="button" 
-                                        variant="default"
-                                        className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl"
-                                        onClick={handleRequestProductAdd}
-                                    >
-                                        <SendHorizontal className="mr-2 h-4 w-4" />
-                                        {suggestedProductName ? (
-                                            <span className="flex items-center gap-2">
-                                                Request: {suggestedProductName}
-                                                <Globe className="h-3.5 w-3.5 opacity-70" />
-                                            </span>
-                                        ) : (
-                                            "Notify Admin: New Barcode"
+                                    <div className="space-y-2">
+                                        {foundInGlobalRegistry && suggestedProductName && (
+                                            <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg animate-pulse">
+                                                <Globe className="h-3.5 w-3.5 text-primary" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Global Registry Match Identified</span>
+                                            </div>
                                         )}
-                                    </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="default"
+                                            className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl"
+                                            onClick={handleRequestProductAdd}
+                                        >
+                                            <SendHorizontal className="mr-2 h-4 w-4" />
+                                            {suggestedProductName ? (
+                                                <span className="flex items-center gap-2">
+                                                    Request: {suggestedProductName}
+                                                    <Globe className="h-3.5 w-3.5 opacity-70" />
+                                                </span>
+                                            ) : (
+                                                "Notify Admin: New Barcode"
+                                            )}
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <div className="py-3 px-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center gap-3 animate-in zoom-in-95 duration-300">
                                         <ShieldCheck className="h-5 w-5 shrink-0" />
