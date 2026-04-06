@@ -39,13 +39,13 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border bg-card/90 p-5 pr-8 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border-[0.5px] p-4 pr-8 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-2xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
-        default: "border-primary/20 border-l-primary/80",
+        default: "bg-card/85 border-primary/20 text-foreground",
         destructive:
-          "destructive group border-destructive/30 bg-destructive/10 text-destructive-foreground border-l-destructive/80",
+          "destructive group border-destructive/30 bg-destructive/10 text-destructive-foreground",
       },
     },
     defaultVariants: {
@@ -65,15 +65,15 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
-      {/* Dynamic Glow Effect */}
+      {/* Precision Glow Effect */}
       <div className={cn(
-        "absolute -left-10 -top-10 h-32 w-32 blur-3xl opacity-20 pointer-events-none transition-colors",
+        "absolute -left-4 -top-4 h-24 w-24 blur-2xl opacity-30 pointer-events-none transition-colors",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
-      {/* Decorative Left Accent Bar */}
+      {/* Elegant Side Accent */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-500",
+        "absolute left-0 top-0 bottom-0 w-1 transition-all duration-500",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
@@ -151,16 +151,16 @@ const ToastTitle = React.forwardRef<
   return (
     <ToastPrimitives.Title
       ref={ref}
-      className={cn("text-[13px] font-black flex items-center gap-3 leading-none uppercase tracking-tighter", className)}
+      className={cn("text-xs font-black flex items-center gap-3 leading-none uppercase tracking-widest", className)}
       {...cleanProps}
     >
       <div className={cn(
-        "p-1.5 rounded-lg shadow-sm border",
-        variant === 'destructive' ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
+        "p-1.5 rounded-lg shadow-sm border-[0.5px] shrink-0",
+        variant === 'destructive' ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-primary/10 text-primary border-primary/30"
       )}>
-        <Icon className={cn("h-4 w-4 shrink-0", Icon === RefreshCw && "animate-spin")} />
+        <Icon className={cn("h-3.5 w-3.5", Icon === RefreshCw && "animate-spin")} />
       </div>
-      {children}
+      <span className="truncate">{children}</span>
     </ToastPrimitives.Title>
   )
 })
@@ -172,7 +172,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-[11px] font-semibold text-muted-foreground leading-tight mt-2 ml-10 opacity-80", className)}
+    className={cn("text-[11px] font-semibold text-muted-foreground leading-snug mt-2 ml-10 opacity-90", className)}
     {...props}
   />
 ))
