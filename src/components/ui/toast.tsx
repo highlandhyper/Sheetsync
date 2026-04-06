@@ -30,7 +30,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:right-0 md:max-w-[420px]",
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col p-4 sm:right-0 md:max-w-[420px]",
       className
     )}
     {...props}
@@ -65,13 +65,11 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
-      {/* Precision Glow Effect */}
       <div className={cn(
         "absolute -left-4 -top-4 h-24 w-24 blur-2xl opacity-30 pointer-events-none transition-colors",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
-      {/* Elegant Side Accent */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-all duration-500",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"

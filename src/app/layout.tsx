@@ -60,26 +60,16 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Aggressive Production Recovery: Automatically refresh on ChunkLoadErrors
-              window.addEventListener('error', function(e) {
-                const isResourceError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK');
-                const message = e.message || "";
-                const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
-                                   /ChunkLoadError/i.test(message);
-                
-                if (isChunkError || isResourceError) {
-                  if (isResourceError) {
-                    const url = e.target.src || e.target.href || "";
-                    if (!url.includes('_next/static')) return; 
-                  }
-
-                  console.warn('SheetSync: Asset mismatch detected. Recovering...');
-                  
+              // Aggressive Recovery Engine: Automatically handles ChunkLoadErrors and Asset Mismatches
+              (function() {
+                function recover() {
                   const lastReload = sessionStorage.getItem('last_chunk_recovery');
                   const now = Date.now();
                   
+                  // Limit recovery to once per 10 seconds to prevent loops
                   if (!lastReload || (now - parseInt(lastReload)) > 10000) {
                     sessionStorage.setItem('last_chunk_recovery', now.toString());
+                    console.warn('SheetSync: Version mismatch detected. Performing hard recovery...');
                     
                     if ('caches' in window) {
                       caches.keys().then(names => {
@@ -89,15 +79,31 @@ export default function RootLayout({
                     window.location.reload(true);
                   }
                 }
-              }, true);
+
+                window.addEventListener('error', function(e) {
+                  const message = e.message || "";
+                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
+                                     /ChunkLoadError/i.test(message);
+                  
+                  if (isChunkError) recover();
+                }, true);
+
+                window.addEventListener('unhandledrejection', function(e) {
+                  const message = (e.reason && e.reason.message) || "";
+                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
+                                     /ChunkLoadError/i.test(message);
+                  
+                  if (isChunkError) recover();
+                });
+              })();
 
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                    console.log('SheetSync: SW registered');
+                    console.log('SheetSync: Offline Service Active');
                     reg.update();
                   }).catch(function(err) {
-                    console.error('SheetSync: SW failed', err);
+                    console.error('SheetSync: SW Error', err);
                   });
                 });
               }
