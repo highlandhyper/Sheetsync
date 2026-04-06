@@ -43,44 +43,62 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
+// Performance: Fast-path for empty values
 function parseFlexibleTimestamp(val: any): Date | null {
-  if (!val || String(val).trim() === '') return null;
+  if (val === undefined || val === null) return null;
+  const s = String(val).trim();
+  if (s === '') return null;
+  
   if (val instanceof Date && isValid(val)) return val;
   if (typeof val === 'number') {
     const d = new Date(Date.UTC(1899, 11, 30));
     d.setMilliseconds(d.getMilliseconds() + val * 24 * 60 * 60 * 1000);
     return isValid(d) ? d : null;
   }
-  if (typeof val === 'string') {
-    const iso = parseISO(val.trim());
-    if (isValid(iso)) return iso;
-    const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy"];
-    for (const f of formats) {
-      try {
-        const d = dateParse(val.trim(), f, new Date());
-        if (isValid(d)) return d;
-      } catch { continue; }
-    }
+  
+  const iso = parseISO(s);
+  if (isValid(iso)) return iso;
+  
+  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy"];
+  for (const f of formats) {
+    try {
+      const d = dateParse(s, f, new Date());
+      if (isValid(d)) return d;
+    } catch { continue; }
   }
   return null;
 }
 
+// Robust parsing for large 54k rows
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
   if (!barcode || !productName) return null;
-  const cost = parseFloat(String(row[DB_COL_COST_PRICE] || '').replace(/[^0-9.-]+/g,""));
-  return { id: barcode, barcode, productName, supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), costPrice: isNaN(cost) ? undefined : cost };
+  
+  // High-perf cost cleanup
+  const costRaw = String(row[DB_COL_COST_PRICE] || '');
+  const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
+  
+  return { 
+    id: barcode, 
+    barcode, 
+    productName, 
+    supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), 
+    costPrice: isNaN(cost) ? undefined : cost 
+  };
 }
 
 function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
-  if (!row || row.length < 8) return null;
+  if (!row || row.length < 2) return null;
   const barcode = String(row[INV_COL_BARCODE] || '').trim();
-  const qty = parseInt(String(row[INV_COL_QTY] || '0'), 10);
+  const qtyRaw = String(row[INV_COL_QTY] || '0');
+  const qty = parseInt(qtyRaw, 10);
   if (!barcode || isNaN(qty)) return null;
+  
   const exp = parseFlexibleTimestamp(row[INV_COL_EXPIRY]);
   const ts = parseFlexibleTimestamp(row[INV_COL_TIMESTAMP]);
+  
   return {
     id: String(row[INV_COL_UNIQUE_ID] || `tmp_${i}`).trim(),
     productName: String(row[INV_COL_PRODUCT_NAME] || 'Not Found').trim(),
@@ -97,7 +115,13 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
 
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
-  return data ? data.map(transformToProduct).filter((p): p is Product => p !== null) : [];
+  if (!data) return [];
+  // Use filter first then map for performance on huge arrays
+  return data.reduce((acc: Product[], row) => {
+    const p = transformToProduct(row);
+    if (p) acc.push(p);
+    return acc;
+  }, []);
 }
 
 export async function getSuppliers(prods?: Product[]): Promise<Supplier[]> {
@@ -109,7 +133,12 @@ export async function getSuppliers(prods?: Product[]): Promise<Supplier[]> {
 
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   const data = await readSheetData(INVENTORY_READ_RANGE);
-  return data ? data.map(transformToInventoryItem).filter((i): i is InventoryItem => i !== null && i.quantity > 0) : [];
+  if (!data) return [];
+  return data.reduce((acc: InventoryItem[], row, i) => {
+    const item = transformToInventoryItem(row, i);
+    if (item && item.quantity > 0) acc.push(item);
+    return acc;
+  }, []);
 }
 
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
@@ -134,7 +163,9 @@ export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const findJson = (key: string) => {
     const row = data?.find(r => r[SETTINGS_COL_KEY] === key);
-    return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
+    try {
+        return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
+    } catch { return null; }
   };
   return {
     permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
@@ -263,7 +294,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   inv.forEach(i => {
     const p = prodsMap.get(i.barcode);
     if (p?.costPrice) val += (i.quantity * p.costPrice);
-    sByS[i.supplierName || 'Unknown'] = (sByS[i.supplierName || 'Unknown'] || 0) + i.quantity;
+    const sName = i.supplierName || 'Unknown';
+    sByS[sName] = (sByS[sName] || 0) + i.quantity;
     if (i.timestamp && isSameDay(startOfDay(parseISO(i.timestamp)), today)) added += i.quantity;
     if (i.itemType === 'Expiry' && i.expiryDate) {
       const exp = startOfDay(parseISO(i.expiryDate));
@@ -286,4 +318,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   };
 }
 
-export async function getInventoryLogEntriesByBarcode(b: string) { return (await getInventoryItems()).filter(i => i.barcode === b); }
+export async function getInventoryLogEntriesByBarcode(b: string) { 
+    return (await getInventoryItems()).filter(i => i.barcode === b); 
+}
