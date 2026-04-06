@@ -1,6 +1,6 @@
 
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
-import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
+import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -138,10 +138,44 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
   }, []);
 }
 
+/**
+ * Fetches audit logs and automatically identifies/purges records older than 90 days.
+ */
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
-  if (!data) return [];
-  return data.map((r, i) => ({
+  if (!data || data.length === 0) return [];
+
+  const retentionThreshold = subDays(new Date(), 90);
+  let lastOldRowIndex = -1;
+
+  // Since logs are appended, we find the "break point" where logs become recent
+  for (let i = 0; i < data.length; i++) {
+    const ts = parseFlexibleTimestamp(data[i][AUDIT_COL_TIMESTAMP]);
+    if (ts && isBefore(ts, retentionThreshold)) {
+      lastOldRowIndex = i;
+    } else if (ts) {
+      break; 
+    }
+  }
+
+  // AUTOMATIC CLEANUP: If old logs found, purge them from the sheet in the background
+  if (lastOldRowIndex !== -1) {
+    // Spreadsheet Row 2 is API Index 1
+    const startIndex = 1;
+    const endIndex = lastOldRowIndex + 2; // Exclusive
+    
+    // Background execution to keep UI fetch fast
+    deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
+      .then(success => {
+        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} logs older than 3 months.`);
+      })
+      .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
+  }
+
+  // Return only the non-purged logs to the UI
+  const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
+
+  return recentData.map((r, i) => ({
     id: `a_${i}`,
     timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
     user: String(r[AUDIT_COL_USER] || 'Unknown'),
