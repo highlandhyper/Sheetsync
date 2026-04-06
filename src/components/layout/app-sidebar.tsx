@@ -18,7 +18,7 @@ import { useAccessControl } from '@/context/access-control-context';
 import { allNavItems, accountNavItems, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -31,12 +31,16 @@ export function AppSidebar({ className }: { className?: string }) {
     setMounted(true);
   }, []);
 
-  const navItems = allNavItems.filter(item => {
-    if (item.mobileOnly && !isMobile) return false;
-    return role && isAllowed(role, item.href)
-  });
+  const navItems = useMemo(() => 
+    allNavItems.filter(item => {
+        if (item.mobileOnly && !isMobile) return false;
+        return role && isAllowed(role, item.href)
+    }), 
+  [role, isAllowed, isMobile]);
 
-  const filteredAccountNavItems = accountNavItems.filter(item => role && isAllowed(role, item.href));
+  const filteredAccountNavItems = useMemo(() => 
+    accountNavItems.filter(item => role && isAllowed(role, item.href)),
+  [role, isAllowed]);
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'U';
@@ -60,6 +64,12 @@ export function AppSidebar({ className }: { className?: string }) {
     return "/dashboard";
   }
 
+  // Hydration Safe Logo URL
+  const logoUrl = useMemo(() => {
+    if (!mounted) return '/logo.png';
+    return `/logo.png?v=${new Date().getDate()}`;
+  }, [mounted]);
+
   return (
     <Sidebar collapsible="icon" className={cn(className)}>
        <div
@@ -71,7 +81,7 @@ export function AppSidebar({ className }: { className?: string }) {
           aria-label="Home"
           onClick={() => setOpenMobile(false)}
         >
-          {mounted && <Image src={`/logo.png?v=${new Date().getDate()}`} alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" />}
+          {mounted && <Image src={logoUrl} alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" priority />}
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
           </span>
