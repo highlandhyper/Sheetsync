@@ -68,11 +68,19 @@ function parseFlexibleTimestamp(val: any): Date | null {
   return null;
 }
 
+/**
+ * Robust Product Transformation for 54k row catalog.
+ * Ensures malformed or empty rows don't crash the cache engine.
+ */
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
+  
+  // High-performance barcode identification
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
-  if (!barcode || !productName) return null;
+  
+  // Skip invalid or empty skeletal rows frequently found in large sheets
+  if (!barcode || !productName || barcode.toLowerCase() === 'barcode') return null;
   
   const costRaw = String(row[DB_COL_COST_PRICE] || '');
   const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
@@ -159,7 +167,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     
     deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
       .then(success => {
-        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} logs.`);
+        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} old logs.`);
       })
       .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
   }
@@ -295,10 +303,6 @@ export async function updateSupplierNameAndReferences(email: string, oldN: strin
   return true;
 }
 
-/**
- * High-performance product definition update.
- * Limits inventory log scanning to only the barcode column to prevent timeouts.
- */
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
   const row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || 
               await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
@@ -306,30 +310,24 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   if (row) {
     const costValue = (c === undefined || Number.isNaN(c)) ? '' : c;
     
-    // 1. Update Catalog Entry (DB Sheet)
     await batchUpdateSheetCells([
       { range: `${DB_SHEET_NAME}!C${row}`, values: [[n]] }, 
       { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, 
       { range: `${DB_SHEET_NAME}!E${row}`, values: [[costValue]] }
     ]);
 
-    // 2. Optimized Inventory Log Update (Form responses 2)
-    // Only read Barcode, Product Name, and Supplier Name columns (B to H)
     const invData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!B2:H`);
     if (invData) {
         const updates: { range: string; values: any[][] }[] = [];
         invData.forEach((row, i) => {
-            const rowBarcode = String(row[0] || '').trim(); // Column B
+            const rowBarcode = String(row[0] || '').trim();
             if (rowBarcode === b) {
-                // Column G is index 5 in B:H
                 updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i+2}`, values: [[n]] });
-                // Column H is index 6 in B:H
                 updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[s]] });
             }
         });
 
         if (updates.length > 0) {
-            // Batch update in safe chunks to avoid API request limits
             const CHUNK_SIZE = 500;
             for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
                 await batchUpdateSheetCells(updates.slice(i, i + CHUNK_SIZE));
