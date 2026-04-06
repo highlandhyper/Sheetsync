@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -63,7 +62,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
     ] = await Promise.all([
       getInventoryItems(),
       getProducts(),
-      getAuditLogs(), // Automatically triggers cleanup if needed
+      getAuditLogs(), 
       getAppMetaData()
     ]);
 
@@ -192,7 +191,12 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const barcode = data.barcode as string;
         const productName = data.productName as string;
         const supplierName = data.supplierName as string;
-        const costPrice = data.costPrice ? parseFloat(data.costPrice as string) : undefined;
+        
+        // Safer parsing for cost price
+        const rawCost = data.costPrice as string;
+        const costPrice = (rawCost === undefined || rawCost === '' || rawCost === 'undefined') 
+            ? undefined 
+            : parseFloat(rawCost);
         
         if (editMode === 'create') {
             const product = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
@@ -200,14 +204,27 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             return { success: true, message: "Created successfully.", data: product as Product };
         } else {
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
-            if (!success) return { success: false, message: "Not found." };
+            if (!success) return { success: false, message: "Product not found in registry." };
+            
             revalidatePath('/products/list');
             revalidatePath('/inventory');
-            const updated = await getProductDetailsByBarcode(barcode);
-            return { success: true, message: "Updated successfully.", data: updated as Product };
+            
+            // Return updated object immediately to avoid heavy catalog re-reads
+            return { 
+                success: true, 
+                message: "Catalog updated successfully.", 
+                data: {
+                    id: barcode,
+                    barcode,
+                    productName,
+                    supplierName,
+                    costPrice
+                } as Product
+            };
         }
     } catch (e) {
-        return { success: false, message: "Save failed." };
+        console.error("saveProductAction error:", e);
+        return { success: false, message: "Registry sync failed." };
     }
 }
 
