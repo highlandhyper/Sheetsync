@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/command";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { addProductAction } from '@/app/actions';
+import { saveProductAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
@@ -84,7 +84,7 @@ export function AddProductDialog() {
     }
 
     startActionTransition(async () => {
-      const result = await addProductAction(undefined, formData);
+      const result = await saveProductAction(undefined, formData);
       if (result.success && result.data) {
         toast({ title: 'Success!', description: result.message });
         addProductToCache(result.data);
