@@ -91,6 +91,12 @@ body {
     size: auto;
   }
 
+  /* Reset layout variables to zero to reclaim space */
+  :root {
+    --sidebar-width: 0px !important;
+    --sidebar-width-icon: 0px !important;
+  }
+
   * {
     color: black !important;
     background: transparent !important;
@@ -105,16 +111,35 @@ body {
     font-size: 10pt !important;
   }
 
+  /* Target all sidebar elements and their layout peers */
   .noprint,
   header,
   nav,
+  aside,
   [data-sidebar="sidebar"],
+  .group\/sidebar,
   button,
   .filters-card-noprint,
   .print-button-container,
   [role="combobox"],
   input[type="search"] {
     display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reclaim the content area space */
+  main,
+  .flex-1,
+  .container,
+  [data-sidebar-inset="true"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    position: static !important;
   }
 
   .printable-area {
