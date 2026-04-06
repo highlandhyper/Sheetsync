@@ -1,14 +1,12 @@
-import { Product, Supplier, InventoryItem, ReturnedItem, AddInventoryItemFormValues, EditInventoryItemFormValues, ItemType, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, AppUser, Role } from '@/lib/types';
+import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
-// --- Sheet Names ---
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; 
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; 
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
 
-// --- Column Indices (0-based) ---
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
 const INV_COL_QTY = 2;
@@ -35,7 +33,6 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-// --- Read Ranges ---
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
@@ -45,24 +42,22 @@ const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
-const USER_REGISTRY_KEY = 'userRegistry';
 
-function parseFlexibleTimestamp(timestampValue: any): Date | null {
-  if (!timestampValue || String(timestampValue).trim() === '') return null;
-  if (timestampValue instanceof Date && isValid(timestampValue)) return timestampValue;
-  if (typeof timestampValue === 'number') {
-    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-    const d = new Date(excelEpoch.getTime() + timestampValue * 24 * 60 * 60 * 1000);
-    if (isValid(d)) return d;
+function parseFlexibleTimestamp(val: any): Date | null {
+  if (!val || String(val).trim() === '') return null;
+  if (val instanceof Date && isValid(val)) return val;
+  if (typeof val === 'number') {
+    const d = new Date(Date.UTC(1899, 11, 30));
+    d.setMilliseconds(d.getMilliseconds() + val * 24 * 60 * 60 * 1000);
+    return isValid(d) ? d : null;
   }
-  if (typeof timestampValue === 'string') {
-    const trimmed = timestampValue.trim();
-    const isoDate = parseISO(trimmed);
-    if (isValid(isoDate)) return isoDate;
+  if (typeof val === 'string') {
+    const iso = parseISO(val.trim());
+    if (isValid(iso)) return iso;
     const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy"];
     for (const f of formats) {
       try {
-        const d = dateParse(trimmed, f, new Date());
+        const d = dateParse(val.trim(), f, new Date());
         if (isValid(d)) return d;
       } catch { continue; }
     }
@@ -70,39 +65,34 @@ function parseFlexibleTimestamp(timestampValue: any): Date | null {
   return null;
 }
 
-function transformToProduct(row: any[], rowIndex: number): Product | null {
-  try {
-    if (!row || row.length < 1) return null;
-    const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
-    const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
-    if (!barcode || !productName) return null;
-    const costPriceRaw = row[DB_COL_COST_PRICE];
-    const costPrice = costPriceRaw ? parseFloat(String(costPriceRaw).replace(/[^0-9.-]+/g,"")) : undefined;
-    return { id: barcode, barcode, productName, supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), costPrice: costPrice && !isNaN(costPrice) ? costPrice : undefined };
-  } catch { return null; }
+function transformToProduct(row: any[]): Product | null {
+  if (!row || row.length < 1) return null;
+  const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
+  const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
+  if (!barcode || !productName) return null;
+  const cost = parseFloat(String(row[DB_COL_COST_PRICE] || '').replace(/[^0-9.-]+/g,""));
+  return { id: barcode, barcode, productName, supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), costPrice: isNaN(cost) ? undefined : cost };
 }
 
-function transformToInventoryItem(row: any[], rowIndex: number): InventoryItem | null {
-  try {
-    if (!row || row.length < 8) return null;
-    const barcode = String(row[INV_COL_BARCODE] || '').trim();
-    const qty = parseInt(String(row[INV_COL_QTY] || '0'), 10);
-    if (!barcode || isNaN(qty)) return null;
-    const exp = parseFlexibleTimestamp(row[INV_COL_EXPIRY]);
-    const ts = parseFlexibleTimestamp(row[INV_COL_TIMESTAMP]);
-    return {
-      id: String(row[INV_COL_UNIQUE_ID] || `tmp_${rowIndex}`).trim(),
-      productName: String(row[INV_COL_PRODUCT_NAME] || 'Not Found').trim(),
-      barcode,
-      supplierName: String(row[INV_COL_SUPPLIER_NAME] || '').trim(),
-      quantity: qty,
-      expiryDate: exp ? format(exp, 'yyyy-MM-dd') : undefined,
-      location: String(row[INV_COL_LOCATION] || '').trim(),
-      staffName: String(row[INV_COL_STAFF] || '').trim(),
-      itemType: String(row[INV_COL_TYPE] || '').toLowerCase() === 'damage' ? 'Damage' : 'Expiry',
-      timestamp: ts ? ts.toISOString() : undefined,
-    };
-  } catch { return null; }
+function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
+  if (!row || row.length < 8) return null;
+  const barcode = String(row[INV_COL_BARCODE] || '').trim();
+  const qty = parseInt(String(row[INV_COL_QTY] || '0'), 10);
+  if (!barcode || isNaN(qty)) return null;
+  const exp = parseFlexibleTimestamp(row[INV_COL_EXPIRY]);
+  const ts = parseFlexibleTimestamp(row[INV_COL_TIMESTAMP]);
+  return {
+    id: String(row[INV_COL_UNIQUE_ID] || `tmp_${i}`).trim(),
+    productName: String(row[INV_COL_PRODUCT_NAME] || 'Not Found').trim(),
+    barcode,
+    supplierName: String(row[INV_COL_SUPPLIER_NAME] || '').trim(),
+    quantity: qty,
+    expiryDate: exp ? format(exp, 'yyyy-MM-dd') : undefined,
+    location: String(row[INV_COL_LOCATION] || '').trim(),
+    staffName: String(row[INV_COL_STAFF] || '').trim(),
+    itemType: String(row[INV_COL_TYPE] || '').toLowerCase() === 'damage' ? 'Damage' : 'Expiry',
+    timestamp: ts ? ts.toISOString() : undefined,
+  };
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -110,11 +100,11 @@ export async function getProducts(): Promise<Product[]> {
   return data ? data.map(transformToProduct).filter((p): p is Product => p !== null) : [];
 }
 
-export async function getSuppliers(existingProducts?: Product[]): Promise<Supplier[]> {
-  const products = existingProducts || await getProducts();
+export async function getSuppliers(prods?: Product[]): Promise<Supplier[]> {
+  const p = prods || await getProducts();
   const names = new Set<string>();
-  products.forEach(p => { if (p.supplierName) names.add(p.supplierName.trim()); });
-  return Array.from(names).map((name, i) => ({ id: `s_${i}`, name, createdAt: new Date().toISOString() }));
+  p.forEach(x => { if (x.supplierName) names.add(x.supplierName.trim()); });
+  return Array.from(names).map((n, i) => ({ id: `s_${i}`, name: n, createdAt: new Date().toISOString() }));
 }
 
 export async function getInventoryItems(): Promise<InventoryItem[]> {
@@ -125,13 +115,13 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data) return [];
-  return data.map((row, i) => ({
+  return data.map((r, i) => ({
     id: `a_${i}`,
-    timestamp: parseFlexibleTimestamp(row[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
-    user: String(row[AUDIT_COL_USER] || 'Unknown'),
-    action: String(row[AUDIT_COL_ACTION] || ''),
-    target: String(row[AUDIT_COL_TARGET] || ''),
-    details: String(row[AUDIT_COL_DETAILS] || ''),
+    timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
+    user: String(r[AUDIT_COL_USER] || 'Unknown'),
+    action: String(r[AUDIT_COL_ACTION] || ''),
+    target: String(r[AUDIT_COL_TARGET] || ''),
+    details: String(r[AUDIT_COL_DETAILS] || ''),
   })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
@@ -146,312 +136,154 @@ export async function getAppMetaData() {
     const row = data?.find(r => r[SETTINGS_COL_KEY] === key);
     return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
   };
-
   return {
     permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
     specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
     staff: (findJson(STAFF_LIST_KEY) as string[]) || ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"],
-    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"],
-    users: (findJson(USER_REGISTRY_KEY) as AppUser[]) || [],
+    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"]
   };
 }
 
-export async function loadPermissionsFromSheet(): Promise<Permissions | null> {
-  const meta = await getAppMetaData();
-  return meta.permissions;
-}
+export async function loadPermissionsFromSheet() { return (await getAppMetaData()).permissions; }
 
 export async function savePermissionsToSheet(perms: Permissions) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === PERMISSIONS_KEY);
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(perms)]]);
-  }
+  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(perms)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[PERMISSIONS_KEY, JSON.stringify(perms)]]);
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY);
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(reqs)]]);
-  }
+  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(reqs)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs)]]);
 }
 
 export async function saveStaffListToSheet(staff: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(staff)]]);
-  }
+  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(staff)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
 }
 
 export async function saveLocationListToSheet(locations: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY);
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(locations)]]);
-  }
+  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(locations)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
 }
 
-export async function saveUserRegistryToSheet(users: AppUser[]) {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === USER_REGISTRY_KEY);
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(users)]]);
-  }
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[USER_REGISTRY_KEY, JSON.stringify(users)]]);
-}
-
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
-  const products = await getProducts();
-  return products.find(p => p.barcode === barcode) || null;
+  const p = await getProducts();
+  return p.find(x => x.barcode === barcode) || null;
 }
 
 export async function addProduct(email: string, p: any) {
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || ''];
   await appendSheetData(`${DB_SHEET_NAME}!A:E`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Details: [Product: ${p.productName}], [Supplier: ${p.supplierName}], [Cost: ${p.costPrice || 'N/A'}]`);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName}`);
   return { id: p.barcode, ...p };
 }
 
-export async function addInventoryItemToSheet(item: InventoryItem) {
-  const ts = item.timestamp ? format(parseISO(item.timestamp), "d/M/yyyy HH:mm:ss") : format(new Date(), "d/M/yyyy HH:mm:ss");
-  const row = [
-    ts,
-    item.barcode,
-    item.quantity,
-    item.expiryDate ? format(parseISO(item.expiryDate), "d/M/yyyy") : '',
-    item.location,
-    item.staffName,
-    item.productName,
-    item.supplierName || '',
-    item.itemType,
-    item.id
-  ];
+export async function addInventoryItemToSheet(i: InventoryItem) {
+  const ts = i.timestamp ? format(parseISO(i.timestamp), "d/M/yyyy HH:mm:ss") : format(new Date(), "d/M/yyyy HH:mm:ss");
+  const row = [ts, i.barcode, i.quantity, i.expiryDate ? format(parseISO(i.expiryDate), "d/M/yyyy") : '', i.location, i.staffName, i.productName, i.supplierName || '', i.itemType, i.id];
   return appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [row]);
 }
 
 export async function updateSupplierNameAndReferences(email: string, oldN: string, newN: string) {
-  // 1. Update DB Sheet
-  const products = await readSheetData(DB_READ_RANGE);
-  if (products) {
-    const updates = [];
-    for (let i = 0; i < products.length; i++) {
-      if (String(products[i][DB_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase()) {
-        updates.push({
-          range: `${DB_SHEET_NAME}!D${i + 2}`,
-          values: [[newN]]
-        });
-      }
-    }
-    if (updates.length > 0) await batchUpdateSheetCells(updates);
+  const prods = await readSheetData(DB_READ_RANGE);
+  if (prods) {
+    const ups = prods.map((r, i) => String(r[DB_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase() ? { range: `${DB_SHEET_NAME}!D${i+2}`, values: [[newN]] } : null).filter(Boolean);
+    if (ups.length > 0) await batchUpdateSheetCells(ups as any);
   }
-
-  // 2. Update Inventory Logs
   const inv = await readSheetData(INVENTORY_READ_RANGE);
   if (inv) {
-    const updates = [];
-    for (let i = 0; i < inv.length; i++) {
-      if (String(inv[i][INV_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase()) {
-        updates.push({
-          range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`,
-          values: [[newN]]
-        });
-      }
-    }
-    if (updates.length > 0) await batchUpdateSheetCells(updates);
+    const ups = inv.map((r, i) => String(r[INV_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase() ? { range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[newN]] } : null).filter(Boolean);
+    if (ups.length > 0) await batchUpdateSheetCells(ups as any);
   }
-
-  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldN, `Renamed to ${newN}. Updated records.`);
+  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldN, `Renamed to ${newN}`);
   return true;
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
-  // Try finding barcode in Column A or Column B
-  let rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A);
-  if (!rowNumber) {
-    rowNumber = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
-  }
-
-  if (rowNumber) {
-    const updates = [
-      { range: `${DB_SHEET_NAME}!C${rowNumber}`, values: [[n]] },
-      { range: `${DB_SHEET_NAME}!D${rowNumber}`, values: [[s]] },
-      { range: `${DB_SHEET_NAME}!E${rowNumber}`, values: [[c ?? '']] }
-    ];
-    await batchUpdateSheetCells(updates);
-    
-    // Propagate changes to existing inventory logs for this specific barcode
-    const invData = await readSheetData(INVENTORY_READ_RANGE);
-    if (invData) {
-        const invUpdates = [];
-        for (let i = 0; i < invData.length; i++) {
-            const row = invData[i];
-            if (row && String(row[INV_COL_BARCODE]).trim() === b) {
-                invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i + 2}`, values: [[n]] });
-                invUpdates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`, values: [[s]] });
-            }
-        }
-        if (invUpdates.length > 0) {
-            await batchUpdateSheetCells(invUpdates);
-        }
+  let row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
+  if (row) {
+    await batchUpdateSheetCells([{ range: `${DB_SHEET_NAME}!C${row}`, values: [[n]] }, { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, { range: `${DB_SHEET_NAME}!E${row}`, values: [[c ?? '']] }]);
+    const inv = await readSheetData(INVENTORY_READ_RANGE);
+    if (inv) {
+        const ups = inv.map((r, i) => String(r[INV_COL_BARCODE]).trim() === b ? [{ range: `${FORM_RESPONSES_SHEET_NAME}!G${i+2}`, values: [[n]] }, { range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[s]] }] : []).flat();
+        if (ups.length > 0) await batchUpdateSheetCells(ups);
     }
-
-    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated definition: [Name: ${n}], [Supplier: ${s}], [Cost: ${c || 'N/A'}]`);
+    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated definition: ${n}`);
     return true;
   }
   return false;
 }
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
-  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!rowNumber) throw new Error("Item not found in sheet.");
-
-  const updates = [];
-  const diffs: string[] = [];
-  
-  if (u.quantity !== undefined) {
-    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, values: [[Number(u.quantity)]] });
-    diffs.push(`Qty: ${u.quantity}`);
-  }
-  if (u.location) {
-    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!E${rowNumber}`, values: [[u.location]] });
-    diffs.push(`Loc: ${u.location}`);
-  }
-  if (u.itemType) {
-    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!I${rowNumber}`, values: [[u.itemType]] });
-    diffs.push(`Type: ${u.itemType}`);
-  }
-  if (u.expiryDate) {
-    const formatted = format(parseISO(u.expiryDate), "d/M/yyyy");
-    updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!D${rowNumber}`, values: [[formatted]] });
-    diffs.push(`Exp: ${formatted}`);
-  }
-
-  if (updates.length > 0) {
-    await batchUpdateSheetCells(updates);
-    await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Changes: ${diffs.join(', ')}`);
-  }
+  const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (!row) throw new Error("Not found.");
+  const ups = [];
+  if (u.quantity !== undefined) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!C${row}`, values: [[Number(u.quantity)]] });
+  if (u.location) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!E${row}`, values: [[u.location]] });
+  if (u.itemType) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!I${row}`, values: [[u.itemType]] });
+  if (u.expiryDate) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!D${row}`, values: [[format(parseISO(u.expiryDate), "d/M/yyyy")]] });
+  if (ups.length > 0) { await batchUpdateSheetCells(ups); await logAuditEvent(email, 'UPDATE_INVENTORY', id, `Updated.`); }
   return { id, ...u };
 }
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
-  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!rowNumber) throw new Error("Original log not found.");
-
-  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${rowNumber}:J${rowNumber}`);
-  if (!data || !data[0]) throw new Error("Read failed.");
-  const originalRow = data[0];
-  
-  const barcode = String(originalRow[INV_COL_BARCODE] || '').trim();
-  const productName = String(originalRow[INV_COL_PRODUCT_NAME] || '').trim();
-  const originalQty = parseInt(String(originalRow[INV_COL_QTY] || '0'), 10);
-  
-  const amountToReturn = (q === undefined || q === null) ? originalQty : q;
-  const newQty = Math.max(0, originalQty - amountToReturn);
-
-  const detailString = `[RETURN] Product: ${productName} | Barcode: ${barcode} | Qty: ${amountToReturn} | Staff: ${staff} | Final: ${newQty}`;
-
-  if (newQty > 0) {
-    await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${rowNumber}`, [[newQty]]);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, detailString);
-  } else {
-    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, detailString + ' (Log Removed)');
-  }
-
+  const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (!row) throw new Error("Not found.");
+  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
+  const original = data![0];
+  const qty = parseInt(String(original[INV_COL_QTY] || '0'), 10);
+  const amt = q === undefined ? qty : q;
+  const final = Math.max(0, qty - amt);
+  if (final > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[final]]);
+  else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
+  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amt} units.`);
   return { success: true };
 }
 
 export async function deleteInventoryItemById(email: string, id: string) {
-  const rowNumber = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (rowNumber) {
-    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, rowNumber);
-    await logAuditEvent(email, 'DELETE_INVENTORY', id, `Permanently deleted row.`);
-    return true;
-  }
+  const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
+  if (row) { await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row); await logAuditEvent(email, 'DELETE_INVENTORY', id, `Deleted.`); return true; }
   return false;
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const [inv, prods] = await Promise.all([getInventoryItems(), getProducts()]);
-  
   const today = startOfDay(new Date());
   const prodsMap = new Map(prods.map(p => [p.barcode, p]));
-  
-  let totalVal = 0;
-  let netItemsAddedToday = 0;
-  let itemsExpiringSoonCount = 0;
-  const stockBySupp: Record<string, number> = {};
-
-  const suppNamesSet = new Set<string>();
-  prods.forEach(p => { if (p.supplierName) suppNamesSet.add(p.supplierName.trim()); });
-
+  let val = 0, added = 0, soon = 0;
+  const sByS: Record<string, number> = {};
   inv.forEach(i => {
-    const product = prodsMap.get(i.barcode);
-    if (product && product.costPrice) {
-      totalVal += (i.quantity * product.costPrice);
-    }
-
-    const n = i.supplierName || 'Unknown';
-    stockBySupp[n] = (stockBySupp[n] || 0) + i.quantity;
-
-    if (i.timestamp) {
-      try {
-        const logDate = parseISO(i.timestamp);
-        if (isValid(logDate) && isSameDay(startOfDay(logDate), today)) {
-          netItemsAddedToday += i.quantity;
-        }
-      } catch (e) { }
-    }
-
+    const p = prodsMap.get(i.barcode);
+    if (p?.costPrice) val += (i.quantity * p.costPrice);
+    sByS[i.supplierName || 'Unknown'] = (sByS[i.supplierName || 'Unknown'] || 0) + i.quantity;
+    if (i.timestamp && isSameDay(startOfDay(parseISO(i.timestamp)), today)) added += i.quantity;
     if (i.itemType === 'Expiry' && i.expiryDate) {
-      try {
-        const expiryDate = startOfDay(parseISO(i.expiryDate));
-        if (isValid(expiryDate)) {
-          if (!isBefore(expiryDate, today) && isBefore(expiryDate, addDays(today, 7))) {
-            itemsExpiringSoonCount++;
-          }
-        }
-      } catch (e) { }
+      const exp = startOfDay(parseISO(i.expiryDate));
+      if (!isBefore(exp, today) && isBefore(exp, addDays(today, 7))) soon++;
     }
   });
-
-  const stockBySupplier: StockBySupplier[] = Object.entries(stockBySupp)
-    .map(([name, totalStock]) => ({ name, totalStock }))
-    .sort((a,b) => b.totalStock - a.totalStock);
-
-  const stockTrend: StockTrendData[] = [];
+  const trend: StockTrendData[] = [];
   for (let d = 6; d >= 0; d--) {
-    const date = subDays(today, d);
-    const dateStr = format(date, 'MMM dd');
-    const currentTotal = inv.reduce((s, i) => s + i.quantity, 0);
-    const addedSince = inv.filter(i => i.timestamp && isAfter(parseISO(i.timestamp), endOfDay(date)))
-                          .reduce((s, i) => s + i.quantity, 0);
-    stockTrend.push({
-      date: dateStr,
-      totalStock: Math.max(0, currentTotal - addedSince)
-    });
+    const day = subDays(today, d);
+    const curr = inv.reduce((s, x) => s + x.quantity, 0);
+    const post = inv.filter(x => x.timestamp && isAfter(parseISO(x.timestamp), endOfDay(day))).reduce((s, x) => s + x.quantity, 0);
+    trend.push({ date: format(day, 'MMM dd'), totalStock: Math.max(0, curr - post) });
   }
-  
   return {
-    totalProducts: prods.length,
-    totalStockQuantity: inv.reduce((s, i) => s + i.quantity, 0),
-    itemsExpiringSoon: itemsExpiringSoonCount,
-    damagedItemsCount: inv.filter(i => i.itemType === 'Damage').length,
-    totalSuppliers: suppNamesSet.size,
-    totalStockValue: totalVal,
-    stockBySupplier,
-    netItemsAddedToday,
-    dailyStockChangeDirection: netItemsAddedToday > 0 ? 'increase' : 'none',
-    stockTrend
+    totalProducts: prods.length, totalStockQuantity: inv.reduce((s, x) => s + x.quantity, 0),
+    itemsExpiringSoon: soon, damagedItemsCount: inv.filter(x => x.itemType === 'Damage').length,
+    totalSuppliers: new Set(prods.map(x => x.supplierName)).size, totalStockValue: val,
+    stockBySupplier: Object.entries(sByS).map(([n, q]) => ({ name: n, totalStock: q })).sort((a,b) => b.totalStock - a.totalStock),
+    netItemsAddedToday: added, dailyStockChangeDirection: added > 0 ? 'increase' : 'none', stockTrend: trend
   };
 }
 
-export async function getInventoryLogEntriesByBarcode(b: string) {
-  return (await getInventoryItems()).filter(i => i.barcode === b);
-}
+export async function getInventoryLogEntriesByBarcode(b: string) { return (await getInventoryItems()).filter(i => i.barcode === b); }
