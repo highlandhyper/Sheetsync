@@ -12,13 +12,14 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2 } from 'lucide-react';
+import { ListChecks, MessageSquare, Loader2, User } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
+import { useDataCache } from '@/context/data-cache-context';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -28,6 +29,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useMultiSelect();
   const { requestSpecialEntry } = useSpecialEntry();
+  const { uniqueStaffNames } = useDataCache();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -52,11 +54,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   };
 
   const handleRequestSpecial = async () => {
+    if (!staffName) return;
     setIsSubmitting(true);
     await requestSpecialEntry(staffName, 'single');
     setIsSubmitting(false);
     setIsRequestDialogOpen(false);
     onOpenChange(false);
+    setStaffName(''); // Reset for next time
     toast({
         title: 'Request Sent',
         description: 'Administrators have been notified of your special entry request.',
@@ -114,29 +118,42 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     </CommandDialog>
 
     <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent className="sm:max-w-[360px]">
+        <DialogContent className="sm:max-w-[380px] p-6">
             <DialogHeader>
-                <DialogTitle className="text-lg">Request Special Entry</DialogTitle>
-                <DialogDescription className="text-xs">
-                    Request permission to log an item without triggering an email notification.
+                <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    Special Entry
+                </DialogTitle>
+                <DialogDescription className="text-xs font-medium">
+                    Request permission to log an item without triggering an email alert.
                 </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-                <div className="space-y-1.5">
-                    <Label htmlFor="staffNameReq" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
-                    <Input 
-                        id="staffNameReq" 
-                        placeholder="Enter your name" 
-                        value={staffName} 
-                        onChange={(e) => setStaffName(e.target.value)}
-                        className="h-9 text-sm"
-                    />
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identify Personnel</Label>
+                    <Select value={staffName} onValueChange={setStaffName}>
+                        <SelectTrigger className="h-12 bg-muted/20 border-primary/10">
+                            <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-primary" />
+                                <SelectValue placeholder="Select staff member..." />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueStaffNames.map(name => (
+                                <SelectItem key={name} value={name} className="font-bold">
+                                    {name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
-            <DialogFooter className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsRequestDialogOpen(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName.trim()}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : "Send Request"}
+            <DialogFooter className="grid grid-cols-2 gap-3 pt-2">
+                <Button variant="outline" size="lg" onClick={() => setIsRequestDialogOpen(false)} className="font-bold rounded-xl">
+                    Cancel
+                </Button>
+                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20">
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Request"}
                 </Button>
             </DialogFooter>
         </DialogContent>
