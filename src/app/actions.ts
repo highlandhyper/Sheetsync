@@ -20,6 +20,7 @@ import {
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
   deleteProductByBarcode as dbDeleteProductByBarcode,
+  deleteProductsByBarcodes as dbDeleteProductsByBarcodes,
   loadPermissionsFromSheet,
   savePermissionsToSheet,
   getInventoryItems,
@@ -222,12 +223,11 @@ export async function deleteProductAction(email: string, barcode: string) {
 
 export async function bulkDeleteProductsAction(email: string, barcodes: string[]) {
     try {
-        for (const barcode of barcodes) {
-            await dbDeleteProductByBarcode(email, barcode);
-        }
+        const success = await dbDeleteProductsByBarcodes(email, barcodes);
         revalidatePath('/products/list');
-        return { success: true };
+        return { success };
     } catch (e) {
+        console.error("Bulk delete action error:", e);
         return { success: false };
     }
 }

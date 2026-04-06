@@ -32,6 +32,7 @@ interface DataCacheContextType extends AppData {
   updateSupplier: (updatedSupplier: Supplier) => void;
   addProduct: (product: Partial<Product> & { id: string }) => void;
   updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
+  removeProducts: (barcodes: string[]) => void;
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
   updateStaffList: (staff: string[]) => Promise<void>;
   updateLocationList: (locations: string[]) => Promise<void>;
@@ -189,6 +190,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         setData(p => ({ ...p, products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x) }));
         refreshData(); 
     },
+    removeProducts: (barcodes: string[]) => setData(p => ({ ...p, products: p.products.filter(x => !barcodes.includes(x.barcode)) })),
   }), [data, isCacheReady, isSyncing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
 
   return (

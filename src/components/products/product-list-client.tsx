@@ -22,7 +22,7 @@ import { bulkDeleteProductsAction, deleteProductAction } from '@/app/actions';
 const MAX_ITEMS_TO_DISPLAY = 100;
 
 export function ProductListClient() {
-  const { products: allProducts, suppliers, updateProduct, refreshData } = useDataCache();
+  const { products: allProducts, suppliers, updateProduct, removeProducts, refreshData } = useDataCache();
   const { isMultiSelectEnabled } = useMultiSelect();
   const { role, user } = useAuth();
   const { toast } = useToast();
@@ -115,19 +115,25 @@ export function ProductListClient() {
     setIsAuthDialogOpen(false);
     if (pendingDeleteBarcodes.length === 0) return;
 
-    toast({ title: 'Processing Deletion', description: `Removing ${pendingDeleteBarcodes.length} products from catalog...` });
+    // --- OPTIMISTIC UI UPDATE ---
+    const barcodesToRemove = [...pendingDeleteBarcodes];
+    removeProducts(barcodesToRemove);
+    setSelectedBarcodes(new Set());
+    
+    toast({ title: 'Update Applied Locally', description: `Removing ${barcodesToRemove.length} products from your view. Syncing with sheet...` });
 
     try {
-        const result = await bulkDeleteProductsAction(user?.email || 'Admin', pendingDeleteBarcodes);
+        const result = await bulkDeleteProductsAction(user?.email || 'Admin', barcodesToRemove);
         if (result.success) {
-            toast({ title: 'Deletion Successful', description: 'Catalog has been updated.' });
-            setSelectedBarcodes(new Set());
-            refreshData();
+            toast({ title: 'Deletion Successful', description: 'Catalog has been permanently updated.' });
+            refreshData(); // Refresh to ensure everything is in sync
         } else {
-            toast({ title: 'Sync Error', description: 'Could not complete deletion on server.', variant: 'destructive' });
+            toast({ title: 'Sync Error', description: 'Could not complete deletion on server. Reverting local view...', variant: 'destructive' });
+            refreshData(); // Revert by refreshing
         }
     } catch (e) {
-        toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+        toast({ title: 'Connection Error', description: 'An unexpected error occurred. Refreshing catalog...', variant: 'destructive' });
+        refreshData();
     } finally {
         setPendingDeleteBarcodes([]);
     }
