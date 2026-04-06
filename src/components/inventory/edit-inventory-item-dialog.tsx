@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, MessageSquare } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, AlertTriangle, Tag, MapPin, Hash, ShieldQuestion, MessageSquare, Pencil } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ import {
 
 import { editInventoryItemSchema, type EditInventoryItemFormValues } from '@/lib/schemas';
 import type { InventoryItem } from '@/lib/types';
-import { editInventoryItemAction } from '@/app/actions';
+import { updateInventoryItemAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -139,7 +140,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     if (data.expiryDate) formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
     
     startActionTransition(async () => {
-      const result = await editInventoryItemAction(undefined, formData);
+      const result = await updateInventoryItemAction(undefined, formData);
       if (result.success && result.data) {
         toast({ title: 'Success', description: 'Item updated successfully.' });
         updateInventoryItem(result.data);
