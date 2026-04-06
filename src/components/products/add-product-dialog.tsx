@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, ChevronsUpDown, Check, DollarSign } from 'lucide-react';
+import { PlusCircle, Loader2, ChevronsUpDown, Check, DollarSign, Zap, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/command";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { saveProductAction } from '@/app/actions';
+import { saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
@@ -38,6 +38,7 @@ export function AddProductDialog() {
   const { suppliers, addProduct: addProductToCache } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
 
@@ -63,6 +64,7 @@ export function AddProductDialog() {
     }
   });
 
+  const barcodeValue = watch('barcode');
   const supplierNameValue = watch('supplierName');
   
   useEffect(() => {
@@ -72,6 +74,32 @@ export function AddProductDialog() {
         setTimeout(() => barcodeRef.current?.focus(), 100);
     }
   }, [isOpen, reset]);
+
+  const handleMagicLookup = async () => {
+    if (!barcodeValue || barcodeValue.length < 5) {
+        toast({ title: "Barcode Required", description: "Enter a valid barcode first.", variant: "destructive" });
+        return;
+    }
+
+    setIsMagicLoading(true);
+    try {
+        const res = await fetchProductExternalDataAction(barcodeValue);
+        if (res.success && res.data) {
+            if (res.data.name) setValue('productName', res.data.name, { shouldValidate: true });
+            if (res.data.brand) setValue('supplierName', res.data.brand, { shouldValidate: true });
+            toast({ 
+                title: "Magic Lookup Success", 
+                description: `Retrieved: ${res.data.name || 'Product data'}`,
+            });
+        } else {
+            toast({ title: "No Match", description: "Barcode not found in global registry.", variant: "destructive" });
+        }
+    } catch (e) {
+        toast({ title: "Lookup Error", description: "Global registry service unreachable.", variant: "destructive" });
+    } finally {
+        setIsMagicLoading(false);
+    }
+  };
 
   const processFormSubmit = (data: AddProductFormValues) => {
     const formData = new FormData();
@@ -120,14 +148,32 @@ export function AddProductDialog() {
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add New Product</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <PlusCircle className="h-5 w-5 text-primary" />
+            Add New Product
+          </DialogTitle>
           <DialogDescription>
             Register a new barcode in your system catalog.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="barcode">Barcode</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="barcode">Barcode</Label>
+                {barcodeValue && barcodeValue.length > 5 && (
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleMagicLookup}
+                        disabled={isMagicLoading}
+                        className="h-7 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
+                    >
+                        {isMagicLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Zap className="mr-1 h-3 w-3 fill-primary" />}
+                        Magic Lookup
+                    </Button>
+                )}
+              </div>
               <Input
                 id="barcode"
                 placeholder="Scan or enter barcode"
