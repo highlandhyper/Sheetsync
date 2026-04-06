@@ -389,7 +389,7 @@ function QuickAuthorizeCard() {
                 <CardDescription className="text-[10px]">Proactive silent entry grant</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
-                <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
+                <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
                             variant="outline" 

@@ -63,7 +63,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     setIsSubmitting(false);
     setIsRequestDialogOpen(false);
     onOpenChange(false);
-    setStaffName(''); // Reset for next time
+    setStaffName('');
     toast({
         title: 'Request Sent',
         description: 'Administrators have been notified of your special entry request.',
@@ -134,7 +134,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <div className="space-y-4 py-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identify Personnel</Label>
-                    <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
+                    <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                         <PopoverTrigger asChild>
                             <Button 
                                 variant="outline" 
