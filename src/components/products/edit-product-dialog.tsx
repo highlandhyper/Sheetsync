@@ -76,10 +76,10 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   } = useForm<AddProductFormValues>({
     resolver: zodResolver(addProductSchema),
     defaultValues: {
-      barcode: product?.barcode || '',
-      productName: product?.productName || '',
-      supplierName: product?.supplierName || '',
-      costPrice: product?.costPrice,
+      barcode: '',
+      productName: '',
+      supplierName: '',
+      costPrice: undefined,
     },
   });
 
@@ -96,7 +96,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       setSupplierSearch('');
       setExternalData(null);
       if (!isViewer) {
-        setTimeout(() => nameRef.current?.focus(), 100);
+        setTimeout(() => nameRef.current?.focus(), 150);
       }
     }
   }, [product, reset, isOpen, isViewer]);
@@ -125,6 +125,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
   const processFormSubmit = (data: AddProductFormValues) => {
     if (!product) return;
+    
+    // Explicitly check for changes to ensure save proceeds
     if (!isDirty) {
       onOpenChange(false);
       return;
@@ -135,7 +137,11 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
-    if (data.costPrice !== undefined) formData.append('costPrice', String(data.costPrice));
+    
+    // Convert undefined to empty string or valid number string
+    const costValue = (data.costPrice === undefined || Number.isNaN(data.costPrice)) ? '' : String(data.costPrice);
+    formData.append('costPrice', costValue);
+    
     formData.append('editMode', 'edit');
 
     const optimisticProduct: Product = {
@@ -145,21 +151,27 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         costPrice: data.costPrice,
     };
 
+    // Apply change locally for zero-latency feel
     updateProductInCache(optimisticProduct);
     onOpenChange(false);
-    toast({ title: 'Registry Updated', description: 'Applying changes in background...' });
+    toast({ title: 'Registry Update Initiated', description: 'Applying changes to catalog...' });
 
     startActionTransition(async () => {
-      const result = await saveProductAction(undefined, formData);
-      if (result.success && result.data) {
-        onSuccess(result.data);
-        refreshData();
-      } else {
-        toast({
-          title: 'Update Failed',
-          description: result.message || 'Could not sync changes.',
-          variant: 'destructive',
-        });
+      try {
+        const result = await saveProductAction(undefined, formData);
+        if (result.success && result.data) {
+          onSuccess(result.data);
+          // refreshData is called inside updateProductInCache/handleEditSuccess
+        } else {
+          toast({
+            title: 'Update Failed',
+            description: result.message || 'Could not sync changes with registry.',
+            variant: 'destructive',
+          });
+          refreshData(); // Revert to server state on failure
+        }
+      } catch (e) {
+        toast({ title: 'Connection Error', description: 'Registry sync interrupted.', variant: 'destructive' });
         refreshData();
       }
     });
@@ -173,7 +185,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const { ref: costFormRef, ...costProps } = register('costPrice', { valueAsNumber: true });
 
   const handleEditSupplierClick = () => {
-    const selectedSupplier = allSuppliers.find(s => s.name.toLowerCase() === supplierNameValue.toLowerCase());
+    const selectedSupplier = allSuppliers.find(s => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase());
     if (selectedSupplier) {
       setSupplierToEdit(selectedSupplier);
       setIsSupplierEditDialogOpen(true);
@@ -279,7 +291,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                         variant="ghost" 
                                         className="w-full justify-start text-xs h-8 font-bold"
                                         onClick={() => {
-                                            setValue('supplierName', supplierSearch, { shouldDirty: true });
+                                            setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
                                             setSupplierComboboxOpen(false);
                                             setTimeout(() => costRef.current?.focus(), 100);
                                         }}

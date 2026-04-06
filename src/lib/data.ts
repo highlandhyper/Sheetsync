@@ -137,9 +137,6 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
   }, []);
 }
 
-/**
- * Fetches audit logs and automatically identifies/purges records older than 90 days.
- */
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data || data.length === 0) return [];
@@ -147,7 +144,6 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const retentionThreshold = subDays(new Date(), 90);
   let lastOldRowIndex = -1;
 
-  // Since logs are appended, we find the "break point" where logs become recent
   for (let i = 0; i < data.length; i++) {
     const ts = parseFlexibleTimestamp(data[i][AUDIT_COL_TIMESTAMP]);
     if (ts && isBefore(ts, retentionThreshold)) {
@@ -157,21 +153,17 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     }
   }
 
-  // AUTOMATIC CLEANUP: If old logs found, purge them from the sheet in the background
   if (lastOldRowIndex !== -1) {
-    // Spreadsheet Row 2 is API Index 1
     const startIndex = 1;
-    const endIndex = lastOldRowIndex + 2; // Exclusive
+    const endIndex = lastOldRowIndex + 2; 
     
-    // Background execution to keep UI fetch fast
     deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
       .then(success => {
-        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} logs older than 3 months.`);
+        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} logs.`);
       })
       .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
   }
 
-  // Return only the non-purged logs to the UI
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
 
   return recentData.map((r, i) => ({
@@ -259,10 +251,6 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
   return false;
 }
 
-/**
- * Optimised bulk product deletion.
- * Reads the barcode column once and performs a batch row deletion.
- */
 export async function deleteProductsByBarcodes(email: string, barcodes: string[]) {
   const sheetData = await readSheetData(DB_READ_RANGE);
   if (!sheetData || sheetData.length === 0) return false;
@@ -273,7 +261,7 @@ export async function deleteProductsByBarcodes(email: string, barcodes: string[]
   sheetData.forEach((row, i) => {
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
     if (barcodeSet.has(rowBarcode)) {
-      rowIndicesToDelete.push(i + 2); // 1-based index + header offset
+      rowIndicesToDelete.push(i + 2); 
     }
   });
 
@@ -307,15 +295,48 @@ export async function updateSupplierNameAndReferences(email: string, oldN: strin
   return true;
 }
 
+/**
+ * High-performance product definition update.
+ * Limits inventory log scanning to only the barcode column to prevent timeouts.
+ */
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
-  let row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
+  const row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || 
+              await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
+  
   if (row) {
-    await batchUpdateSheetCells([{ range: `${DB_SHEET_NAME}!C${row}`, values: [[n]] }, { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, { range: `${DB_SHEET_NAME}!E${row}`, values: [[c ?? '']] }]);
-    const inv = await readSheetData(INVENTORY_READ_RANGE);
-    if (inv) {
-        const ups = inv.map((r, i) => String(r[INV_COL_BARCODE]).trim() === b ? [{ range: `${FORM_RESPONSES_SHEET_NAME}!G${i+2}`, values: [[n]] }, { range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[s]] }] : []).flat();
-        if (ups.length > 0) await batchUpdateSheetCells(ups);
+    const costValue = (c === undefined || Number.isNaN(c)) ? '' : c;
+    
+    // 1. Update Catalog Entry (DB Sheet)
+    await batchUpdateSheetCells([
+      { range: `${DB_SHEET_NAME}!C${row}`, values: [[n]] }, 
+      { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, 
+      { range: `${DB_SHEET_NAME}!E${row}`, values: [[costValue]] }
+    ]);
+
+    // 2. Optimized Inventory Log Update (Form responses 2)
+    // Only read Barcode, Product Name, and Supplier Name columns (B to H)
+    const invData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!B2:H`);
+    if (invData) {
+        const updates: { range: string; values: any[][] }[] = [];
+        invData.forEach((row, i) => {
+            const rowBarcode = String(row[0] || '').trim(); // Column B
+            if (rowBarcode === b) {
+                // Column G is index 5 in B:H
+                updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i+2}`, values: [[n]] });
+                // Column H is index 6 in B:H
+                updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[s]] });
+            }
+        });
+
+        if (updates.length > 0) {
+            // Batch update in safe chunks to avoid API request limits
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+                await batchUpdateSheetCells(updates.slice(i, i + CHUNK_SIZE));
+            }
+        }
     }
+
     await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated definition: ${n}`);
     return true;
   }
