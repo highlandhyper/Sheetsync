@@ -20,7 +20,7 @@ export function Toaster() {
         {toasts.map(function ({ id, title, description, action, onOpenChange, ...props }) {
           return (
             <Toast key={id} onOpenChange={onOpenChange} {...props} duration={4000}>
-              <div className="flex flex-col justify-center min-w-0 pr-2">
+              <div className="flex flex-col justify-center min-w-0 pr-4">
                 {title && <ToastTitle variant={props.variant}>{title}</ToastTitle>}
                 {description && (
                   <ToastDescription>{description}</ToastDescription>
