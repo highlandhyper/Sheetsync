@@ -1,35 +1,34 @@
-// Firebase uses string IDs for documents/nodes
 export interface Product {
   id: string; 
   barcode: string;
   productName: string;
   supplierId?: string; 
-  supplierName?: string; // Denormalized for convenience
+  supplierName?: string;
   costPrice?: number;
-  createdAt?: string; // ISO string or number (timestamp)
+  createdAt?: string;
 }
 
 export interface Supplier {
   id: string; 
   name: string;
-  createdAt?: string; // ISO string or number (timestamp)
+  createdAt?: string;
 }
 
 export type ItemType = 'Expiry' | 'Damage';
 
 export interface InventoryItem {
   id: string; 
-  productId?: string; // Optional if direct entry without linking to a cataloged product
+  productId?: string;
   productName: string; 
   barcode: string; 
   supplierId?: string;
   supplierName?: string; 
   quantity: number;
-  expiryDate?: string; // Store as YYYY-MM-DD string or ISO string
+  expiryDate?: string;
   location: string;
   staffName: string;
   itemType: ItemType;
-  timestamp?: string; // ISO string or Firebase ServerValue.TIMESTAMP
+  timestamp?: string;
 }
 
 export interface ReturnedItem {
@@ -42,21 +41,21 @@ export interface ReturnedItem {
   supplierName?: string;
   returnedQuantity: number;
   expiryDate?: string;
-  location: string; // Original location
-  staffName: string; // Staff who originally logged the item
-  itemType: ItemType; // Original item type
-  processedBy: string; // Staff who processed the return
-  returnTimestamp?: string; // ISO string or Firebase ServerValue.TIMESTAMP
+  location: string;
+  staffName: string;
+  itemType: ItemType;
+  processedBy: string;
+  returnTimestamp?: string;
 }
 
 export interface AddInventoryItemFormValues {
   staffName: string;
   itemType: ItemType;
   barcode: string;
-  quantity: number; // Will be parsed from string
-  expiryDate?: Date; // From form, convert to string for Sheets/DB
+  quantity: number;
+  expiryDate?: Date;
   location: string;
-  disableNotification?: boolean; // NEW: For special entries
+  disableNotification?: boolean;
 }
 
 export interface EditInventoryItemFormValues {
@@ -64,13 +63,13 @@ export interface EditInventoryItemFormValues {
   location: string;
   itemType: ItemType;
   quantity: number;
-  expiryDate?: Date | null; // Date from form picker, can be nullified
+  expiryDate?: Date | null;
   authUsername?: string;
   authPassword?: string;
 }
 
 export interface StockBySupplier {
-  name: string; // Supplier Name
+  name: string;
   totalStock: number;
 }
 
@@ -89,7 +88,7 @@ export interface DashboardMetrics {
   totalStockValue: number;
   dailyStockChangePercent?: number;
   dailyStockChangeDirection?: 'increase' | 'decrease' | 'none';
-  netItemsAddedToday?: number; // To display "+N items (New)" if stock started at 0
+  netItemsAddedToday?: number;
   stockTrend?: StockTrendData[];
 }
 
@@ -106,11 +105,11 @@ export type Permissions = {
 
 export interface AuditLogEntry {
     id: string;
-    timestamp: string; // ISO 8601 format
-    user: string; // User's email or ID
-    action: string; // e.g., "CREATE_PRODUCT", "UPDATE_INVENTORY", "PROCESS_RETURN"
-    target: string; // The primary identifier of the item affected (e.g., barcode, item ID, supplier name)
-    details: string; // A human-readable description of the change
+    timestamp: string;
+    user: string;
+    action: string;
+    target: string;
+    details: string;
 }
 
 export interface AppNotification {
@@ -120,7 +119,7 @@ export interface AppNotification {
   timestamp: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'request';
   isRead: boolean;
-  openedAt?: string; // Tracking when opened for 24h TTL
+  openedAt?: string;
   link?: string;
   metadata?: {
     barcode?: string;
@@ -135,7 +134,7 @@ export interface SpecialEntryRequest {
   userEmail: string;
   staffName: string;
   reason?: string;
-  suggestedProductName?: string; // NEW: Help admin know what product to add
+  suggestedProductName?: string;
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
   type: 'single' | 'timed' | 'product_add' | 'inventory_edit';
   durationMinutes?: number;
@@ -143,9 +142,9 @@ export interface SpecialEntryRequest {
   approvedAt?: string;
   expiresAt?: string;
   grantedByAdmin?: boolean;
-  otp?: string; // Session-specific OTP for activation
-  isDismissedByAdmin?: boolean; // NEW: Cross-device sync for admins
-  isReadByUser?: boolean;      // NEW: Cross-device sync for requester
+  otp?: string;
+  isDismissedByAdmin?: boolean;
+  isReadByUser?: boolean;
   originalDetails?: {
     location: string;
     itemType: ItemType;

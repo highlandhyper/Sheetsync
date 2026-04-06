@@ -30,8 +30,7 @@ import {
   saveStaffListToSheet,
   saveLocationListToSheet,
   getAppMetaData,
-  getInventoryLogEntriesByBarcode,
-  saveUserRegistryToSheet
+  getInventoryLogEntriesByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem, AppUser } from '@/lib/types';
 import { format, startOfDay } from 'date-fns';
@@ -45,17 +44,6 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
-// ULTRA-LIGHTWEIGHT: Only fetches metadata/registry, skips 54k row product fetch
-export async function fetchUserRegistryAction(): Promise<ActionResponse<AppUser[]>> {
-  try {
-    const meta = await getAppMetaData();
-    return { success: true, data: meta.users || [] };
-  } catch (error) {
-    console.error("Registry fetch failed:", error);
-    return { success: false, message: "Registry fetch failed." };
-  }
-}
-
 export async function fetchAllDataAction(): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products: Product[];
@@ -64,7 +52,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
-  users: AppUser[];
 }>> {
   try {
     // Heavy concurrent fetch
@@ -92,7 +79,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
         uniqueStaffNames: meta.staff || [],
         auditLogs: auditLogs || [],
         specialRequests: meta.specialRequests || [],
-        users: meta.users || [],
       }
     };
   } catch (error) {
@@ -109,7 +95,7 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
             next: { revalidate: 3600 },
             headers: {
                 'Accept': 'application/json',
-                'User-Agent': 'SheetSync - Inventory Management - Educational Prototype'
+                'User-Agent': 'SheetSync - Inventory Management'
             }
         });
         
@@ -130,10 +116,10 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
             };
         }
         
-        return { success: false, message: "Product visual data not found in global registry." };
+        return { success: false, message: "Product visual data not found." };
     } catch (e) {
         console.error("External lookup error:", e);
-        return { success: false, message: "External lookup service unavailable." };
+        return { success: false, message: "Lookup service unavailable." };
     }
 }
 
@@ -157,15 +143,8 @@ export async function addInventoryItemAction(
     
     const validatedItemData = validationResult.data;
     const productDetails = await getProductDetailsByBarcode(validatedItemData.barcode);
-    if (!productDetails) return { success: false, message: "Product details not found in system." };
+    if (!productDetails) return { success: false, message: "Product not found." };
 
-    let isSpecialEntry = false;
-    if (validatedItemData.expiryDate) {
-        const expiry = startOfDay(new Date(validatedItemData.expiryDate));
-        const today = startOfDay(new Date());
-        if (expiry <= today) isSpecialEntry = true;
-    }
-    
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
 
@@ -183,53 +162,25 @@ export async function addInventoryItemAction(
     };
 
     const sheetWriteSuccess = await addInventoryItemToSheet(itemData);
-    if (!sheetWriteSuccess) {
-        return { success: false, message: "Failed to write data to Google Sheet." };
-    }
+    if (!sheetWriteSuccess) return { success: false, message: "Write failed." };
 
-    fetch(EXTERNAL_LOGGER_API, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            isSpecial: isSpecialEntry,
-            disableNotification: disableNotification,
-            barcode: validatedItemData.barcode,
-            identity: validatedItemData.staffName,
-            type: validatedItemData.itemType,
-            quantity: validatedItemData.quantity,
-            expiryDate: rawFormData.expiryDate,
-            location: validatedItemData.location,
-            productName: productDetails.productName,
-            timestamp: now.toISOString()
-        })
-    }).catch(err => console.warn("External logger failed:", err));
-
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Details: [Product: ${productDetails.productName}], [Qty: ${validatedItemData.quantity}], [Loc: ${validatedItemData.location}]${disableNotification ? ' (Silent Entry)' : ''}`);
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Product: ${productDetails.productName}${disableNotification ? ' (Silent)' : ''}`);
     revalidatePath('/inventory');
     revalidatePath('/dashboard');
 
-    return {
-      success: true,
-      message: 'Inventory item logged successfully!',
-      data: itemData,
-    };
+    return { success: true, message: 'Logged successfully!', data: itemData };
   } catch (error) {
-    console.error("Action error:", error);
-    return { success: false, message: "Failed to log item." };
+    return { success: false, message: "Log failed." };
   }
 }
 
 export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
     try {
         const product = await getProductDetailsByBarcode(barcode);
-        if (product) {
-            return { success: true, data: product };
-        }
-        return { success: false, message: "Product not found in system." };
+        if (product) return { success: true, data: product };
+        return { success: false, message: "Not found." };
     } catch (e) {
-        return { success: false, message: "Failed to fetch product." };
+        return { success: false, message: "Fetch failed." };
     }
 }
 
@@ -241,26 +192,22 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const barcode = data.barcode as string;
         const productName = data.productName as string;
         const supplierName = data.supplierName as string;
-        const costPriceRaw = data.costPrice as string;
-        const costPrice = costPriceRaw !== "" ? parseFloat(costPriceRaw) : undefined;
+        const costPrice = data.costPrice ? parseFloat(data.costPrice as string) : undefined;
         
         if (editMode === 'create') {
             const product = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
             revalidatePath('/products/list');
-            return { success: true, message: "Product created successfully.", data: product as Product };
+            return { success: true, message: "Created successfully.", data: product as Product };
         } else {
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
-            if (!success) return { success: false, message: "Product not found in sheet." };
-            
+            if (!success) return { success: false, message: "Not found." };
             revalidatePath('/products/list');
             revalidatePath('/inventory');
-            
-            const updatedProduct = await getProductDetailsByBarcode(barcode);
-            return { success: true, message: "Product updated successfully.", data: updatedProduct as Product };
+            const updated = await getProductDetailsByBarcode(barcode);
+            return { success: true, message: "Updated successfully.", data: updated as Product };
         }
     } catch (e) {
-        console.error("saveProductAction error:", e);
-        return { success: false, message: "Failed to save product." };
+        return { success: false, message: "Save failed." };
     }
 }
 
@@ -272,10 +219,9 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         const result = await dbUpdateInventoryItemDetails(userEmail, itemId, rawData);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: "Item updated successfully.", data: result as InventoryItem };
+        return { success: true, message: "Updated.", data: result as InventoryItem };
     } catch (e) {
-        console.error("updateInventoryItemAction error:", e);
-        return { success: false, message: "Failed to update item." };
+        return { success: false, message: "Update failed." };
     }
 }
 
@@ -287,10 +233,9 @@ export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[
             revalidatePath('/approvals');
             return { success: true };
         }
-        return { success: false, message: "Failed to save requests to sheet." };
+        return { success: false };
     } catch (e) {
-        console.error("updateSpecialRequestsAction error:", e);
-        return { success: false, message: "Error updating requests." };
+        return { success: false };
     }
 }
 
@@ -300,7 +245,7 @@ export async function saveStaffListAction(staff: string[]) {
         revalidatePath('/settings');
         return { success: true };
     } catch (e) {
-        return { success: false, message: "Failed to save staff list." };
+        return { success: false };
     }
 }
 
@@ -310,7 +255,7 @@ export async function saveLocationListAction(locations: string[]) {
         revalidatePath('/settings');
         return { success: true };
     } catch (e) {
-        return { success: false, message: "Failed to save location list." };
+        return { success: false };
     }
 }
 
@@ -319,8 +264,7 @@ export async function fetchDashboardMetricsAction() {
         const data = await getDashboardMetrics();
         return { success: true, data }; 
     } catch (e) {
-        console.error("fetchDashboardMetricsAction error:", e);
-        return { success: false, message: "Metrics calculation failed." };
+        return { success: false };
     }
 }
 
@@ -329,7 +273,7 @@ export async function getPermissionsAction() {
         const data = await loadPermissionsFromSheet();
         return { success: true, data };
     } catch (e) {
-        return { success: false, message: "Permissions load failed." };
+        return { success: false };
     }
 }
 
@@ -338,16 +282,7 @@ export async function setPermissionsAction(p: any) {
         await savePermissionsToSheet(p); 
         return { success: true }; 
     } catch (e) {
-        return { success: false, message: "Permissions save failed." };
-    }
-}
-
-export async function saveUserRegistryAction(users: AppUser[]) {
-    try {
-        await saveUserRegistryToSheet(users);
-        return { success: true };
-    } catch (e) {
-        return { success: false, message: "Registry save failed." };
+        return { success: false };
     }
 }
 
@@ -356,7 +291,7 @@ export async function fetchAuditLogsAction() {
         const data = await getAuditLogs();
         return { success: true, data }; 
     } catch (e) {
-        return { success: false, message: "Logs fetch failed." };
+        return { success: false };
     }
 }
 
@@ -365,7 +300,7 @@ export async function fetchInventoryLogEntriesByBarcodeAction(b: string) {
         const data = await getInventoryLogEntriesByBarcode(b);
         return { success: true, data }; 
     } catch (e) {
-        return { success: false, message: "Barcode lookup failed." };
+        return { success: false };
     }
 }
 
@@ -374,18 +309,11 @@ export async function addSupplierAction(prevState: any, formData: FormData): Pro
         const data = Object.fromEntries(formData.entries());
         const name = data.supplierName as string;
         const userEmail = (data.userEmail as string) || 'Admin';
-        
         if (!name) return { success: false, message: "Name required." };
-        
-        await logAuditEvent(userEmail, 'REGISTER_SUPPLIER', name, `Supplier registered in system catalog.`);
-        
-        return { 
-            success: true, 
-            message: "Supplier registered. You can now assign products to this vendor.", 
-            data: { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() } 
-        };
+        await logAuditEvent(userEmail, 'REGISTER_SUPPLIER', name, `Registered.`);
+        return { success: true, data: { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() } };
     } catch (e) {
-        return { success: false, message: "Failed to register supplier." };
+        return { success: false };
     }
 }
 
@@ -395,19 +323,13 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
         const oldName = data.currentSupplierName as string;
         const newName = data.newSupplierName as string;
         const userEmail = (data.userEmail as string) || 'Admin';
-        
-        if (!oldName || !newName) return { success: false, message: "Names required." };
-        
         await dbUpdateSupplierName(userEmail, oldName, newName);
         revalidatePath('/suppliers');
         revalidatePath('/products/list');
         revalidatePath('/inventory');
-        revalidatePath('/dashboard');
-        
-        return { success: true, message: "Supplier renamed successfully across all catalog products and inventory logs." };
+        return { success: true };
     } catch (e) {
-        console.error("editSupplierAction error:", e);
-        return { success: false, message: "Failed to update supplier records." };
+        return { success: false };
     }
 }
 
@@ -416,9 +338,9 @@ export async function returnInventoryItemAction(e: string, i: string, q: number,
         await dbProcessReturn(e, i, q, s);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: "Return processed." }; 
+        return { success: true }; 
     } catch (err) {
-        return { success: false, message: "Return failed." };
+        return { success: false };
     }
 }
 
@@ -427,35 +349,33 @@ export async function deleteInventoryItemAction(e: string, i: string) {
         await dbDeleteInventoryItemById(e, i);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: "Item deleted." }; 
+        return { success: true }; 
     } catch (err) {
-        return { success: false, message: "Delete failed." };
+        return { success: false };
     }
 }
 
 export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
     try {
-        for (const id of ids) {
-            await dbDeleteInventoryItemById(e, id);
-        }
+        for (const id of ids) await dbDeleteInventoryItemById(e, id);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: `${ids.length} items deleted.` }; 
+        return { success: true }; 
     } catch (err) {
-        return { success: false, message: "Bulk delete failed." };
+        return { success: false };
     }
 }
 
 export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
     try {
         for (const id of ids) {
-            const quantityToReturn = t === 'all' ? undefined : q;
-            await dbProcessReturn(e, id, quantityToReturn, s);
+            const qty = t === 'all' ? undefined : q;
+            await dbProcessReturn(e, id, qty, s);
         }
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: `${ids.length} returns processed.` }; 
+        return { success: true }; 
     } catch (err) {
-        return { success: false, message: "Bulk return failed." };
+        return { success: false };
     }
 }
