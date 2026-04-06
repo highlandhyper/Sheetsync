@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
@@ -75,7 +76,6 @@ export function HeaderBarcodeLookup() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  // Shortcut listener: Alt + / to focus search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key === '/') {
@@ -116,7 +116,6 @@ export function HeaderBarcodeLookup() {
     [inventoryItems, toast]
   );
 
-  // REACTIVE SYNC: Update results popup automatically when cache changes
   useEffect(() => {
     if (isDialogOpen && lastSearchedBarcode) {
       const searchResults = inventoryItems.filter(
@@ -230,20 +229,18 @@ export function HeaderBarcodeLookup() {
         </div>
       </div>
       
-      <div className="hidden">
-        <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-            <DialogContent className="max-w-md w-full p-0">
-                <DialogHeader className="p-6 pb-2">
-                    <DialogTitle>Scan Barcode</DialogTitle>
-                    <DialogDescription>Point your camera at the product barcode to search.</DialogDescription>
-                </DialogHeader>
-                <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
-                <DialogFooter className="p-6 pt-0">
-                    <Button variant="outline" onClick={() => setIsScannerOpen(false)}>Cancel</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-      </div>
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+          <DialogContent className="max-w-md w-full p-0">
+              <DialogHeader className="p-6 pb-2">
+                  <DialogTitle>Scan Barcode</DialogTitle>
+                  <DialogDescription>Point your camera at the product barcode to search.</DialogDescription>
+              </DialogHeader>
+              <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
+              <DialogFooter className="p-6 pt-0">
+                  <Button variant="outline" onClick={() => setIsScannerOpen(false)}>Cancel</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-4xl w-full">
