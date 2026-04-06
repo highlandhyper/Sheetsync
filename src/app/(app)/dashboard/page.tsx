@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { useDataCache } from '@/context/data-cache-context';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -691,6 +690,7 @@ export default function DashboardPage() {
   const [mountedDate, setMountedDate] = useState<string>('');
 
   useEffect(() => {
+    // HYDRATION SAFETY: Only set local time string after client mount
     setMountedDate(format(new Date(), 'PP'));
     async function getData() {
       setIsLoading(true);
