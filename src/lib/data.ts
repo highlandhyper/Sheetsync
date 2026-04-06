@@ -248,6 +248,18 @@ export async function addProduct(email: string, p: any) {
   return { id: p.barcode, ...p };
 }
 
+export async function deleteProductByBarcode(email: string, barcode: string) {
+  let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
+            await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
+  
+  if (row) {
+    await deleteSheetRow(DB_SHEET_NAME, row);
+    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `Permanently removed from catalog.`);
+    return true;
+  }
+  return false;
+}
+
 export async function addInventoryItemToSheet(i: InventoryItem) {
   const ts = i.timestamp ? format(parseISO(i.timestamp), "d/M/yyyy HH:mm:ss") : format(new Date(), "d/M/yyyy HH:mm:ss");
   const row = [ts, i.barcode, i.quantity, i.expiryDate ? format(parseISO(i.expiryDate), "d/M/yyyy") : '', i.location, i.staffName, i.productName, i.supplierName || '', i.itemType, i.id];

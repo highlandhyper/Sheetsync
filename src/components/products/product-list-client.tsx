@@ -6,65 +6,47 @@ import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
 import { AddProductDialog } from './add-product-dialog';
 import type { Product } from '@/lib/types';
-import { Search, ListFilter, PackageOpen } from 'lucide-react';
+import { Search, ListFilter, PackageOpen, Trash2, ShieldCheck, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDataCache } from '@/context/data-cache-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { EditProductDialog } from './edit-product-dialog';
+import { useMultiSelect } from '@/context/multi-select-context';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { AuthorizeActionDialog } from '../inventory/authorize-action-dialog';
+import { bulkDeleteProductsAction, deleteProductAction } from '@/app/actions';
 
 const MAX_ITEMS_TO_DISPLAY = 100;
 
-
-function ProductListSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Skeleton className="h-10 w-full sm:max-w-xs" /> {/* Search Input */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Skeleton className="h-10 w-full sm:w-[180px]" /> {/* Sort Select */}
-            <Skeleton className="h-10 w-44" /> {/* Add Product Button */}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <Card className="w-full" key={index}>
-              <div className="p-4 space-y-3">
-                <div className="flex items-start gap-4">
-                    <Skeleton className="h-12 w-12 rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                        <Skeleton className="h-5 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
-                    </div>
-                </div>
-                 <Skeleton className="h-4 w-2/3" />
-              </div>
-            </Card>
-          ))}
-        </div>
-    </div>
-  );
-}
-
-
 export function ProductListClient() {
-  const { products: allProducts, suppliers, updateProduct } = useDataCache();
+  const { products: allProducts, suppliers, updateProduct, refreshData } = useDataCache();
+  const { isMultiSelectEnabled } = useMultiSelect();
+  const { role, user } = useAuth();
+  const { toast } = useToast();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'>('name-asc');
   
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
+  const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [pendingDeleteBarcodes, setPendingDeleteBarcodes] = useState<string[]>([]);
+
   const filteredAndSortedProducts = useMemo(() => {
     let items = [...allProducts];
 
     if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
       items = items.filter(
         (product) =>
-          product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (product.supplierName && product.supplierName.toLowerCase().includes(searchTerm.toLowerCase()))
+          product.productName.toLowerCase().includes(lower) ||
+          product.barcode.toLowerCase().includes(lower) ||
+          (product.supplierName && product.supplierName.toLowerCase().includes(lower))
       );
     }
 
@@ -93,6 +75,10 @@ export function ProductListClient() {
   }, [filteredAndSortedProducts]);
 
   const handleProductClick = (product: Product) => {
+    if (isMultiSelectEnabled) {
+        handleToggleSelect(product.barcode);
+        return;
+    }
     setEditingProduct(product);
     setIsEditDialogOpen(true);
   };
@@ -102,41 +88,120 @@ export function ProductListClient() {
     setIsEditDialogOpen(false);
   }, [updateProduct]);
 
+  const handleToggleSelect = (barcode: string) => {
+    setSelectedBarcodes(prev => {
+        const next = new Set(prev);
+        if (next.has(barcode)) next.delete(barcode);
+        else next.add(barcode);
+        return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedBarcodes.size === itemsToRender.length) {
+        setSelectedBarcodes(new Set());
+    } else {
+        setSelectedBarcodes(new Set(itemsToRender.map(p => p.barcode)));
+    }
+  };
+
+  const initiateDelete = (barcodes: string[]) => {
+    if (role !== 'admin') return;
+    setPendingDeleteBarcodes(barcodes);
+    setIsAuthDialogOpen(true);
+  };
+
+  const handleAuthorizationSuccess = async () => {
+    setIsAuthDialogOpen(false);
+    if (pendingDeleteBarcodes.length === 0) return;
+
+    toast({ title: 'Processing Deletion', description: `Removing ${pendingDeleteBarcodes.length} products from catalog...` });
+
+    try {
+        const result = await bulkDeleteProductsAction(user?.email || 'Admin', pendingDeleteBarcodes);
+        if (result.success) {
+            toast({ title: 'Deletion Successful', description: 'Catalog has been updated.' });
+            setSelectedBarcodes(new Set());
+            refreshData();
+        } else {
+            toast({ title: 'Sync Error', description: 'Could not complete deletion on server.', variant: 'destructive' });
+        }
+    } catch (e) {
+        toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+    } finally {
+        setPendingDeleteBarcodes([]);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search products, barcodes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full"
-          />
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as any)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <ListFilter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Sort by..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-              <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-              <SelectItem value="barcode-asc">Barcode (Asc)</SelectItem>
-              <SelectItem value="barcode-desc">Barcode (Desc)</SelectItem>
-            </SelectContent>
-          </Select>
-          <AddProductDialog />
-        </div>
+      <div className="flex flex-col gap-4">
+        {selectedBarcodes.size > 0 && isMultiSelectEnabled ? (
+            <Card className="p-4 bg-primary/5 border-primary/20 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 text-xs font-black uppercase">
+                            {selectedBarcodes.size === itemsToRender.length ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
+                            {selectedBarcodes.size === itemsToRender.length ? 'Deselect All' : 'Select All Visible'}
+                        </Button>
+                        <span className="text-sm font-bold text-primary">{selectedBarcodes.size} Products Selected</span>
+                    </div>
+                    {role === 'admin' && (
+                        <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="font-black uppercase tracking-widest text-[10px]"
+                            onClick={() => initiateDelete(Array.from(selectedBarcodes))}
+                        >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Selected
+                        </Button>
+                    )}
+                </div>
+            </Card>
+        ) : (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Search products, barcodes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full"
+                />
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as any)}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <ListFilter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                    <SelectItem value="barcode-asc">Barcode (Asc)</SelectItem>
+                    <SelectItem value="barcode-desc">Barcode (Desc)</SelectItem>
+                    </SelectContent>
+                </Select>
+                <AddProductDialog />
+                </div>
+            </div>
+        )}
       </div>
 
       {itemsToRender.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {itemsToRender.map((product) => (
-              <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onClick={() => handleProductClick(product)}
+                isMultiSelect={isMultiSelectEnabled}
+                isSelected={selectedBarcodes.has(product.barcode)}
+                onSelect={() => handleToggleSelect(product.barcode)}
+                onDelete={role === 'admin' ? () => initiateDelete([product.barcode]) : undefined}
+              />
             ))}
           </div>
           {filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY && (
@@ -166,6 +231,13 @@ export function ProductListClient() {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
+      />
+
+      <AuthorizeActionDialog 
+        isOpen={isAuthDialogOpen}
+        onOpenChange={setIsAuthDialogOpen}
+        onAuthorizationSuccess={handleAuthorizationSuccess}
+        actionDescription={`Deleting ${pendingDeleteBarcodes.length} product(s) from the global registry. This action cannot be undone.`}
       />
     </div>
   );
