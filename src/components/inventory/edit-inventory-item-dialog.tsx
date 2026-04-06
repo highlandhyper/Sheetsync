@@ -68,7 +68,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   const { toast } = useToast();
   const { user, role } = useAuth();
   const [isActionPending, startActionTransition] = useTransition();
-  const { updateInventoryItem } = useDataCache();
+  const { updateInventoryItem, refreshData } = useDataCache();
   const { requestInventoryEdit } = useSpecialEntry();
   
   const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
@@ -131,6 +131,23 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
   
   const executeSave = (data: EditInventoryItemFormValues) => {
     if (!item || !user?.email) return;
+
+    // 1. CONSTRUCT OPTIMISTIC ITEM
+    const optimisticItem: InventoryItem = {
+        ...item,
+        location: data.location,
+        itemType: data.itemType,
+        quantity: data.quantity,
+        expiryDate: data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : undefined
+    };
+
+    // 2. APPLY INSTANT UI UPDATE
+    updateInventoryItem(optimisticItem);
+    onOpenChange(false);
+    onSuccess?.();
+    toast({ title: 'Success', description: 'Log updated instantly. Syncing with sheet...' });
+
+    // 3. SYNC IN BACKGROUND
     const formData = new FormData();
     formData.append('itemId', item.id);
     formData.append('location', data.location);
@@ -139,16 +156,17 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
     if (data.expiryDate) formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
     
-    startActionTransition(async () => {
-      const result = await updateInventoryItemAction(undefined, formData);
-      if (result.success && result.data) {
-        toast({ title: 'Success', description: 'Item updated successfully.' });
-        updateInventoryItem(result.data);
-        onSuccess?.();
-        onOpenChange(false);
-      } else {
-        toast({ title: 'Error', description: result.message || 'Update failed.', variant: 'destructive' });
-      }
+    updateInventoryItemAction(undefined, formData).then(result => {
+        if (result.success && result.data) {
+            // Confirm with server-returned data
+            updateInventoryItem(result.data);
+        } else {
+            toast({ title: 'Sync Error', description: result.message || 'Cloud sync failed. Reverting...', variant: 'destructive' });
+            refreshData(); // Revert to known good state
+        }
+    }).catch(() => {
+        toast({ title: 'Connection Error', description: 'Could not reach server. Reverting local changes...', variant: 'destructive' });
+        refreshData();
     });
   }
 
@@ -159,7 +177,6 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     }
 
     if (isViewer) {
-        // Viewer Request Mode
         startActionTransition(async () => {
             if (!item) return;
             await requestInventoryEdit(item, {

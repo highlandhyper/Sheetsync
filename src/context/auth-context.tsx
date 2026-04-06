@@ -86,11 +86,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       
       // CRITICAL: Unblock initialization immediately. 
-      // No background registry sync is required for hardcoded roles.
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // FAIL-SAFE: If Firebase is slow, unblock the UI after 3 seconds
+    const safetyTimeout = setTimeout(() => {
+        setLoading(false);
+    }, 3000);
+
+    return () => {
+        unsubscribe();
+        clearTimeout(safetyTimeout);
+    };
   }, [determineRole]);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {

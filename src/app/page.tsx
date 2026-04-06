@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -12,10 +13,20 @@ export default function HomePage() {
   const { permissions } = useAccessControl();
 
   useEffect(() => {
+    // AGGRESSIVE REDIRECTION:
+    // Don't wait for loading state if we already have user and role (from cache)
+    if (user && role) {
+        if (role === 'admin') {
+          router.replace('/dashboard');
+        } else {
+          const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
+          router.replace(defaultPath);
+        }
+        return;
+    }
+
     if (!loading) {
       if (user) {
-        // AGGRESSIVE REDIRECTION:
-        // Use hardcoded roles to bounce the user to the correct workspace instantly.
         if (role === 'admin') {
           router.replace('/dashboard');
         } else {
