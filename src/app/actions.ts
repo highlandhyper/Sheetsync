@@ -19,6 +19,7 @@ import {
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
   getDashboardMetrics,
   deleteInventoryItemById as dbDeleteInventoryItemById,
+  deleteProductByBarcode as dbDeleteProductByBarcode,
   loadPermissionsFromSheet,
   savePermissionsToSheet,
   getInventoryItems,
@@ -206,6 +207,28 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         }
     } catch (e) {
         return { success: false, message: "Save failed." };
+    }
+}
+
+export async function deleteProductAction(email: string, barcode: string) {
+    try {
+        const success = await dbDeleteProductByBarcode(email, barcode);
+        revalidatePath('/products/list');
+        return { success };
+    } catch (e) {
+        return { success: false };
+    }
+}
+
+export async function bulkDeleteProductsAction(email: string, barcodes: string[]) {
+    try {
+        for (const barcode of barcodes) {
+            await dbDeleteProductByBarcode(email, barcode);
+        }
+        revalidatePath('/products/list');
+        return { success: true };
+    } catch (e) {
+        return { success: false };
     }
 }
 
