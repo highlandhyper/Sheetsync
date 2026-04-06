@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -32,10 +33,8 @@ import {
   getAppMetaData,
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem, AppUser } from '@/lib/types';
-import { format, startOfDay } from 'date-fns';
-
-const EXTERNAL_LOGGER_API = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem } from '@/lib/types';
+import { format } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -54,7 +53,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   specialRequests: SpecialEntryRequest[];
 }>> {
   try {
-    // Heavy concurrent fetch
     const [
       inventoryItems,
       products,
@@ -63,7 +61,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
     ] = await Promise.all([
       getInventoryItems(),
       getProducts(),
-      getAuditLogs(),
+      getAuditLogs(), // Automatically triggers cleanup if needed
       getAppMetaData()
     ]);
 

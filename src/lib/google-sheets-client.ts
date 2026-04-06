@@ -109,7 +109,6 @@ export async function readSheetData(range: string): Promise<any[][] | null> {
 
   const startTime = Date.now();
   try {
-    // console.log(`Reading from sheet: ${GOOGLE_SHEET_ID}, range: ${range}`);
     const response = await currentSheetsClient.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       range: range,
@@ -243,7 +242,6 @@ async function getSheetGid(sheetName: string): Promise<number | null> {
   }
 
   try {
-    // console.log(`getSheetGid: Fetching metadata for spreadsheet ID: ${GOOGLE_SHEET_ID} to find GID for sheet: "${sheetName}"`);
     const response = await currentSheetsClient.spreadsheets.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       fields: 'sheets(properties(sheetId,title))',
@@ -252,13 +250,12 @@ async function getSheetGid(sheetName: string): Promise<number | null> {
     if (response.data.sheets) {
       for (const sheet of response.data.sheets) {
         if (sheet.properties && sheet.properties.title === sheetName && sheet.properties.sheetId != null) {
-          // console.log(`getSheetGid: Found GID ${sheet.properties.sheetId} for sheet "${sheetName}"`);
           sheetGidCache.set(sheetName, sheet.properties.sheetId);
           return sheet.properties.sheetId;
         }
       }
     }
-    console.error(`getSheetGid: Sheet with name "${sheetName}" not found in spreadsheet ${GOOGLE_SHEET_ID}. Ensure the sheet name constant in data.ts matches the actual sheet tab name (case-sensitive).`);
+    console.error(`getSheetGid: Sheet with name "${sheetName}" not found in spreadsheet ${GOOGLE_SHEET_ID}.`);
     return null;
   } catch (error: any) {
     console.error(`getSheetGid: Error fetching sheet GID for "${sheetName}": ${error.message}`);
@@ -267,19 +264,19 @@ async function getSheetGid(sheetName: string): Promise<number | null> {
 }
 
 export async function deleteSheetRow(sheetName: string, rowIndex: number): Promise<boolean> {
+  return deleteSheetRowsRange(sheetName, rowIndex - 1, rowIndex);
+}
+
+export async function deleteSheetRowsRange(sheetName: string, startIndex: number, endIndex: number): Promise<boolean> {
   const currentSheetsClient = await getSheetsClient();
   if (!currentSheetsClient || !GOOGLE_SHEET_ID) {
-    console.error(`deleteSheetRow: Sheets client or GOOGLE_SHEET_ID not available for sheet '${sheetName}'.`);
+    console.error(`deleteSheetRowsRange: Sheets client or GOOGLE_SHEET_ID not available for sheet '${sheetName}'.`);
     return false;
   }
 
   const numericSheetId = await getSheetGid(sheetName);
   if (numericSheetId === null) {
-    console.error(`deleteSheetRow: Could not get GID for sheet "${sheetName}". Cannot delete row ${rowIndex}.`);
-    return false;
-  }
-  if (rowIndex <= 0) {
-    console.error(`deleteSheetRow: Invalid rowIndex ${rowIndex}. Must be 1-based.`);
+    console.error(`deleteSheetRowsRange: Could not get GID for sheet "${sheetName}".`);
     return false;
   }
 
@@ -294,8 +291,8 @@ export async function deleteSheetRow(sheetName: string, rowIndex: number): Promi
               range: {
                 sheetId: numericSheetId,
                 dimension: 'ROWS',
-                startIndex: rowIndex - 1, // API is 0-indexed
-                endIndex: rowIndex,
+                startIndex: startIndex,
+                endIndex: endIndex,
               },
             },
           },
@@ -304,14 +301,11 @@ export async function deleteSheetRow(sheetName: string, rowIndex: number): Promi
     };
     await currentSheetsClient.spreadsheets.batchUpdate(request);
     const duration = Date.now() - startTime;
-    console.log(`Successfully deleted row ${rowIndex} from sheet "${sheetName}" (GID: ${numericSheetId}) in ${duration}ms.`);
+    console.log(`Successfully deleted rows ${startIndex} to ${endIndex} from sheet "${sheetName}" in ${duration}ms.`);
     return true;
   } catch (error: any) {
     const duration = Date.now() - startTime;
-    console.error(`Error deleting row ${rowIndex} from sheet "${sheetName}" (GID: ${numericSheetId}) (took ${duration}ms): ${error.message}`);
-    if (error.stack) {
-      console.error("Stack trace for deleteSheetRow error:", error.stack);
-    }
+    console.error(`Error deleting rows in sheet "${sheetName}" (took ${duration}ms): ${error.message}`);
     return false;
   }
 }
@@ -357,5 +351,3 @@ export async function findRowByUniqueValue(sheetName: string, uniqueValueToFind:
   console.warn(`findRowByUniqueValue: Value '${uniqueValueToFind}' not found in sheet '${sheetName}', column ${columnLetter} (search took ${duration}ms).`);
   return null;
 }
-
-    

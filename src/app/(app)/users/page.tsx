@@ -1,44 +1,25 @@
+
 'use client';
 
-import { UserManager } from '@/components/settings/user-manager';
-import { Users } from 'lucide-react';
-import { useDataCache } from '@/context/data-cache-context';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Suspense } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-function UserManagementSkeleton() {
-  return (
-    <div className="space-y-8 animate-pulse">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 bg-muted rounded-2xl" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 h-[400px] bg-muted rounded-3xl" />
-        <div className="lg:col-span-2 h-[400px] bg-muted rounded-2xl" />
-      </div>
-    </div>
-  );
-}
+/**
+ * User management has been deprecated in favor of a hardcoded security model.
+ * Redirecting users back to the main dashboard.
+ */
+export default function DeprecatedUserManagementPage() {
+  const router = useRouter();
 
-export default function UserManagementPage() {
-  const { isCacheReady } = useDataCache();
+  useEffect(() => {
+    router.replace('/dashboard');
+  }, [router]);
 
   return (
-    <div className="container mx-auto py-2">
-      <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight uppercase">
-        <Users className="mr-3 h-8 w-8" />
-        User Management
-      </h1>
-      
-      <Suspense fallback={<UserManagementSkeleton />}>
-        {isCacheReady ? (
-          <UserManager />
-        ) : (
-          <UserManagementSkeleton />
-        )}
-      </Suspense>
+    <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="ml-4 text-lg mt-4 text-muted-foreground">User Management is now handled by the system core. Redirecting...</p>
     </div>
   );
 }

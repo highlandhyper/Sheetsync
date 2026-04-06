@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string; 
   barcode: string;
@@ -166,12 +167,4 @@ export interface OfflineAction {
   type: 'LOG_INVENTORY' | 'PROCESS_RETURN';
   data: any;
   timestamp: string;
-}
-
-export interface AppUser {
-  uid?: string;
-  email: string;
-  role: Role;
-  createdAt: string;
-  lastLoginAt?: string;
 }
