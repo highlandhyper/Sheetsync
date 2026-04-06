@@ -15,16 +15,12 @@ export default function HomePage() {
     if (!loading) {
       if (user) {
         // AGGRESSIVE REDIRECTION:
-        // 1. If we have a role (from cache or server), use it immediately.
+        // Use hardcoded roles to bounce the user to the correct workspace instantly.
         if (role === 'admin') {
           router.replace('/dashboard');
-        } else if (role === 'viewer') {
+        } else {
           const defaultPath = permissions.viewerDefaultPath || '/inventory/add';
           router.replace(defaultPath);
-        } else {
-          // 2. If user exists but role is still syncing, go to a safe default
-          // rather than waiting on the loading screen.
-          router.replace('/inventory/add');
         }
       } else {
         router.replace('/login');
@@ -43,7 +39,7 @@ export default function HomePage() {
         SheetSync
       </h1>
       <p className="text-muted-foreground animate-pulse font-medium">
-        Verifying Identity & Security Credentials...
+        Authenticating Secure Session...
       </p>
     </div>
   );
