@@ -145,7 +145,7 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     updateInventoryItem(optimisticItem);
     onOpenChange(false);
     onSuccess?.();
-    toast({ title: 'Success', description: 'Log updated instantly. Syncing with sheet...' });
+    toast({ title: 'Update Applied', description: 'Log updated locally. Syncing with sheet...' });
 
     // 3. SYNC IN BACKGROUND
     const formData = new FormData();
@@ -156,17 +156,19 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
     formData.append('quantity', String(data.quantity));
     if (data.expiryDate) formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
     
-    updateInventoryItemAction(undefined, formData).then(result => {
-        if (result.success && result.data) {
-            // Confirm with server-returned data
-            updateInventoryItem(result.data);
-        } else {
-            toast({ title: 'Sync Error', description: result.message || 'Cloud sync failed. Reverting...', variant: 'destructive' });
-            refreshData(); // Revert to known good state
+    startActionTransition(async () => {
+        try {
+            const result = await updateInventoryItemAction(undefined, formData);
+            if (result.success && result.data) {
+                updateInventoryItem(result.data);
+            } else {
+                toast({ title: 'Sync Error', description: result.message || 'Cloud sync failed. Reverting...', variant: 'destructive' });
+                refreshData(); 
+            }
+        } catch (e) {
+            toast({ title: 'Connection Error', description: 'Could not reach server. Reverting local changes...', variant: 'destructive' });
+            refreshData();
         }
-    }).catch(() => {
-        toast({ title: 'Connection Error', description: 'Could not reach server. Reverting local changes...', variant: 'destructive' });
-        refreshData();
     });
   }
 

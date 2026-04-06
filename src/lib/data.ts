@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -43,7 +44,6 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-// Performance: Fast-path for empty values
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
   const s = String(val).trim();
@@ -69,14 +69,12 @@ function parseFlexibleTimestamp(val: any): Date | null {
   return null;
 }
 
-// Robust parsing for large 54k rows
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
   if (!barcode || !productName) return null;
   
-  // High-perf cost cleanup
   const costRaw = String(row[DB_COL_COST_PRICE] || '');
   const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
   
@@ -116,7 +114,6 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
   if (!data) return [];
-  // Use filter first then map for performance on huge arrays
   return data.reduce((acc: Product[], row) => {
     const p = transformToProduct(row);
     if (p) acc.push(p);
