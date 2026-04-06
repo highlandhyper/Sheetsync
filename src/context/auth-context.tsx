@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -61,6 +62,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!auth) {
       setLoading(false);
       return;
+    }
+
+    // Performance Optimization: Use currentUser if available before the handshake
+    if (auth.currentUser) {
+        setUser(auth.currentUser);
+        const determinedRole = determineRole(auth.currentUser.email);
+        setRole(determinedRole);
+        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
+        setLoading(false);
     }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
