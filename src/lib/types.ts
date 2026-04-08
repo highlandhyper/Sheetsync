@@ -167,4 +167,5 @@ export interface OfflineAction {
   type: 'LOG_INVENTORY' | 'PROCESS_RETURN';
   data: any;
   timestamp: string;
+  retryCount?: number;
 }
