@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -42,22 +41,39 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 45000; // Increased interval for 54k row catalog stability
+const SYNC_INTERVAL_MS = 45000;
+const DATA_CACHE_KEY = 'sheetSync_globalDataCache';
 const OFFLINE_KEY = 'sheetSync_offlineActions';
+
+const initialEmptyData: AppData = {
+  inventoryItems: [],
+  products: [],
+  suppliers: [],
+  uniqueLocations: [],
+  uniqueStaffNames: [],
+  auditLogs: [],
+  specialRequests: [],
+  lastSync: null,
+};
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   
-  const [data, setData] = useState<AppData>({
-    inventoryItems: [],
-    products: [],
-    suppliers: [],
-    uniqueLocations: [],
-    uniqueStaffNames: [],
-    auditLogs: [],
-    specialRequests: [],
-    lastSync: null,
+  // 1. BOOTSTRAP FROM LOCALSTORAGE IMMEDIATELY
+  const [data, setData] = useState<AppData>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(DATA_CACHE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { ...initialEmptyData, ...parsed };
+        }
+      } catch (e) {
+        console.warn("DataCache: Could not parse local cache.");
+      }
+    }
+    return initialEmptyData;
   });
   
   const [isSyncing, setIsSyncing] = useState(false);
@@ -67,9 +83,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   
   const isFetchingRef = useRef(false);
   const processingQueueRef = useRef(false);
-  const isCacheReady = data.lastSync !== null;
+  
+  // Cache is ready if we have a lastSync OR we have some data from a previous session
+  const isCacheReady = data.lastSync !== null || data.products.length > 0;
 
-  // Persistence: Load queue from LocalStorage on mount
+  // Persistence: Initial load of offline queue
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsOnline(navigator.onLine);
@@ -84,13 +102,19 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  // Persistence: Save queue whenever it changes
+  // Persistence: Save data & queue whenever they change
   useEffect(() => {
-    localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
-  }, [pendingActions]);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
+      if (data.lastSync) {
+        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
+      }
+    }
+  }, [pendingActions, data]);
 
   const fetchDataAndCache = useCallback(async () => {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
+    
     isFetchingRef.current = true;
     setIsSyncing(true);
 
@@ -106,7 +130,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       console.error("Data Sync: Global fetch failed.", e);
     } finally {
       setIsSyncing(false);
-      isFetchingRef.current = false;
+      // Safety: Release lock after a short delay to allow UI to settle
+      setTimeout(() => { isFetchingRef.current = false; }, 1000);
     }
   }, [user]);
 
@@ -139,23 +164,19 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
             if (success) {
                 successfullySyncedIds.push(action.id);
-            } else {
-                // If specific action fails, we mark it but keep processing the rest
-                console.warn(`Sync: Action ${action.id} rejected by server.`);
             }
         } catch (e) {
-            console.error(`Sync: Action ${action.id} execution error.`, e);
-            break; // Stop loop on connection/timeout error
+            console.error(`Sync: Action ${action.id} failed.`, e);
+            break; 
         }
     }
 
     if (successfullySyncedIds.length > 0) {
         setPendingActions(prev => prev.filter(a => !successfullySyncedIds.includes(a.id)));
         toast({ 
-            title: "Sync Complete", 
-            description: `Successfully synchronized ${successfullySyncedIds.length} records with Google Sheets.` 
+            title: "Queue Synced", 
+            description: `Successfully pushed ${successfullySyncedIds.length} offline records.` 
         });
-        // Trigger a fresh fetch to ensure UI is in absolute sync
         fetchDataAndCache();
     }
 
@@ -163,44 +184,44 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     processingQueueRef.current = false;
   }, [pendingActions, toast, fetchDataAndCache]);
 
-  // Online/Offline Listeners
+  // Network & Focus revalidation
   useEffect(() => {
-    const handleOnline = () => { 
-        setIsOnline(true); 
-        processSyncQueue(); 
-    };
+    const handleOnline = () => { setIsOnline(true); processSyncQueue(); };
     const handleOffline = () => setIsOnline(false);
+    const handleFocus = () => { if (user && !isFetchingRef.current) fetchDataAndCache(); };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('focus', handleFocus);
     
-    // Auto-trigger queue processing if online and items exist
-    if (navigator.onLine && pendingActions.length > 0) {
-        processSyncQueue();
-    }
-
     return () => { 
         window.removeEventListener('online', handleOnline); 
         window.removeEventListener('offline', handleOffline); 
+        window.removeEventListener('focus', handleFocus);
     };
-  }, [processSyncQueue, pendingActions.length]);
+  }, [processSyncQueue, fetchDataAndCache, user]);
 
-  // Initial Data Load & Heartbeat Sync
+  // Initial Sync Trigger
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setData({ inventoryItems: [], products: [], suppliers: [], uniqueLocations: [], uniqueStaffNames: [], auditLogs: [], specialRequests: [], lastSync: null });
+      // Logic for logout: Clear session data
+      if (data.lastSync) {
+        setData(initialEmptyData);
+        localStorage.removeItem(DATA_CACHE_KEY);
+      }
       return;
     }
     
+    // START SYNC IMMEDIATELY
     fetchDataAndCache();
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [user, authLoading, fetchDataAndCache]);
+  }, [user, authLoading, fetchDataAndCache, data.lastSync]);
 
   const refreshData = useCallback(async () => {
     if (!navigator.onLine) {
-        toast({ title: "Offline", description: "Cannot refresh while disconnected.", variant: "destructive" });
+        toast({ title: "No Connection", description: "Refresh unavailable while offline.", variant: "destructive" });
         return;
     }
     await fetchDataAndCache();
@@ -228,7 +249,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           timestamp: new Date().toISOString() 
       };
       setPendingActions(prev => [...prev, newAction]);
-      // Attempt immediate sync if online
       if (navigator.onLine) setTimeout(processSyncQueue, 100);
   }, [processSyncQueue]);
 
@@ -260,16 +280,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         inventoryItems: p.inventoryItems.filter(x => !ids.includes(x.id)) 
     })),
     addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
-    updateSupplier: (s: any) => {
-        // Renaming a supplier is a heavy operation, so we force a refresh to be safe
-        refreshData();
-    },
+    updateSupplier: () => { refreshData(); },
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => {
         setData(p => ({ 
             ...p, 
             products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x),
-            // PROACTIVE SYNC: Update the name/supplier in local inventory logs immediately
             inventoryItems: p.inventoryItems.map(item => 
                 item.barcode === pr.barcode 
                 ? { ...item, productName: pr.productName, supplierName: pr.supplierName } 

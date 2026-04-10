@@ -68,18 +68,12 @@ function parseFlexibleTimestamp(val: any): Date | null {
   return null;
 }
 
-/**
- * Robust Product Transformation for 54k row catalog.
- * Ensures malformed or empty rows don't crash the cache engine.
- */
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
   
-  // High-performance barcode identification
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
   
-  // Skip invalid or empty skeletal rows frequently found in large sheets
   if (!barcode || !productName || barcode.toLowerCase() === 'barcode') return null;
   
   const costRaw = String(row[DB_COL_COST_PRICE] || '');
