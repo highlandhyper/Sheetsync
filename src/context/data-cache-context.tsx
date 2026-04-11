@@ -238,6 +238,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     };
   }, [processSyncQueue, fetchDataAndCache, user]);
 
+  // FIXED: Removed data.lastSync from dependencies to stop the infinite loop
   useEffect(() => {
     if (!user) {
       if (data.lastSync) {
@@ -250,7 +251,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     fetchDataAndCache();
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [user, fetchDataAndCache, data.lastSync]);
+  }, [user, fetchDataAndCache]);
 
   const refreshData = useCallback(async () => {
     if (!navigator.onLine) {
