@@ -42,10 +42,10 @@ export function AddProductDialog() {
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
 
-  const barcodeRef = useRef<HTMLInputElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
-  const costRef = useRef<HTMLInputElement>(null);
+  const costInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -71,7 +71,7 @@ export function AddProductDialog() {
     if (isOpen) {
         reset();
         setSupplierSearch('');
-        setTimeout(() => barcodeRef.current?.focus(), 100);
+        setTimeout(() => barcodeInputRef.current?.focus(), 100);
     }
   }, [isOpen, reset]);
 
@@ -180,12 +180,12 @@ export function AddProductDialog() {
                 {...barcodeProps}
                 ref={(e) => {
                     barcodeFormRef(e);
-                    (barcodeRef as any).current = e;
+                    (barcodeInputRef as any).current = e;
                 }}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        nameRef.current?.focus();
+                        nameInputRef.current?.focus();
                     }
                 }}
                 className={cn("font-mono", formErrors.barcode && 'border-destructive')}
@@ -201,7 +201,7 @@ export function AddProductDialog() {
                 {...nameProps}
                 ref={(e) => {
                     nameFormRef(e);
-                    (nameRef as any).current = e;
+                    (nameInputRef as any).current = e;
                 }}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -246,7 +246,7 @@ export function AddProductDialog() {
                                     if (e.key === 'Enter' && supplierSearch) {
                                         setValue('supplierName', supplierSearch, { shouldValidate: true });
                                         setSupplierComboboxOpen(false);
-                                        setTimeout(() => costRef.current?.focus(), 100);
+                                        setTimeout(() => costInputRef.current?.focus(), 100);
                                     }
                                 }}
                             />
@@ -259,7 +259,7 @@ export function AddProductDialog() {
                                         onClick={() => {
                                             setValue('supplierName', supplierSearch, { shouldValidate: true });
                                             setSupplierComboboxOpen(false);
-                                            setTimeout(() => costRef.current?.focus(), 100);
+                                            setTimeout(() => costInputRef.current?.focus(), 100);
                                         }}
                                     >
                                         <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
@@ -274,7 +274,7 @@ export function AddProductDialog() {
                                     onSelect={() => { 
                                         setValue("supplierName", supplier.name, { shouldValidate: true }); 
                                         setSupplierComboboxOpen(false); 
-                                        setTimeout(() => costRef.current?.focus(), 100);
+                                        setTimeout(() => costInputRef.current?.focus(), 100);
                                     }}
                                 >
                                     <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
@@ -301,7 +301,7 @@ export function AddProductDialog() {
                             {...costProps}
                             ref={(e) => {
                                 costFormRef(e);
-                                (costRef as any).current = e;
+                                (costInputRef as any).current = e;
                             }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {

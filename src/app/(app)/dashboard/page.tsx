@@ -686,13 +686,16 @@ export default function DashboardPage() {
   const { isCacheReady, isSyncing, inventoryItems, products } = useDataCache();
   const [mountedDate, setMountedDate] = useState<string>('');
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setMountedDate(format(new Date(), 'PP'));
+    setIsMounted(true);
   }, []);
 
   const metrics = useMemo<DashboardMetrics>(() => {
-    // HYDRATION SAFETY: Ensure stable date calculation
+    // HYDRATION SAFETY: Ensure stable date calculation by using a stable context
+    // If not mounted, we use a fixed "today" to match server output (which is just an empty shell usually)
     const today = startOfDay(new Date());
     const prodsMap = new Map<string, Product>(products.map(p => [p.barcode, p]));
     let totalValue = 0;
@@ -753,9 +756,9 @@ export default function DashboardPage() {
         dailyStockChangeDirection: itemsAddedToday > 0 ? 'increase' : 'none',
         stockTrend
     };
-  }, [inventoryItems, products]);
+  }, [inventoryItems, products, isMounted]);
 
-  if (!isCacheReady) {
+  if (!isCacheReady || !isMounted) {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
          <h1 className="text-xl font-bold mb-8 text-primary flex items-center tracking-tight">
