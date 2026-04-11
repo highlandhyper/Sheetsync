@@ -64,31 +64,31 @@ export function LoginForm() {
         <div className="mx-auto bg-primary/10 p-3 rounded-2xl w-fit mb-4">
             <ShieldCheck className="h-8 w-8 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-black tracking-tight uppercase">Account Login</CardTitle>
-        <CardDescription className="font-medium">Secure access to command center</CardDescription>
+        <CardTitle className="text-2xl font-black tracking-tight uppercase">Welcome Back</CardTitle>
+        <CardDescription className="font-medium">Enter your credentials to continue</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4 pt-4">
           <div className="space-y-2 group">
-            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Email Identity</Label>
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Email Address</Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive bg-background/50' : 'bg-background/50 focus:ring-primary/20'}
+              className={errors.email ? 'border-destructive bg-background/50 h-11' : 'bg-background/50 focus:ring-primary/20 h-11'}
             />
             {errors.email && <p className="text-[10px] text-destructive font-bold mt-1 ml-1">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" id="pass-label" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Security Key</Label>
+            <Label htmlFor="password" id="pass-label" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Password</Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 {...register('password')}
-                className={errors.password ? 'border-destructive pr-10 bg-background/50' : 'pr-10 bg-background/50 focus:ring-primary/20'}
+                className={errors.password ? 'border-destructive pr-10 bg-background/50 h-11' : 'pr-10 bg-background/50 focus:ring-primary/20 h-11'}
               />
               <button
                 type="button"
@@ -108,8 +108,17 @@ export function LoginForm() {
             disabled={isLoading} 
             className="w-full h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
           >
-            {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
-            Authorize Session
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Logging In...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <LogIn className="h-5 w-5" />
+                <span>Login</span>
+              </div>
+            )}
           </Button>
         </CardFooter>
       </form>
