@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction } from '@/lib/types';
 import { useAuth } from './auth-context';
+import { saveInventory, getInventory, saveAuditLogs, getAuditLogs, saveProducts, getProducts } from '@/lib/db';
 
 interface AppData {
   inventoryItems: InventoryItem[];
@@ -42,8 +43,8 @@ interface DataCacheContextType extends AppData {
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
 const SYNC_INTERVAL_MS = 45000;
-const DATA_CACHE_KEY = 'sheetSync_globalDataCache_v2';
-const OFFLINE_KEY = 'sheetSync_offlineActions';
+const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
+const OFFLINE_KEY = 'sheetSync_offlineActions_v3';
 
 const initialEmptyData: AppData = {
   inventoryItems: [],
@@ -60,18 +61,17 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // 1. BOOTSTRAP FROM LOCALSTORAGE (Selective Persistence)
+  // 1. BOOTSTRAP METADATA FROM LOCALSTORAGE (Small data only)
   const [data, setData] = useState<AppData>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(DATA_CACHE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          // We only persist small data. Products and AuditLogs are always fresh from server.
-          return { ...initialEmptyData, ...parsed, products: [], auditLogs: [] };
+          return { ...initialEmptyData, ...parsed, inventoryItems: [], products: [], auditLogs: [] };
         }
       } catch (e) {
-        console.warn("DataCache: Could not parse local cache.");
+        console.warn("DataCache: Meta-cache failed.");
       }
     }
     return initialEmptyData;
@@ -84,34 +84,68 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   
   const isFetchingRef = useRef(false);
   const processingQueueRef = useRef(false);
+  const isDbLoadingRef = useRef(false);
   
-  // Cache is ready if we have a lastSync OR we have some data from a previous session
+  // Cache is ready if we have a lastSync OR we have some data in memory
   const isCacheReady = data.lastSync !== null || data.inventoryItems.length > 0;
 
-  // Persistence: Initial load of offline queue
+  // 2. LOAD LARGE DATA FROM INDEXED-DB ON STARTUP
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsOnline(navigator.onLine);
-      const saved = localStorage.getItem(OFFLINE_KEY);
-      if (saved) {
-        try {
-          setPendingActions(JSON.parse(saved));
-        } catch (e) {
-          localStorage.removeItem(OFFLINE_KEY);
-        }
+    if (isDbLoadingRef.current) return;
+    isDbLoadingRef.current = true;
+
+    async function loadIndexedDB() {
+      try {
+        const [inventory, logs, products] = await Promise.all([
+          getInventory(),
+          getAuditLogs(),
+          getProducts()
+        ]);
+
+        setData(prev => ({
+          ...prev,
+          inventoryItems: inventory || [],
+          auditLogs: logs || [],
+          products: products || []
+        }));
+      } catch (e) {
+        console.error('DataCache: IndexedDB load failed', e);
+      } finally {
+        isDbLoadingRef.current = false;
       }
+    }
+
+    if (typeof window !== 'undefined') {
+        loadIndexedDB();
+        setIsOnline(navigator.onLine);
+        const saved = localStorage.getItem(OFFLINE_KEY);
+        if (saved) {
+            try { setPendingActions(JSON.parse(saved)); } catch (e) { localStorage.removeItem(OFFLINE_KEY); }
+        }
     }
   }, []);
 
-  // Persistence: Save data & queue whenever they change (Selective Persistence to avoid QuotaExceededError)
+  // 3. PERSIST LARGE DATA TO INDEXED-DB (Debounced)
+  useEffect(() => {
+    if (!data.lastSync) return;
+
+    const timeout = setTimeout(() => {
+      saveInventory(data.inventoryItems);
+      saveAuditLogs(data.auditLogs);
+      saveProducts(data.products);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [data.inventoryItems, data.auditLogs, data.products, data.lastSync]);
+
+  // 4. PERSIST METADATA TO LOCALSTORAGE
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
       if (data.lastSync) {
         try {
-          // EXCLUDE products and auditLogs from localStorage to respect 5MB quota
-          const { products, auditLogs, ...persistentSubset } = data;
-          localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(persistentSubset));
+          const { inventoryItems, products, auditLogs, ...metaOnly } = data;
+          localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
         } catch (e) {
           console.error("DataCache: Local storage update failed.", e);
         }
@@ -120,13 +154,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [pendingActions, data]);
 
   const fetchDataAndCache = useCallback(async () => {
-    // Immediate return if offline or no user
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
     isFetchingRef.current = true;
     setIsSyncing(true);
 
-    // Timeout safety: reset fetching flag after 30 seconds if stuck
     const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 30000);
 
     try {
@@ -173,9 +205,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 if (res.success) success = true;
             }
 
-            if (success) {
-                successfullySyncedIds.push(action.id);
-            }
+            if (success) successfullySyncedIds.push(action.id);
         } catch (e) {
             console.error(`Sync: Action ${action.id} failed.`, e);
             break; 
@@ -184,10 +214,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
     if (successfullySyncedIds.length > 0) {
         setPendingActions(prev => prev.filter(a => !successfullySyncedIds.includes(a.id)));
-        toast({ 
-            title: "Queue Synced", 
-            description: `Successfully pushed ${successfullySyncedIds.length} offline records.` 
-        });
+        toast({ title: "Queue Synced", description: `Successfully pushed ${successfullySyncedIds.length} offline records.` });
         fetchDataAndCache();
     }
 
@@ -195,7 +222,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     processingQueueRef.current = false;
   }, [pendingActions, toast, fetchDataAndCache]);
 
-  // Network & Focus revalidation
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); processSyncQueue(); };
     const handleOffline = () => setIsOnline(false);
@@ -212,7 +238,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     };
   }, [processSyncQueue, fetchDataAndCache, user]);
 
-  // Initial Sync Trigger - Execution priority
   useEffect(() => {
     if (!user) {
       if (data.lastSync) {
@@ -222,7 +247,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       return;
     }
     
-    // Aggressive immediate fetch on mount or user availability
     fetchDataAndCache();
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -294,7 +318,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateProduct: (pr: any) => {
         setData(p => ({ 
             ...p, 
-            products: p.products.map(x => x.id === pr.id ? { ...x, ...pr } : x),
+            products: p.products.map(x => x.barcode === pr.barcode ? { ...x, ...pr } : x),
             inventoryItems: p.inventoryItems.map(item => 
                 item.barcode === pr.barcode 
                 ? { ...item, productName: pr.productName, supplierName: pr.supplierName } 

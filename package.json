@@ -43,6 +43,7 @@
     "genkit": "^1.8.0",
     "googleapis": "^140.0.1",
     "html5-qrcode": "^2.3.8",
+    "idb": "^8.0.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.417.0",
