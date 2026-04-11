@@ -651,7 +651,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="end">
-                                  <Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => { setValue('expiryDate', date || new Date()); }} initialFocus />
+                                  <Calendar 
+                                    mode="single" 
+                                    selected={allFormValues.expiryDate} 
+                                    onSelect={(date) => { setValue('expiryDate', date || new Date()); }} 
+                                    initialFocus 
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={2020}
+                                    toYear={2045}
+                                  />
                                 </PopoverContent>
                               </Popover>
                         </div>
