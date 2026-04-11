@@ -1,13 +1,13 @@
+
 'use client'; 
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem } from '@/lib/types';
+import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { fetchDashboardMetricsAction } from '@/app/actions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
@@ -21,7 +21,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay } from 'date-fns';
+import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay, startOfDay, isSameDay, addDays, isBefore } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -684,26 +684,79 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
-  const { isCacheReady, isSyncing } = useDataCache();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
+  const { isCacheReady, isSyncing, inventoryItems, products } = useDataCache();
   const [mountedDate, setMountedDate] = useState<string>('');
 
   useEffect(() => {
     // HYDRATION FIX: Set dynamic values only on the client
     setMountedDate(format(new Date(), 'PP'));
-    async function getData() {
-      const metricsRes = await fetchDashboardMetricsAction();
-      if (metricsRes.success && metricsRes.data) {
-        setMetrics(metricsRes.data);
-      }
-      setIsLoading(false);
-    }
-    getData();
   }, []);
 
-  if (!isCacheReady && isLoading) {
+  // INSTANT METRIC CALCULATION (Client Side)
+  const metrics = useMemo<DashboardMetrics>(() => {
+    const today = startOfDay(new Date());
+    const prodsMap = new Map<string, Product>(products.map(p => [p.barcode, p]));
+    let totalValue = 0;
+    let itemsAddedToday = 0;
+    let expiringSoon = 0;
+    const supplierStock: Record<string, number> = {};
+
+    inventoryItems.forEach(item => {
+        if (item.quantity <= 0) return;
+
+        const product = prodsMap.get(item.barcode);
+        if (product?.costPrice) {
+            totalValue += (item.quantity * product.costPrice);
+        }
+
+        const sName = item.supplierName || 'Unknown Vendor';
+        supplierStock[sName] = (supplierStock[sName] || 0) + item.quantity;
+
+        if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) {
+            itemsAddedToday += item.quantity;
+        }
+
+        if (item.itemType === 'Expiry' && item.expiryDate) {
+            try {
+                const expDate = startOfDay(parseISO(item.expiryDate));
+                if (!isBefore(expDate, today) && isBefore(expDate, addDays(today, 7))) {
+                    expiringSoon++;
+                }
+            } catch {}
+        }
+    });
+
+    const stockTrend: StockTrendData[] = [];
+    for (let i = 6; i >= 0; i--) {
+        const day = subDays(today, i);
+        const totalAtEndDay = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+        const addedAfterDay = inventoryItems
+            .filter(item => item.timestamp && isAfter(parseISO(item.timestamp), endOfDay(day)))
+            .reduce((sum, item) => sum + item.quantity, 0);
+        
+        stockTrend.push({
+            date: format(day, 'MMM dd'),
+            totalStock: Math.max(0, totalAtEndDay - addedAfterDay)
+        });
+    }
+
+    return {
+        totalProducts: products.length,
+        totalStockQuantity: inventoryItems.reduce((s, x) => s + x.quantity, 0),
+        itemsExpiringSoon: expiringSoon,
+        damagedItemsCount: inventoryItems.filter(x => x.itemType === 'Damage').length,
+        totalSuppliers: new Set(products.map(x => x.supplierName)).size,
+        totalStockValue: totalValue,
+        stockBySupplier: Object.entries(supplierStock)
+            .map(([name, totalStock]) => ({ name, totalStock }))
+            .sort((a, b) => b.totalStock - a.totalStock),
+        netItemsAddedToday: itemsAddedToday,
+        dailyStockChangeDirection: itemsAddedToday > 0 ? 'increase' : 'none',
+        stockTrend
+    };
+  }, [inventoryItems, products]);
+
+  if (!isCacheReady) {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
          <h1 className="text-xl font-bold mb-8 text-primary flex items-center tracking-tight">
@@ -716,29 +769,20 @@ export default function DashboardPage() {
   }
 
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
-  if (metrics?.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
+  if (metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
     const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
-    let trendText: string = '';
-    if (metrics.dailyStockChangePercent !== undefined && metrics.dailyStockChangePercent !== null) {
-      trendText = `${isIncrease ? '+' : ''}${metrics.dailyStockChangePercent.toFixed(1)}%`;
-    } else if (isIncrease && metrics.netItemsAddedToday && metrics.netItemsAddedToday > 0) {
-        trendText = `+${metrics.netItemsAddedToday} (New)`;
-    }
-
-    if (trendText) {
-      totalStockDescription = (
+    totalStockDescription = (
         <div className="flex items-center flex-wrap">
           <span>Total stock levels</span>
           <span className={cn("ml-2 font-bold flex items-center", colorClass)}>
             <ArrowIcon className="h-4 w-4 mr-0.5" />
-            {trendText}
+            +{metrics.netItemsAddedToday} (New)
           </span>
         </div>
-      );
-    }
+    );
   }
 
 
@@ -769,51 +813,46 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
           <MetricCard 
             title="Total Stock Quantity" 
-            value={metrics?.totalStockQuantity || 0} 
+            value={metrics.totalStockQuantity} 
             iconNode={<Warehouse className="h-5 w-5" />}
             onIconClick={() => setIsStockTrendDialogOpen(true)}
             description={totalStockDescription}
             href="/inventory"
-            isLoading={isLoading && !metrics}
             className="lg:col-span-2"
           >
-              {metrics?.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
+              {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
           </MetricCard>
           <MetricCard 
             title="Total Stock Value" 
-            value={metrics?.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
+            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             iconNode={<Wallet className="h-5 w-5" />}
             description="Valuation of current assets"
-            isLoading={isLoading && !metrics}
           />
            <MetricCard 
             title="Total Suppliers" 
-            value={metrics?.totalSuppliers || 0} 
+            value={metrics.totalSuppliers} 
             iconNode={<Users className="h-5 w-5" />}
             description="Active vendor relationships"
-            isLoading={isLoading && !metrics}
           />
           
           <MetricCard 
               title="Items Expiring Soon" 
-              value={metrics?.itemsExpiringSoon || 0} 
+              value={metrics.itemsExpiringSoon} 
               iconNode={<CalendarClock className="h-5 w-5" />}
               description="High priority (7 days)"
               href="/inventory?filterType=expiringSoon"
               className={cn(
-                  metrics && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 bg-yellow-500/5 dark:border-yellow-400/50 hover:border-yellow-500"
+                  metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 bg-yellow-500/5 dark:border-yellow-400/50 hover:border-yellow-500"
               )}
-              isLoading={isLoading && !metrics}
           />
           
           <MetricCard 
               title="Damaged Items" 
-              value={metrics?.damagedItemsCount || 0} 
+              value={metrics.damagedItemsCount} 
               iconNode={<AlertTriangle className="h-5 w-5" />}
               description="Loss prevention review"
               href="/inventory?filterType=damaged"
-              className={cn(metrics && metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
-              isLoading={isLoading && !metrics}
+              className={cn(metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
           />
 
           <QuickAuthorizeCard />
@@ -841,13 +880,13 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0 sm:p-6">
               <div className="h-[400px] w-full mt-4">
-                  {!metrics ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
+                  <StockBySupplierChart data={metrics.stockBySupplier} />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {metrics?.stockTrend && (
+        {metrics.stockTrend && (
             <StockTrendDetailedDialog 
               isOpen={isStockTrendDialogOpen} 
               onOpenChange={setIsStockTrendDialogOpen} 
