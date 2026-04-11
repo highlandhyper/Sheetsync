@@ -234,7 +234,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
   return (
     <>
-    <Card className="w-full max-w-4xl mx-auto shadow-xl border-primary/10 overflow-hidden">
+    <Card className="w-full max-w-2xl mx-auto shadow-xl border-primary/10 overflow-hidden">
       <CardHeader className="bg-muted/30 pb-8">
         <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Catalog Manager</CardTitle>
         <CardDescription className="font-medium">
