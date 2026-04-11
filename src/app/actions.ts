@@ -1,14 +1,9 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
-  addProductSchema,
   addInventoryItemSchema,
-  addSupplierSchema,
-  editInventoryItemSchema,
-  editSupplierSchema
 } from '@/lib/schemas';
 import {
   addProduct as dbAddProduct,
@@ -35,7 +30,7 @@ import {
   getAppMetaData,
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, ReturnedItem } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
 
 export interface ActionResponse<T = any> {
