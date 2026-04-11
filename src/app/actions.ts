@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -43,7 +42,7 @@ export interface ActionResponse<T = any> {
 
 function sanitizeForJSON(val: any) {
     if (typeof val === 'number') {
-        return isNaN(val) ? undefined : val;
+        return (isNaN(val) || !isFinite(val)) ? undefined : val;
     }
     if (Array.isArray(val)) {
         return val.map(sanitizeForJSON);

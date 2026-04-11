@@ -112,18 +112,20 @@ body {
   height: 40px;
 }
 
-/* Ensure caption label is COMPLETELY hidden when dropdowns are active to prevent ghost text */
+/* Hide labels when dropdowns are present to avoid double Month/Year labels */
 .rdp-caption:has(.rdp-caption_dropdowns) .rdp-caption_label {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 .rdp-caption_dropdowns {
   display: flex !important;
   justify-content: center !important;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  z-index: 10;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+  z-index: 10 !important;
 }
 
 .rdp-vhidden {
