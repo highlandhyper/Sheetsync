@@ -269,9 +269,9 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
     }
 }
 
-export async function deleteProductAction(email: string, barcode: string) {
+export async function deleteProductAction(email: string, identifier: string) {
     try {
-        const success = await dbDeleteProductByBarcode(email, barcode);
+        const success = await dbDeleteProductByBarcode(email, identifier);
         revalidatePath('/products/list');
         return { success };
     } catch (e) {
@@ -279,9 +279,9 @@ export async function deleteProductAction(email: string, barcode: string) {
     }
 }
 
-export async function bulkDeleteProductsAction(email: string, barcodes: string[]) {
+export async function bulkDeleteProductsAction(email: string, identifiers: string[]) {
     try {
-        const success = await dbDeleteProductsByBarcodes(email, barcodes);
+        const success = await dbDeleteProductsByBarcodes(email, identifiers);
         revalidatePath('/products/list');
         return { success };
     } catch (e) {

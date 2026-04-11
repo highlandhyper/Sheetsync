@@ -33,9 +33,9 @@ export function ProductListClient() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const [selectedBarcodes, setSelectedBarcodes] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [pendingDeleteBarcodes, setPendingDeleteBarcodes] = useState<string[]>([]);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
   const filteredAndSortedProducts = useMemo(() => {
     let items = [...allProducts];
@@ -76,7 +76,7 @@ export function ProductListClient() {
 
   const handleProductClick = (product: Product) => {
     if (isMultiSelectEnabled) {
-        handleToggleSelect(product.barcode);
+        handleToggleSelect(product.id);
         return;
     }
     setEditingProduct(product);
@@ -88,76 +88,76 @@ export function ProductListClient() {
     setIsEditDialogOpen(false);
   }, [updateProduct]);
 
-  const handleToggleSelect = (barcode: string) => {
-    setSelectedBarcodes(prev => {
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => {
         const next = new Set(prev);
-        if (next.has(barcode)) next.delete(barcode);
-        else next.add(barcode);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
         return next;
     });
   };
 
   const handleSelectAll = () => {
-    if (selectedBarcodes.size === itemsToRender.length) {
-        setSelectedBarcodes(new Set());
+    if (selectedIds.size === itemsToRender.length) {
+        setSelectedIds(new Set());
     } else {
-        setSelectedBarcodes(new Set(itemsToRender.map(p => p.barcode)));
+        setSelectedIds(new Set(itemsToRender.map(p => p.id)));
     }
   };
 
-  const initiateDelete = (barcodes: string[]) => {
+  const initiateDelete = (ids: string[]) => {
     if (role !== 'admin') return;
-    setPendingDeleteBarcodes(barcodes);
+    setPendingDeleteIds(ids);
     setIsAuthDialogOpen(true);
   };
 
   const handleAuthorizationSuccess = async () => {
     setIsAuthDialogOpen(false);
-    if (pendingDeleteBarcodes.length === 0) return;
+    if (pendingDeleteIds.length === 0) return;
 
     // --- OPTIMISTIC UI UPDATE ---
-    const barcodesToRemove = [...pendingDeleteBarcodes];
-    removeProducts(barcodesToRemove);
-    setSelectedBarcodes(new Set());
+    const idsToRemove = [...pendingDeleteIds];
+    removeProducts(idsToRemove);
+    setSelectedIds(new Set());
     
-    toast({ title: 'Update Applied Locally', description: `Removing ${barcodesToRemove.length} products from your view. Syncing with sheet...` });
+    toast({ title: 'Update Applied Locally', description: `Removing ${idsToRemove.length} products from your view. Syncing with sheet...` });
 
     try {
-        const result = await bulkDeleteProductsAction(user?.email || 'Admin', barcodesToRemove);
+        const result = await bulkDeleteProductsAction(user?.email || 'Admin', idsToRemove);
         if (result.success) {
             toast({ title: 'Deletion Successful', description: 'Catalog has been permanently updated.' });
-            refreshData(); // Refresh to ensure everything is in sync
+            refreshData(); 
         } else {
             toast({ title: 'Sync Error', description: 'Could not complete deletion on server. Reverting local view...', variant: 'destructive' });
-            refreshData(); // Revert by refreshing
+            refreshData(); 
         }
     } catch (e) {
         toast({ title: 'Connection Error', description: 'An unexpected error occurred. Refreshing catalog...', variant: 'destructive' });
         refreshData();
     } finally {
-        setPendingDeleteBarcodes([]);
+        setPendingDeleteIds([]);
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        {selectedBarcodes.size > 0 && isMultiSelectEnabled ? (
+        {selectedIds.size > 0 && isMultiSelectEnabled ? (
             <Card className="p-4 bg-primary/5 border-primary/20 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 text-xs font-black uppercase">
-                            {selectedBarcodes.size === itemsToRender.length ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
-                            {selectedBarcodes.size === itemsToRender.length ? 'Deselect All' : 'Select All Visible'}
+                            {selectedIds.size === itemsToRender.length ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
+                            {selectedIds.size === itemsToRender.length ? 'Deselect All' : 'Select All Visible'}
                         </Button>
-                        <span className="text-sm font-bold text-primary">{selectedBarcodes.size} Products Selected</span>
+                        <span className="text-sm font-bold text-primary">{selectedIds.size} Products Selected</span>
                     </div>
                     {role === 'admin' && (
                         <Button 
                             variant="destructive" 
                             size="sm" 
                             className="font-black uppercase tracking-widest text-[10px]"
-                            onClick={() => initiateDelete(Array.from(selectedBarcodes))}
+                            onClick={() => initiateDelete(Array.from(selectedIds))}
                         >
                             <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Selected
                         </Button>
@@ -204,9 +204,9 @@ export function ProductListClient() {
                 product={product} 
                 onClick={() => handleProductClick(product)}
                 isMultiSelect={isMultiSelectEnabled}
-                isSelected={selectedBarcodes.has(product.barcode)}
-                onSelect={() => handleToggleSelect(product.barcode)}
-                onDelete={role === 'admin' ? () => initiateDelete([product.barcode]) : undefined}
+                isSelected={selectedIds.has(product.id)}
+                onSelect={() => handleToggleSelect(product.id)}
+                onDelete={role === 'admin' ? () => initiateDelete([product.id]) : undefined}
               />
             ))}
           </div>
@@ -243,7 +243,7 @@ export function ProductListClient() {
         isOpen={isAuthDialogOpen}
         onOpenChange={setIsAuthDialogOpen}
         onAuthorizationSuccess={handleAuthorizationSuccess}
-        actionDescription={`Deleting ${pendingDeleteBarcodes.length} product(s) from the global registry. This action cannot be undone.`}
+        actionDescription={`Deleting ${pendingDeleteIds.length} product(s) from the global registry. This action cannot be undone.`}
       />
     </div>
   );
