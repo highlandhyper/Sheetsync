@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -22,9 +23,9 @@ function Calendar({
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        caption_dropdowns: "flex justify-center gap-1 px-8",
+        caption: "flex justify-center pt-1 relative items-center h-10",
+        caption_label: "text-sm font-medium flex items-center h-7",
+        caption_dropdowns: "flex justify-center gap-1",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -53,7 +54,7 @@ function Calendar({
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         vhidden: "sr-only",
-        dropdown: "rdp-dropdown bg-background border border-input rounded-md px-1 py-0.5 text-xs font-medium focus:ring-1 focus:ring-ring outline-none",
+        dropdown: "rdp-dropdown bg-background border border-input rounded-md px-1 py-0.5 text-xs font-medium focus:ring-1 focus:ring-ring outline-none inline-flex items-center h-8",
         dropdown_month: "rdp-dropdown_month",
         dropdown_year: "rdp-dropdown_year",
         ...classNames,
