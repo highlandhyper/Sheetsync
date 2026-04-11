@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -126,7 +127,6 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const processFormSubmit = (data: AddProductFormValues) => {
     if (!product) return;
     
-    // Explicitly check for changes to ensure save proceeds
     if (!isDirty) {
       onOpenChange(false);
       return;
@@ -137,8 +137,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
+    formData.append('uniqueId', product.uniqueId || ''); // Pass Unique ID
     
-    // Convert undefined to empty string or valid number string
     const costValue = (data.costPrice === undefined || Number.isNaN(data.costPrice)) ? '' : String(data.costPrice);
     formData.append('costPrice', costValue);
     
@@ -151,7 +151,6 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         costPrice: data.costPrice,
     };
 
-    // Apply change locally for zero-latency feel
     updateProductInCache(optimisticProduct);
     onOpenChange(false);
     toast({ title: 'Registry Update Initiated', description: 'Applying changes to catalog...' });
@@ -161,14 +160,13 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
         const result = await saveProductAction(undefined, formData);
         if (result.success && result.data) {
           onSuccess(result.data);
-          // refreshData is called inside updateProductInCache/handleEditSuccess
         } else {
           toast({
             title: 'Update Failed',
             description: result.message || 'Could not sync changes with registry.',
             variant: 'destructive',
           });
-          refreshData(); // Revert to server state on failure
+          refreshData(); 
         }
       } catch (e) {
         toast({ title: 'Connection Error', description: 'Registry sync interrupted.', variant: 'destructive' });
@@ -238,7 +236,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                         {...nameProps}
                         ref={(e) => {
                             nameFormRef(e);
-                            (nameRef as any).current = e;
+                            (nameInputRef as any).current = e;
                         }}
                         readOnly={isViewer}
                         className={cn("h-10", isViewer && "bg-muted cursor-not-allowed", formErrors.productName && 'border-destructive')}
