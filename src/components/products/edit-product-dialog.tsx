@@ -54,9 +54,9 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   
-  const nameRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
-  const costRef = useRef<HTMLInputElement>(null);
+  const costInputRef = useRef<HTMLInputElement>(null);
 
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
@@ -97,7 +97,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       setSupplierSearch('');
       setExternalData(null);
       if (!isViewer) {
-        setTimeout(() => nameRef.current?.focus(), 150);
+        setTimeout(() => nameInputRef.current?.focus(), 150);
       }
     }
   }, [product, reset, isOpen, isViewer]);
@@ -291,7 +291,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                         onClick={() => {
                                             setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
                                             setSupplierComboboxOpen(false);
-                                            setTimeout(() => costRef.current?.focus(), 100);
+                                            setTimeout(() => costInputRef.current?.focus(), 100);
                                         }}
                                     >
                                         <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
@@ -306,7 +306,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                     onSelect={() => { 
                                         setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
                                         setSupplierComboboxOpen(false); 
-                                        setTimeout(() => costRef.current?.focus(), 100);
+                                        setTimeout(() => costInputRef.current?.focus(), 100);
                                     }}
                                   >
                                     <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
@@ -333,7 +333,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                               {...costProps}
                               ref={(e) => {
                                   costFormRef(e);
-                                  (costRef as any).current = e;
+                                  (costInputRef as any).current = e;
                               }}
                               readOnly={isViewer}
                               className={cn('pl-8 h-10', isViewer && "bg-muted cursor-not-allowed", formErrors.costPrice && 'border-destructive')}
