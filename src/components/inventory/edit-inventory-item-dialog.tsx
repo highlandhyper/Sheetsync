@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -326,6 +325,9 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         }} 
                         initialFocus 
                         defaultMonth={watchedExpiryDate || undefined}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2020}
+                        toYear={2045}
                     />
                     </PopoverContent>
                 </Popover>
