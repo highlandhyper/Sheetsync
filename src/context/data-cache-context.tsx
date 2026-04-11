@@ -42,7 +42,7 @@ interface DataCacheContextType extends AppData {
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
 const SYNC_INTERVAL_MS = 45000;
-const DATA_CACHE_KEY = 'sheetSync_globalDataCache';
+const DATA_CACHE_KEY = 'sheetSync_globalDataCache_v2';
 const OFFLINE_KEY = 'sheetSync_offlineActions';
 
 const initialEmptyData: AppData = {
@@ -58,16 +58,17 @@ const initialEmptyData: AppData = {
 
 export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
-  // 1. BOOTSTRAP FROM LOCALSTORAGE IMMEDIATELY
+  // 1. BOOTSTRAP FROM LOCALSTORAGE (Selective Persistence)
   const [data, setData] = useState<AppData>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(DATA_CACHE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          return { ...initialEmptyData, ...parsed };
+          // We only persist small data. Products and AuditLogs are always fresh from server.
+          return { ...initialEmptyData, ...parsed, products: [], auditLogs: [] };
         }
       } catch (e) {
         console.warn("DataCache: Could not parse local cache.");
@@ -85,7 +86,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   
   // Cache is ready if we have a lastSync OR we have some data from a previous session
-  const isCacheReady = data.lastSync !== null || data.products.length > 0;
+  const isCacheReady = data.lastSync !== null || data.inventoryItems.length > 0;
 
   // Persistence: Initial load of offline queue
   useEffect(() => {
@@ -102,21 +103,31 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  // Persistence: Save data & queue whenever they change
+  // Persistence: Save data & queue whenever they change (Selective Persistence to avoid QuotaExceededError)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
       if (data.lastSync) {
-        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
+        try {
+          // EXCLUDE products and auditLogs from localStorage to respect 5MB quota
+          const { products, auditLogs, ...persistentSubset } = data;
+          localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(persistentSubset));
+        } catch (e) {
+          console.error("DataCache: Local storage update failed.", e);
+        }
       }
     }
   }, [pendingActions, data]);
 
   const fetchDataAndCache = useCallback(async () => {
+    // Immediate return if offline or no user
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
     isFetchingRef.current = true;
     setIsSyncing(true);
+
+    // Timeout safety: reset fetching flag after 30 seconds if stuck
+    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 30000);
 
     try {
       const response = await fetchAllDataAction();
@@ -129,9 +140,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     } catch (e) {
       console.error("Data Sync: Global fetch failed.", e);
     } finally {
+      clearTimeout(safetyTimeout);
       setIsSyncing(false);
-      // Safety: Release lock after a short delay to allow UI to settle
-      setTimeout(() => { isFetchingRef.current = false; }, 1000);
+      isFetchingRef.current = false;
     }
   }, [user]);
 
@@ -201,11 +212,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     };
   }, [processSyncQueue, fetchDataAndCache, user]);
 
-  // Initial Sync Trigger
+  // Initial Sync Trigger - Execution priority
   useEffect(() => {
-    if (authLoading) return;
     if (!user) {
-      // Logic for logout: Clear session data
       if (data.lastSync) {
         setData(initialEmptyData);
         localStorage.removeItem(DATA_CACHE_KEY);
@@ -213,11 +222,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       return;
     }
     
-    // START SYNC IMMEDIATELY
+    // Aggressive immediate fetch on mount or user availability
     fetchDataAndCache();
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [user, authLoading, fetchDataAndCache, data.lastSync]);
+  }, [user, fetchDataAndCache, data.lastSync]);
 
   const refreshData = useCallback(async () => {
     if (!navigator.onLine) {
