@@ -1,4 +1,3 @@
-
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
@@ -686,14 +685,14 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const { isCacheReady, isSyncing, inventoryItems, products } = useDataCache();
   const [mountedDate, setMountedDate] = useState<string>('');
+  const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
 
   useEffect(() => {
-    // HYDRATION FIX: Set dynamic values only on the client
     setMountedDate(format(new Date(), 'PP'));
   }, []);
 
-  // INSTANT METRIC CALCULATION (Client Side)
   const metrics = useMemo<DashboardMetrics>(() => {
+    // HYDRATION SAFETY: Ensure stable date calculation
     const today = startOfDay(new Date());
     const prodsMap = new Map<string, Product>(products.map(p => [p.barcode, p]));
     let totalValue = 0;
