@@ -8,7 +8,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 function ManageProductFormSkeleton() {
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-xl">
+    <Card className="w-full max-w-2xl mx-auto shadow-xl">
       <CardHeader className="space-y-4">
         <Skeleton className="h-8 w-1/2" />
         <Skeleton className="h-4 w-3/4" />
