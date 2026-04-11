@@ -90,14 +90,12 @@ body {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
+  height: 40px;
 }
 
 /* Ensure caption label is COMPLETELY hidden when dropdowns are active to prevent ghost text */
 .rdp-caption:has(.rdp-caption_dropdowns) .rdp-caption_label {
   display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
 }
 
 .rdp-caption_dropdowns {
