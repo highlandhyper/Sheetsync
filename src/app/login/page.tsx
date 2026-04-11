@@ -40,7 +40,7 @@ export default function LoginPage() {
         style={{ animationDuration: '12s', animationDelay: '4s' }}
       ></div>
 
-      <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000">
+      <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
         <div className="text-center mb-8 space-y-2">
             <h1 className="text-5xl font-black text-primary font-poppins tracking-tighter uppercase">
                 SheetSync
