@@ -24,6 +24,7 @@ const DB_COL_BARCODE_B = 1;
 const DB_COL_PRODUCT_NAME = 2;
 const DB_COL_SUPPLIER_NAME = 3;
 const DB_COL_COST_PRICE = 4;
+const DB_COL_UNIQUE_ID = 7; // COLUMN H
 
 const SETTINGS_COL_KEY = 0;
 const SETTINGS_COL_VALUE = 1;
@@ -34,7 +35,7 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:E`; 
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; // Expanded to read Column H
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
@@ -74,6 +75,7 @@ function transformToProduct(row: any[]): Product | null {
   
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
+  const uniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
   
   if (!barcode || !productName || barcode.toLowerCase() === 'barcode') return null;
   
@@ -81,7 +83,9 @@ function transformToProduct(row: any[]): Product | null {
   const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
   
   return { 
-    id: barcode, 
+    // ID mapping: Priority Column H -> fallback to Barcode
+    id: uniqueId || barcode,
+    uniqueId: uniqueId || undefined,
     barcode, 
     productName, 
     supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), 
@@ -156,7 +160,6 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     }
   }
 
-  // Only attempt cleanup if there are more than 50 logs and some are old
   if (lastOldRowIndex !== -1 && data.length > 50) {
     const startIndex = 1;
     const endIndex = lastOldRowIndex + 2; 
@@ -239,10 +242,12 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
 }
 
 export async function addProduct(email: string, p: any) {
-  const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || ''];
-  await appendSheetData(`${DB_SHEET_NAME}!A:E`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName}`);
-  return { id: p.barcode, ...p };
+  const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  // Row structure: [Barcode, Empty, Name, Supplier, Cost, Empty, Empty, UniqueID]
+  const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
+  await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName} (ID: ${uniqueId})`);
+  return { id: uniqueId, uniqueId, ...p };
 }
 
 export async function deleteProductByBarcode(email: string, barcode: string) {
@@ -280,30 +285,17 @@ export async function deleteProductsByBarcodes(email: string, barcodes: string[]
   return success;
 }
 
-export async function addInventoryItemToSheet(i: InventoryItem) {
-  const ts = i.timestamp ? format(parseISO(i.timestamp), "d/M/yyyy HH:mm:ss") : format(new Date(), "d/M/yyyy HH:mm:ss");
-  const row = [ts, i.barcode, i.quantity, i.expiryDate ? format(parseISO(i.expiryDate), "d/M/yyyy") : '', i.location, i.staffName, i.productName, i.supplierName || '', i.itemType, i.id];
-  return appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [row]);
-}
-
-export async function updateSupplierNameAndReferences(email: string, oldN: string, newN: string) {
-  const prods = await readSheetData(DB_READ_RANGE);
-  if (prods) {
-    const ups = prods.map((r, i) => String(r[DB_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase() ? { range: `${DB_SHEET_NAME}!D${i+2}`, values: [[newN]] } : null).filter(Boolean);
-    if (ups.length > 0) await batchUpdateSheetCells(ups as any);
+export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {
+  // Use Unique ID lookup if available, fallback to barcode
+  let row: number | null = null;
+  if (uniqueId) {
+    row = await findRowByUniqueValue(DB_SHEET_NAME, uniqueId, DB_COL_UNIQUE_ID);
   }
-  const inv = await readSheetData(INVENTORY_READ_RANGE);
-  if (inv) {
-    const ups = inv.map((r, i) => String(r[INV_COL_SUPPLIER_NAME]).trim().toLowerCase() === oldN.toLowerCase() ? { range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[newN]] } : null).filter(Boolean);
-    if (ups.length > 0) await batchUpdateSheetCells(ups as any);
+  
+  if (!row) {
+    row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || 
+          await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
   }
-  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldN, `Renamed to ${newN}`);
-  return true;
-}
-
-export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number) {
-  const row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || 
-              await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
   
   if (row) {
     const costValue = (c === undefined || Number.isNaN(c)) ? '' : c;

@@ -1,12 +1,13 @@
 
 export interface Product {
-  id: string; 
+  id: string; // This will now map to the Unique ID in Column H (or fallback to barcode)
   barcode: string;
   productName: string;
   supplierId?: string; 
   supplierName?: string;
   costPrice?: number;
   createdAt?: string;
+  uniqueId?: string; // Explicit field for the Column H ID
 }
 
 export interface Supplier {

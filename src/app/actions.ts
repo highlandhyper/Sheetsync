@@ -223,6 +223,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const barcode = data.barcode as string;
         const productName = data.productName as string;
         const supplierName = data.supplierName as string;
+        const uniqueId = data.uniqueId as string;
         
         const rawCost = data.costPrice as string;
         let costPrice: number | undefined = undefined;
@@ -243,7 +244,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
                 data: sanitizeForJSON(product)
             };
         } else {
-            const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
+            const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice, uniqueId);
             if (!success) return { success: false, message: "Product not found in registry." };
             
             revalidatePath('/products/list');
@@ -253,11 +254,12 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
                 success: true, 
                 message: "Catalog updated successfully.", 
                 data: sanitizeForJSON({
-                    id: barcode,
+                    id: uniqueId || barcode,
                     barcode,
                     productName,
                     supplierName,
-                    costPrice
+                    costPrice,
+                    uniqueId
                 })
             };
         }
