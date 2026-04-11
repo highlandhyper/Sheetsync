@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -31,7 +32,7 @@ import {
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -40,10 +41,6 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
-/**
- * CRITICAL: Ensures numeric values are valid for JSON serialization.
- * Next.js Server Actions crash if NaN is returned.
- */
 function sanitizeForJSON(val: any) {
     if (typeof val === 'number') {
         return isNaN(val) ? undefined : val;
@@ -153,18 +150,28 @@ export async function addInventoryItemAction(
     const rawQty = rawFormData.quantity ? Number(rawFormData.quantity) : undefined;
     const qty = (rawQty !== undefined && !isNaN(rawQty)) ? rawQty : 0;
 
+    let expiryDate: Date | undefined;
+    if (rawFormData.expiryDate && typeof rawFormData.expiryDate === 'string') {
+        const d = new Date(rawFormData.expiryDate + 'T12:00:00');
+        if (isValid(d)) expiryDate = d;
+    }
+
     const parsedData = {
       ...rawFormData,
       quantity: qty,
-      expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00') : undefined,
+      expiryDate,
     };
 
     const validationResult = addInventoryItemSchema.safeParse(parsedData);
-    if (!validationResult.success) return { success: false, message: "Validation failed.", errors: validationResult.error.issues };
+    if (!validationResult.success) {
+        return { success: false, message: "Input validation failed.", errors: validationResult.error.issues };
+    }
     
     const validatedItemData = validationResult.data;
     const productDetails = await getProductDetailsByBarcode(validatedItemData.barcode);
-    if (!productDetails) return { success: false, message: "Product not found." };
+    if (!productDetails) {
+        return { success: false, message: `Barcode ${validatedItemData.barcode} is not in the product registry.` };
+    }
 
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
@@ -183,15 +190,19 @@ export async function addInventoryItemAction(
     };
 
     const sheetWriteSuccess = await addInventoryItemToSheet(itemData);
-    if (!sheetWriteSuccess) return { success: false, message: "Write failed." };
+    if (!sheetWriteSuccess) {
+        return { success: false, message: "Failed to write data to Google Sheets. Verify API credentials." };
+    }
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Product: ${productDetails.productName}${disableNotification ? ' (Silent)' : ''}`);
+    
     revalidatePath('/inventory');
     revalidatePath('/dashboard');
 
     return { success: true, message: 'Logged successfully!', data: sanitizeForJSON(itemData) };
-  } catch (error) {
-    return { success: false, message: "Log failed." };
+  } catch (error: any) {
+    console.error("addInventoryItemAction Critical Error:", error);
+    return { success: false, message: error.message || "An internal error occurred during logging." };
   }
 }
 
