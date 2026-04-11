@@ -44,6 +44,14 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
+/**
+ * Ensures numeric values are valid for JSON serialization (converts NaN to undefined)
+ */
+function sanitizeForJSON(val: any) {
+    if (typeof val === 'number' && isNaN(val)) return undefined;
+    return val;
+}
+
 export async function fetchAllDataAction(): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products: Product[];
@@ -68,11 +76,17 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
 
     const suppliers = await getSuppliers(products);
 
+    // Deep sanitize objects to prevent serialization errors with large datasets
+    const sanitizedProducts = (products || []).map(p => ({
+        ...p,
+        costPrice: sanitizeForJSON(p.costPrice)
+    }));
+
     return {
       success: true,
       data: {
         inventoryItems: inventoryItems || [],
-        products: products || [],
+        products: sanitizedProducts,
         suppliers: suppliers || [],
         uniqueLocations: meta.locations || [],
         uniqueStaffNames: meta.staff || [],
@@ -131,9 +145,12 @@ export async function addInventoryItemAction(
     const userEmail = formData.get('userEmail') as string || 'Unknown User';
     const disableNotification = formData.get('disableNotification') === 'true';
 
+    const rawQty = rawFormData.quantity ? Number(rawFormData.quantity) : undefined;
+    const qty = (rawQty !== undefined && !isNaN(rawQty)) ? rawQty : 0;
+
     const parsedData = {
       ...rawFormData,
-      quantity: rawFormData.quantity ? Number(rawFormData.quantity) : undefined,
+      quantity: qty,
       expiryDate: rawFormData.expiryDate ? new Date((rawFormData.expiryDate as string) + 'T12:00:00') : undefined,
     };
 
@@ -176,7 +193,12 @@ export async function addInventoryItemAction(
 export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
     try {
         const product = await getProductDetailsByBarcode(barcode);
-        if (product) return { success: true, data: product };
+        if (product) {
+            return { 
+                success: true, 
+                data: { ...product, costPrice: sanitizeForJSON(product.costPrice) } 
+            };
+        }
         return { success: false, message: "Not found." };
     } catch (e) {
         return { success: false, message: "Fetch failed." };
@@ -192,16 +214,24 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const productName = data.productName as string;
         const supplierName = data.supplierName as string;
         
-        // Safer parsing for cost price
         const rawCost = data.costPrice as string;
-        const costPrice = (rawCost === undefined || rawCost === '' || rawCost === 'undefined') 
-            ? undefined 
-            : parseFloat(rawCost);
+        let costPrice: number | undefined = undefined;
+        
+        if (rawCost !== undefined && rawCost !== '' && rawCost !== 'undefined') {
+            const parsed = parseFloat(rawCost);
+            if (!isNaN(parsed)) {
+                costPrice = parsed;
+            }
+        }
         
         if (editMode === 'create') {
             const product = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
             revalidatePath('/products/list');
-            return { success: true, message: "Created successfully.", data: product as Product };
+            return { 
+                success: true, 
+                message: "Created successfully.", 
+                data: { ...product, costPrice: sanitizeForJSON(product.costPrice) } as Product 
+            };
         } else {
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
             if (!success) return { success: false, message: "Product not found in registry." };
@@ -209,7 +239,6 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             revalidatePath('/products/list');
             revalidatePath('/inventory');
             
-            // Return updated object immediately to avoid heavy catalog re-reads
             return { 
                 success: true, 
                 message: "Catalog updated successfully.", 
@@ -218,7 +247,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
                     barcode,
                     productName,
                     supplierName,
-                    costPrice
+                    costPrice: sanitizeForJSON(costPrice)
                 } as Product
             };
         }
@@ -254,6 +283,13 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         const userEmail = formData.get('userEmail') as string || 'Admin';
         const itemId = formData.get('itemId') as string;
         const rawData = Object.fromEntries(formData.entries());
+        
+        // Ensure numeric fields are safe
+        if (rawData.quantity) {
+            const q = Number(rawData.quantity);
+            rawData.quantity = isNaN(q) ? '0' : String(q);
+        }
+
         const result = await dbUpdateInventoryItemDetails(userEmail, itemId, rawData);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
@@ -300,7 +336,13 @@ export async function saveLocationListAction(locations: string[]) {
 export async function fetchDashboardMetricsAction() { 
     try {
         const data = await getDashboardMetrics();
-        return { success: true, data }; 
+        // Sanitize numbers in metrics
+        const sanitized = {
+            ...data,
+            totalStockValue: sanitizeForJSON(data.totalStockValue),
+            dailyStockChangePercent: sanitizeForJSON(data.dailyStockChangePercent)
+        };
+        return { success: true, data: sanitized }; 
     } catch (e) {
         return { success: false };
     }
