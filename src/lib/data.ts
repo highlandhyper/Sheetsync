@@ -35,7 +35,7 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; // Expanded to read Column H
+const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
@@ -75,7 +75,7 @@ function transformToProduct(row: any[]): Product | null {
   
   const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
-  const uniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
+  const uniqueIdFromSheet = String(row[DB_COL_UNIQUE_ID] || '').trim();
   
   if (!barcode || !productName || barcode.toLowerCase() === 'barcode') return null;
   
@@ -84,8 +84,8 @@ function transformToProduct(row: any[]): Product | null {
   
   return { 
     // ID mapping: Priority Column H -> fallback to Barcode
-    id: uniqueId || barcode,
-    uniqueId: uniqueId || undefined,
+    id: uniqueIdFromSheet || barcode,
+    uniqueId: uniqueIdFromSheet || undefined,
     barcode, 
     productName, 
     supplierName: String(row[DB_COL_SUPPLIER_NAME] || '').trim(), 
@@ -251,7 +251,9 @@ export async function addProduct(email: string, p: any) {
 }
 
 export async function deleteProductByBarcode(email: string, barcode: string) {
-  let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
+  // Try Column H first (for surgical accuracy), then fallback to barcode columns A/B
+  let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_UNIQUE_ID) ||
+            await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
   
   if (row) {
@@ -262,16 +264,19 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
   return false;
 }
 
-export async function deleteProductsByBarcodes(email: string, barcodes: string[]) {
+export async function deleteProductsByBarcodes(email: string, identifiers: string[]) {
   const sheetData = await readSheetData(DB_READ_RANGE);
   if (!sheetData || sheetData.length === 0) return false;
 
-  const barcodeSet = new Set(barcodes.map(b => b.trim()));
+  const idSet = new Set(identifiers.map(id => id.trim()));
   const rowIndicesToDelete: number[] = [];
 
   sheetData.forEach((row, i) => {
+    const rowUniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
-    if (barcodeSet.has(rowBarcode)) {
+    
+    // Check both unique ID and barcode for deletion targeting
+    if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) {
       rowIndicesToDelete.push(i + 2); 
     }
   });
@@ -280,13 +285,13 @@ export async function deleteProductsByBarcodes(email: string, barcodes: string[]
 
   const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
   if (success) {
-    await logAuditEvent(email, 'BULK_DELETE_PRODUCT', barcodes.join(','), `Batch removal of ${rowIndicesToDelete.length} SKUs.`);
+    await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `Batch removal of ${rowIndicesToDelete.length} SKUs.`);
   }
   return success;
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {
-  // Use Unique ID lookup if available, fallback to barcode
+  // Use Unique ID lookup if available (e.g. "db2"), fallback to barcode
   let row: number | null = null;
   if (uniqueId) {
     row = await findRowByUniqueValue(DB_SHEET_NAME, uniqueId, DB_COL_UNIQUE_ID);
