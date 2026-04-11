@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -73,7 +72,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   
-  const isCacheReady = data.lastSync !== null || data.inventoryItems.length > 0;
+  // CRITICAL: isCacheReady is true if IndexedDB load is done, NOT waiting for network
+  const isCacheReady = isInitialized;
 
   useEffect(() => {
     if (isDbLoadingRef.current) return;
@@ -124,8 +124,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (!isInitialized || !data.lastSync) return;
+    if (!isInitialized) return;
 
+    // Debounced persistence to IndexedDB
     const timeout = setTimeout(() => {
       saveInventory(data.inventoryItems);
       saveAuditLogs(data.auditLogs);
@@ -133,7 +134,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       
       const { inventoryItems, auditLogs, products, ...metaOnly } = data;
       localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
-    }, 1000);
+    }, 1500);
 
     return () => clearTimeout(timeout);
   }, [data, isInitialized]);
@@ -145,12 +146,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [pendingActions, isInitialized]);
 
   const fetchDataAndCache = useCallback(async () => {
+    // Only fetch if online, authorized, and not already fetching
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
     isFetchingRef.current = true;
     setIsSyncing(true);
 
-    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 30000);
+    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 35000);
 
     try {
       const response = await fetchAllDataAction();
@@ -161,7 +163,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         }));
       }
     } catch (e) {
-      console.error("Data Sync: Global fetch failed.", e);
+      console.warn("Data Sync: Global fetch background retry pending.", e);
     } finally {
       clearTimeout(safetyTimeout);
       setIsSyncing(false);
@@ -230,18 +232,14 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [processSyncQueue, fetchDataAndCache, user]);
 
   useEffect(() => {
-    if (!user) {
-      if (data.lastSync) {
-        setData(initialEmptyData);
-        localStorage.removeItem(DATA_CACHE_KEY);
-      }
-      return;
-    }
+    if (!user || !isInitialized) return;
     
+    // Initial silent background fetch
     fetchDataAndCache();
+    
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [user, fetchDataAndCache]);
+  }, [user, isInitialized, fetchDataAndCache]);
 
   const refreshData = useCallback(async () => {
     if (!navigator.onLine) {

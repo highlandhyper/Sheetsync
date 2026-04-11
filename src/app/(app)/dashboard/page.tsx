@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -65,8 +65,8 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
 
   const cardContainerClassName = cn(
     "shadow-lg transition-all duration-300 rounded-xl hover:shadow-xl h-full flex flex-col relative overflow-hidden",
-    "bg-gradient-to-br from-card to-card/95 border-border/50",
-    href ? "hover:bg-card/95 hover:ring-2 hover:ring-primary/30" : "",
+    "bg-card/40 backdrop-blur-md border border-white/10",
+    href ? "hover:bg-card/60 hover:ring-2 hover:ring-primary/30" : "",
     className
   );
   
@@ -382,7 +382,7 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-lg rounded-xl bg-gradient-to-br from-card to-card/95 border-border/50 h-full flex flex-col">
+        <Card className="shadow-lg rounded-xl bg-card/40 backdrop-blur-md border border-white/10 h-full flex flex-col">
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Quick Authorize</CardTitle>
                 <CardDescription className="text-[10px]">Proactive silent entry grant</CardDescription>
@@ -684,18 +684,16 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
+  const { isCacheReady, isSyncing } = useDataCache();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
   const [mountedDate, setMountedDate] = useState<string>('');
 
   useEffect(() => {
-    // HYDRATION SAFETY: Only set local time string after client mount
     setMountedDate(format(new Date(), 'PP'));
     async function getData() {
-      setIsLoading(true);
       const metricsRes = await fetchDashboardMetricsAction();
-      
       if (metricsRes.success && metricsRes.data) {
         setMetrics(metricsRes.data);
       }
@@ -704,7 +702,7 @@ export default function DashboardPage() {
     getData();
   }, []);
 
-  if (isLoading || !metrics) {
+  if (!isCacheReady && isLoading) {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
          <h1 className="text-xl font-bold mb-8 text-primary flex items-center tracking-tight">
@@ -717,18 +715,16 @@ export default function DashboardPage() {
   }
 
   let totalStockDescription: React.ReactNode = "Sum of all items in stock";
-  if (metrics.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
+  if (metrics?.dailyStockChangeDirection && metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
     const colorClass = isIncrease ? 'text-destructive' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
-    let trendText: string;
+    let trendText: string = '';
     if (metrics.dailyStockChangePercent !== undefined && metrics.dailyStockChangePercent !== null) {
       trendText = `${isIncrease ? '+' : ''}${metrics.dailyStockChangePercent.toFixed(1)}%`;
     } else if (isIncrease && metrics.netItemsAddedToday && metrics.netItemsAddedToday > 0) {
         trendText = `+${metrics.netItemsAddedToday} (New)`;
-    } else {
-        trendText = ''; 
     }
 
     if (trendText) {
@@ -746,102 +742,118 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl font-bold text-primary flex items-center tracking-tight">
-            <Activity className="mr-3 h-6 w-6" />
-            Command Center
-        </h1>
+    <div className="relative min-h-screen">
+      {/* ATMOSPHERIC BACKGROUND LAYER */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-accent/15 blur-[120px]" />
+        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-primary/5 blur-[100px]" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
-        <MetricCard 
-          title="Total Stock Quantity" 
-          value={metrics.totalStockQuantity} 
-          iconNode={<Warehouse className="h-5 w-5" />}
-          onIconClick={() => setIsStockTrendDialogOpen(true)}
-          description={totalStockDescription}
-          href="/inventory"
-          isLoading={isLoading}
-          className="lg:col-span-2"
-        >
-            {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
-        </MetricCard>
-        <MetricCard 
-          title="Total Stock Value" 
-          value={metrics.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
-          iconNode={<Wallet className="h-5 w-5" />}
-          description="Valuation of current assets"
-          isLoading={isLoading}
-        />
-         <MetricCard 
-          title="Total Suppliers" 
-          value={metrics.totalSuppliers} 
-          iconNode={<Users className="h-5 w-5" />}
-          description="Active vendor relationships"
-          isLoading={isLoading}
-        />
-        
-        <MetricCard 
-            title="Items Expiring Soon" 
-            value={metrics.itemsExpiringSoon} 
-            iconNode={<CalendarClock className="h-5 w-5" />}
-            description="High priority (7 days)"
-            href="/inventory?filterType=expiringSoon"
-            className={cn(
-                !isLoading && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 bg-yellow-500/5 dark:border-yellow-400/50 hover:border-yellow-500"
+      <div className="container relative z-10 mx-auto p-4 md:p-6 lg:p-8 space-y-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-primary flex items-center tracking-tight">
+                <Activity className="mr-3 h-6 w-6" />
+                Command Center
+            </h1>
+            {isSyncing && (
+                <Badge variant="outline" className="animate-pulse bg-primary/10 border-primary/20 text-primary text-[10px] h-6">
+                    <RefreshCw className="h-3 w-3 mr-1.5 animate-spin" /> Live Syncing
+                </Badge>
             )}
-            isLoading={isLoading}
-        />
-        
-        <MetricCard 
-            title="Damaged Items" 
-            value={metrics.damagedItemsCount} 
-            iconNode={<AlertTriangle className="h-5 w-5" />}
-            description="Loss prevention review"
-            href="/inventory?filterType=damaged"
-            className={cn(!isLoading && metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
-            isLoading={isLoading}
-        />
+          </div>
+        </div>
 
-        <QuickAuthorizeCard />
-      </div>
-
-      <PendingApprovalsSummary />
-      <ActiveAuthorizations />
-
-      <div className="grid grid-cols-1 gap-6 pt-4">
-        <Card className="shadow-xl rounded-xl border-border/50 bg-card/50 overflow-hidden hidden sm:block">
-          <CardHeader className="border-b bg-muted/20 pb-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <CardTitle className="text-lg font-bold flex items-center tracking-tight">
-                    <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-                    Stock Volume by Supplier
-                    </CardTitle>
-                    <CardDescription className="font-medium">Total unit distribution across registered vendors</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-background text-[10px] h-6">Live Data</Badge>
-                    <span className="text-[10px] text-muted-foreground uppercase font-black">{mountedDate}</span>
-                </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="h-[400px] w-full mt-4">
-                {isLoading ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {metrics.stockTrend && (
-          <StockTrendDetailedDialog 
-            isOpen={isStockTrendDialogOpen} 
-            onOpenChange={setIsStockTrendDialogOpen} 
-            initialData={metrics.stockTrend} 
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-fr">
+          <MetricCard 
+            title="Total Stock Quantity" 
+            value={metrics?.totalStockQuantity || 0} 
+            iconNode={<Warehouse className="h-5 w-5" />}
+            onIconClick={() => setIsStockTrendDialogOpen(true)}
+            description={totalStockDescription}
+            href="/inventory"
+            isLoading={isLoading && !metrics}
+            className="lg:col-span-2"
+          >
+              {metrics?.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
+          </MetricCard>
+          <MetricCard 
+            title="Total Stock Value" 
+            value={metrics?.totalStockValue ? `QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'QAR 0.00'}
+            iconNode={<Wallet className="h-5 w-5" />}
+            description="Valuation of current assets"
+            isLoading={isLoading && !metrics}
           />
-      )}
+           <MetricCard 
+            title="Total Suppliers" 
+            value={metrics?.totalSuppliers || 0} 
+            iconNode={<Users className="h-5 w-5" />}
+            description="Active vendor relationships"
+            isLoading={isLoading && !metrics}
+          />
+          
+          <MetricCard 
+              title="Items Expiring Soon" 
+              value={metrics?.itemsExpiringSoon || 0} 
+              iconNode={<CalendarClock className="h-5 w-5" />}
+              description="High priority (7 days)"
+              href="/inventory?filterType=expiringSoon"
+              className={cn(
+                  metrics && metrics.itemsExpiringSoon > 0 && "border-yellow-500/50 bg-yellow-500/5 dark:border-yellow-400/50 hover:border-yellow-500"
+              )}
+              isLoading={isLoading && !metrics}
+          />
+          
+          <MetricCard 
+              title="Damaged Items" 
+              value={metrics?.damagedItemsCount || 0} 
+              iconNode={<AlertTriangle className="h-5 w-5" />}
+              description="Loss prevention review"
+              href="/inventory?filterType=damaged"
+              className={cn(metrics && metrics.damagedItemsCount > 0 ? "border-destructive/50 bg-destructive/5 hover:border-destructive" : "")} 
+              isLoading={isLoading && !metrics}
+          />
+
+          <QuickAuthorizeCard />
+        </div>
+
+        <PendingApprovalsSummary />
+        <ActiveAuthorizations />
+
+        <div className="grid grid-cols-1 gap-6 pt-4">
+          <Card className="shadow-xl rounded-xl border-white/10 bg-card/40 backdrop-blur-md overflow-hidden hidden sm:block">
+            <CardHeader className="border-b border-white/5 bg-white/5 pb-4">
+              <div className="flex items-center justify-between">
+                  <div>
+                      <CardTitle className="text-lg font-bold flex items-center tracking-tight">
+                      <TrendingUp className="mr-2 h-5 w-5 text-primary" />
+                      Stock Volume by Supplier
+                      </CardTitle>
+                      <CardDescription className="font-medium">Total unit distribution across registered vendors</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-background/50 backdrop-blur-sm text-[10px] h-6 border-white/10">Snapshot</Badge>
+                      <span className="text-[10px] text-muted-foreground uppercase font-black">{mountedDate}</span>
+                  </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 sm:p-6">
+              <div className="h-[400px] w-full mt-4">
+                  {!metrics ? <Skeleton className="h-full w-full rounded-xl" /> : <StockBySupplierChart data={metrics.stockBySupplier} /> }
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {metrics?.stockTrend && (
+            <StockTrendDetailedDialog 
+              isOpen={isStockTrendDialogOpen} 
+              onOpenChange={setIsStockTrendDialogOpen} 
+              initialData={metrics.stockTrend} 
+            />
+        )}
+      </div>
     </div>
   );
 }
