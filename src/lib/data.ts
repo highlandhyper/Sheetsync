@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -155,15 +156,18 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     }
   }
 
-  if (lastOldRowIndex !== -1) {
+  // Only attempt cleanup if there are more than 50 logs and some are old
+  if (lastOldRowIndex !== -1 && data.length > 50) {
     const startIndex = 1;
     const endIndex = lastOldRowIndex + 2; 
     
-    deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
-      .then(success => {
-        if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} old logs.`);
-      })
-      .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
+    if (endIndex > startIndex + 1) {
+        deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
+          .then(success => {
+            if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} old logs.`);
+          })
+          .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
+    }
   }
 
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
