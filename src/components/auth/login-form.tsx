@@ -59,7 +59,7 @@ export function LoginForm() {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <Card className="w-full max-w-sm shadow-2xl border-white/10 bg-card/40 backdrop-blur-xl animate-in slide-in-from-bottom-8 fade-in duration-700">
+    <Card className="w-full max-w-sm border-0 sm:border shadow-none sm:shadow-2xl bg-transparent sm:bg-card/40 sm:backdrop-blur-xl">
       <CardHeader className="text-center pb-2">
         <div className="mx-auto bg-primary/10 p-3 rounded-2xl w-fit mb-4">
             <ShieldCheck className="h-8 w-8 text-primary" />
@@ -68,7 +68,7 @@ export function LoginForm() {
         <CardDescription className="font-medium">Enter your credentials to continue</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4 pt-4">
+        <CardContent className="space-y-4 pt-4 px-0 sm:px-6">
           <div className="space-y-2 group">
             <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Email Address</Label>
             <Input
@@ -76,7 +76,7 @@ export function LoginForm() {
               type="email"
               placeholder="you@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive bg-background/50 h-11' : 'bg-background/50 focus:ring-primary/20 h-11'}
+              className={errors.email ? 'border-destructive bg-background/50 h-12 text-base' : 'bg-background/50 focus:ring-primary/20 h-12 text-base'}
             />
             {errors.email && <p className="text-[10px] text-destructive font-bold mt-1 ml-1">{errors.email.message}</p>}
           </div>
@@ -88,7 +88,7 @@ export function LoginForm() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 {...register('password')}
-                className={errors.password ? 'border-destructive pr-10 bg-background/50 h-11' : 'pr-10 bg-background/50 focus:ring-primary/20 h-11'}
+                className={errors.password ? 'border-destructive pr-10 bg-background/50 h-12 text-base' : 'pr-10 bg-background/50 focus:ring-primary/20 h-12 text-base'}
               />
               <button
                 type="button"
@@ -96,17 +96,17 @@ export function LoginForm() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
             {errors.password && <p className="text-[10px] text-destructive font-bold mt-1 ml-1">{errors.password.message}</p>}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-stretch gap-4 pt-4">
+        <CardFooter className="flex flex-col items-stretch gap-4 pt-4 px-0 sm:px-6">
           <Button 
             type="submit" 
             disabled={isLoading} 
-            className="w-full h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+            className="w-full h-14 sm:h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
           >
             {isLoading ? (
               <div className="flex items-center justify-center gap-2">

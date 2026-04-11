@@ -67,7 +67,8 @@ export function AppSidebar({ className }: { className?: string }) {
   // Hydration Safe Logo URL
   const logoUrl = useMemo(() => {
     if (!mounted) return '/logo.png';
-    return `/logo.png?v=${new Date().getDate()}`;
+    // Use a stable version identifier that only changes on actual client mount
+    return `/logo.png?v=stable`;
   }, [mounted]);
 
   return (
