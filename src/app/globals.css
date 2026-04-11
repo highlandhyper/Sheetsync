@@ -84,6 +84,25 @@ body {
   }
 }
 
+/* Animated Mesh Background for Login */
+@keyframes mesh-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-mesh-bg {
+  background: linear-gradient(-45deg, #e0f2fe, #f0f9ff, #dcfce7, #f8fafc);
+  background-size: 400% 400%;
+  animation: mesh-shift 15s ease infinite;
+}
+
+.dark .login-mesh-bg {
+  background: linear-gradient(-45deg, #0c0a09, #1c1917, #0f172a, #020617);
+  background-size: 400% 400%;
+  animation: mesh-shift 15s ease infinite;
+}
+
 /* Fix for Calendar Dropdown Layout and Overlapping Text */
 .rdp-caption {
   position: relative;

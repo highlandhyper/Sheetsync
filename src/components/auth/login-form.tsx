@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
+import { Loader2, LogIn, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 
@@ -59,33 +59,36 @@ export function LoginForm() {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <Card className="w-full max-w-sm shadow-xl border-primary/10">
-      <CardHeader>
+    <Card className="w-full max-w-sm shadow-2xl border-white/10 bg-card/40 backdrop-blur-xl animate-in slide-in-from-bottom-8 fade-in duration-700">
+      <CardHeader className="text-center pb-2">
+        <div className="mx-auto bg-primary/10 p-3 rounded-2xl w-fit mb-4">
+            <ShieldCheck className="h-8 w-8 text-primary" />
+        </div>
         <CardTitle className="text-2xl font-black tracking-tight uppercase">Account Login</CardTitle>
-        <CardDescription>Enter your credentials to access the application.</CardDescription>
+        <CardDescription className="font-medium">Secure access to command center</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+        <CardContent className="space-y-4 pt-4">
+          <div className="space-y-2 group">
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Email Identity</Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
+              className={errors.email ? 'border-destructive bg-background/50' : 'bg-background/50 focus:ring-primary/20'}
             />
-            {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-[10px] text-destructive font-bold mt-1 ml-1">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" id="pass-label" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Security Key</Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 {...register('password')}
-                className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                className={errors.password ? 'border-destructive pr-10 bg-background/50' : 'pr-10 bg-background/50 focus:ring-primary/20'}
               />
               <button
                 type="button"
@@ -96,13 +99,17 @@ export function LoginForm() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="text-[10px] text-destructive font-bold mt-1 ml-1">{errors.password.message}</p>}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-stretch gap-4">
-          <Button type="submit" disabled={isLoading} className="w-full h-11 font-black uppercase tracking-tighter shadow-lg shadow-primary/20">
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-            Authenticate
+        <CardFooter className="flex flex-col items-stretch gap-4 pt-4">
+          <Button 
+            type="submit" 
+            disabled={isLoading} 
+            className="w-full h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          >
+            {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
+            Authorize Session
           </Button>
         </CardFooter>
       </form>

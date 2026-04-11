@@ -1,13 +1,12 @@
-
-import { LoginForm } from '@/components/auth/login-form'; // Updated to use the new LoginForm
+import { LoginForm } from '@/components/auth/login-form';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function LoginFormSkeleton() {
   return (
     <div className="w-full max-w-md space-y-6">
-      <Skeleton className="h-10 w-1/2" /> {/* Title */}
-      <Skeleton className="h-6 w-3/4" /> {/* Description */}
+      <Skeleton className="h-10 w-1/2" />
+      <Skeleton className="h-6 w-3/4" />
       <div className="space-y-4">
         <div className="space-y-2">
           <Skeleton className="h-4 w-1/4" />
@@ -18,38 +17,38 @@ function LoginFormSkeleton() {
           <Skeleton className="h-10 w-full" />
         </div>
       </div>
-      <Skeleton className="h-10 w-full" /> {/* Button */}
-      <Skeleton className="h-5 w-2/3 mx-auto" /> {/* Link */}
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-5 w-2/3 mx-auto" />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden login-background p-4">
-      {/* Abstract background elements */}
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden login-mesh-bg p-4">
+      {/* Dynamic atmospheric orbs */}
       <div
-        className="absolute -top-1/4 -left-1/4 h-1/2 w-1/2 rounded-full bg-primary/20 blur-3xl animate-pulse"
+        className="absolute -top-[10%] -left-[10%] h-[40%] w-[40%] rounded-full bg-primary/10 blur-[120px] animate-pulse"
         style={{ animationDuration: '8s' }}
       ></div>
       <div
-        className="absolute -bottom-1/4 -right-1/4 h-1/2 w-1/2 rounded-full bg-accent/20 blur-3xl animate-pulse"
+        className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-accent/15 blur-[120px] animate-pulse"
         style={{ animationDuration: '10s', animationDelay: '2s' }}
       ></div>
        <div
-        className="absolute top-1/4 right-1/4 h-1/3 w-1/3 rounded-3xl bg-secondary/20 blur-3xl animate-pulse"
+        className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-primary/5 blur-[100px] animate-pulse"
         style={{ animationDuration: '12s', animationDelay: '4s' }}
       ></div>
 
-      <div className="relative z-10 w-full flex flex-col items-center">
-        <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary font-poppins tracking-tight">
+      <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000">
+        <div className="text-center mb-8 space-y-2">
+            <h1 className="text-5xl font-black text-primary font-poppins tracking-tighter uppercase">
                 SheetSync
             </h1>
-            <p className="text-muted-foreground mt-2">Next-Gen Inventory Management</p>
+            <p className="text-muted-foreground font-medium tracking-tight">Next-Gen Inventory Management</p>
         </div>
         <Suspense fallback={<LoginFormSkeleton />}>
-          <LoginForm /> {/* Updated to use the new LoginForm */}
+          <LoginForm />
         </Suspense>
       </div>
     </div>
