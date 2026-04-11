@@ -119,7 +119,7 @@ body {
 
 .rdp-caption_dropdowns {
   display: flex !important;
-  justify-content: center;
+  justify-content: center !important;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
@@ -130,7 +130,7 @@ body {
   @apply sr-only;
 }
 
-/* Print Optimization: Forces full-width layout and removes sidebar artifacts */
+/* Print Optimization */
 @media print {
   @page {
     margin: 1cm;

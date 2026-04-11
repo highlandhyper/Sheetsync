@@ -691,6 +691,7 @@ export default function DashboardPage() {
   const [mountedDate, setMountedDate] = useState<string>('');
 
   useEffect(() => {
+    // HYDRATION FIX: Set dynamic values only on the client
     setMountedDate(format(new Date(), 'PP'));
     async function getData() {
       const metricsRes = await fetchDashboardMetricsAction();
@@ -834,7 +835,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                       <Badge variant="outline" className="bg-background/50 backdrop-blur-sm text-[10px] h-6 border-white/10">Snapshot</Badge>
-                      <span className="text-[10px] text-muted-foreground uppercase font-black">{mountedDate}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-black">{mountedDate || '-- --- --'}</span>
                   </div>
               </div>
             </CardHeader>
