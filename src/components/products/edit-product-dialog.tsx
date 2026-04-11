@@ -137,7 +137,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
-    formData.append('uniqueId', product.uniqueId || ''); // Pass Unique ID
+    formData.append('uniqueId', product.uniqueId || '');
     
     const costValue = (data.costPrice === undefined || Number.isNaN(data.costPrice)) ? '' : String(data.costPrice);
     formData.append('costPrice', costValue);

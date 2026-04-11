@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -137,7 +138,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         return;
       }
       
-      // Fallback to server if not in indexed map
       const result = await fetchProductAction(barcodeToUse);
       if (result.success && result.data) {
         setValue('barcode', result.data.barcode);
@@ -171,7 +171,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     formData.append('costPrice', costValue);
     formData.append('editMode', editMode);
     
-    // Pass Unique ID if editing existing
     const existing = barcodeMap.get(searchedBarcode);
     if (editMode === 'edit' && existing?.uniqueId) {
         formData.append('uniqueId', existing.uniqueId);
@@ -235,7 +234,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
   return (
     <>
-    <Card className="w-full max-w-2xl mx-auto shadow-xl border-primary/10 overflow-hidden">
+    <Card className="w-full max-w-4xl mx-auto shadow-xl border-primary/10 overflow-hidden">
       <CardHeader className="bg-muted/30 pb-8">
         <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Catalog Manager</CardTitle>
         <CardDescription className="font-medium">
