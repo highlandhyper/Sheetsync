@@ -83,7 +83,6 @@ function transformToProduct(row: any[]): Product | null {
   const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
   
   return { 
-    // ID mapping: Priority Column H -> fallback to Barcode
     id: uniqueIdFromSheet || barcode,
     uniqueId: uniqueIdFromSheet || undefined,
     barcode, 
@@ -237,13 +236,21 @@ export async function saveLocationListToSheet(locations: string[]) {
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
-  const p = await getProducts();
-  return p.find(x => x.barcode === barcode) || null;
+  // Optimization: Search only barcode columns instead of fetching all products (54k rows)
+  const row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
+              await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
+  
+  if (row) {
+    const data = await readSheetData(`${DB_SHEET_NAME}!A${row}:H${row}`);
+    if (data && data[0]) {
+      return transformToProduct(data[0]);
+    }
+  }
+  return null;
 }
 
 export async function addProduct(email: string, p: any) {
   const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  // Row structure: [Barcode, Empty, Name, Supplier, Cost, Empty, Empty, UniqueID]
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
   await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
   await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName} (ID: ${uniqueId})`);
@@ -251,7 +258,6 @@ export async function addProduct(email: string, p: any) {
 }
 
 export async function deleteProductByBarcode(email: string, barcode: string) {
-  // Try Column H first (for surgical accuracy), then fallback to barcode columns A/B
   let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_UNIQUE_ID) ||
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
@@ -275,7 +281,6 @@ export async function deleteProductsByBarcodes(email: string, identifiers: strin
     const rowUniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
     
-    // Check both unique ID and barcode for deletion targeting
     if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) {
       rowIndicesToDelete.push(i + 2); 
     }
@@ -291,7 +296,6 @@ export async function deleteProductsByBarcodes(email: string, identifiers: strin
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {
-  // Use Unique ID lookup if available (e.g. "db2"), fallback to barcode
   let row: number | null = null;
   if (uniqueId) {
     row = await findRowByUniqueValue(DB_SHEET_NAME, uniqueId, DB_COL_UNIQUE_ID);
@@ -334,6 +338,29 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
     return true;
   }
   return false;
+}
+
+export async function addInventoryItemToSheet(item: InventoryItem) {
+  try {
+    const values = [
+      [
+        item.timestamp ? format(parseISO(item.timestamp), 'd/M/yyyy HH:mm:ss') : format(new Date(), 'd/M/yyyy HH:mm:ss'),
+        item.barcode,
+        item.quantity,
+        item.expiryDate ? format(parseISO(item.expiryDate), 'd/M/yyyy') : '',
+        item.location,
+        item.staffName,
+        item.productName,
+        item.supplierName || '',
+        item.itemType,
+        item.id
+      ]
+    ];
+    return await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, values);
+  } catch (error) {
+    console.error("addInventoryItemToSheet Error:", error);
+    return false;
+  }
 }
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
