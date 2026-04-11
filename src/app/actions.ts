@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -45,10 +46,23 @@ export interface ActionResponse<T = any> {
 }
 
 /**
- * Ensures numeric values are valid for JSON serialization (converts NaN to undefined)
+ * CRITICAL: Ensures numeric values are valid for JSON serialization.
+ * Next.js Server Actions crash if NaN is returned.
  */
 function sanitizeForJSON(val: any) {
-    if (typeof val === 'number' && isNaN(val)) return undefined;
+    if (typeof val === 'number') {
+        return isNaN(val) ? undefined : val;
+    }
+    if (Array.isArray(val)) {
+        return val.map(sanitizeForJSON);
+    }
+    if (val !== null && typeof val === 'object') {
+        const sanitized: any = {};
+        for (const key in val) {
+            sanitized[key] = sanitizeForJSON(val[key]);
+        }
+        return sanitized;
+    }
     return val;
 }
 
@@ -76,23 +90,19 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
 
     const suppliers = await getSuppliers(products);
 
-    // Deep sanitize objects to prevent serialization errors with large datasets
-    const sanitizedProducts = (products || []).map(p => ({
-        ...p,
-        costPrice: sanitizeForJSON(p.costPrice)
-    }));
+    const result = {
+      inventoryItems: inventoryItems || [],
+      products: products || [],
+      suppliers: suppliers || [],
+      uniqueLocations: meta.locations || [],
+      uniqueStaffNames: meta.staff || [],
+      auditLogs: auditLogs || [],
+      specialRequests: meta.specialRequests || [],
+    };
 
     return {
       success: true,
-      data: {
-        inventoryItems: inventoryItems || [],
-        products: sanitizedProducts,
-        suppliers: suppliers || [],
-        uniqueLocations: meta.locations || [],
-        uniqueStaffNames: meta.staff || [],
-        auditLogs: auditLogs || [],
-        specialRequests: meta.specialRequests || [],
-      }
+      data: sanitizeForJSON(result)
     };
   } catch (error) {
     console.error("Error in fetchAllDataAction:", error);
@@ -121,11 +131,11 @@ export async function fetchProductExternalDataAction(barcode: string): Promise<A
         if (data.status === 1 && data.product) {
             return {
                 success: true,
-                data: {
+                data: sanitizeForJSON({
                     image: data.product.image_url || data.product.image_front_url || data.product.image_small_url,
                     brand: data.product.brands,
                     name: data.product.product_name
-                }
+                })
             };
         }
         
@@ -184,7 +194,7 @@ export async function addInventoryItemAction(
     revalidatePath('/inventory');
     revalidatePath('/dashboard');
 
-    return { success: true, message: 'Logged successfully!', data: itemData };
+    return { success: true, message: 'Logged successfully!', data: sanitizeForJSON(itemData) };
   } catch (error) {
     return { success: false, message: "Log failed." };
   }
@@ -196,7 +206,7 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
         if (product) {
             return { 
                 success: true, 
-                data: { ...product, costPrice: sanitizeForJSON(product.costPrice) } 
+                data: sanitizeForJSON(product)
             };
         }
         return { success: false, message: "Not found." };
@@ -230,7 +240,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             return { 
                 success: true, 
                 message: "Created successfully.", 
-                data: { ...product, costPrice: sanitizeForJSON(product.costPrice) } as Product 
+                data: sanitizeForJSON(product)
             };
         } else {
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice);
@@ -242,13 +252,13 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
             return { 
                 success: true, 
                 message: "Catalog updated successfully.", 
-                data: {
+                data: sanitizeForJSON({
                     id: barcode,
                     barcode,
                     productName,
                     supplierName,
-                    costPrice: sanitizeForJSON(costPrice)
-                } as Product
+                    costPrice
+                })
             };
         }
     } catch (e) {
@@ -284,7 +294,6 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         const itemId = formData.get('itemId') as string;
         const rawData = Object.fromEntries(formData.entries());
         
-        // Ensure numeric fields are safe
         if (rawData.quantity) {
             const q = Number(rawData.quantity);
             rawData.quantity = isNaN(q) ? '0' : String(q);
@@ -293,7 +302,7 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         const result = await dbUpdateInventoryItemDetails(userEmail, itemId, rawData);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
-        return { success: true, message: "Updated.", data: result as InventoryItem };
+        return { success: true, message: "Updated.", data: sanitizeForJSON(result) };
     } catch (e) {
         return { success: false, message: "Update failed." };
     }
@@ -336,13 +345,7 @@ export async function saveLocationListAction(locations: string[]) {
 export async function fetchDashboardMetricsAction() { 
     try {
         const data = await getDashboardMetrics();
-        // Sanitize numbers in metrics
-        const sanitized = {
-            ...data,
-            totalStockValue: sanitizeForJSON(data.totalStockValue),
-            dailyStockChangePercent: sanitizeForJSON(data.dailyStockChangePercent)
-        };
-        return { success: true, data: sanitized }; 
+        return { success: true, data: sanitizeForJSON(data) }; 
     } catch (e) {
         return { success: false };
     }
@@ -351,7 +354,7 @@ export async function fetchDashboardMetricsAction() {
 export async function getPermissionsAction() { 
     try {
         const data = await loadPermissionsFromSheet();
-        return { success: true, data };
+        return { success: true, data: sanitizeForJSON(data) };
     } catch (e) {
         return { success: false };
     }
@@ -369,7 +372,7 @@ export async function setPermissionsAction(p: any) {
 export async function fetchAuditLogsAction() { 
     try {
         const data = await getAuditLogs();
-        return { success: true, data }; 
+        return { success: true, data: sanitizeForJSON(data) }; 
     } catch (e) {
         return { success: false };
     }
@@ -378,7 +381,7 @@ export async function fetchAuditLogsAction() {
 export async function fetchInventoryLogEntriesByBarcodeAction(b: string) { 
     try {
         const data = await getInventoryLogEntriesByBarcode(b);
-        return { success: true, data }; 
+        return { success: true, data: sanitizeForJSON(data) }; 
     } catch (e) {
         return { success: false };
     }
@@ -391,7 +394,8 @@ export async function addSupplierAction(prevState: any, formData: FormData): Pro
         const userEmail = (data.userEmail as string) || 'Admin';
         if (!name) return { success: false, message: "Name required." };
         await logAuditEvent(userEmail, 'REGISTER_SUPPLIER', name, `Registered.`);
-        return { success: true, data: { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() } };
+        const supplier = { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() };
+        return { success: true, data: sanitizeForJSON(supplier) };
     } catch (e) {
         return { success: false };
     }

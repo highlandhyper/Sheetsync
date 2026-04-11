@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -61,40 +62,36 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // 1. BOOTSTRAP METADATA FROM LOCALSTORAGE (Small data only)
-  const [data, setData] = useState<AppData>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(DATA_CACHE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return { ...initialEmptyData, ...parsed, inventoryItems: [], products: [], auditLogs: [] };
-        }
-      } catch (e) {
-        console.warn("DataCache: Meta-cache failed.");
-      }
-    }
-    return initialEmptyData;
-  });
-  
+  const [data, setData] = useState<AppData>(initialEmptyData);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isQueueProcessing, setIsQueueProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingActions, setPendingActions] = useState<OfflineAction[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const isFetchingRef = useRef(false);
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   
-  // Cache is ready if we have a lastSync OR we have some data in memory
   const isCacheReady = data.lastSync !== null || data.inventoryItems.length > 0;
 
-  // 2. LOAD LARGE DATA FROM INDEXED-DB ON STARTUP
   useEffect(() => {
     if (isDbLoadingRef.current) return;
     isDbLoadingRef.current = true;
 
-    async function loadIndexedDB() {
+    async function bootstrap() {
+      if (typeof window === 'undefined') return;
+
+      setIsOnline(navigator.onLine);
+
+      // 1. Load tiny meta from localStorage
+      let metaData = initialEmptyData;
+      try {
+        const saved = localStorage.getItem(DATA_CACHE_KEY);
+        if (saved) metaData = JSON.parse(saved);
+      } catch (e) {}
+
+      // 2. Load large data from IndexedDB
       try {
         const [inventory, logs, products] = await Promise.all([
           getInventory(),
@@ -102,56 +99,50 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           getProducts()
         ]);
 
-        setData(prev => ({
-          ...prev,
+        setData({
+          ...metaData,
           inventoryItems: inventory || [],
           auditLogs: logs || [],
           products: products || []
-        }));
+        });
       } catch (e) {
         console.error('DataCache: IndexedDB load failed', e);
-      } finally {
-        isDbLoadingRef.current = false;
+        setData(metaData);
       }
+
+      // 3. Load offline queue
+      const savedOffline = localStorage.getItem(OFFLINE_KEY);
+      if (savedOffline) {
+          try { setPendingActions(JSON.parse(savedOffline)); } catch (e) { localStorage.removeItem(OFFLINE_KEY); }
+      }
+
+      setIsInitialized(true);
+      isDbLoadingRef.current = false;
     }
 
-    if (typeof window !== 'undefined') {
-        loadIndexedDB();
-        setIsOnline(navigator.onLine);
-        const saved = localStorage.getItem(OFFLINE_KEY);
-        if (saved) {
-            try { setPendingActions(JSON.parse(saved)); } catch (e) { localStorage.removeItem(OFFLINE_KEY); }
-        }
-    }
+    bootstrap();
   }, []);
 
-  // 3. PERSIST LARGE DATA TO INDEXED-DB (Debounced)
   useEffect(() => {
-    if (!data.lastSync) return;
+    if (!isInitialized || !data.lastSync) return;
 
     const timeout = setTimeout(() => {
       saveInventory(data.inventoryItems);
       saveAuditLogs(data.auditLogs);
       saveProducts(data.products);
+      
+      const { inventoryItems, auditLogs, products, ...metaOnly } = data;
+      localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [data.inventoryItems, data.auditLogs, data.products, data.lastSync]);
+  }, [data, isInitialized]);
 
-  // 4. PERSIST METADATA TO LOCALSTORAGE
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isInitialized) {
       localStorage.setItem(OFFLINE_KEY, JSON.stringify(pendingActions));
-      if (data.lastSync) {
-        try {
-          const { inventoryItems, products, auditLogs, ...metaOnly } = data;
-          localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
-        } catch (e) {
-          console.error("DataCache: Local storage update failed.", e);
-        }
-      }
     }
-  }, [pendingActions, data]);
+  }, [pendingActions, isInitialized]);
 
   const fetchDataAndCache = useCallback(async () => {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
@@ -238,7 +229,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     };
   }, [processSyncQueue, fetchDataAndCache, user]);
 
-  // FIXED: Removed data.lastSync from dependencies to stop the infinite loop
   useEffect(() => {
     if (!user) {
       if (data.lastSync) {
