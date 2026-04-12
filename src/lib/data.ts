@@ -341,46 +341,57 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
-// TRIGGER EMAIL NOTIFICATIONS VIA GOOGLE APPS SCRIPT
+// RELIABLE DUAL-WRITE LOGGING
 export async function addInventoryItemToSheet(item: any) {
   try {
-    // We POST to the Apps Script URL instead of writing directly to the sheet
-    // This ensures the script's 'submitData' function runs, triggering the email alerts.
+    // 1. PERFORM RELIABLE LOGGING VIA GOOGLE SHEETS SDK (Service Account)
+    // This ensures data is definitely recorded even if the Apps Script crashes
+    const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
+    
+    const sdkRowData = [
+      format(entryDate, "d/M/yyyy HH:mm:ss"), 
+      item.barcode, 
+      item.quantity, 
+      item.expiryDate, 
+      item.location, 
+      item.staffName, 
+      item.productName, 
+      item.supplierName || '', 
+      item.itemType, 
+      item.id
+    ];
+
+    const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
+
+    // 2. TRIGGER EMAIL NOTIFICATIONS VIA GOOGLE APPS SCRIPT WEB APP
+    // We send data to the Web App so it can fire the sendExpiryAlertEmail function.
+    // We don't await this as critically as the primary write above.
     const payload = {
       barcode: item.barcode,
       quantity: item.quantity,
-      expiryDate: item.expiryDate, // Script expects string for new Date()
+      expiryDate: item.expiryDate, 
       location: item.location,
-      identity: item.staffName, // Map 'staffName' to script's 'identity' key
+      identity: item.staffName, 
       productName: item.productName,
-      type: item.itemType, // Use capitalized trigger keywords: EXPIRED or DAMAGE
+      type: item.itemType, 
       disableNotification: item.disableNotification || false,
       timestamp: item.timestamp || new Date().toISOString()
     };
 
-    const response = await fetch(SCRIPT_URL, {
+    fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // Plain text avoids certain CORS/redirect issues with GAS
+        'Content-Type': 'text/plain;charset=utf-8',
       },
       redirect: 'follow'
+    }).catch(err => {
+        console.warn("Apps Script Relay ping failed (Email may not have sent):", err);
     });
 
-    if (!response.ok) {
-      throw new Error(`Apps Script POST failed: ${response.statusText}`);
-    }
-
-    const resText = await response.text();
-    try {
-      const resJson = JSON.parse(resText);
-      return resJson.status === "success";
-    } catch {
-      // GAS often returns text if not explicitly configured otherwise
-      return response.ok;
-    }
+    return sdkWriteSuccess;
   } catch (error) {
-    console.error("addInventoryItemToSheet Error (Apps Script Relay):", error);
+    console.error("addInventoryItemToSheet Critical Error:", error);
     return false;
   }
 }
