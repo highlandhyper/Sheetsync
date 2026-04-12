@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -31,7 +30,7 @@ import {
   getAppMetaData,
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
@@ -42,7 +41,15 @@ export interface ActionResponse<T = any> {
 }
 
 /**
- * Deep sanitization to prevent NaN/Infinity values from breaking JSON responses
+ * SECURITY: Internal role resolver for server-side enforcement
+ */
+function getRoleByEmail(email: string | null): Role {
+    if (!email) return 'viewer';
+    return email.toLowerCase().trim() === 'viewer@example.com' ? 'viewer' : 'admin';
+}
+
+/**
+ * DEEP SANITIZATION: Prevents NaN/Infinity values from crashing the JSON parser
  */
 function sanitizeForJSON(val: any) {
     if (typeof val === 'number') {
@@ -105,42 +112,6 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   }
 }
 
-export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
-    if (!barcode) return { success: false, message: "Barcode required." };
-    
-    try {
-        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode.trim()}.json`, { 
-            next: { revalidate: 3600 },
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'SheetSync - Inventory Management'
-            }
-        });
-        
-        if (!res.ok) {
-            return { success: false, message: `Lookup failed with status ${res.status}` };
-        }
-
-        const data = await res.json();
-        
-        if (data.status === 1 && data.product) {
-            return {
-                success: true,
-                data: sanitizeForJSON({
-                    image: data.product.image_url || data.product.image_front_url || data.product.image_small_url,
-                    brand: data.product.brands,
-                    name: data.product.product_name
-                })
-            };
-        }
-        
-        return { success: false, message: "Product visual data not found." };
-    } catch (e) {
-        console.error("External lookup error:", e);
-        return { success: false, message: "Lookup service unavailable." };
-    }
-}
-
 export async function addInventoryItemAction(
   prevState: ActionResponse | undefined,
   formData: FormData
@@ -178,11 +149,7 @@ export async function addInventoryItemAction(
 
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
-
-    // IDENTIFY EXPIRED STATUS TO TRIGGER EMAIL VIA APPS SCRIPT
     const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(startOfDay(validatedItemData.expiryDate), startOfDay(now));
-    
-    // Explicit trigger keywords for the spreadsheet side script
     const sheetTriggerType = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : validatedItemData.itemType);
 
     const itemData: InventoryItem = {
@@ -198,8 +165,6 @@ export async function addInventoryItemAction(
         timestamp: now.toISOString()
     };
 
-    // Prepare data specifically for the sheet write with capitalized trigger keywords
-    // We now include the disableNotification flag for the script to handle
     const sheetItemData = {
         ...itemData,
         itemType: sheetTriggerType,
@@ -208,13 +173,11 @@ export async function addInventoryItemAction(
 
     const sheetWriteSuccess = await addInventoryItemToSheet(sheetItemData as any);
     if (!sheetWriteSuccess) {
-        return { success: false, message: "Failed to process request via Apps Script Relay. Verify script connectivity." };
+        return { success: false, message: "Sheet write failure. Logging engine offline." };
     }
 
-    // ENHANCED AUDIT LOGGING
     const alertTag = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : 'LOG');
     const silentFlag = disableNotification ? ' [SILENT ENTRY]' : '';
-    
     const auditDetails = `[${alertTag}]${silentFlag} Product: ${productDetails.productName} | Barcode: ${validatedItemData.barcode} | Qty: ${validatedItemData.quantity} | Location: ${validatedItemData.location} | Staff: ${validatedItemData.staffName}`;
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, auditDetails);
@@ -229,59 +192,43 @@ export async function addInventoryItemAction(
   }
 }
 
-export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
-    try {
-        const product = await getProductDetailsByBarcode(barcode);
-        if (product) {
-            return { 
-                success: true, 
-                data: sanitizeForJSON(product)
-            };
-        }
-        return { success: false, message: "Not found." };
-    } catch (e) {
-        return { success: false, message: "Fetch failed." };
-    }
-}
-
 export async function saveProductAction(prevState: any, formData: FormData): Promise<ActionResponse<Product>> {
     try {
         const data = Object.fromEntries(formData.entries());
-        const editMode = data.editMode as string;
         const userEmail = (data.userEmail as string) || 'Admin';
+        
+        // SECURITY: Block non-admins from catalog changes
+        if (getRoleByEmail(userEmail) !== 'admin') {
+            return { success: false, message: "Unauthorized: Administrator permissions required." };
+        }
+
+        const editMode = data.editMode as string;
         const barcode = data.barcode as string;
         const productName = data.productName as string;
         const supplierName = data.supplierName as string;
         const uniqueId = data.uniqueId as string;
-        
         const rawCost = data.costPrice as string;
-        let costPrice: number | undefined = undefined;
         
+        let costPrice: number | undefined = undefined;
         if (rawCost !== undefined && rawCost !== '' && rawCost !== 'undefined') {
             const parsed = parseFloat(rawCost);
-            if (!isNaN(parsed)) {
-                costPrice = parsed;
-            }
+            if (!isNaN(parsed)) costPrice = parsed;
         }
         
         if (editMode === 'create') {
             const product = await dbAddProduct(userEmail, { barcode, productName, supplierName, costPrice });
             revalidatePath('/products/list');
-            return { 
-                success: true, 
-                message: "Created successfully.", 
-                data: sanitizeForJSON(product)
-            };
+            return { success: true, message: "Created successfully.", data: sanitizeForJSON(product) };
         } else {
             const success = await dbUpdateProductAndSupplierLinks(userEmail, barcode, productName, supplierName, costPrice, uniqueId);
-            if (!success) return { success: false, message: "Product not found in registry." };
+            if (!success) return { success: false, message: "Product not found." };
             
             revalidatePath('/products/list');
             revalidatePath('/inventory');
             
             return { 
                 success: true, 
-                message: "Catalog updated successfully.", 
+                message: "Catalog updated.", 
                 data: sanitizeForJSON({
                     id: uniqueId || barcode,
                     barcode,
@@ -300,6 +247,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
 
 export async function deleteProductAction(email: string, identifier: string) {
     try {
+        if (getRoleByEmail(email) !== 'admin') return { success: false };
         const success = await dbDeleteProductByBarcode(email, identifier);
         revalidatePath('/products/list');
         return { success };
@@ -310,6 +258,7 @@ export async function deleteProductAction(email: string, identifier: string) {
 
 export async function bulkDeleteProductsAction(email: string, identifiers: string[]) {
     try {
+        if (getRoleByEmail(email) !== 'admin') return { success: false };
         const success = await dbDeleteProductsByBarcodes(email, identifiers);
         revalidatePath('/products/list');
         return { success };
@@ -438,6 +387,11 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
         const oldName = data.currentSupplierName as string;
         const newName = data.newSupplierName as string;
         const userEmail = (data.userEmail as string) || 'Admin';
+        
+        if (getRoleByEmail(userEmail) !== 'admin') {
+            return { success: false, message: "Unauthorized." };
+        }
+
         await dbUpdateSupplierName(userEmail, oldName, newName);
         revalidatePath('/suppliers');
         revalidatePath('/products/list');
@@ -461,6 +415,7 @@ export async function returnInventoryItemAction(e: string, i: string, q: number,
 
 export async function deleteInventoryItemAction(e: string, i: string) { 
     try {
+        if (getRoleByEmail(e) !== 'admin') return { success: false };
         await dbDeleteInventoryItemById(e, i);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
@@ -472,6 +427,7 @@ export async function deleteInventoryItemAction(e: string, i: string) {
 
 export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) { 
     try {
+        if (getRoleByEmail(e) !== 'admin') return { success: false };
         for (const id of ids) await dbDeleteInventoryItemById(e, id);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
@@ -492,5 +448,56 @@ export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s
         return { success: true }; 
     } catch (err) {
         return { success: false };
+    }
+}
+
+export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse<{ image?: string; brand?: string; name?: string }>> {
+    if (!barcode) return { success: false, message: "Barcode required." };
+    
+    try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode.trim()}.json`, { 
+            next: { revalidate: 3600 },
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'SheetSync - Inventory Management'
+            }
+        });
+        
+        if (!res.ok) {
+            return { success: false, message: `Lookup failed with status ${res.status}` };
+        }
+
+        const data = await res.json();
+        
+        if (data.status === 1 && data.product) {
+            return {
+                success: true,
+                data: sanitizeForJSON({
+                    image: data.product.image_url || data.product.image_front_url || data.product.image_small_url,
+                    brand: data.product.brands,
+                    name: data.product.product_name
+                })
+            };
+        }
+        
+        return { success: false, message: "Product visual data not found." };
+    } catch (e) {
+        console.error("External lookup error:", e);
+        return { success: false, message: "Lookup service unavailable." };
+    }
+}
+
+export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
+    try {
+        const product = await getProductDetailsByBarcode(barcode);
+        if (product) {
+            return { 
+                success: true, 
+                data: sanitizeForJSON(product)
+            };
+        }
+        return { success: false, message: "Not found." };
+    } catch (e) {
+        return { success: false, message: "Fetch failed." };
     }
 }

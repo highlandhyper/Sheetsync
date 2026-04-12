@@ -53,6 +53,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   
+  // Standardized references for focus management
   const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
