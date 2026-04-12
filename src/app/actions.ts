@@ -31,7 +31,7 @@ import {
   getInventoryLogEntriesByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry } from '@/lib/types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -40,9 +40,12 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
+/**
+ * Deep sanitization to prevent NaN/Infinity values from breaking JSON responses
+ */
 function sanitizeForJSON(val: any) {
     if (typeof val === 'number') {
-        return (isNaN(val) || !isFinite(val)) ? undefined : val;
+        return (isNaN(val) || !isFinite(val)) ? 0 : val;
     }
     if (Array.isArray(val)) {
         return val.map(sanitizeForJSON);
@@ -193,7 +196,14 @@ export async function addInventoryItemAction(
         return { success: false, message: "Failed to write data to Google Sheets. Verify API credentials." };
     }
 
-    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, `Product: ${productDetails.productName}${disableNotification ? ' (Silent)' : ''}`);
+    // ENHANCED AUDIT LOGGING FOR EMAIL TRIGGERS
+    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(startOfDay(validatedItemData.expiryDate), startOfDay(now));
+    const alertTag = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : 'LOG');
+    const silentFlag = disableNotification ? ' [SILENT ENTRY]' : '';
+    
+    const auditDetails = `[${alertTag}]${silentFlag} Product: ${productDetails.productName} | Barcode: ${validatedItemData.barcode} | Qty: ${validatedItemData.quantity} | Location: ${validatedItemData.location} | Staff: ${validatedItemData.staffName}`;
+
+    await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, auditDetails);
     
     revalidatePath('/inventory');
     revalidatePath('/dashboard');

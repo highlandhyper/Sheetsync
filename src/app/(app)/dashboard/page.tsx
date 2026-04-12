@@ -694,8 +694,22 @@ export default function DashboardPage() {
   }, []);
 
   const metrics = useMemo<DashboardMetrics>(() => {
-    // HYDRATION SAFETY: Ensure stable date calculation by using a stable context
-    // If not mounted, we use a fixed "today" to match server output (which is just an empty shell usually)
+    // HYDRATION SAFETY: Ensure calculations only run fully after component mounts to avoid mismatches
+    if (!isMounted) {
+        return {
+            totalProducts: 0,
+            totalStockQuantity: 0,
+            itemsExpiringSoon: 0,
+            damagedItemsCount: 0,
+            totalSuppliers: 0,
+            totalStockValue: 0,
+            stockBySupplier: [],
+            netItemsAddedToday: 0,
+            dailyStockChangeDirection: 'none',
+            stockTrend: []
+        };
+    }
+
     const today = startOfDay(new Date());
     const prodsMap = new Map<string, Product>(products.map(p => [p.barcode, p]));
     let totalValue = 0;
