@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -44,8 +45,8 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-// CUSTOM APPS SCRIPT URL FOR EMAIL TRIGGERS
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+// DYNAMICALLY USE THE ENVIRONMENT VARIABLE FOR THE APPS SCRIPT WEB APP
+const SCRIPT_URL = process.env.GOOGELE_APPSCRIPT_API || "";
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -341,13 +342,16 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
-// RELIABLE DUAL-WRITE LOGGING
+/**
+ * RELIABLE DUAL-WRITE LOGGING
+ * Performs high-speed logging directly via SDK and pings Web App for email alerts.
+ */
 export async function addInventoryItemToSheet(item: any) {
   try {
     // 1. PERFORM RELIABLE LOGGING VIA GOOGLE SHEETS SDK (Service Account)
-    // This ensures data is definitely recorded even if the Apps Script crashes
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
     
+    // Construct row exactly as expected by the sheet architecture
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
       item.barcode, 
@@ -364,30 +368,31 @@ export async function addInventoryItemToSheet(item: any) {
     const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
 
     // 2. TRIGGER EMAIL NOTIFICATIONS VIA GOOGLE APPS SCRIPT WEB APP
-    // We send data to the Web App so it can fire the sendExpiryAlertEmail function.
-    // We don't await this as critically as the primary write above.
-    const payload = {
-      barcode: item.barcode,
-      quantity: item.quantity,
-      expiryDate: item.expiryDate, 
-      location: item.location,
-      identity: item.staffName, 
-      productName: item.productName,
-      type: item.itemType, 
-      disableNotification: item.disableNotification || false,
-      timestamp: item.timestamp || new Date().toISOString()
-    };
+    // Use the API URL provided in .env.local only for notifications
+    if (SCRIPT_URL) {
+        const payload = {
+          barcode: item.barcode,
+          quantity: item.quantity,
+          expiryDate: item.expiryDate, 
+          location: item.location,
+          identity: item.staffName, // Map to script's expected 'identity' field
+          productName: item.productName,
+          type: item.itemType, 
+          disableNotification: item.disableNotification || false,
+          timestamp: item.timestamp || new Date().toISOString()
+        };
 
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      redirect: 'follow'
-    }).catch(err => {
-        console.warn("Apps Script Relay ping failed (Email may not have sent):", err);
-    });
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8',
+          },
+          redirect: 'follow'
+        }).catch(err => {
+            console.warn("Apps Script Notification ping failed:", err);
+        });
+    }
 
     return sdkWriteSuccess;
   } catch (error) {
