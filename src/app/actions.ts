@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -178,6 +179,12 @@ export async function addInventoryItemAction(
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
 
+    // IDENTIFY EXPIRED STATUS TO TRIGGER EMAIL VIA APPS SCRIPT
+    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(startOfDay(validatedItemData.expiryDate), startOfDay(now));
+    
+    // Explicit trigger keywords for the spreadsheet side script
+    const sheetTriggerType = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : validatedItemData.itemType);
+
     const itemData: InventoryItem = {
         id: tempId,
         barcode: validatedItemData.barcode,
@@ -191,13 +198,18 @@ export async function addInventoryItemAction(
         timestamp: now.toISOString()
     };
 
-    const sheetWriteSuccess = await addInventoryItemToSheet(itemData);
+    // Prepare data specifically for the sheet write with capitalized trigger keywords
+    const sheetItemData = {
+        ...itemData,
+        itemType: sheetTriggerType
+    };
+
+    const sheetWriteSuccess = await addInventoryItemToSheet(sheetItemData as any);
     if (!sheetWriteSuccess) {
         return { success: false, message: "Failed to write data to Google Sheets. Verify API credentials." };
     }
 
-    // ENHANCED AUDIT LOGGING FOR EMAIL TRIGGERS
-    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(startOfDay(validatedItemData.expiryDate), startOfDay(now));
+    // ENHANCED AUDIT LOGGING
     const alertTag = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : 'LOG');
     const silentFlag = disableNotification ? ' [SILENT ENTRY]' : '';
     
