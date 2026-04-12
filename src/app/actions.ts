@@ -199,14 +199,16 @@ export async function addInventoryItemAction(
     };
 
     // Prepare data specifically for the sheet write with capitalized trigger keywords
+    // We now include the disableNotification flag for the script to handle
     const sheetItemData = {
         ...itemData,
-        itemType: sheetTriggerType
+        itemType: sheetTriggerType,
+        disableNotification: disableNotification
     };
 
     const sheetWriteSuccess = await addInventoryItemToSheet(sheetItemData as any);
     if (!sheetWriteSuccess) {
-        return { success: false, message: "Failed to write data to Google Sheets. Verify API credentials." };
+        return { success: false, message: "Failed to process request via Apps Script Relay. Verify script connectivity." };
     }
 
     // ENHANCED AUDIT LOGGING
