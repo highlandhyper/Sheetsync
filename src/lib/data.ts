@@ -44,6 +44,9 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
+// CUSTOM APPS SCRIPT URL FOR EMAIL TRIGGERS
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
   const s = String(val).trim();
@@ -235,7 +238,6 @@ export async function saveLocationListToSheet(locations: string[]) {
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {
-  // Optimization: Search only barcode columns instead of fetching all products (54k rows)
   const row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
               await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
   
@@ -339,25 +341,46 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
-export async function addInventoryItemToSheet(item: InventoryItem) {
+// TRIGGER EMAIL NOTIFICATIONS VIA GOOGLE APPS SCRIPT
+export async function addInventoryItemToSheet(item: any) {
   try {
-    const values = [
-      [
-        item.timestamp ? format(parseISO(item.timestamp), 'd/M/yyyy HH:mm:ss') : format(new Date(), 'd/M/yyyy HH:mm:ss'),
-        item.barcode,
-        item.quantity,
-        item.expiryDate ? format(parseISO(item.expiryDate), 'd/M/yyyy') : '',
-        item.location,
-        item.staffName,
-        item.productName,
-        item.supplierName || '',
-        item.itemType,
-        item.id
-      ]
-    ];
-    return await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, values);
+    // We POST to the Apps Script URL instead of writing directly to the sheet
+    // This ensures the script's 'submitData' function runs, triggering the email alerts.
+    const payload = {
+      barcode: item.barcode,
+      quantity: item.quantity,
+      expiryDate: item.expiryDate, // Script expects string for new Date()
+      location: item.location,
+      identity: item.staffName, // Map 'staffName' to script's 'identity' key
+      productName: item.productName,
+      type: item.itemType, // Use capitalized trigger keywords: EXPIRED or DAMAGE
+      disableNotification: item.disableNotification || false,
+      timestamp: item.timestamp || new Date().toISOString()
+    };
+
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // Plain text avoids certain CORS/redirect issues with GAS
+      },
+      redirect: 'follow'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Apps Script POST failed: ${response.statusText}`);
+    }
+
+    const resText = await response.text();
+    try {
+      const resJson = JSON.parse(resText);
+      return resJson.status === "success";
+    } catch {
+      // GAS often returns text if not explicitly configured otherwise
+      return response.ok;
+    }
   } catch (error) {
-    console.error("addInventoryItemToSheet Error:", error);
+    console.error("addInventoryItemToSheet Error (Apps Script Relay):", error);
     return false;
   }
 }
