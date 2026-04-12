@@ -221,10 +221,17 @@ function StockTrendDetailedDialog({
     initialData: StockTrendData[] 
 }) {
     const { inventoryItems } = useDataCache();
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: subDays(new Date(), 6),
-        to: new Date(),
-    });
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+    // Hydration Safe initialization
+    useEffect(() => {
+        if (isOpen && !dateRange) {
+            setDateRange({
+                from: subDays(new Date(), 6),
+                to: new Date(),
+            });
+        }
+    }, [isOpen, dateRange]);
 
     const trendData = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return initialData;
