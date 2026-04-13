@@ -1,4 +1,3 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -150,7 +149,11 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data || data.length === 0) return [];
 
-  const retentionThreshold = subDays(new Date(), 90);
+  /**
+   * OPTIMIZATION: Reduced retention to 14 days to shrink transfer payload.
+   * Also limited the returned set to the most recent 500 entries.
+   */
+  const retentionThreshold = subDays(new Date(), 14);
   let lastOldRowIndex = -1;
 
   for (let i = 0; i < data.length; i++) {
@@ -169,15 +172,16 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     if (endIndex > startIndex + 1) {
         deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
           .then(success => {
-            if (success) console.log(`Maintenance: Successfully purged ${lastOldRowIndex + 1} old logs.`);
+            if (success) console.log(`Maintenance: Purged ${lastOldRowIndex + 1} old logs.`);
           })
-          .catch(err => console.error("Maintenance: Audit Log Cleanup Failed:", err));
+          .catch(err => console.error("Maintenance: Purge Failed:", err));
     }
   }
 
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
 
-  return recentData.map((r, i) => ({
+  // Return only most recent 500 logs to minimize origin transfer
+  return recentData.slice(-500).map((r, i) => ({
     id: `a_${i}`,
     timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
     user: String(r[AUDIT_COL_USER] || 'Unknown'),

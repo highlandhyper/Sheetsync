@@ -42,7 +42,11 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 45000;
+/** 
+ * OPTIMIZATION: Increased sync interval to 3 minutes (180,000ms) 
+ * to reduce Vercel Fast Origin Transfer usage.
+ */
+const SYNC_INTERVAL_MS = 180000; 
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
 const OFFLINE_KEY = 'sheetSync_offlineActions_v3';
 
