@@ -49,13 +49,16 @@ export function ApprovalCenterClient() {
     const [productBarcodeForDialog, setProductBarcodeForDialog] = useState('');
 
     const filteredPending = useMemo(() => {
-        const lower = searchTerm.toLowerCase();
-        return pendingRequests.filter(r => 
-            r.staffName.toLowerCase().includes(lower) || 
-            r.userEmail.toLowerCase().includes(lower) ||
-            (r.editDetails?.productName.toLowerCase().includes(lower)) ||
-            (r.suggestedProductName?.toLowerCase().includes(lower))
-        );
+        const lower = searchTerm.toLowerCase().trim();
+        return pendingRequests.filter(r => {
+            const matchesStaff = (r.staffName || "").toLowerCase().includes(lower);
+            const matchesEmail = (r.userEmail || "").toLowerCase().includes(lower);
+            const matchesProduct = r.editDetails?.productName?.toLowerCase().includes(lower);
+            const matchesSuggested = r.suggestedProductName?.toLowerCase().includes(lower);
+            const matchesReason = r.reason?.toLowerCase().includes(lower);
+
+            return matchesStaff || matchesEmail || matchesProduct || matchesSuggested || matchesReason;
+        });
     }, [pendingRequests, searchTerm]);
 
     const handleActionClick = (req: SpecialEntryRequest) => {
@@ -292,7 +295,7 @@ export function ApprovalCenterClient() {
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm">{req.staffName}</p>
-                                            <p className="text-[10px] text-muted-foreground uppercase font-black">{req.type.replace('_', ' ')} • {req.status}</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-black">{req.type?.replace('_', ' ') || 'Special Request'} • {req.status}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">

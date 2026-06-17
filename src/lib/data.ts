@@ -149,10 +149,6 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data || data.length === 0) return [];
 
-  /**
-   * OPTIMIZATION: Reduced retention to 14 days to shrink transfer payload.
-   * Also limited the returned set to the most recent 500 entries.
-   */
   const retentionThreshold = subDays(new Date(), 14);
   let lastOldRowIndex = -1;
 
@@ -180,7 +176,6 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
 
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
 
-  // Return only most recent 500 logs to minimize origin transfer
   return recentData.slice(-500).map((r, i) => ({
     id: `a_${i}`,
     timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
@@ -199,9 +194,12 @@ export async function logAuditEvent(user: string, action: string, target: string
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const findJson = (key: string) => {
-    const row = data?.find(r => r[SETTINGS_COL_KEY] === key);
+    // Find ALL matches and take the LAST one (most recent write)
+    const rows = data?.filter(r => r[SETTINGS_COL_KEY] === key);
+    if (!rows || rows.length === 0) return null;
+    const lastRow = rows[rows.length - 1];
     try {
-        return row ? JSON.parse(row[SETTINGS_COL_VALUE]) : null;
+        return lastRow ? JSON.parse(lastRow[SETTINGS_COL_VALUE]) : null;
     } catch { return null; }
   };
   return {
@@ -346,16 +344,9 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
-/**
- * RELIABLE DUAL-WRITE LOGGING
- * Performs high-speed logging directly via SDK and pings Web App for email alerts.
- */
 export async function addInventoryItemToSheet(item: any) {
   try {
-    // 1. PERFORM RELIABLE LOGGING VIA GOOGLE SHEETS SDK (Service Account)
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
-    
-    // Construct row exactly as expected by the sheet architecture
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
       item.barcode, 
@@ -371,15 +362,13 @@ export async function addInventoryItemToSheet(item: any) {
 
     const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
 
-    // 2. TRIGGER EMAIL NOTIFICATIONS VIA GOOGLE APPS SCRIPT WEB APP
-    // Use the API URL provided in .env.local only for notifications
     if (SCRIPT_URL) {
         const payload = {
           barcode: item.barcode,
           quantity: item.quantity,
           expiryDate: item.expiryDate, 
           location: item.location,
-          identity: item.staffName, // Map to script's expected 'identity' field
+          identity: item.staffName,
           productName: item.productName,
           type: item.itemType, 
           disableNotification: item.disableNotification || false,
