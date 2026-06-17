@@ -44,7 +44,7 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-// DYNAMICALLY USE THE ENVIRONMENT VARIABLE FOR THE APPS SCRIPT WEB APP
+// USE THE SPECIFIC ENVIRONMENT VARIABLE FOR EMAIL ALERTS
 const SCRIPT_URL = process.env.GOOGELE_APPSCRIPT_API || "";
 
 function parseFlexibleTimestamp(val: any): Date | null {
@@ -149,6 +149,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data || data.length === 0) return [];
 
+  // VERCEL QUOTA OPTIMIZATION: Keep only 14 days of history
   const retentionThreshold = subDays(new Date(), 14);
   let lastOldRowIndex = -1;
 
@@ -164,18 +165,14 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   if (lastOldRowIndex !== -1 && data.length > 50) {
     const startIndex = 1;
     const endIndex = lastOldRowIndex + 2; 
-    
     if (endIndex > startIndex + 1) {
-        deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex)
-          .then(success => {
-            if (success) console.log(`Maintenance: Purged ${lastOldRowIndex + 1} old logs.`);
-          })
-          .catch(err => console.error("Maintenance: Purge Failed:", err));
+        deleteSheetRowsRange(AUDIT_LOG_SHEET_NAME, startIndex, endIndex).catch(console.error);
     }
   }
 
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
 
+  // Return limited result to save bandwidth
   return recentData.slice(-500).map((r, i) => ({
     id: `a_${i}`,
     timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
@@ -194,7 +191,7 @@ export async function logAuditEvent(user: string, action: string, target: string
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const findJson = (key: string) => {
-    // Find ALL matches and take the LAST one (most recent write)
+    // ALWAYS GET THE LATEST RECORD
     const rows = data?.filter(r => r[SETTINGS_COL_KEY] === key);
     if (!rows || rows.length === 0) return null;
     const lastRow = rows[rows.length - 1];
@@ -222,7 +219,6 @@ export async function savePermissionsToSheet(perms: Permissions) {
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
-  // MAINTENANCE: Keep only the 100 most recent requests to prevent Sheet cell overflow
   const prunedReqs = reqs.slice(0, 100);
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
@@ -258,9 +254,7 @@ export async function getProductDetailsByBarcode(barcode: string): Promise<Produ
   
   if (row) {
     const data = await readSheetData(`${DB_SHEET_NAME}!A${row}:H${row}`);
-    if (data && data[0]) {
-      return transformToProduct(data[0]);
-    }
+    if (data && data[0]) return transformToProduct(data[0]);
   }
   return null;
 }
@@ -269,18 +263,16 @@ export async function addProduct(email: string, p: any) {
   const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
   await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName} (ID: ${uniqueId})`);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName}`);
   return { id: uniqueId, uniqueId, ...p };
 }
 
 export async function deleteProductByBarcode(email: string, barcode: string) {
   let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_UNIQUE_ID) ||
-            await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A) || 
-            await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_B);
-  
+            await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
   if (row) {
     await deleteSheetRow(DB_SHEET_NAME, row);
-    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `Permanently removed from catalog.`);
+    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `Removed from catalog.`);
     return true;
   }
   return false;
@@ -296,61 +288,41 @@ export async function deleteProductsByBarcodes(email: string, identifiers: strin
   sheetData.forEach((row, i) => {
     const rowUniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
-    
-    if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) {
-      rowIndicesToDelete.push(i + 2); 
-    }
+    if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) rowIndicesToDelete.push(i + 2); 
   });
 
   if (rowIndicesToDelete.length === 0) return false;
 
   const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
-  if (success) {
-    await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `Batch removal of ${rowIndicesToDelete.length} SKUs.`);
-  }
+  if (success) await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `Batch removal.`);
   return success;
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {
-  let row: number | null = null;
-  if (uniqueId) {
-    row = await findRowByUniqueValue(DB_SHEET_NAME, uniqueId, DB_COL_UNIQUE_ID);
-  }
-  
-  if (!row) {
-    row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A) || 
-          await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_B);
-  }
+  let row = uniqueId ? await findRowByUniqueValue(DB_SHEET_NAME, uniqueId, DB_COL_UNIQUE_ID) : null;
+  if (!row) row = await findRowByUniqueValue(DB_SHEET_NAME, b, DB_COL_BARCODE_A);
   
   if (row) {
     const costValue = (c === undefined || Number.isNaN(c)) ? '' : c;
-    
     await batchUpdateSheetCells([
       { range: `${DB_SHEET_NAME}!C${row}`, values: [[n]] }, 
       { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, 
       { range: `${DB_SHEET_NAME}!E${row}`, values: [[costValue]] }
     ]);
 
+    // Update denormalized data in main inventory sheet
     const invData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!B2:H`);
     if (invData) {
         const updates: { range: string; values: any[][] }[] = [];
         invData.forEach((row, i) => {
-            const rowBarcode = String(row[0] || '').trim();
-            if (rowBarcode === b) {
+            if (String(row[0] || '').trim() === b) {
                 updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${i+2}`, values: [[n]] });
                 updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${i+2}`, values: [[s]] });
             }
         });
-
-        if (updates.length > 0) {
-            const CHUNK_SIZE = 500;
-            for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-                await batchUpdateSheetCells(updates.slice(i, i + CHUNK_SIZE));
-            }
-        }
+        if (updates.length > 0) await batchUpdateSheetCells(updates);
     }
-
-    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated definition: ${n}`);
+    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated: ${n}`);
     return true;
   }
   return false;
@@ -361,19 +333,14 @@ export async function addInventoryItemToSheet(item: any) {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
-      item.barcode, 
-      item.quantity, 
-      item.expiryDate, 
-      item.location, 
-      item.staffName, 
-      item.productName, 
-      item.supplierName || '', 
-      item.itemType, 
-      item.id
+      item.barcode, item.quantity, item.expiryDate, item.location, item.staffName, 
+      item.productName, item.supplierName || '', item.itemType, item.id
     ];
 
+    // 1. Direct Logging (Reliability)
     const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
 
+    // 2. Apps Script Ping (Email Alerts)
     if (SCRIPT_URL) {
         const payload = {
           barcode: item.barcode,
@@ -391,13 +358,9 @@ export async function addInventoryItemToSheet(item: any) {
         fetch(SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify(payload),
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8',
-          },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           redirect: 'follow'
-        }).catch(err => {
-            console.warn("Apps Script Notification ping failed:", err);
-        });
+        }).catch(err => console.warn("Apps Script Notification ping failed:", err));
     }
 
     return sdkWriteSuccess;
@@ -426,8 +389,7 @@ export async function processReturn(email: string, id: string, q: number | undef
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
   if (!row) throw new Error("Not found.");
   const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
-  const original = data![0];
-  const qty = parseInt(String(original[INV_COL_QTY] || '0'), 10);
+  const qty = parseInt(String(data![0][INV_COL_QTY] || '0'), 10);
   const amt = q === undefined ? qty : q;
   const final = Math.max(0, qty - amt);
   if (final > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[final]]);
