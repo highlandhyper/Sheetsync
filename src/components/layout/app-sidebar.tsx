@@ -11,10 +11,12 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   useSidebar,
+  SidebarMenuBadge,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
+import { useSpecialEntry } from '@/context/special-entry-context';
 import { allNavItems, accountNavItems, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,12 +26,15 @@ export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, loading, role } = useAuth();
   const { isAllowed } = useAccessControl();
+  const { pendingRequests } = useSpecialEntry();
   const { setOpenMobile, isMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const pendingCount = pendingRequests.length;
 
   const navItems = useMemo(() => 
     allNavItems.filter(item => {
@@ -102,6 +107,11 @@ export function AppSidebar({ className }: { className?: string }) {
                   <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">{item.label}</span>
                 </Link>
               </SidebarMenuButton>
+              {item.href === '/approvals' && pendingCount > 0 && (
+                <SidebarMenuBadge className="bg-destructive text-destructive-foreground animate-in zoom-in duration-300 font-black">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </SidebarMenuBadge>
+              )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
