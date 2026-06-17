@@ -92,6 +92,11 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
 
     const suppliers = await getSuppliers(products);
 
+    // SORT SPECIAL REQUESTS: Newest first for Admin visibility
+    const sortedRequests = (meta.specialRequests || []).sort((a, b) => 
+      new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
+    );
+
     const result = {
       inventoryItems: inventoryItems || [],
       products: products || [],
@@ -99,7 +104,7 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
       uniqueLocations: meta.locations || [],
       uniqueStaffNames: meta.staff || [],
       auditLogs: auditLogs || [],
-      specialRequests: meta.specialRequests || [],
+      specialRequests: sortedRequests,
     };
 
     return {
@@ -385,14 +390,14 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
     try {
         const data = Object.fromEntries(formData.entries());
         const oldName = data.currentSupplierName as string;
-        const newName = data.newSupplierName as string;
+        const name = data.newSupplierName as string;
         const userEmail = (data.userEmail as string) || 'Admin';
         
         if (getRoleByEmail(userEmail) !== 'admin') {
             return { success: false, message: "Unauthorized." };
         }
 
-        await dbUpdateSupplierName(userEmail, oldName, newName);
+        await dbUpdateSupplierName(userEmail, oldName, name);
         revalidatePath('/suppliers');
         revalidatePath('/products/list');
         revalidatePath('/inventory');
