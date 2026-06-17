@@ -214,34 +214,41 @@ export async function loadPermissionsFromSheet() { return (await getAppMetaData(
 
 export async function savePermissionsToSheet(perms: Permissions) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === PERMISSIONS_KEY);
-  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(perms)]]);
+  let lastIdx = -1;
+  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === PERMISSIONS_KEY) lastIdx = i; });
+  
+  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(perms)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[PERMISSIONS_KEY, JSON.stringify(perms)]]);
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
-  // MAINTENANCE: Keep only the 100 most recent requests to prevent Sheet cell overflow (JSON strings can get massive)
+  // MAINTENANCE: Keep only the 100 most recent requests to prevent Sheet cell overflow
   const prunedReqs = reqs.slice(0, 100);
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY);
+  let lastIdx = -1;
+  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY) lastIdx = i; });
   
-  if (idx !== undefined && idx !== -1) {
-    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(prunedReqs)]]);
+  if (lastIdx !== -1) {
+    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(prunedReqs)]]);
   }
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(prunedReqs)]]);
 }
 
 export async function saveStaffListToSheet(staff: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === STAFF_LIST_KEY);
-  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(staff)]]);
+  let lastIdx = -1;
+  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === STAFF_LIST_KEY) lastIdx = i; });
+  
+  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(staff)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
 }
 
 export async function saveLocationListToSheet(locations: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY);
-  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(locations)]]);
+  let lastIdx = -1;
+  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY) lastIdx = i; });
+  
+  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(locations)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
 }
 
@@ -377,6 +384,7 @@ export async function addInventoryItemToSheet(item: any) {
           productName: item.productName,
           type: item.itemType, 
           disableNotification: item.disableNotification || false,
+          isSpecial: item.itemType === 'DAMAGE',
           timestamp: item.timestamp || new Date().toISOString()
         };
 
