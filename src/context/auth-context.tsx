@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -36,6 +35,7 @@ const ROLE_CACHE_KEY = 'sheetSync_cached_role';
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<Role | null>(null);
   const router = useRouter();
   const initializedRef = useRef(false);
 
@@ -48,29 +48,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return 'admin';
   }, []);
 
-  const [role, setRole] = useState<Role | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(ROLE_CACHE_KEY) as Role | null;
-    }
-    return null;
-  });
-
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // HYDRATION SAFETY: Defer role loading from localStorage until after mount
+    const cachedRole = typeof window !== 'undefined' ? localStorage.getItem(ROLE_CACHE_KEY) as Role | null : null;
+    if (cachedRole) setRole(cachedRole);
+
     if (!auth) {
       setLoading(false);
       return;
-    }
-
-    // Performance Optimization: Use currentUser if available before the handshake
-    if (auth.currentUser) {
-        setUser(auth.currentUser);
-        const determinedRole = determineRole(auth.currentUser.email);
-        setRole(determinedRole);
-        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-        setLoading(false);
     }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -85,11 +73,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         localStorage.removeItem(ROLE_CACHE_KEY);
       }
       
-      // CRITICAL: Unblock initialization immediately. 
       setLoading(false);
     });
 
-    // FAIL-SAFE: If Firebase is slow, unblock the UI after 3 seconds
     const safetyTimeout = setTimeout(() => {
         setLoading(false);
     }, 3000);
