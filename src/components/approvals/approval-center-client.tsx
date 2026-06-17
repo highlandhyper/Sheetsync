@@ -44,7 +44,6 @@ export function ApprovalCenterClient() {
     const [duration, setDuration] = useState<string>("single");
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // New states for the inline product creation
     const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
     const [productBarcodeForDialog, setProductBarcodeForDialog] = useState('');
 
@@ -53,11 +52,14 @@ export function ApprovalCenterClient() {
         return pendingRequests.filter(r => {
             const matchesStaff = (r.staffName || "").toLowerCase().includes(lower);
             const matchesEmail = (r.userEmail || "").toLowerCase().includes(lower);
-            const matchesProduct = r.editDetails?.productName?.toLowerCase().includes(lower);
-            const matchesSuggested = r.suggestedProductName?.toLowerCase().includes(lower);
-            const matchesReason = r.reason?.toLowerCase().includes(lower);
+            
+            // CRITICAL FIX: Safe access to product properties across different request types
+            const prodName = r.editDetails?.productName || r.suggestedProductName || "";
+            const matchesProduct = prodName.toLowerCase().includes(lower);
+            
+            const matchesReason = (r.reason || "").toLowerCase().includes(lower);
 
-            return matchesStaff || matchesEmail || matchesProduct || matchesSuggested || matchesReason;
+            return matchesStaff || matchesEmail || matchesProduct || matchesReason;
         });
     }, [pendingRequests, searchTerm]);
 
@@ -88,7 +90,6 @@ export function ApprovalCenterClient() {
     const handleProductCreateSuccess = async (p: any) => {
         addProduct(p);
         
-        // If we were processing a request, mark it as approved now
         if (selectedRequest) {
             await approveRequest(selectedRequest.id);
             toast({ title: 'Product Registered', description: `Request for barcode ${p.barcode} has been processed.` });
@@ -180,7 +181,7 @@ export function ApprovalCenterClient() {
             </Card>
 
             <Tabs defaultValue="pending" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-[400px] h-12 bg-muted/50 p-1">
+                <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50 p-1">
                     <TabsTrigger value="pending" className="font-bold uppercase tracking-widest text-[10px] data-[state=active]:bg-background data-[state=active]:text-primary">
                         Active Requests ({pendingRequests.length})
                     </TabsTrigger>

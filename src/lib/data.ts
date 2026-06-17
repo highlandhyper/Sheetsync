@@ -220,10 +220,15 @@ export async function savePermissionsToSheet(perms: Permissions) {
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
+  // MAINTENANCE: Keep only the 100 most recent requests to prevent Sheet cell overflow (JSON strings can get massive)
+  const prunedReqs = reqs.slice(0, 100);
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   const idx = data?.findIndex(r => r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY);
-  if (idx !== undefined && idx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(reqs)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs)]]);
+  
+  if (idx !== undefined && idx !== -1) {
+    return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${idx + 2}`, [[JSON.stringify(prunedReqs)]]);
+  }
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(prunedReqs)]]);
 }
 
 export async function saveStaffListToSheet(staff: string[]) {
