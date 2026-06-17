@@ -19,7 +19,6 @@ import { useAccessControl } from '@/context/access-control-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { allNavItems, accountNavItems, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { useEffect, useState, useMemo } from 'react';
 
 export function AppSidebar({ className }: { className?: string }) {
@@ -69,25 +68,16 @@ export function AppSidebar({ className }: { className?: string }) {
     return "/dashboard";
   }
 
-  // Hydration Safe Logo URL
-  const logoUrl = useMemo(() => {
-    if (!mounted) return '/logo.png';
-    // Use a stable version identifier that only changes on actual client mount
-    return `/logo.png?v=stable`;
-  }, [mounted]);
-
   return (
     <Sidebar collapsible="icon" className={cn(className)}>
-       <div
-        className="relative flex h-16 shrink-0 items-center justify-center px-4 py-2 group-data-[state=collapsed]/sidebar:h-14 group-data-[state=collapsed]/sidebar:p-0"
-      >
+       <div className="relative flex h-16 shrink-0 items-center justify-center px-4 py-2 group-data-[state=collapsed]/sidebar:h-14 group-data-[state=collapsed]/sidebar:p-0">
         <Link
           href={getDefaultHomePage()}
           className="flex items-center gap-2 font-poppins text-2xl font-bold text-primary"
           aria-label="Home"
           onClick={() => setOpenMobile(false)}
         >
-          {mounted && <Image src={logoUrl} alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" priority />}
+          {mounted && <Image src="/logo.png" alt="SheetSync Logo" width={28} height={28} className="h-7 w-7" priority />}
           <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
             SheetSync
           </span>
@@ -146,7 +136,7 @@ export function AppSidebar({ className }: { className?: string }) {
            </SidebarMenu>
            <div className="mt-4 flex items-center gap-3 border-t border-sidebar-border pt-4 group-data-[state=collapsed]/sidebar:flex-col group-data-[state=collapsed]/sidebar:gap-2 group-data-[state=collapsed]/sidebar:border-none group-data-[state=collapsed]/sidebar:p-0 group-data-[state=collapsed]/sidebar:pt-4">
                <Avatar className="h-9 w-9 group-data-[state=collapsed]/sidebar:h-8 group-data-[state=collapsed]/sidebar:w-8">
-                  <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar" />
+                  <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={user.email || "User"} />
                  <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
                </Avatar>
                <div className="flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">

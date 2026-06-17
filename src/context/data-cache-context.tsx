@@ -44,7 +44,7 @@ const DataCacheContext = createContext<DataCacheContextType | undefined>(undefin
 
 /** 
  * OPTIMIZATION: Increased sync interval to 3 minutes (180,000ms) 
- * to reduce Vercel Fast Origin Transfer usage.
+ * to significantly reduce Vercel Fast Origin Transfer usage.
  */
 const SYNC_INTERVAL_MS = 180000; 
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
@@ -76,7 +76,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   
-  // CRITICAL: isCacheReady is true if IndexedDB load is done, NOT waiting for network
   const isCacheReady = isInitialized;
 
   useEffect(() => {
@@ -85,24 +84,19 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
     async function bootstrap() {
       if (typeof window === 'undefined') return;
-
       setIsOnline(navigator.onLine);
-
-      // 1. Load tiny meta from localStorage
       let metaData = initialEmptyData;
       try {
         const saved = localStorage.getItem(DATA_CACHE_KEY);
         if (saved) metaData = JSON.parse(saved);
       } catch (e) {}
 
-      // 2. Load large data from IndexedDB
       try {
         const [inventory, logs, products] = await Promise.all([
           getInventory(),
           getAuditLogs(),
           getProducts()
         ]);
-
         setData({
           ...metaData,
           inventoryItems: inventory || [],
@@ -110,36 +104,27 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           products: products || []
         });
       } catch (e) {
-        console.error('DataCache: IndexedDB load failed', e);
         setData(metaData);
       }
-
-      // 3. Load offline queue
       const savedOffline = localStorage.getItem(OFFLINE_KEY);
       if (savedOffline) {
           try { setPendingActions(JSON.parse(savedOffline)); } catch (e) { localStorage.removeItem(OFFLINE_KEY); }
       }
-
       setIsInitialized(true);
       isDbLoadingRef.current = false;
     }
-
     bootstrap();
   }, []);
 
   useEffect(() => {
     if (!isInitialized) return;
-
-    // Debounced persistence to IndexedDB
     const timeout = setTimeout(() => {
       saveInventory(data.inventoryItems);
       saveAuditLogs(data.auditLogs);
       saveProducts(data.products);
-      
       const { inventoryItems, auditLogs, products, ...metaOnly } = data;
       localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
     }, 1500);
-
     return () => clearTimeout(timeout);
   }, [data, isInitialized]);
 
@@ -150,24 +135,17 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [pendingActions, isInitialized]);
 
   const fetchDataAndCache = useCallback(async () => {
-    // Only fetch if online, authorized, and not already fetching
     if (isFetchingRef.current || !navigator.onLine || !user) return;
-    
     isFetchingRef.current = true;
     setIsSyncing(true);
-
     const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 35000);
-
     try {
       const response = await fetchAllDataAction();
       if (response.success && response.data) {
-        setData(prev => ({ 
-          ...response.data!, 
-          lastSync: Date.now() 
-        }));
+        setData(prev => ({ ...response.data!, lastSync: Date.now() }));
       }
     } catch (e) {
-      console.warn("Data Sync: Global fetch background retry pending.", e);
+      console.warn("Data Sync Background Error:", e);
     } finally {
       clearTimeout(safetyTimeout);
       setIsSyncing(false);
@@ -177,16 +155,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
-    
     processingQueueRef.current = true;
     setIsQueueProcessing(true);
-    
     const actionsToProcess = [...pendingActions];
     const successfullySyncedIds: string[] = [];
 
     for (const action of actionsToProcess) {
         if (!navigator.onLine) break;
-
         try {
             let success = false;
             if (action.type === 'LOG_INVENTORY') {
@@ -201,20 +176,17 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 const res = await returnInventoryItemAction(userEmail, itemId, returnedQty, staffName);
                 if (res.success) success = true;
             }
-
             if (success) successfullySyncedIds.push(action.id);
         } catch (e) {
-            console.error(`Sync: Action ${action.id} failed.`, e);
             break; 
         }
     }
 
     if (successfullySyncedIds.length > 0) {
         setPendingActions(prev => prev.filter(a => !successfullySyncedIds.includes(a.id)));
-        toast({ title: "Queue Synced", description: `Successfully pushed ${successfullySyncedIds.length} offline records.` });
+        toast({ title: "Queue Synced", description: `${successfullySyncedIds.length} records pushed.` });
         fetchDataAndCache();
     }
-
     setIsQueueProcessing(false);
     processingQueueRef.current = false;
   }, [pendingActions, toast, fetchDataAndCache]);
@@ -223,11 +195,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     const handleOnline = () => { setIsOnline(true); processSyncQueue(); };
     const handleOffline = () => setIsOnline(false);
     const handleFocus = () => { if (user && !isFetchingRef.current) fetchDataAndCache(); };
-    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('focus', handleFocus);
-    
     return () => { 
         window.removeEventListener('online', handleOnline); 
         window.removeEventListener('offline', handleOffline); 
@@ -237,10 +207,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!user || !isInitialized) return;
-    
-    // Initial silent background fetch
     fetchDataAndCache();
-    
     const interval = setInterval(fetchDataAndCache, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [user, isInitialized, fetchDataAndCache]);
