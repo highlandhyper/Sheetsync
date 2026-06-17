@@ -114,6 +114,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       type,
       durationMinutes: type === 'timed' ? 5 : undefined,
       requestedAt: new Date().toISOString(),
+      isDismissedByAdmin: false,
+      isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
@@ -127,6 +129,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       status: 'pending',
       type: 'inventory_edit',
       requestedAt: new Date().toISOString(),
+      isDismissedByAdmin: false,
+      isReadByUser: false,
       originalDetails: {
         location: item.location,
         itemType: item.itemType,
@@ -168,6 +172,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       expiresAt: expiresAt,
       grantedByAdmin: true,
       otp: otp,
+      isDismissedByAdmin: true,
+      isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
   }, [user, specialRequests, updateSpecialRequests]);
@@ -187,15 +193,15 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         type: r.type === 'inventory_edit' || r.type === 'product_add' ? r.type : (isTimed ? 'timed' : 'single'), 
         expiresAt: expiresAt,
         otp: otp,
+        isDismissedByAdmin: true,
       };
     });
     
-    // OPTIMISTIC UPDATE: Local state first
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 
   const rejectRequest = useCallback(async (id: string) => {
-    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString() } : r);
+    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);
     await updateSpecialRequests(updated);
   }, [specialRequests, updateSpecialRequests]);
 
