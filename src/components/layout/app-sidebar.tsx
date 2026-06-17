@@ -100,7 +100,12 @@ export function AppSidebar({ className }: { className?: string }) {
               <SidebarMenuButton
                 asChild
                 isActive={isNavItemActive(item, pathname)}
-                tooltip={{ children: item.label, className: "group-data-[state=expanded]/sidebar:hidden" }}
+                tooltip={{ 
+                  children: item.href === '/approvals' && pendingCount > 0 
+                    ? `${item.label} (${pendingCount} pending)` 
+                    : item.label, 
+                  className: "group-data-[state=expanded]/sidebar:hidden" 
+                }}
               >
                 <Link href={item.href} onClick={() => setOpenMobile(false)}>
                   <item.icon />
@@ -108,7 +113,12 @@ export function AppSidebar({ className }: { className?: string }) {
                 </Link>
               </SidebarMenuButton>
               {item.href === '/approvals' && pendingCount > 0 && (
-                <SidebarMenuBadge className="bg-destructive text-destructive-foreground animate-in zoom-in duration-300 font-black">
+                <SidebarMenuBadge 
+                  className={cn(
+                    "bg-destructive text-destructive-foreground animate-in zoom-in duration-300 font-black",
+                    "group-data-[state=collapsed]/sidebar:flex group-data-[state=collapsed]/sidebar:right-1 group-data-[state=collapsed]/sidebar:top-1 group-data-[state=collapsed]/sidebar:h-4 group-data-[state=collapsed]/sidebar:min-w-4 group-data-[state=collapsed]/sidebar:p-0 group-data-[state=collapsed]/sidebar:text-[8px] group-data-[state=collapsed]/sidebar:rounded-full"
+                  )}
+                >
                   {pendingCount > 9 ? '9+' : pendingCount}
                 </SidebarMenuBadge>
               )}
