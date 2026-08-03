@@ -75,7 +75,7 @@ function sanitizeForJSON(val: any) {
 export async function fetchAllDataAction(skipProducts: boolean = false): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
   products?: Product[];
-  suppliers: Supplier[];
+  suppliers?: Supplier[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
@@ -100,8 +100,9 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       products
     ] = await Promise.all(promises);
 
+    // Only calculate suppliers if we are doing a full sync
     const activeProducts = skipProducts ? [] : (products || []);
-    const suppliers = await getSuppliers(activeProducts);
+    const calculatedSuppliers = skipProducts ? undefined : await getSuppliers(activeProducts);
 
     const sortedRequests = (meta.specialRequests || []).sort((a, b) => 
       new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
@@ -110,7 +111,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     const result = {
       inventoryItems: inventoryItems || [],
       ...(skipProducts ? {} : { products: activeProducts }),
-      suppliers: suppliers || [],
+      ...(calculatedSuppliers ? { suppliers: calculatedSuppliers } : {}),
       uniqueLocations: meta.locations || [],
       uniqueStaffNames: meta.staff || [],
       auditLogs: auditLogs || [],
