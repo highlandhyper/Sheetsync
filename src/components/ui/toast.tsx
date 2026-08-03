@@ -71,7 +71,7 @@ const Toast = React.forwardRef<
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
-      {/* Status Bar */}
+      {/* Status Bar Accent */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-all duration-500",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
@@ -120,15 +120,14 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { variant?: 'default' | 'destructive' }
 >(({ className, variant, ...props }, ref) => {
-  // Extract text from children to determine icon
   const { children, ...cleanProps } = props as any;
   
   let Icon = Info;
   if (variant === 'destructive') {
     Icon = AlertCircle;
   } else {
-    const text = String(children).toLowerCase();
-    if (text.includes('success') || text.includes('saved') || text.includes('registered') || text.includes('applied') || text.includes('complete')) {
+    const text = String(children || '').toLowerCase();
+    if (text.includes('success') || text.includes('saved') || text.includes('registered') || text.includes('applied') || text.includes('complete') || text.includes('logged')) {
       Icon = CheckCircle2;
     } else if (text.includes('sync') || text.includes('processing')) {
       Icon = RefreshCw;
