@@ -153,10 +153,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         if (!shouldSkipProducts) {
             lastProductSyncRef.current = now;
         }
+        
         setData(prev => ({ 
             ...prev, 
             ...response.data!, 
+            // INTEL MERGE: Keep old lists if the response skips them to save bandwidth
             products: response.data!.products || prev.products,
+            suppliers: response.data!.suppliers || prev.suppliers,
             lastSync: now 
         }));
       }
@@ -167,7 +170,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [user, data.products.length]);
+  }, [user, data.products.length, data.suppliers.length]);
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
