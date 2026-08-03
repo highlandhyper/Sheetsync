@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Send, Hash, User } from 'lucide-react';
+import { Loader2, Send, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,7 +34,6 @@ interface ReturnQuantityDialogProps {
 
 const returnSchema = z.object({
   quantityToReturn: z.coerce.number().int().min(1, "Quantity must be at least 1."),
-  staffName: z.string().min(1, "Your name is required."),
 });
 type ReturnFormValues = z.infer<typeof returnSchema>;
 
@@ -54,13 +53,12 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     resolver: zodResolver(returnSchema),
     defaultValues: {
       quantityToReturn: item?.quantity,
-      staffName: '',
     },
   });
 
   useEffect(() => {
     if (item) {
-      reset({ quantityToReturn: item.quantity, staffName: '' });
+      reset({ quantityToReturn: item.quantity });
     }
   }, [item, reset, isOpen]);
 
@@ -95,8 +93,8 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     onReturnSuccess(item.id, returnedQty);
     toast({ title: 'Success', description: "Processing return in background..." });
 
-    // BACKGROUND SYNC
-    returnInventoryItemAction(user.email, item.id, returnedQty, data.staffName).then(response => {
+    // BACKGROUND SYNC - Using "System" as staffName since field was removed
+    returnInventoryItemAction(user.email, item.id, returnedQty, "System User").then(response => {
         setIsSubmitting(false);
         if (!response.success) {
             toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Failed to process return on sheet.' });
@@ -137,21 +135,6 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
               </div>
               {errors.quantityToReturn && (
                 <p className="text-[10px] text-destructive font-medium">{errors.quantityToReturn.message}</p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="staffName" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
-               <div className="relative">
-                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="staffName"
-                  placeholder="Enter name"
-                  {...register('staffName')}
-                  className={cn('pl-9 h-9 text-sm', errors.staffName && 'border-destructive')}
-                />
-              </div>
-              {errors.staffName && (
-                <p className="text-[10px] text-destructive font-medium">{errors.staffName.message}</p>
               )}
             </div>
           <DialogFooter className="pt-2 grid grid-cols-2 gap-2">

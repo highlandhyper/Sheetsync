@@ -35,7 +35,6 @@ interface BulkReturnDialogProps {
 const returnSchema = z.object({
   returnType: z.enum(['all', 'specific']),
   quantity: z.coerce.number().int().optional(),
-  staffName: z.string().min(1, "Name is required."),
 }).refine(data => {
     if (data.returnType === 'specific' && (data.quantity === undefined || data.quantity < 1)) {
         return false;
@@ -64,7 +63,6 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     resolver: zodResolver(returnSchema),
     defaultValues: {
       returnType: 'all',
-      staffName: '',
     },
   });
 
@@ -105,8 +103,8 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     onSuccess();
     toast({ title: 'Success', description: "Processing bulk returns in background..." });
 
-    // BACKGROUND SYNC
-    bulkReturnInventoryItemsAction(user.email, itemIds, data.staffName, data.returnType, data.quantity).then(response => {
+    // BACKGROUND SYNC - Using "System" as staffName
+    bulkReturnInventoryItemsAction(user.email, itemIds, "System User", data.returnType, data.quantity).then(response => {
         setIsSubmitting(false);
         if (!response.success) {
             toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Bulk return failed.' });
@@ -176,17 +174,6 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
               {errors.quantity && <p className="text-[10px] text-destructive font-medium">{errors.quantity.message}</p>}
             </div>
           )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="staffName" className="text-xs font-bold uppercase text-muted-foreground">Your Name</Label>
-            <Input
-              id="staffName"
-              placeholder="Full name"
-              {...register('staffName')}
-              className={cn('h-9 text-sm', errors.staffName && 'border-destructive')}
-            />
-            {errors.staffName && <p className="text-[10px] text-destructive font-medium">{errors.staffName.message}</p>}
-          </div>
 
           <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
             <DialogClose asChild>
