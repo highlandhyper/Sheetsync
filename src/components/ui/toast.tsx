@@ -39,16 +39,16 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 /**
- * macOS VENTURA/SONOMA STYLE TOAST
+ * CLEAN macOS VENTURA/SONOMA STYLE TOAST
  */
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border border-white/20 bg-white/80 dark:bg-zinc-900/80 p-4 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border border-white/20 bg-white/70 dark:bg-zinc-900/70 p-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] dark:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
         default: "text-foreground",
         destructive:
-          "destructive border-destructive/20 bg-destructive/10 text-destructive-foreground dark:bg-destructive/20",
+          "destructive border-destructive/10 bg-destructive/5 text-destructive-foreground dark:bg-destructive/10",
       },
     },
     defaultVariants: {
@@ -68,7 +68,6 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
-      <div className="absolute inset-y-0 left-0 w-1 bg-primary/40 group-[.destructive]:bg-destructive" />
       {props.children}
     </ToastPrimitives.Root>
   )
@@ -147,8 +146,8 @@ const ToastTitle = React.forwardRef<
       {...cleanProps}
     >
       <div className={cn(
-        "p-1.5 rounded-xl shadow-sm border shrink-0 bg-white/50 dark:bg-black/20",
-        variant === 'destructive' ? "text-destructive border-destructive/20" : "text-primary border-primary/20"
+        "p-1.5 rounded-xl shadow-sm border shrink-0 bg-white/40 dark:bg-black/40",
+        variant === 'destructive' ? "text-destructive border-destructive/10" : "text-primary border-primary/10"
       )}>
         <Icon className={cn("h-4 w-4", Icon === RefreshCw && "animate-spin")} />
       </div>

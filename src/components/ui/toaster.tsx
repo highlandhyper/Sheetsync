@@ -16,7 +16,7 @@ export function Toaster() {
   return (
     <ToastProvider swipeDirection="right">
       <ToastViewport />
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         {toasts.map(function ({ id, title, description, action, onOpenChange, ...props }) {
           return (
             <Toast key={id} onOpenChange={onOpenChange} {...props} duration={4000}>
