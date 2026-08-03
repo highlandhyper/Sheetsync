@@ -65,13 +65,13 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
-      {/* Visual Accent Layer */}
+      {/* Visual Accent Layer - Subtle Glow */}
       <div className={cn(
-        "absolute -left-4 -top-4 h-24 w-24 blur-2xl opacity-30 pointer-events-none transition-colors",
+        "absolute -left-4 -top-4 h-24 w-24 blur-2xl opacity-20 pointer-events-none transition-colors",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
-      {/* Status Bar Accent */}
+      {/* Status Bar Accent - Left Edge */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-all duration-500",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
