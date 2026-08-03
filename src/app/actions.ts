@@ -68,9 +68,13 @@ function sanitizeForJSON(val: any) {
     return val;
 }
 
-export async function fetchAllDataAction(): Promise<ActionResponse<{
+/**
+ * SMART FETCH ACTION: Optimized to prevent Vercel Quota Overages
+ * Accepts a 'skipProducts' flag to avoid transferring 54k rows on every sync.
+ */
+export async function fetchAllDataAction(skipProducts: boolean = false): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
-  products: Product[];
+  products?: Product[];
   suppliers: Supplier[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
@@ -78,28 +82,34 @@ export async function fetchAllDataAction(): Promise<ActionResponse<{
   specialRequests: SpecialEntryRequest[];
 }>> {
   try {
-    const [
-      inventoryItems,
-      products,
-      auditLogs,
-      meta
-    ] = await Promise.all([
+    const promises: any[] = [
       getInventoryItems(),
-      getProducts(),
       getAuditLogs(), 
       getAppMetaData()
-    ]);
+    ];
 
-    const suppliers = await getSuppliers(products);
+    // QUOTA SHIELD: Only fetch 5.4MB product list if explicitly requested
+    if (!skipProducts) {
+        promises.push(getProducts());
+    }
 
-    // SORT SPECIAL REQUESTS: Newest first for Admin visibility
+    const [
+      inventoryItems,
+      auditLogs,
+      meta,
+      products
+    ] = await Promise.all(promises);
+
+    const activeProducts = skipProducts ? [] : (products || []);
+    const suppliers = await getSuppliers(activeProducts);
+
     const sortedRequests = (meta.specialRequests || []).sort((a, b) => 
       new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
     );
 
     const result = {
       inventoryItems: inventoryItems || [],
-      products: products || [],
+      ...(skipProducts ? {} : { products: activeProducts }),
       suppliers: suppliers || [],
       uniqueLocations: meta.locations || [],
       uniqueStaffNames: meta.staff || [],
@@ -407,9 +417,9 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
     }
 }
 
-export async function returnInventoryItemAction(e: string, i: string, q: number, s: string) { 
+export async function returnInventoryItemAction(e: string, id: string, q: number | undefined, staff: string) { 
     try {
-        await dbProcessReturn(e, i, q, s);
+        await dbProcessReturn(e, id, q, staff);
         revalidatePath('/inventory');
         revalidatePath('/dashboard');
         return { success: true }; 
@@ -442,11 +452,11 @@ export async function bulkDeleteInventoryItemsAction(e: string, ids: string[]) {
     }
 }
 
-export async function bulkReturnInventoryItemsAction(e: string, ids: string[], s: string, t: string, q?: number) { 
+export async function bulkReturnInventoryItemsAction(e: string, ids: string[], staffName: string, t: string, q?: number) { 
     try {
         for (const id of ids) {
             const qty = t === 'all' ? undefined : q;
-            await dbProcessReturn(e, id, qty, s);
+            await dbProcessReturn(e, id, qty, staffName);
         }
         revalidatePath('/inventory');
         revalidatePath('/dashboard');

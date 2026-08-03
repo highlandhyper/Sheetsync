@@ -121,9 +121,10 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
   if (!data) return [];
+  // QUOTA FIX: Filter invalid/empty rows early to keep payload slim
   return data.reduce((acc: Product[], row) => {
     const p = transformToProduct(row);
-    if (p) acc.push(p);
+    if (p && p.barcode) acc.push(p);
     return acc;
   }, []);
 }
@@ -162,7 +163,8 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     }
   }
 
-  if (lastOldRowIndex !== -1 && data.length > 50) {
+  // Self-cleaning sheet: prune logs if they grow too large
+  if (lastOldRowIndex !== -1 && data.length > 300) {
     const startIndex = 1;
     const endIndex = lastOldRowIndex + 2; 
     if (endIndex > startIndex + 1) {
@@ -172,8 +174,8 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
 
   const recentData = lastOldRowIndex === -1 ? data : data.slice(lastOldRowIndex + 1);
 
-  // Return limited result to save bandwidth
-  return recentData.slice(-500).map((r, i) => ({
+  // Return limited result (last 300) to keep Origin Transfer low
+  return recentData.slice(-300).map((r, i) => ({
     id: `a_${i}`,
     timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
     user: String(r[AUDIT_COL_USER] || 'Unknown'),
@@ -394,7 +396,7 @@ export async function processReturn(email: string, id: string, q: number | undef
   const final = Math.max(0, qty - amt);
   if (final > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[final]]);
   else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amt} units.`);
+  await logAuditEvent(email, 'RETURN_INVENTORY', id, `Returned ${amt} units. Processed by: ${staff}`);
   return { success: true };
 }
 

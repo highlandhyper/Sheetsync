@@ -93,12 +93,14 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     onReturnSuccess(item.id, returnedQty);
     toast({ title: 'Success', description: "Processing return in background..." });
 
-    // BACKGROUND SYNC - Using "System" as staffName since field was removed
-    returnInventoryItemAction(user.email, item.id, returnedQty, "System User").then(response => {
+    // SYSTEM ATTRIBUTION: Uses the logged-in Admin's identity
+    const processingStaff = user.email.split('@')[0].toUpperCase();
+
+    return returnInventoryItemAction(user.email, item.id, returnedQty, processingStaff).then(response => {
         setIsSubmitting(false);
         if (!response.success) {
             toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Failed to process return on sheet.' });
-            refreshData(); // Revert
+            refreshData(); 
         }
     }).catch(() => {
         setIsSubmitting(false);
@@ -108,16 +110,19 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[360px]">
+      <DialogContent className="sm:max-w-[360px] rounded-3xl overflow-hidden border-none shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-lg">Return: {item.productName}</DialogTitle>
-          <DialogDescription className="text-xs">
-            Available stock: {item.quantity} units.
+          <DialogTitle className="text-lg font-black uppercase tracking-tight text-primary">Return Stock</DialogTitle>
+          <DialogDescription className="text-xs font-medium">
+            Returning <strong>{item.productName}</strong> to supplier or storage.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="quantityToReturn" className="text-xs font-bold uppercase text-muted-foreground">Quantity to Return</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                  <Label htmlFor="quantityToReturn" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Quantity to Return</Label>
+                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Available: {item.quantity}</span>
+              </div>
                <div className="relative">
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -130,22 +135,22 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
                         e.preventDefault();
                     }
                   }}
-                  className={cn('pl-9 h-9 text-sm', errors.quantityToReturn && 'border-destructive')}
+                  className={cn('pl-9 h-12 text-lg font-black bg-muted/20 border-none', errors.quantityToReturn && 'ring-2 ring-destructive')}
                 />
               </div>
               {errors.quantityToReturn && (
-                <p className="text-[10px] text-destructive font-medium">{errors.quantityToReturn.message}</p>
+                <p className="text-[10px] text-destructive font-bold uppercase">{errors.quantityToReturn.message}</p>
               )}
             </div>
-          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-3">
             <DialogClose asChild>
-              <Button type="button" variant="outline" size="sm" onClick={() => reset()}>
+              <Button type="button" variant="outline" className="h-12 font-bold rounded-xl" onClick={() => reset()}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
-              Process
+            <Button type="submit" className="h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Confirm
             </Button>
           </DialogFooter>
         </form>

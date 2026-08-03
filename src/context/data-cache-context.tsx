@@ -42,11 +42,12 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-/** 
- * OPTIMIZATION: Increased sync interval to 3 minutes (180,000ms) 
- * to significantly reduce Vercel Fast Origin Transfer usage.
- */
+// QUOTA OPTIMIZATION:
+// Sync logs/inventory every 3 minutes.
+// Sync the massive 54k product catalog only every 15 minutes.
 const SYNC_INTERVAL_MS = 180000; 
+const PRODUCT_SYNC_INTERVAL_MS = 900000; 
+
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
 const OFFLINE_KEY = 'sheetSync_offlineActions_v3';
 
@@ -75,6 +76,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const isFetchingRef = useRef(false);
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
+  const lastProductSyncRef = useRef<number>(0);
   
   const isCacheReady = isInitialized;
 
@@ -134,15 +136,29 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     }
   }, [pendingActions, isInitialized]);
 
-  const fetchDataAndCache = useCallback(async () => {
+  const fetchDataAndCache = useCallback(async (forceProducts: boolean = false) => {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
+    
+    // SMART SYNC: Only fetch 54k products every 15 minutes to save Vercel Origin Transfer quota
+    const now = Date.now();
+    const shouldSkipProducts = !forceProducts && (now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS) && data.products.length > 0;
+    
     isFetchingRef.current = true;
     setIsSyncing(true);
     const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 35000);
+
     try {
-      const response = await fetchAllDataAction();
+      const response = await fetchAllDataAction(shouldSkipProducts);
       if (response.success && response.data) {
-        setData(prev => ({ ...response.data!, lastSync: Date.now() }));
+        if (!shouldSkipProducts) {
+            lastProductSyncRef.current = now;
+        }
+        setData(prev => ({ 
+            ...prev, 
+            ...response.data!, 
+            products: response.data!.products || prev.products,
+            lastSync: now 
+        }));
       }
     } catch (e) {
       console.warn("Data Sync Background Error:", e);
@@ -151,7 +167,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [user]);
+  }, [user, data.products.length]);
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
@@ -217,7 +233,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         toast({ title: "No Connection", description: "Refresh unavailable while offline.", variant: "destructive" });
         return;
     }
-    await fetchDataAndCache();
+    await fetchDataAndCache(true); // Force product refresh
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
