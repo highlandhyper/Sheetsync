@@ -145,7 +145,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     
     isFetchingRef.current = true;
     setIsSyncing(true);
-    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 35000);
+    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 45000);
 
     try {
       const response = await fetchAllDataAction(shouldSkipProducts);
@@ -157,9 +157,14 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         setData(prev => ({ 
             ...prev, 
             ...response.data!, 
-            // INTEL MERGE: Keep old lists if the response skips them to save bandwidth
-            products: response.data!.products || prev.products,
-            suppliers: response.data!.suppliers || prev.suppliers,
+            // INTEL MERGE: Only overwrite lists if the response actually contains them.
+            // This prevents background syncs from wiping out suppliers/products.
+            products: response.data!.products && response.data!.products.length > 0 
+                ? response.data!.products 
+                : prev.products,
+            suppliers: response.data!.suppliers && response.data!.suppliers.length > 0 
+                ? response.data!.suppliers 
+                : prev.suppliers,
             lastSync: now 
         }));
       }

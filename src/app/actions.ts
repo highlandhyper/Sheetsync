@@ -100,8 +100,8 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       products
     ] = await Promise.all(promises);
 
-    // Only calculate suppliers if we are doing a full sync
-    const activeProducts = skipProducts ? [] : (products || []);
+    // Only calculate suppliers if we are doing a full sync to ensure data consistency
+    const activeProducts = skipProducts ? undefined : (products || []);
     const calculatedSuppliers = skipProducts ? undefined : await getSuppliers(activeProducts);
 
     const sortedRequests = (meta.specialRequests || []).sort((a, b) => 
