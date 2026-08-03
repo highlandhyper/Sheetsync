@@ -101,10 +101,12 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
 
     onOpenChange(false);
     onSuccess();
-    toast({ title: 'Success', description: "Processing bulk returns in background..." });
+    toast({ title: 'Bulk Update Applied', description: "Processing returns on the sheet in background..." });
 
-    // BACKGROUND SYNC - Using "System" as staffName
-    bulkReturnInventoryItemsAction(user.email, itemIds, "System User", data.returnType, data.quantity).then(response => {
+    const processingStaff = user.email.split('@')[0].toUpperCase();
+
+    // BACKGROUND SYNC
+    bulkReturnInventoryItemsAction(user.email, itemIds, processingStaff, data.returnType, data.quantity).then(response => {
         setIsSubmitting(false);
         if (!response.success) {
             toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Bulk return failed.' });
@@ -118,49 +120,49 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[360px]">
+      <DialogContent className="sm:max-w-[400px] rounded-3xl overflow-hidden border-none shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-lg">Bulk Return ({itemCount})</DialogTitle>
-          <DialogDescription className="text-xs">
-            Process returns for all selected items.
+          <DialogTitle className="text-xl font-black uppercase tracking-tight text-primary">Bulk Return</DialogTitle>
+          <DialogDescription className="text-xs font-medium">
+            Processing return for <span className="text-primary font-bold">{itemCount} selected log entries</span>.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
           <RadioGroup
             value={returnType}
             onValueChange={(value: 'all' | 'specific') => setReturnType(value)}
-            className="grid grid-cols-2 gap-2"
+            className="grid grid-cols-2 gap-3"
           >
             <div>
-                <RadioGroupItem value="all" id="returnAll" className="peer sr-only" />
+                <RadioGroupItem value="all" id="bulkReturnAll" className="peer sr-only" />
                 <Label
-                    htmlFor="returnAll"
-                    className="flex flex-col items-center justify-center rounded-md border border-muted bg-popover p-2 text-[10px] font-bold uppercase hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    htmlFor="bulkReturnAll"
+                    className="flex flex-col items-center justify-center rounded-2xl border-2 border-muted bg-popover p-4 text-[10px] font-black uppercase tracking-widest hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
                 >
-                    <Package className="mb-1 h-4 w-4" />
-                    All Stock
+                    <Package className="mb-2 h-6 w-6 text-primary" />
+                    All Units
                 </Label>
             </div>
 
              <div>
-                <RadioGroupItem value="specific" id="returnSpecific" className="peer sr-only" />
+                <RadioGroupItem value="specific" id="bulkReturnSpecific" className="peer sr-only" />
                 <Label
-                     htmlFor="returnSpecific"
-                    className="flex flex-col items-center justify-center rounded-md border border-muted bg-popover p-2 text-[10px] font-bold uppercase hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                     htmlFor="bulkReturnSpecific"
+                    className="flex flex-col items-center justify-center rounded-2xl border-2 border-muted bg-popover p-4 text-[10px] font-black uppercase tracking-widest hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
                 >
-                    <Hash className="mb-1 h-4 w-4" />
-                    Quantity
+                    <Hash className="mb-2 h-6 w-6 text-primary" />
+                    Set Qty
                 </Label>
             </div>
           </RadioGroup>
           <input type="hidden" {...register('returnType')} value={returnType} />
 
           {returnType === 'specific' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="quantity" className="text-xs font-bold uppercase text-muted-foreground">Qty per Item</Label>
+            <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+              <Label htmlFor="bulkQty" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Quantity per Item</Label>
               <Input
-                id="quantity"
+                id="bulkQty"
                 type="number"
                 min="1"
                 {...register('quantity', { valueAsNumber: true })}
@@ -169,21 +171,21 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
                         e.preventDefault();
                     }
                 }}
-                className={cn('h-9 text-sm', errors.quantity && 'border-destructive')}
+                className={cn('h-12 font-black text-lg bg-muted/20 border-none', errors.quantity && 'ring-2 ring-destructive')}
               />
-              {errors.quantity && <p className="text-[10px] text-destructive font-medium">{errors.quantity.message}</p>}
+              {errors.quantity && <p className="text-[10px] text-destructive font-bold uppercase">{errors.quantity.message}</p>}
             </div>
           )}
 
-          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-3">
             <DialogClose asChild>
-              <Button type="button" variant="outline" size="sm" disabled={isSubmitting}>
+              <Button type="button" variant="outline" className="h-12 font-bold rounded-xl" disabled={isSubmitting}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" size="sm" disabled={isSubmitting}>
+            <Button type="submit" className="h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
-              Process
+              Process Bulk
             </Button>
           </DialogFooter>
         </form>
