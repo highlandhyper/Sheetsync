@@ -65,11 +65,13 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
+      {/* Visual Accent Layer */}
       <div className={cn(
         "absolute -left-4 -top-4 h-24 w-24 blur-2xl opacity-30 pointer-events-none transition-colors",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
       )} />
       
+      {/* Status Bar */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-all duration-500",
         variant === 'destructive' ? "bg-destructive" : "bg-primary"
@@ -118,6 +120,7 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { variant?: 'default' | 'destructive' }
 >(({ className, variant, ...props }, ref) => {
+  // Extract text from children to determine icon
   const { children, ...cleanProps } = props as any;
   
   let Icon = Info;
