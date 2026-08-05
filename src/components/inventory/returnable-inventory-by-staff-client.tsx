@@ -433,7 +433,7 @@ export function ReturnableInventoryByStaffClient() {
       ) : itemsToRender.length > 0 ? (
         <>
             <Card className="shadow-md hidden md:block">
-            <Table><TableHeader>
+            <Table><TableHeader className="bg-muted/50">
                 <TableRow>
                 {isMultiSelectEnabled && canReturn && (
                   <TableHead className="w-12 text-center noprint">

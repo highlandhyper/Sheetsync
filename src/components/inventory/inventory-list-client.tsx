@@ -389,7 +389,7 @@ export function InventoryListClient() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input type="search" placeholder="Search records..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full" />
             </div>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
               <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -474,9 +474,9 @@ export function InventoryListClient() {
                 </PopoverContent>
               </Popover>
 
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                  {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4" /> Clear</Button>
+                    <Button variant="ghost" onClick={clearFilters} className="flex-grow sm:flex-grow-0"><FilterX className="mr-2 h-4 w-4" /> Clear</Button>
                   )}
                    <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -487,7 +487,7 @@ export function InventoryListClient() {
                         <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>Landscape</DropdownMenuItem>
                       </DropdownMenuContent>
                    </DropdownMenu>
-                   <Button onClick={() => window.print()} variant="outline" size="sm" disabled={groupedItems.length === 0}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+                   <Button onClick={() => window.print()} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><Printer className="mr-2 h-4 w-4" /> Print</Button>
               </div>
             </div>
           </div>
@@ -554,7 +554,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">

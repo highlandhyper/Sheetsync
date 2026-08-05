@@ -639,7 +639,7 @@ function ProactiveGrantDialog({
                                 onClick={() => setSelectedDuration('custom')}
                                 className="h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
                             >
-                                <Plus className={cn("h-5 w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'custom' ? "opacity-100" : "opacity-30")} />
+                                <Plus className={cn("h-5 w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'custom' ? "opacity-100" : "opacity-030")} />
                                 <span className="text-[10px] uppercase tracking-widest">Custom Time</span>
                             </Button>
                         </div>
@@ -812,11 +812,11 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
                 <div className="flex flex-col">
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-1">
+                    <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-2">
                         Mission Control
                     </h1>
                     <div className="flex items-center gap-3">
