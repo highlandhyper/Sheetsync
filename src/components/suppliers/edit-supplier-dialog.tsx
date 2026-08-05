@@ -26,7 +26,7 @@ import { useDataCache } from '@/context/data-cache-context';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+    <Button type="submit" disabled={isPending} className="w-full sm:w-auto font-bold">
       {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
       Save Changes
     </Button>
@@ -41,7 +41,7 @@ interface EditSupplierDialogProps {
 
 export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSupplierDialogProps) {
   const { toast } = useToast();
-  const { updateSupplier: updateSupplierInCache, refreshData } = useDataCache();
+  const { refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
 
   const {
@@ -59,7 +59,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
   });
   
   useEffect(() => {
-    if (supplier) {
+    if (supplier && isOpen) {
       reset({
         supplierId: supplier.id,
         currentSupplierName: supplier.name,
@@ -70,30 +70,39 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
 
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!isDirty) {
-        toast({ title: 'No Changes', description: 'The supplier name has not been changed.' });
         onOpenChange(false);
         return;
     }
+    
     const formData = new FormData();
     formData.append('supplierId', supplier?.id || data.supplierId);
     formData.append('currentSupplierName', supplier?.name || data.currentSupplierName);
     formData.append('newSupplierName', data.newSupplierName);
     
     startActionTransition(async () => {
-      const result = await editSupplierAction(undefined, formData);
-      if (result.success && result.data) {
+      try {
+        const result = await editSupplierAction(undefined, formData);
+        
+        if (result.success) {
+          toast({
+            title: 'Registry Updated',
+            description: `Supplier "${data.newSupplierName}" has been successfully renamed throughout the system.`,
+          });
+          
+          // Trigger a global data refresh to sync the renamed supplier across all views
+          refreshData();
+          onOpenChange(false);
+        } else {
+          toast({
+            title: 'Update Failed',
+            description: result.message || 'Could not complete the rename operation. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
         toast({
-          title: 'Success!',
-          description: result.message,
-        });
-        // Instead of local cache update, we refresh all data because this change
-        // affects multiple denormalized fields across the app.
-        refreshData();
-        onOpenChange(false);
-      } else if (result.message && !result.success) {
-        toast({
-          title: 'Error Updating Supplier',
-          description: result.message,
+          title: 'Connection Error',
+          description: 'A network error occurred while updating the registry.',
           variant: 'destructive',
         });
       }
@@ -106,9 +115,9 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Edit Supplier: {supplier.name}</DialogTitle>
+          <DialogTitle>Rename Master Registry: {supplier.name}</DialogTitle>
           <DialogDescription>
-            Update the name for this supplier. This will update the name in the supplier list and all associated inventory and return log records. This can be a slow operation.
+            Updating this name will propagate changes to all associated products and inventory logs. This ensures data consistency.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -116,21 +125,21 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
           <input type="hidden" {...register('currentSupplierName')} value={supplier.name} />
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="newSupplierName" className="text-left">
-                New Supplier Name
+              <Label htmlFor="newSupplierName" className="text-left font-bold uppercase text-[10px] text-muted-foreground tracking-widest">
+                New Master Name
               </Label>
               <Input
                 id="newSupplierName"
                 placeholder="Enter new supplier name"
                 {...register('newSupplierName')}
-                className={cn(formErrors.newSupplierName && 'border-destructive')}
+                className={cn("h-11 font-semibold", formErrors.newSupplierName && 'border-destructive')}
               />
-              {formErrors.newSupplierName && <p className="text-sm text-destructive mt-1">{formErrors.newSupplierName.message}</p>}
+              {formErrors.newSupplierName && <p className="text-xs text-destructive mt-1 font-medium">{formErrors.newSupplierName.message}</p>}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="button" variant="outline" className="font-bold">Cancel</Button>
             </DialogClose>
             <SubmitButton isPending={isActionPending} />
           </DialogFooter>
