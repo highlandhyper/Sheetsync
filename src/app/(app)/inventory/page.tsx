@@ -1,4 +1,3 @@
-
 'use client';
 import { InventoryListClient } from '@/components/inventory/inventory-list-client';
 import { Suspense } from 'react';
@@ -44,7 +43,7 @@ export default function InventoryPage() {
     const { isCacheReady } = useDataCache();
 
     return (
-        <div className="container mx-auto py-2 printable-area">
+        <div className="w-full max-w-[1700px] mx-auto py-2 printable-area">
             <h1 className="text-4xl font-extrabold mb-8 text-primary flex items-center tracking-tight noprint">
                 <ClipboardList className="mr-3 h-8 w-8" />
                 Inventory Overview
