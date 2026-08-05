@@ -54,16 +54,16 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
         {isLoading ? (
             <Skeleton className="h-10 w-1/2" />
         ) : (
-            <div className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight">{value}</div>
+            <div className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight break-all">{value}</div>
         )}
-        {description && !isLoading && <div className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 pt-2 flex items-center">{description}</div>}
+        {description && !isLoading && <div className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 pt-2 flex items-center min-h-[2.5rem]">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-2" />}
       </CardContent>
     </>
   );
 
   const cardContainerClassName = cn(
-    "group transition-all duration-500 rounded-3xl border-white/5",
+    "group transition-all duration-500 rounded-3xl border-white/5 h-full",
     href ? "hover:border-primary/30 hover:scale-[1.02] cursor-pointer" : "",
     className
   );
@@ -188,7 +188,7 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-30 pointer-events-none z-0">
+    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" x2="0" y2="1">
@@ -394,7 +394,7 @@ function QuickAuthorizeCard() {
                 <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
                 <CardDescription className="text-[10px] font-bold">Proactive silent entry grant</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4">
+            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
@@ -672,7 +672,6 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-12">
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-fr"> 
-        <div className="lg:col-span-2 h-40"><Skeleton className="h-full w-full rounded-[2.5rem]" /></div>
         <Skeleton className="h-40 w-full rounded-[2rem]" />
         <Skeleton className="h-40 w-full rounded-[2rem]" />
         <Skeleton className="h-40 w-full rounded-[2rem]" />
@@ -840,7 +839,7 @@ export default function DashboardPage() {
             </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-fr">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-fr">
           <MetricCard 
             title="Total Stock Volume" 
             value={metrics.totalStockQuantity} 
@@ -848,14 +847,14 @@ export default function DashboardPage() {
             onIconClick={() => setIsStockTrendDialogOpen(true)}
             description={totalStockDescription}
             href="/inventory"
-            className="lg:col-span-2 bg-primary/[0.03] border-primary/10 shadow-primary/5"
+            className="bg-primary/[0.03] border-primary/10 shadow-primary/5"
           >
               {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
           </MetricCard>
           
           <MetricCard 
             title="Asset Valuation" 
-            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             iconNode={<Wallet className="h-6 w-6" />}
             description="Sum total of current assets"
           />
