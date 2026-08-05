@@ -32,8 +32,8 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
       <div className="absolute inset-0 z-0 overflow-hidden rounded-xl pointer-events-none">
         {children}
       </div>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-4 sm:px-6">
-        <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-muted-foreground/80">{title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-3 sm:px-6">
+        <CardTitle className="text-[9px] sm:text-xs font-black uppercase tracking-widest text-muted-foreground/80">{title}</CardTitle>
         <div 
             className={cn(
                 "p-1.5 sm:p-2 bg-primary/10 rounded-xl text-primary transition-all duration-300", 
@@ -47,30 +47,32 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
                 }
             }}
         >
-            {iconNode}
+            <div className="h-3.5 w-3.5 sm:h-5 sm:w-5">{iconNode}</div>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full relative z-20 px-4 sm:px-6">
+      <CardContent className="flex flex-col h-full relative z-20 px-3 sm:px-6">
         {isLoading ? (
             <Skeleton className="h-10 w-1/2" />
         ) : (
-            <div className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight break-all">{value}</div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight break-all truncate">
+                {value}
+            </div>
         )}
-        {description && !isLoading && <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 pt-1 sm:pt-2 flex items-center min-h-[2rem] sm:min-h-[2.5rem]">{description}</div>}
+        {description && !isLoading && <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 pt-1 sm:pt-2 flex items-center min-h-[1.5rem] sm:min-h-[2.5rem]">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-2" />}
       </CardContent>
     </>
   );
 
   const cardContainerClassName = cn(
-    "group transition-all duration-500 rounded-[1.5rem] sm:rounded-3xl border-white/5 h-full",
+    "group transition-all duration-500 rounded-[1.25rem] sm:rounded-3xl border-white/5 h-full",
     href ? "hover:border-primary/30 hover:scale-[1.02] cursor-pointer" : "",
     className
   );
   
   if (href) {
     return (
-      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[1.5rem] sm:rounded-[2rem] block h-full">
+      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[1.25rem] sm:rounded-[2rem] block h-full">
         <Card className={cardContainerClassName}>
           {cardInnerContent}
         </Card>
@@ -267,7 +269,7 @@ function StockTrendDetailedDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl rounded-[2rem] border-none shadow-2xl">
+            <DialogContent className="sm:max-w-3xl rounded-[1.5rem] sm:rounded-[2rem] border-none shadow-2xl">
                 <DialogHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -389,18 +391,18 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] border-white/5 bg-card/60 backdrop-blur-xl h-full flex flex-col group overflow-hidden">
-            <CardHeader className="pb-1 sm:pb-2 bg-primary/5 px-4 sm:px-6">
-                <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
-                <CardDescription className="text-[9px] sm:text-[10px] font-bold">Proactive silent entry grant</CardDescription>
+        <Card className="shadow-2xl rounded-[1.25rem] sm:rounded-[2rem] border-white/5 bg-card/60 backdrop-blur-xl h-full flex flex-col group overflow-hidden">
+            <CardHeader className="pb-1 sm:pb-2 bg-primary/5 px-3 sm:px-6">
+                <CardTitle className="text-[9px] sm:text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
+                <CardDescription className="text-[8px] sm:text-[10px] font-bold">Proactive silent entry grant</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 flex-grow flex flex-col justify-center px-4 sm:px-6">
+            <CardContent className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 flex-grow flex flex-col justify-center px-3 sm:px-6">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
                             variant="outline" 
                             role="combobox" 
-                            className="w-full h-10 sm:h-12 text-xs sm:text-sm justify-between font-black uppercase tracking-tight rounded-[1rem] sm:rounded-2xl border-primary/10 bg-muted/20"
+                            className="w-full h-10 sm:h-12 text-xs sm:text-sm justify-between font-black uppercase tracking-tight rounded-[0.75rem] sm:rounded-2xl border-primary/10 bg-muted/20"
                         >
                             <div className="flex items-center gap-2 truncate">
                                 <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
@@ -436,7 +438,7 @@ function QuickAuthorizeCard() {
                 </Popover>
                 
                 <Button 
-                    className="w-full h-10 sm:h-12 text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-[1rem] sm:rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
+                    className="w-full h-10 sm:h-12 text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-[0.75rem] sm:rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
                     disabled={!selectedStaff}
                     onClick={handleOpenGrant}
                 >
@@ -591,7 +593,7 @@ function ProactiveGrantDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] rounded-[2rem] border-none shadow-2xl p-6">
+            <DialogContent className="max-w-md w-[95%] rounded-[1.5rem] sm:rounded-[2rem] border-none shadow-2xl p-4 sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-black uppercase tracking-tighter">
                         <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
@@ -609,7 +611,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'single' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('single')}
-                                className="h-16 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
                             >
                                 <Check className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'single' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Single</span>
@@ -617,7 +619,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === '10' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('10')}
-                                className="h-16 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
                             >
                                 <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '10' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">10 Min</span>
@@ -625,7 +627,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === '30' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('30')}
-                                className="h-16 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
                             >
                                 <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '30' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">30 Min</span>
@@ -633,7 +635,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('custom')}
-                                className="h-16 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
                             >
                                 <Plus className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'custom' ? "opacity-100" : "opacity-030")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Custom</span>
@@ -667,7 +669,7 @@ function ProactiveGrantDialog({
 function DashboardSkeleton() {
   return (
     <div className="space-y-8 sm:space-y-12">
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr"> 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr"> 
         <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
         <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
         <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
@@ -797,8 +799,8 @@ export default function DashboardPage() {
     totalStockDescription = (
         <div className="flex items-center flex-wrap gap-1 sm:gap-2">
           <span className="hidden sm:inline">Levels</span>
-          <Badge variant="outline" className={cn("font-black text-[8px] sm:text-[9px] uppercase tracking-widest px-1.5 py-0 border-none bg-primary/10", colorClass)}>
-            <ArrowIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+          <Badge variant="outline" className={cn("font-black text-[7px] sm:text-[9px] uppercase tracking-widest px-1 py-0 border-none bg-primary/10", colorClass)}>
+            <ArrowIcon className="h-2 w-2 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
             {metrics.netItemsAddedToday} New
           </Badge>
         </div>
@@ -811,31 +813,31 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-4 sm:gap-6">
                 <div className="flex flex-col">
-                    <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-1 sm:mb-2">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-1 sm:mb-2">
                         Mission Control
                     </h1>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                         <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                            <Activity className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" /> Network: Encrypted
+                         <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
+                            <Activity className="h-2 sm:h-3 w-2 sm:w-3 animate-pulse" /> Network: Encrypted
                         </div>
                         {isSyncing && (
-                            <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900/5 dark:bg-white/5 border border-white/10 text-muted-foreground text-[8px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                                <RefreshCw className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> Live Syncing
+                            <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900/5 dark:bg-white/5 border border-white/10 text-muted-foreground text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
+                                <RefreshCw className="h-2 sm:h-3 w-2 sm:w-3 animate-spin" /> Live Syncing
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-            <div className="inline-flex sm:flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl bg-white/40 dark:bg-white/5 border border-white/10 backdrop-blur-md shadow-inner w-fit sm:w-auto">
-                <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+            <div className="inline-flex sm:flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-1.5 sm:py-3 rounded-lg sm:rounded-2xl bg-white/40 dark:bg-white/5 border border-white/10 backdrop-blur-md shadow-inner w-fit sm:w-auto">
+                <Layers className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                 <div className="flex flex-col">
-                    <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Registered Vendors</span>
-                    <span className="text-xs sm:text-sm font-black text-primary leading-none">{metrics.totalSuppliers} Suppliers</span>
+                    <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Registered Vendors</span>
+                    <span className="text-[10px] sm:text-sm font-black text-primary leading-none">{metrics.totalSuppliers} Suppliers</span>
                 </div>
             </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr">
           <MetricCard 
             title="Volume" 
             value={metrics.totalStockQuantity} 
@@ -875,7 +877,7 @@ export default function DashboardPage() {
               className={cn(metrics.damagedItemsCount > 0 ? "bg-destructive/[0.03] border-destructive/20 shadow-destructive/5 hover:border-destructive/50" : "")} 
           />
 
-          <div className="col-span-2 sm:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <QuickAuthorizeCard />
           </div>
         </div>
@@ -884,24 +886,24 @@ export default function DashboardPage() {
         <ActiveAuthorizations />
 
         <div className="grid grid-cols-1 gap-6 sm:gap-8">
-          <Card className="shadow-2xl rounded-[1.5rem] sm:rounded-[3rem] border-white/5 bg-card/60 backdrop-blur-xl overflow-hidden">
+          <Card className="shadow-2xl rounded-[1.25rem] sm:rounded-[3rem] border-white/5 bg-card/60 backdrop-blur-xl overflow-hidden">
             <CardHeader className="border-b border-white/5 bg-primary/[0.02] p-4 sm:p-8 sm:pb-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                       <CardTitle className="text-lg sm:text-2xl font-black uppercase tracking-tighter flex items-center gap-2 sm:gap-3">
                         <TrendingUp className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
                         Vendor Analytics
                       </CardTitle>
-                      <CardDescription className="font-bold text-[9px] sm:text-[10px] mt-0.5 sm:mt-1">Unit distribution across master suppliers</CardDescription>
+                      <CardDescription className="font-bold text-[8px] sm:text-[10px] mt-0.5 sm:mt-1">Unit distribution across master suppliers</CardDescription>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-2 sm:px-3 py-0.5 sm:py-1">Live View</Badge>
-                      <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black opacity-40">{mountedDate || '-- --- --'}</span>
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[7px] sm:text-[9px] font-black uppercase tracking-widest px-2 sm:px-3 py-0.5 sm:py-1">Live View</Badge>
+                      <span className="text-[7px] sm:text-[10px] text-muted-foreground uppercase font-black opacity-40">{mountedDate || '-- --- --'}</span>
                   </div>
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-10">
-              <div className="h-[300px] sm:h-[450px] w-full">
+            <CardContent className="p-3 sm:p-10">
+              <div className="h-[250px] sm:h-[450px] w-full">
                   <StockBySupplierChart data={metrics.stockBySupplier} />
               </div>
             </CardContent>

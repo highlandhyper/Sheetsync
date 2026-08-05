@@ -38,14 +38,14 @@ function LastSyncStatus() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2">
       {!isOnline && (
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="destructive" className="flex items-center gap-1 cursor-help px-3 py-1 animate-pulse font-black text-[9px] uppercase tracking-widest rounded-full">
-                        <WifiOff className="h-3 w-3" />
-                        Offline
+                    <Badge variant="destructive" className="flex items-center gap-1 cursor-help px-2 sm:px-3 py-0.5 sm:py-1 animate-pulse font-black text-[7px] sm:text-[9px] uppercase tracking-widest rounded-full">
+                        <WifiOff className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                        <span className="hidden xs:inline">Offline</span>
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -59,9 +59,9 @@ function LastSyncStatus() {
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-3 py-1 font-black text-[9px] uppercase tracking-widest rounded-full", isOnline ? "animate-bounce" : "")}>
-                        <CloudOff className="h-3 w-3" />
-                        {pendingActions.length} Pending
+                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-2 sm:px-3 py-0.5 sm:py-1 font-black text-[7px] sm:text-[9px] uppercase tracking-widest rounded-full", isOnline ? "animate-bounce" : "")}>
+                        <CloudOff className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                        {pendingActions.length} <span className="hidden xs:inline">Pending</span>
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -71,27 +71,27 @@ function LastSyncStatus() {
           </TooltipProvider>
       )}
 
-      <div className="flex flex-col items-end justify-center mr-2 text-[9px] leading-tight text-muted-foreground uppercase tracking-widest font-black opacity-60">
+      <div className="flex flex-col items-end justify-center mr-1 sm:mr-2 text-[7px] sm:text-[9px] leading-tight text-muted-foreground uppercase tracking-widest font-black opacity-60">
         <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : (isOnline ? "text-green-500" : "text-destructive"))}>
           {isSyncing ? (
             <>
-              <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+              <RefreshCw className="h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" />
               <span className="hidden sm:inline">Syncing...</span>
             </>
           ) : isOnline ? (
             <>
-              <Wifi className="h-2.5 w-2.5" />
-              <span>Network Active</span>
+              <Wifi className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+              <span className="hidden xs:inline">Network Active</span>
             </>
           ) : (
             <>
-              <WifiOff className="h-2.5 w-2.5" />
-              <span>Offline Cache</span>
+              <WifiOff className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+              <span className="hidden xs:inline">Offline Cache</span>
             </>
           )}
         </span>
-        <span className="text-[8px] opacity-60 whitespace-nowrap">
-          {lastSync ? `Updated ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Registry Not Synced'}
+        <span className="text-[6px] sm:text-[8px] opacity-60 whitespace-nowrap hidden xs:inline">
+          {lastSync ? `${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Not Synced'}
         </span>
       </div>
       
@@ -104,11 +104,11 @@ function LastSyncStatus() {
               onClick={refreshData}
               disabled={isSyncing || !isOnline}
               className={cn(
-                "h-10 w-10 rounded-2xl transition-all duration-500",
+                "h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-500",
                 isSyncing ? "bg-primary/10 text-primary rotate-180" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
               )}
             >
-              <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", isSyncing && "animate-spin")} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -161,40 +161,40 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   return (
     <>
       <header className={cn(
-        "sticky top-0 z-30 flex h-20 items-center justify-between border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 md:px-10 gap-4 transition-all duration-300",
+        "sticky top-0 z-30 flex h-16 sm:h-20 items-center justify-between border-b border-white/5 bg-background/60 backdrop-blur-2xl px-3 sm:px-6 md:px-10 gap-2 sm:gap-4 transition-all duration-300",
         className
       )}>
         <div 
           className={cn(
-            "absolute top-0 left-0 h-[3px] bg-primary transition-all duration-1000 ease-in-out shadow-[0_0_15px_rgba(var(--primary),0.5)]",
+            "absolute top-0 left-0 h-[2px] sm:h-[3px] bg-primary transition-all duration-1000 ease-in-out shadow-[0_0_15px_rgba(var(--primary),0.5)]",
             isSyncing ? "w-full opacity-100" : "w-0 opacity-0"
           )} 
         />
 
-        <div className="flex items-center gap-4">
-            <SidebarTrigger className="md:hidden" />
+        <div className="flex items-center gap-2 sm:gap-4">
+            <SidebarTrigger className="h-9 w-9 sm:h-10 sm:w-10 md:hidden" />
         </div>
         
-        <div className="flex flex-1 items-center justify-end gap-2 md:gap-6">
+        <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-4 md:gap-6">
           <div className="hidden md:flex flex-1 justify-center px-4 max-w-xl">
              <div className="w-full">
                 <HeaderBarcodeLookup />
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <LastSyncStatus />
             
-            <div className="h-8 w-px bg-white/5 mx-2 hidden sm:block" />
+            <div className="h-6 sm:h-8 w-px bg-white/5 mx-1 sm:mx-2 hidden xs:block" />
 
             <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setIsCommandPaletteOpen(true)}
-                className="h-10 w-10 text-muted-foreground rounded-2xl border-white/10 hover:border-primary/30 transition-all hover:bg-primary/5"
+                className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground rounded-lg sm:rounded-2xl border-white/10 hover:border-primary/30 transition-all hover:bg-primary/5"
                 aria-label="Open command palette"
             >
-                <Command className="h-4 w-4" />
+                <Command className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
 
             {role === 'admin' && activeSessions.length > 0 && (
@@ -202,11 +202,11 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Link href="/dashboard">
-                                <Button variant="outline" size="icon" className="h-10 w-10 rounded-2xl text-green-600 bg-green-500/5 border-green-500/10 relative group hover:bg-green-500/10 transition-colors">
-                                    <BellOff className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                                <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-2xl text-green-600 bg-green-500/5 border-green-500/10 relative group hover:bg-green-500/10 transition-colors">
+                                    <BellOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:scale-110 transition-transform" />
+                                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 text-[10px] text-white items-center justify-center font-black">
+                                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 text-[8px] text-white items-center justify-center font-black">
                                             {activeSessions.length}
                                         </span>
                                     </span>
@@ -230,10 +230,10 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                       variant="outline"
                       size="icon"
                       onClick={onManualLock}
-                      className="h-10 w-10 text-muted-foreground rounded-2xl border-white/10 hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-all"
+                      className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground rounded-lg sm:rounded-2xl border-white/10 hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-all"
                       aria-label="Lock session"
                     >
-                      <Lock className="h-4 w-4" />
+                      <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p>Lock Session</p></TooltipContent>
@@ -242,18 +242,18 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             )}
             
             {loading ? (
-                <div className="h-10 w-10 rounded-2xl animate-pulse bg-muted/20" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-2xl animate-pulse bg-muted/20" />
             ) : user ? (
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-2xl p-0 hover:bg-transparent">
-                    <Avatar className="h-10 w-10 ring-2 ring-white/5 shadow-2xl rounded-2xl">
-                        <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" className="rounded-2xl" />
-                        <AvatarFallback className="rounded-2xl bg-primary/20 text-primary font-black uppercase text-xs">{getInitials(user.email)}</AvatarFallback>
+                    <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-2xl p-0 hover:bg-transparent">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-white/5 shadow-2xl rounded-lg sm:rounded-2xl">
+                        <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="user avatar initials" className="rounded-lg sm:rounded-2xl" />
+                        <AvatarFallback className="rounded-lg sm:rounded-2xl bg-primary/20 text-primary font-black uppercase text-[10px] sm:text-xs">{getInitials(user.email)}</AvatarFallback>
                     </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 rounded-[1.5rem] border-white/5 shadow-2xl p-2" align="end" forceMount>
+                <DropdownMenuContent className="w-64 rounded-[1.25rem] sm:rounded-[1.5rem] border-white/5 shadow-2xl p-2" align="end" forceMount>
                     <DropdownMenuLabel className="p-4">
                     <div className="flex flex-col space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight leading-none">
@@ -274,9 +274,9 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                 </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
-                <Button asChild variant="outline" size="sm" className="rounded-xl h-10 font-black uppercase tracking-widest text-[10px]">
+                <Button asChild variant="outline" size="sm" className="rounded-lg sm:rounded-xl h-8 sm:h-10 font-black uppercase tracking-widest text-[9px] sm:text-[10px] px-2 sm:px-4">
                     <Link href="/login">
-                    <UserCircle className="mr-2 h-4 w-4" /> Sign In
+                    <UserCircle className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Sign In
                     </Link>
                 </Button>
             )}
