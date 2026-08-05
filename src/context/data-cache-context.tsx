@@ -29,7 +29,7 @@ interface DataCacheContextType extends AppData {
   removeInventoryItem: (itemId: string) => void;
   removeInventoryItems: (itemIds: string[]) => void;
   addSupplier: (supplier: Supplier) => void;
-  updateSupplier: (updatedSupplier: Supplier) => void;
+  updateSupplier: (oldName: string, newName: string) => void;
   addProduct: (product: Partial<Product> & { id: string }) => void;
   updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
   removeProducts: (barcodes: string[]) => void;
@@ -42,9 +42,6 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-// QUOTA OPTIMIZATION:
-// Sync logs/inventory every 3 minutes.
-// Sync the massive 54k product catalog only every 15 minutes.
 const SYNC_INTERVAL_MS = 180000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
@@ -139,7 +136,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const fetchDataAndCache = useCallback(async (forceProducts: boolean = false) => {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
-    // SMART SYNC: Only fetch 54k products every 15 minutes to save Vercel Origin Transfer quota
     const now = Date.now();
     const shouldSkipProducts = !forceProducts && (now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS) && data.products.length > 0;
     
@@ -157,8 +153,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         setData(prev => ({ 
             ...prev, 
             ...response.data!, 
-            // INTEL MERGE: Only overwrite lists if the response actually contains them.
-            // This prevents background syncs from wiping out suppliers/products.
             products: response.data!.products && response.data!.products.length > 0 
                 ? response.data!.products 
                 : prev.products,
@@ -241,7 +235,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         toast({ title: "No Connection", description: "Refresh unavailable while offline.", variant: "destructive" });
         return;
     }
-    await fetchDataAndCache(true); // Force product refresh
+    await fetchDataAndCache(true);
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
@@ -297,7 +291,14 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         inventoryItems: p.inventoryItems.filter(x => !ids.includes(x.id)) 
     })),
     addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
-    updateSupplier: () => { refreshData(); },
+    updateSupplier: (oldName: string, newName: string) => {
+        setData(p => ({
+            ...p,
+            suppliers: p.suppliers.map(s => s.name === oldName ? { ...s, name: newName } : s),
+            products: p.products.map(pr => pr.supplierName === oldName ? { ...pr, supplierName: newName } : pr),
+            inventoryItems: p.inventoryItems.map(i => i.supplierName === oldName ? { ...i, supplierName: newName } : i)
+        }));
+    },
     addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
     updateProduct: (pr: any) => {
         setData(p => ({ 
