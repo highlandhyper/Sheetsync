@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -49,28 +50,51 @@ function getRoleByEmail(email: string | null): Role {
 }
 
 /**
- * DEEP SANITIZATION: Prevents NaN/Infinity values from crashing the JSON parser
+ * HIGH-PERFORMANCE ITERATIVE SANITIZER
+ * Replaces recursive version to handle 54,000+ rows without Call Stack errors.
  */
-function sanitizeForJSON(val: any) {
-    if (typeof val === 'number') {
-        return (isNaN(val) || !isFinite(val)) ? 0 : val;
-    }
-    if (Array.isArray(val)) {
-        return val.map(sanitizeForJSON);
-    }
-    if (val !== null && typeof val === 'object') {
-        const sanitized: any = {};
-        for (const key in val) {
-            sanitized[key] = sanitizeForJSON(val[key]);
+function sanitizeForJSON(input: any): any {
+    if (input === null || input === undefined) return input;
+    
+    // Primitive types
+    if (typeof input !== 'object') {
+        if (typeof input === 'number') {
+            return (Number.isNaN(input) || !Number.isFinite(input)) ? 0 : input;
         }
-        return sanitized;
+        return input;
     }
-    return val;
+
+    // Iterative processing for arrays and objects
+    const stack: { source: any, target: any, key?: string | number }[] = [{ source: input, target: Array.isArray(input) ? [] : {} }];
+    const root = stack[0].target;
+
+    while (stack.length > 0) {
+        const { source, target } = stack.pop()!;
+
+        for (const key in source) {
+            if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+            
+            const value = source[key];
+            
+            if (value === null || value === undefined) {
+                target[key] = value;
+            } else if (typeof value === 'number') {
+                target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
+            } else if (typeof value === 'object') {
+                const newTarget = Array.isArray(value) ? [] : {};
+                target[key] = newTarget;
+                stack.push({ source: value, target: newTarget });
+            } else {
+                target[key] = value;
+            }
+        }
+    }
+
+    return root;
 }
 
 /**
- * SMART FETCH ACTION: Optimized to prevent Vercel Quota Overages
- * Accepts a 'skipProducts' flag to avoid transferring 54k rows on every sync.
+ * SMART FETCH ACTION: Optimized for 54k rows
  */
 export async function fetchAllDataAction(skipProducts: boolean = false): Promise<ActionResponse<{
   inventoryItems: InventoryItem[];
@@ -88,7 +112,6 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       getAppMetaData()
     ];
 
-    // QUOTA SHIELD: Only fetch 5.4MB product list if explicitly requested
     if (!skipProducts) {
         promises.push(getProducts());
     }
@@ -100,7 +123,6 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       products
     ] = await Promise.all(promises);
 
-    // Only calculate suppliers if we are doing a full sync to ensure data consistency
     const activeProducts = skipProducts ? undefined : (products || []);
     const calculatedSuppliers = skipProducts ? undefined : await getSuppliers(activeProducts);
 
@@ -213,7 +235,6 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         const data = Object.fromEntries(formData.entries());
         const userEmail = (data.userEmail as string) || 'Admin';
         
-        // SECURITY: Block non-admins from catalog changes
         if (getRoleByEmail(userEmail) !== 'admin') {
             return { success: false, message: "Unauthorized: Administrator permissions required." };
         }
@@ -412,9 +433,12 @@ export async function editSupplierAction(prevState: any, formData: FormData): Pr
         revalidatePath('/suppliers');
         revalidatePath('/products/list');
         revalidatePath('/inventory');
-        return { success: true };
+        return { 
+          success: true, 
+          message: `Success: Supplier renamed to "${name}". All associated records updated.` 
+        };
     } catch (e) {
-        return { success: false };
+        return { success: false, message: "Rename operation failed on Google Sheets." };
     }
 }
 
