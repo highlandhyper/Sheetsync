@@ -8,9 +8,10 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Header } from '@/components/layout/header';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Activity } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
+import { cn } from '@/lib/utils';
 
 const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
 
@@ -103,8 +104,11 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-lg font-medium text-muted-foreground animate-pulse">Establishing Secure Connection...</p>
+        <div className="relative mb-8">
+            <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" strokeWidth={1} />
+            <Loader2 className="absolute inset-0 h-16 w-16 animate-[spin_3s_linear_infinite] text-primary" strokeWidth={2} />
+        </div>
+        <p className="text-sm font-black uppercase tracking-[0.4em] text-primary animate-pulse">Establishing Secure Connection...</p>
       </div>
     );
   }
@@ -113,11 +117,20 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4">
-        <ShieldCheck className="h-20 w-20 text-primary mb-6 animate-pulse" strokeWidth={1.5} />
-        <h1 className="text-4xl font-bold text-primary mb-3 text-center tracking-tighter">Welcome back, Chief!</h1>
-        <p className="text-xl text-muted-foreground mb-8 text-center">Your command center is ready.</p>
-        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4 overflow-hidden relative">
+        <div className="absolute inset-0 bg-tech-grid opacity-30" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px]" />
+        
+        <div className="relative z-10 flex flex-col items-center">
+            <div className="p-6 bg-primary/10 rounded-[3rem] border border-primary/20 shadow-2xl mb-8 animate-in zoom-in-50 duration-700">
+                <ShieldCheck className="h-20 w-20 text-primary animate-pulse" strokeWidth={1.5} />
+            </div>
+            <h1 className="text-5xl font-black text-slate-900 dark:text-white mb-3 text-center tracking-tighter uppercase leading-none">
+                Welcome back, <span className="text-primary">Chief</span>
+            </h1>
+            <p className="text-sm font-black text-muted-foreground uppercase tracking-[0.4em] mb-12 opacity-50">Industrial Hub Active</p>
+            <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+        </div>
       </div>
     );
   }
@@ -126,10 +139,23 @@ export default function AppLayout({ children }: PropsWithChildren) {
     <>
       <SidebarProvider defaultOpen={true}>
         <AppSidebar className="noprint" />
-        <SidebarInset className="flex min-w-0 flex-col">
-          <Header className="noprint" onManualLock={handleLock} />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            {children}
+        <SidebarInset className="flex min-w-0 flex-col relative overflow-hidden bg-background">
+          {/* GLOBAL ATMOSPHERIC LAYER */}
+          <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 bg-tech-grid opacity-[0.4] dark:opacity-[0.6]" />
+            <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px] animate-pulse" />
+            <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-accent/10 blur-[100px]" />
+          </div>
+
+          <Header className="noprint relative z-10" onManualLock={handleLock} />
+          
+          <main className={cn(
+            "flex-1 overflow-y-auto relative z-10",
+            "p-4 md:p-6 lg:p-10"
+          )}>
+            <div className="container mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-700">
+                {children}
+            </div>
           </main>
         </SidebarInset>
       </SidebarProvider>
