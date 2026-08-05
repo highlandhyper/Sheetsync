@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -23,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
+import { useAuth } from '@/context/auth-context';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -41,7 +41,8 @@ interface EditSupplierDialogProps {
 
 export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSupplierDialogProps) {
   const { toast } = useToast();
-  const { refreshData } = useDataCache();
+  const { user } = useAuth();
+  const { updateSupplier, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
 
   const {
@@ -69,42 +70,56 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
   }, [supplier, reset, isOpen]);
 
   const handleFormSubmit = (data: EditSupplierFormValues) => {
+    if (!supplier) return;
+    
     if (!isDirty) {
         onOpenChange(false);
         return;
     }
     
     const formData = new FormData();
-    formData.append('supplierId', supplier?.id || data.supplierId);
-    formData.append('currentSupplierName', supplier?.name || data.currentSupplierName);
+    formData.append('supplierId', supplier.id || data.supplierId);
+    formData.append('currentSupplierName', supplier.name || data.currentSupplierName);
     formData.append('newSupplierName', data.newSupplierName);
+    formData.append('userEmail', user?.email || 'Admin');
     
     startActionTransition(async () => {
+      // 1. OPTIMISTIC UPDATE: Instant feedback locally
+      const oldName = supplier.name;
+      const newName = data.newSupplierName;
+      
+      updateSupplier(oldName, newName);
+      onOpenChange(false); // CLOSE DIALOG INSTANTLY
+      
+      toast({
+        title: 'Registry Update Initiated',
+        description: `Renaming "${oldName}" to "${newName}" in background...`,
+      });
+
       try {
         const result = await editSupplierAction(undefined, formData);
         
         if (result.success) {
           toast({
-            title: 'Registry Updated',
-            description: `Supplier "${data.newSupplierName}" has been successfully renamed throughout the system.`,
+            title: 'Update Successful',
+            description: `Registry updated. all associated logs now reflect "${newName}".`,
           });
-          
-          // Trigger a global data refresh to sync the renamed supplier across all views
-          refreshData();
-          onOpenChange(false);
+          refreshData(); // Final sync to confirm all changes
         } else {
           toast({
-            title: 'Update Failed',
-            description: result.message || 'Could not complete the rename operation. Please try again.',
+            title: 'Sync Error',
+            description: result.message || 'Cloud rename failed. Reverting local changes...',
             variant: 'destructive',
           });
+          refreshData(); // REVERT
         }
       } catch (error) {
         toast({
           title: 'Connection Error',
-          description: 'A network error occurred while updating the registry.',
+          description: 'Failed to reach registry service. Reverting local changes...',
           variant: 'destructive',
         });
+        refreshData();
       }
     });
   };
