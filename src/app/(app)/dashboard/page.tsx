@@ -850,7 +850,7 @@ export default function DashboardPage() {
           
           <MetricCard 
             title="Valuation" 
-            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             iconNode={<Wallet className="h-5 w-5 sm:h-6 sm:w-6" />}
             description="Total current assets"
           />
