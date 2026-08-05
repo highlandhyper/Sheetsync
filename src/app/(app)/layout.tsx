@@ -151,9 +151,9 @@ export default function AppLayout({ children }: PropsWithChildren) {
           
           <main className={cn(
             "flex-1 overflow-y-auto relative z-10",
-            "p-4 md:p-6 lg:p-10"
+            "p-2 sm:p-4 md:p-6"
           )}>
-            <div className="container mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="container mx-auto max-w-full lg:max-w-[1600px] animate-in fade-in slide-in-from-bottom-2 duration-700">
                 {children}
             </div>
           </main>

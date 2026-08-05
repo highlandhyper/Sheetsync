@@ -170,9 +170,9 @@ export function ReturnableInventoryBySupplierClient() {
       setTotalItemsForSelectedSuppliers(0);
       return [];
     }
-    const lowerSelectedSupplierNames = selectedSupplierNames.map(name => name.toLowerCase());
+    const lowerCaseSelectedSupplierNames = selectedSupplierNames.map(name => name.toLowerCase());
     const filtered = sortedAndFiltered.filter(item =>
-      item.supplierName && lowerSelectedSupplierNames.includes(item.supplierName.toLowerCase()) && item.quantity > 0
+      item.supplierName && lowerCaseSelectedSupplierNames.includes(item.supplierName.toLowerCase()) && item.quantity > 0
     );
     setTotalItemsForSelectedSuppliers(filtered.length);
     return filtered;
@@ -510,7 +510,7 @@ export function ReturnableInventoryBySupplierClient() {
         <>
             <Card className="shadow-md hidden md:block">
             <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/50">
                   <TableRow>
                   {isMultiSelectEnabled && canReturn && (
                       <TableHead className="w-12 text-center noprint">
