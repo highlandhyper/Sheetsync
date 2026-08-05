@@ -330,6 +330,77 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
+export async function updateSupplierNameAndReferences(
+  email: string,
+  oldName: string,
+  newName: string
+) {
+  const oldSupplier = oldName.trim();
+  const newSupplier = newName.trim();
+
+  if (!oldSupplier || !newSupplier) {
+    return false;
+  }
+
+  if (oldSupplier === newSupplier) {
+    return true;
+  }
+
+  // Update all matching supplier names in the DB sheet (Column D).
+  const dbData = await readSheetData(DB_READ_RANGE);
+
+  if (dbData) {
+    const dbUpdates: { range: string; values: any[][] }[] = [];
+
+    dbData.forEach((row, i) => {
+      const supplier = String(row[DB_COL_SUPPLIER_NAME] || '').trim();
+
+      if (supplier === oldSupplier) {
+        dbUpdates.push({
+          range: `${DB_SHEET_NAME}!D${i + 2}`,
+          values: [[newSupplier]],
+        });
+      }
+    });
+
+    if (dbUpdates.length > 0) {
+      await batchUpdateSheetCells(dbUpdates);
+    }
+  }
+
+  // Update all matching supplier names in the denormalized
+  // inventory/form-response sheet (Column H).
+  const inventoryData = await readSheetData(INVENTORY_READ_RANGE);
+
+  if (inventoryData) {
+    const inventoryUpdates: { range: string; values: any[][] }[] = [];
+
+    inventoryData.forEach((row, i) => {
+      const supplier = String(row[INV_COL_SUPPLIER_NAME] || '').trim();
+
+      if (supplier === oldSupplier) {
+        inventoryUpdates.push({
+          range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`,
+          values: [[newSupplier]],
+        });
+      }
+    });
+
+    if (inventoryUpdates.length > 0) {
+      await batchUpdateSheetCells(inventoryUpdates);
+    }
+  }
+
+  await logAuditEvent(
+    email,
+    'UPDATE_SUPPLIER',
+    oldSupplier,
+    `Supplier renamed from "${oldSupplier}" to "${newSupplier}".`
+  );
+
+  return true;
+}
+
 export async function addInventoryItemToSheet(item: any) {
   try {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
