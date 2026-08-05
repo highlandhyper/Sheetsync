@@ -118,8 +118,8 @@ export function AppSidebar({ className }: { className?: string }) {
         </SidebarMenu>
       </SidebarContent>
       {user && !loading && (
-        <SidebarFooter className="p-2">
-           <SidebarMenu className="list-none space-y-1">
+        <SidebarFooter className="p-2 pb-4 overflow-hidden">
+           <SidebarMenu className="list-none space-y-1 mb-2">
              {filteredAccountNavItems.map((item) => (
                <SidebarMenuItem key={`${item.href}-${item.label}-account`}>
                  <SidebarMenuButton
@@ -134,29 +134,29 @@ export function AppSidebar({ className }: { className?: string }) {
                  </SidebarMenuButton>
                </SidebarMenuItem>
              ))}
-             {/* SIGN OUT FOR MOBILE */}
-             <SidebarMenuItem className="sm:hidden">
+             {/* SECURE MOBILE SIGN OUT: Integrated into menu to prevent overflow */}
+             <SidebarMenuItem className="lg:hidden">
                <SidebarMenuButton 
                  onClick={() => {
                    logout();
                    setOpenMobile(false);
                  }}
-                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                 tooltip={{ children: "Sign Out", className: "group-data-[state=expanded]/sidebar:hidden" }}
+                 className="text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10"
                >
-                 <LogOut className="h-4 w-4" />
-                 <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">Sign Out</span>
+                 <LogOut className="h-4 w-4 shrink-0" />
+                 <span className="truncate transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden font-bold">Sign Out</span>
                </SidebarMenuButton>
              </SidebarMenuItem>
            </SidebarMenu>
-           <div className="mt-4 flex items-center gap-3 border-t border-sidebar-border pt-4 group-data-[state=collapsed]/sidebar:flex-col group-data-[state=collapsed]/sidebar:gap-2 group-data-[state=collapsed]/sidebar:border-none group-data-[state=collapsed]/sidebar:p-0 group-data-[state=collapsed]/sidebar:pt-4">
-               <Avatar className="h-9 w-9 group-data-[state=collapsed]/sidebar:h-8 group-data-[state=collapsed]/sidebar:w-8">
+
+           <div className="flex items-center gap-3 border-t border-sidebar-border pt-4 px-2 group-data-[state=collapsed]/sidebar:flex-col group-data-[state=collapsed]/sidebar:gap-2 group-data-[state=collapsed]/sidebar:border-none group-data-[state=collapsed]/sidebar:p-0 group-data-[state=collapsed]/sidebar:pt-4 overflow-hidden">
+               <Avatar className="h-9 w-9 shrink-0 group-data-[state=collapsed]/sidebar:h-8 group-data-[state=collapsed]/sidebar:w-8">
                   <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={user.email || "User"} />
                  <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
                </Avatar>
-               <div className="flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
-                 <p className="truncate text-sm font-medium text-sidebar-foreground">{user.displayName || user.email?.split('@')[0] || "User"}</p>
-                 {user.email && <p className="truncate text-xs text-muted-foreground/70">{user.email}</p>}
+               <div className="flex-1 min-w-0 transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">
+                 <p className="truncate text-sm font-black uppercase tracking-tight text-sidebar-foreground">{user.displayName || user.email?.split('@')[0] || "User"}</p>
+                 {user.email && <p className="truncate text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">{user.email}</p>}
                </div>
            </div>
         </SidebarFooter>

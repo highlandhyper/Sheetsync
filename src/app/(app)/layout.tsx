@@ -125,10 +125,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
             <div className="p-6 bg-primary/10 rounded-[3rem] border border-primary/20 shadow-2xl mb-8 animate-in zoom-in-50 duration-700">
                 <ShieldCheck className="h-20 w-20 text-primary animate-pulse" strokeWidth={1.5} />
             </div>
-            <h1 className="text-5xl font-black text-slate-900 dark:text-white mb-3 text-center tracking-tighter uppercase leading-none">
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white mb-3 text-center tracking-tighter uppercase leading-none">
                 Welcome back, <span className="text-primary">Chief</span>
             </h1>
-            <p className="text-sm font-black text-muted-foreground uppercase tracking-[0.4em] mb-12 opacity-50">Industrial Hub Active</p>
+            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-[0.4em] mb-12 opacity-50">Industrial Hub Active</p>
             <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
         </div>
       </div>
@@ -150,10 +150,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
           <Header className="noprint relative z-10" onManualLock={handleLock} />
           
           <main className={cn(
-            "flex-1 overflow-y-auto relative z-10",
+            "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
             "p-2 sm:p-4 md:p-6"
           )}>
-            <div className="container mx-auto max-w-full lg:max-w-[1600px] animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="container mx-auto max-w-full lg:max-w-[1700px] animate-in fade-in slide-in-from-bottom-2 duration-700">
                 {children}
             </div>
           </main>
