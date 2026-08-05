@@ -1,4 +1,3 @@
-
 'use client';
 import { ReturnableInventoryBySupplierClient } from '@/components/inventory/returnable-inventory-by-supplier-client';
 import { Suspense } from 'react';
@@ -41,7 +40,7 @@ export default function ReturnInventoryBySupplierPage() {
   const { isCacheReady } = useDataCache();
 
   return (
-    <div className="container mx-auto py-2 printable-area">
+    <div className="w-full max-w-[1700px] mx-auto py-2 printable-area">
       <h1 className="text-3xl font-bold mb-8 text-primary noprint">Return Inventory by Supplier</h1>
       <Suspense fallback={<ReturnableInventorySkeleton />}>
         {!isCacheReady ? (

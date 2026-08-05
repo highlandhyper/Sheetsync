@@ -1,4 +1,3 @@
-
 'use client';
 import { ReturnableInventoryByStaffClient } from '@/components/inventory/returnable-inventory-by-staff-client'; 
 import { Suspense } from 'react';
@@ -39,7 +38,7 @@ export default function ReturnByStaffPage() {
   const { isCacheReady } = useDataCache();
 
   return (
-    <div className="container mx-auto py-2 printable-area">
+    <div className="w-full max-w-[1700px] mx-auto py-2 printable-area">
       <h1 className="text-3xl font-bold mb-8 text-primary noprint">Return Inventory by Staff</h1>
       <Suspense fallback={<ReturnableInventoryByStaffSkeleton />}>
         {!isCacheReady ? (

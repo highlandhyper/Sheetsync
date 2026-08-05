@@ -375,7 +375,7 @@ export function InventoryListClient() {
                     <div className="text-sm font-medium text-muted-foreground">{selectedBarcodes.size} products selected</div>
                     <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
                         <Wallet className="mr-2 h-4 w-4" />
-                        <span>Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        <span>Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -554,7 +554,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
