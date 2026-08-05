@@ -20,10 +20,11 @@ import { useSpecialEntry } from '@/context/special-entry-context';
 import { allNavItems, accountNavItems, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
+import { LogOut } from 'lucide-react';
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const { user, loading, role } = useAuth();
+  const { user, loading, role, logout } = useAuth();
   const { isAllowed } = useAccessControl();
   const { pendingRequests } = useSpecialEntry();
   const { setOpenMobile, isMobile } = useSidebar();
@@ -133,6 +134,20 @@ export function AppSidebar({ className }: { className?: string }) {
                  </SidebarMenuButton>
                </SidebarMenuItem>
              ))}
+             {/* SIGN OUT FOR MOBILE */}
+             <SidebarMenuItem className="sm:hidden">
+               <SidebarMenuButton 
+                 onClick={() => {
+                   logout();
+                   setOpenMobile(false);
+                 }}
+                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                 tooltip={{ children: "Sign Out", className: "group-data-[state=expanded]/sidebar:hidden" }}
+               >
+                 <LogOut className="h-4 w-4" />
+                 <span className="whitespace-nowrap transition-opacity duration-200 group-data-[state=collapsed]/sidebar:hidden">Sign Out</span>
+               </SidebarMenuButton>
+             </SidebarMenuItem>
            </SidebarMenu>
            <div className="mt-4 flex items-center gap-3 border-t border-sidebar-border pt-4 group-data-[state=collapsed]/sidebar:flex-col group-data-[state=collapsed]/sidebar:gap-2 group-data-[state=collapsed]/sidebar:border-none group-data-[state=collapsed]/sidebar:p-0 group-data-[state=collapsed]/sidebar:pt-4">
                <Avatar className="h-9 w-9 group-data-[state=collapsed]/sidebar:h-8 group-data-[state=collapsed]/sidebar:w-8">
