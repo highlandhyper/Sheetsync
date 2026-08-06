@@ -44,7 +44,7 @@ function LastSyncStatus() {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Badge variant="destructive" className="flex items-center gap-1.5 cursor-help px-3 py-1 animate-pulse font-black text-[8px] sm:text-[10px] uppercase tracking-widest rounded-full shadow-lg">
-                        <WifiOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <WifiOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2} />
                         <span className="hidden xs:inline">System Offline</span>
                     </Badge>
                 </TooltipTrigger>
@@ -60,7 +60,7 @@ function LastSyncStatus() {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-3 py-1 font-black text-[8px] sm:text-[10px] uppercase tracking-widest rounded-full shadow-md transition-all duration-500", isOnline ? "animate-bounce bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-muted-foreground/10")}>
-                        <CloudOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <CloudOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2} />
                         {pendingActions.length} <span className="hidden xs:inline">Local Logs</span>
                     </Badge>
                 </TooltipTrigger>
@@ -78,12 +78,12 @@ function LastSyncStatus() {
         )}>
           {isSyncing ? (
             <>
-              <RefreshCw className="h-4 w-4 sm:h-4.5 sm:w-4.5 animate-spin" strokeWidth={3} />
+              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" strokeWidth={2} />
               <span className="hidden sm:inline">Syncing Cloud...</span>
             </>
           ) : isOnline ? (
             <>
-              <Wifi className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500/80" strokeWidth={3} />
+              <Wifi className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500/80" strokeWidth={2} />
               <span className="hidden xs:inline">Registry Active</span>
             </>
           ) : (
@@ -107,11 +107,11 @@ function LastSyncStatus() {
               onClick={refreshData}
               disabled={isSyncing || !isOnline}
               className={cn(
-                "h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl transition-all duration-500 border-white/10 shadow-sm",
+                "h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-2xl transition-all duration-500 border-white/10 shadow-sm",
                 isSyncing ? "bg-primary/20 text-primary border-primary/40 shadow-[0_0_20px_rgba(var(--primary),0.3)] ring-2 ring-primary/20" : "text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30"
               )}
             >
-              <RefreshCw className={cn("h-5 w-5 sm:h-6 sm:w-6", isSyncing && "animate-spin")} strokeWidth={2.5} />
+              <RefreshCw className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", isSyncing && "animate-spin")} strokeWidth={2} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -197,7 +197,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                 className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground rounded-lg sm:rounded-2xl border-white/10 hover:border-primary/30 transition-all hover:bg-primary/5"
                 aria-label="Open command palette"
             >
-                <Command className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <Command className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />
             </Button>
 
             {role === 'admin' && activeSessions.length > 0 && (
@@ -206,7 +206,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                         <TooltipTrigger asChild>
                             <Link href="/dashboard">
                                 <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-2xl text-green-600 bg-green-500/5 border-green-500/10 relative group hover:bg-green-500/10 transition-colors">
-                                    <BellOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:scale-110 transition-transform" />
+                                    <BellOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:scale-110 transition-transform" strokeWidth={2} />
                                     <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                         <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 text-[8px] text-white items-center justify-center font-black">
@@ -236,7 +236,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                       className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground rounded-lg sm:rounded-2xl border-white/10 hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-all"
                       aria-label="Lock session"
                     >
-                      <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p>Lock Session</p></TooltipContent>
@@ -271,7 +271,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/5" />
                     <DropdownMenuItem onClick={logout} className="rounded-xl p-3 text-destructive focus:text-destructive focus:bg-destructive/10 transition-colors font-black uppercase tracking-widest text-[10px]">
-                    <LogOut className="mr-3 h-4 w-4" />
+                    <LogOut className="mr-3 h-4 w-4" strokeWidth={2} />
                     <span>Terminate Session</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -279,7 +279,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             ) : (
                 <Button asChild variant="outline" size="sm" className="rounded-lg sm:rounded-xl h-8 sm:h-10 font-black uppercase tracking-widest text-[9px] sm:text-[10px] px-2 sm:px-4">
                     <Link href="/login">
-                    <UserCircle className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Sign In
+                    <UserCircle className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} /> Sign In
                     </Link>
                 </Button>
             )}
