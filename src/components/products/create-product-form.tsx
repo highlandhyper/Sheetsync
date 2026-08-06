@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -204,7 +205,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
   return (
     <>
-    <Card className="w-full max-w-2xl mx-auto shadow-xl border-primary/10 overflow-hidden">
+    <Card className="w-full max-w-4xl mx-auto shadow-xl border-primary/10 overflow-hidden">
       <CardHeader className="bg-muted/30 pb-8">
         <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Catalog Manager</CardTitle>
         <CardDescription className="font-medium">Identify barcode to manage global registry.</CardDescription>
@@ -277,7 +278,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </div>
                     <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                       <PopoverTrigger asChild>
-                        <Button ref={supplierTriggerRef} variant="outline" role="combobox" className={cn("w-full h-11 justify-between font-bold text-sm bg-muted/10 border-primary/5", !supplierNameValue && "text-muted-foreground")}>
+                        <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-11 justify-between font-bold text-sm bg-muted/10 border-primary/5", !supplierNameValue && "text-muted-foreground")}>
                           <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
