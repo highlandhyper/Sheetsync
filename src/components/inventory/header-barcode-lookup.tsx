@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
@@ -11,8 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { InventoryItem } from '@/lib/types';
@@ -77,7 +74,6 @@ export function HeaderBarcodeLookup() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  // GLOBAL KEYBOARD LISTENER
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === '/' || e.key === '÷')) {
@@ -89,14 +85,12 @@ export function HeaderBarcodeLookup() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // FOCUS MANAGEMENT
   useEffect(() => {
     if (isSearchModalOpen) {
         setTimeout(() => {
             spotlightInputRef.current?.focus();
         }, 150);
     } else {
-        // Reset search state when closing
         setBarcode('');
         setResults([]);
         setHasSearched(false);
@@ -111,7 +105,9 @@ export function HeaderBarcodeLookup() {
         setHasSearched(true);
         setLastSearchedBarcode(barcodeToSearch);
         const searchResults = inventoryItems.filter(
-          item => item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase() && item.quantity > 0
+          item => (item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase() || 
+                   item.productName.toLowerCase().includes(barcodeToSearch.trim().toLowerCase())) && 
+                   item.quantity > 0
         ).sort((a, b) => {
             const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
             const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
@@ -123,7 +119,7 @@ export function HeaderBarcodeLookup() {
             toast({
                 variant: 'destructive',
                 title: 'No Data Found',
-                description: `No active logs found for SKU: ${barcodeToSearch}`,
+                description: `No active logs found for identification: ${barcodeToSearch}`,
             });
         }
       });
@@ -194,7 +190,6 @@ export function HeaderBarcodeLookup() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    // Re-execute search to refresh current table results in modal
     if (lastSearchedBarcode) executeSearch(lastSearchedBarcode);
   }, [lastSearchedBarcode, executeSearch]);
 
@@ -207,7 +202,6 @@ export function HeaderBarcodeLookup() {
 
   return (
     <>
-      {/* HEADER TRIGGER (REPLACING THE OLD INPUT) */}
       <button 
         onClick={() => setIsSearchModalOpen(true)}
         className="group relative flex h-10 w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 text-left transition-all hover:bg-white/10 active:scale-95"
@@ -221,7 +215,6 @@ export function HeaderBarcodeLookup() {
         </kbd>
       </button>
       
-      {/* SPOTLIGHT MODAL */}
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
         <DialogContent className="sm:max-w-5xl p-0 overflow-hidden border-none shadow-[0_0_80px_rgba(0,0,0,0.4)] bg-background/95 backdrop-blur-2xl">
           <DialogHeader className="sr-only">
@@ -257,14 +250,14 @@ export function HeaderBarcodeLookup() {
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto bg-muted/[0.02]">
             {hasSearched ? (
                 results.length > 0 ? (
                     <div className="p-4 animate-in fade-in slide-in-from-top-4 duration-500">
                         <Table>
                             <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Product Identification</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 py-4">Product Identification</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Registry Log</TableHead>
                                 <TableHead className="text-right text-[10px] font-black uppercase tracking-widest">Stock</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Location</TableHead>
@@ -274,29 +267,32 @@ export function HeaderBarcodeLookup() {
                             </TableHeader>
                             <TableBody>
                             {results.map((item) => (
-                                <TableRow key={`spotlight-${item.id}`} className="group hover:bg-primary/[0.02]">
-                                    <TableCell>
+                                <TableRow key={`spotlight-${item.id}`} className="group hover:bg-primary/[0.03] transition-all duration-300">
+                                    <TableCell className="px-6 py-4">
                                         <div className="flex flex-col">
-                                            <span className="font-black text-sm text-primary">{item.productName}</span>
-                                            <span className="text-[10px] font-mono text-muted-foreground uppercase">{item.barcode}</span>
+                                            <span className="font-black text-sm text-primary tracking-tight leading-tight">{item.productName}</span>
+                                            <span className="text-[10px] font-mono text-muted-foreground/60 uppercase mt-1 tracking-tighter">{item.barcode}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">
+                                    <TableCell className="text-[11px] text-muted-foreground font-medium">
                                         {item.timestamp ? format(parseISO(item.timestamp), 'PPp') : 'N/A'}
                                     </TableCell>
-                                    <TableCell className="text-right font-black text-lg">{item.quantity}</TableCell>
-                                    <TableCell className="text-xs font-bold uppercase tracking-tight">{item.location}</TableCell>
+                                    <TableCell className="text-right">
+                                        <span className="font-black text-lg text-slate-900 dark:text-white">{item.quantity}</span>
+                                        <span className="text-[9px] font-black uppercase text-muted-foreground ml-1 opacity-40 tracking-widest">Units</span>
+                                    </TableCell>
+                                    <TableCell className="text-[11px] font-black uppercase tracking-tighter text-muted-foreground/80">{item.location}</TableCell>
                                     <TableCell>
-                                        <div className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600")}>
+                                        <div className={cn("inline-flex items-center px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600 border border-orange-500/10" : "bg-blue-500/10 text-blue-600 border border-blue-500/10")}>
                                             {item.itemType}
                                         </div>
                                     </TableCell>
                                     {role === 'admin' && (
                                         <TableCell className="text-center">
-                                            <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="sm" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-8 w-8 p-0 rounded-lg"><Edit className="h-4 w-4" /></Button>
-                                                <Button variant="outline" size="sm" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-8 w-8 p-0 rounded-lg"><Undo2 className="h-4 w-4" /></Button>
-                                                <Button variant="destructive" size="sm" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-8 w-8 p-0 rounded-lg"><Trash2 className="h-4 w-4" /></Button>
+                                            <div className="flex justify-center items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-95 group-hover:scale-100 translate-x-2 group-hover:translate-x-0">
+                                                <Button variant="outline" size="sm" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-8 w-8 p-0 rounded-lg bg-white dark:bg-black/20 border-primary/10 hover:bg-primary/5 hover:text-primary transition-colors shadow-sm"><Edit className="h-3.5 w-3.5" /></Button>
+                                                <Button variant="outline" size="sm" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-8 w-8 p-0 rounded-lg bg-white dark:bg-black/20 border-primary/10 hover:bg-primary/5 hover:text-primary transition-colors shadow-sm"><Undo2 className="h-3.5 w-3.5" /></Button>
+                                                <Button variant="outline" size="sm" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-8 w-8 p-0 rounded-lg bg-white dark:bg-black/20 border-destructive/10 hover:bg-destructive/5 hover:text-destructive transition-colors shadow-sm"><Trash2 className="h-3.5 w-3.5" /></Button>
                                             </div>
                                         </TableCell>
                                     )}
@@ -306,57 +302,60 @@ export function HeaderBarcodeLookup() {
                         </Table>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-700">
-                        <div className="bg-muted p-6 rounded-[2.5rem] mb-6 shadow-inner">
-                            <PackageSearch className="h-16 w-16 text-muted-foreground/30" />
+                    <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in duration-700">
+                        <div className="bg-muted p-8 rounded-[3rem] mb-8 shadow-inner border border-white/5">
+                            <PackageSearch className="h-20 w-20 text-muted-foreground/20" strokeWidth={1} />
                         </div>
-                        <h3 className="text-xl font-black text-muted-foreground uppercase tracking-tighter">Zero Logs Found</h3>
-                        <p className="text-sm text-muted-foreground/60 mt-2 max-w-xs mx-auto font-medium">
-                            No active inventory sessions match barcode: <span className="font-mono text-primary font-black">{lastSearchedBarcode}</span>
+                        <h3 className="text-2xl font-black text-muted-foreground uppercase tracking-tighter">Zero Logs Identified</h3>
+                        <p className="text-sm text-muted-foreground/60 mt-3 max-w-xs mx-auto font-medium leading-relaxed">
+                            No active inventory sessions match the identification criteria: <span className="font-mono text-primary font-black bg-primary/5 px-2 py-0.5 rounded">{lastSearchedBarcode}</span>
                         </p>
                     </div>
                 )
             ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center opacity-40">
-                    <Command className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-xs font-black uppercase tracking-[0.3em]">System Registry Handshake Active</p>
+                <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 transition-opacity hover:opacity-60 duration-1000">
+                    <div className="relative mb-6">
+                        <Command className="h-16 w-16 text-muted-foreground animate-pulse" strokeWidth={1.5} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">System Registry Handshake Active</p>
                 </div>
             )}
           </div>
           
-          <div className="bg-muted/30 border-t border-white/5 p-3 flex justify-between items-center px-6">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                        <kbd className="bg-background border rounded px-1.5 py-0.5">ESC</kbd> Close
+          <div className="bg-muted/30 border-t border-white/5 p-4 flex justify-between items-center px-8">
+                <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                        <kbd className="bg-background/80 border border-white/10 rounded-md px-2 py-0.5 shadow-sm text-foreground">ESC</kbd> Close
                     </div>
-                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                        <kbd className="bg-background border rounded px-1.5 py-0.5">ENTER</kbd> Execute
+                    <div className="flex items-center gap-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                        <kbd className="bg-background/80 border border-white/10 rounded-md px-2 py-0.5 shadow-sm text-foreground">ENTER</kbd> Search
                     </div>
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/40 italic">Industrial Core v4.1 Spotlight</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/40 italic">Industrial Core v4.1 Spotlight</p>
           </div>
         </DialogContent>
       </Dialog>
       
-      {/* SCANNER MODAL */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-          <DialogContent className="max-w-md w-full p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-              <DialogHeader className="p-6 pb-2 bg-muted/30">
-                  <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-2 uppercase">
-                      <ScanBarcode className="h-5 w-5 text-primary" /> Visual Capture
+          <DialogContent className="max-w-md w-full p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
+              <DialogHeader className="p-8 pb-4 bg-muted/30">
+                  <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 uppercase">
+                      <ScanBarcode className="h-7 w-7 text-primary" strokeWidth={2.5} /> Visual Capture
                   </DialogTitle>
-                  <DialogDescription className="text-xs">Position product barcode within the central optical frame.</DialogDescription>
+                  <DialogDescription className="text-sm font-medium">Position product barcode within the central optical frame.</DialogDescription>
               </DialogHeader>
-              <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden bg-black" />
-              <div className="p-4 bg-muted/30">
-                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-12 rounded-xl font-black uppercase tracking-widest">
+              <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden bg-black relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none border-[30px] border-black/40 z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-primary/50 rounded-2xl z-20 animate-pulse shadow-[0_0_30px_rgba(var(--primary),0.3)]" />
+              </div>
+              <div className="p-6 bg-muted/30">
+                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive hover:bg-destructive/5 hover:text-destructive border-white/10">
                     Abort Scan
                   </Button>
               </div>
           </DialogContent>
       </Dialog>
       
-      {/* SECONDARY ACTION DIALOGS */}
       <ReturnQuantityDialog 
         key={selectedItemForReturn ? `spotlight-return-${selectedItemForReturn.id}` : 'spot-ret'} 
         item={selectedItemForReturn} 
