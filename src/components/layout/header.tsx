@@ -38,14 +38,14 @@ function LastSyncStatus() {
   }, []);
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="flex items-center gap-2 sm:gap-4">
       {!isOnline && (
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="destructive" className="flex items-center gap-1 cursor-help px-2 sm:px-3 py-0.5 sm:py-1 animate-pulse font-black text-[7px] sm:text-[9px] uppercase tracking-widest rounded-full">
-                        <WifiOff className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                        <span className="hidden xs:inline">Offline</span>
+                    <Badge variant="destructive" className="flex items-center gap-1.5 cursor-help px-3 py-1 animate-pulse font-black text-[8px] sm:text-[10px] uppercase tracking-widest rounded-full shadow-lg">
+                        <WifiOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="hidden xs:inline">System Offline</span>
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -59,9 +59,9 @@ function LastSyncStatus() {
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-2 sm:px-3 py-0.5 sm:py-1 font-black text-[7px] sm:text-[9px] uppercase tracking-widest rounded-full", isOnline ? "animate-bounce" : "")}>
-                        <CloudOff className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                        {pendingActions.length} <span className="hidden xs:inline">Pending</span>
+                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-3 py-1 font-black text-[8px] sm:text-[10px] uppercase tracking-widest rounded-full shadow-md transition-all duration-500", isOnline ? "animate-bounce bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-muted-foreground/10")}>
+                        <CloudOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        {pendingActions.length} <span className="hidden xs:inline">Local Logs</span>
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -71,27 +71,30 @@ function LastSyncStatus() {
           </TooltipProvider>
       )}
 
-      <div className="flex flex-col items-end justify-center mr-1 sm:mr-2 text-[7px] sm:text-[9px] leading-tight text-muted-foreground uppercase tracking-widest font-black opacity-60">
-        <span className={cn("transition-colors flex items-center gap-1", isSyncing ? "text-primary animate-pulse" : (isOnline ? "text-green-500" : "text-destructive"))}>
+      <div className="flex flex-col items-end justify-center mr-1 sm:mr-2">
+        <span className={cn(
+            "text-[10px] sm:text-[12px] font-black uppercase tracking-[0.1em] flex items-center gap-2 transition-all duration-500 leading-none", 
+            isSyncing ? "text-primary animate-pulse drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : (isOnline ? "text-green-500" : "text-destructive/80")
+        )}>
           {isSyncing ? (
             <>
-              <RefreshCw className="h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" />
-              <span className="hidden sm:inline">Syncing...</span>
+              <RefreshCw className="h-4 w-4 sm:h-4.5 sm:w-4.5 animate-spin" strokeWidth={3} />
+              <span className="hidden sm:inline">Syncing Cloud...</span>
             </>
           ) : isOnline ? (
             <>
-              <Wifi className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
-              <span className="hidden xs:inline">Network Active</span>
+              <Wifi className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500/80" strokeWidth={3} />
+              <span className="hidden xs:inline">Registry Active</span>
             </>
           ) : (
             <>
-              <WifiOff className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
-              <span className="hidden xs:inline">Offline Cache</span>
+              <WifiOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />
+              <span className="hidden xs:inline">Disconnected</span>
             </>
           )}
         </span>
-        <span className="text-[6px] sm:text-[8px] opacity-60 whitespace-nowrap hidden xs:inline">
-          {lastSync ? `${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Not Synced'}
+        <span className="text-[7px] sm:text-[9px] opacity-40 font-bold uppercase tracking-tighter whitespace-nowrap hidden xs:inline leading-none mt-1.5">
+          {lastSync ? `Updated ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'Registry Not Synced'}
         </span>
       </div>
       
@@ -99,16 +102,16 @@ function LastSyncStatus() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={refreshData}
               disabled={isSyncing || !isOnline}
               className={cn(
-                "h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-500",
-                isSyncing ? "bg-primary/10 text-primary rotate-180" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                "h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl transition-all duration-500 border-white/10 shadow-sm",
+                isSyncing ? "bg-primary/20 text-primary border-primary/40 shadow-[0_0_20px_rgba(var(--primary),0.3)] ring-2 ring-primary/20" : "text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30"
               )}
             >
-              <RefreshCw className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", isSyncing && "animate-spin")} />
+              <RefreshCw className={cn("h-5 w-5 sm:h-6 sm:w-6", isSyncing && "animate-spin")} strokeWidth={2.5} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>

@@ -559,7 +559,7 @@ function PendingApprovalsSummary() {
                 </div>
                 <Button asChild className="w-full md:w-auto px-6 sm:px-10 h-12 sm:h-16 text-sm sm:text-lg font-black uppercase tracking-widest rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
                     <Link href="/approvals">
-                        Review Center <ArrowRight className="ml-2 sm:ml-3 h-5 w-5 sm:h-6 sm:w-6" />
+                        Review Center <ArrowRight className="ml-2 sm:ml-3 h-5 w-5 sm:h-6 w-6" />
                     </Link>
                 </Button>
             </CardContent>
@@ -821,8 +821,8 @@ export default function DashboardPage() {
                             <Activity className="h-2 sm:h-3 w-2 sm:w-3 animate-pulse" /> Network: Encrypted
                         </div>
                         {isSyncing && (
-                            <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900/5 dark:bg-white/5 border border-white/10 text-muted-foreground text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                                <RefreshCw className="h-2 sm:h-3 w-2 sm:w-3 animate-spin" /> Live Syncing
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] shadow-[0_0_15px_rgba(var(--primary),0.1)] animate-pulse">
+                                <RefreshCw className="h-2.5 sm:h-3 w-2.5 sm:w-3 animate-spin" strokeWidth={3} /> Live Syncing
                             </div>
                         )}
                     </div>
