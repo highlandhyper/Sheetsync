@@ -54,18 +54,18 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
         <Button
           variant="outline"
           size="icon"
-          className="relative h-8 w-8 text-muted-foreground transition-all duration-300"
+          className="relative h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground rounded-lg sm:rounded-2xl border-white/10 hover:border-primary/30 transition-all duration-300"
           aria-label="Notifications"
         >
           {unreadCount > 0 ? (
             <>
-              <BellDot className="h-4 w-4 text-primary animate-pulse" />
+              <BellDot className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" strokeWidth={2} />
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             </>
           ) : (
-            <Bell className="h-4 w-4" />
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />
           )}
         </Button>
       </PopoverTrigger>
