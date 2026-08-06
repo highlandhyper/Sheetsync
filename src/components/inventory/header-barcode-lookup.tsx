@@ -224,6 +224,11 @@ export function HeaderBarcodeLookup() {
       {/* SPOTLIGHT MODAL */}
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
         <DialogContent className="sm:max-w-5xl p-0 overflow-hidden border-none shadow-[0_0_80px_rgba(0,0,0,0.4)] bg-background/95 backdrop-blur-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Barcode Spotlight Search</DialogTitle>
+            <DialogDescription>Search for active inventory logs by barcode or SKU.</DialogDescription>
+          </DialogHeader>
+          
           <div className="relative flex items-center border-b border-white/5 p-4">
             <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-primary animate-in zoom-in duration-300" />
             <Input
