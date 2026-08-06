@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
-import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, Command, ArrowRight } from 'lucide-react';
+import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, Command, ArrowRight, Activity, Cpu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
