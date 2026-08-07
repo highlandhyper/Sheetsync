@@ -206,7 +206,7 @@ export function HeaderBarcodeLookup() {
     <>
       <button 
         onClick={() => setIsSearchModalOpen(true)}
-        className="group relative flex h-10 w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 text-left transition-all hover:bg-white/10 active:scale-95"
+        className="group relative flex h-10 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 text-left transition-all hover:bg-white/10 active:scale-95"
       >
         <div className="flex items-center gap-3">
             <Search className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -218,7 +218,7 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 transition-all ease-[cubic-bezier(0.33,1,0.68,1)]">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
@@ -255,7 +255,7 @@ export function HeaderBarcodeLookup() {
                 </div>
             </div>
 
-            {/* RESULTS TERMINAL WRAPPER FOR SMOOTH HEIGHT TRANSITION */}
+            {/* RESULTS TERMINAL */}
             <div className={cn(
               "grid transition-all duration-500 ease-[cubic-bezier(0.33,1,0.68,1)]",
               showResults ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
@@ -339,7 +339,7 @@ export function HeaderBarcodeLookup() {
               </DialogHeader>
               <div id={SCANNER_REGION_ID} className="w-full aspect-square bg-black relative" />
               <div className="p-6 bg-muted/40">
-                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all active:scale-95">
+                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all active:scale-95">
                     Abort Scan
                   </Button>
               </div>
