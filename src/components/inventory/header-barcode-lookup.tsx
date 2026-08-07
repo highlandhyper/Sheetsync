@@ -218,7 +218,7 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-[2.5rem]">
+        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
@@ -227,8 +227,7 @@ export function HeaderBarcodeLookup() {
           <div className="flex flex-col gap-6 p-4 sm:p-8">
             {/* ROUNDED RECTANGLE SEARCH BAR */}
             <div className="relative group mx-auto w-full max-w-3xl">
-              <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
-              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-[2rem] h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.4)] group-focus-within:border-primary/40 transition-all duration-300">
+              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-2xl h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.4)] group-focus-within:border-primary/40 transition-all duration-300">
                 <Search className="h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors mr-4" strokeWidth={3} />
                 <Input
                     ref={spotlightInputRef}
@@ -248,10 +247,10 @@ export function HeaderBarcodeLookup() {
                         </Button>
                     )}
                     <Separator orientation="vertical" className="h-8 bg-white/10" />
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
+                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
                         <ScanBarcode className="h-6 w-6" />
                     </Button>
-                    <Button variant="default" size="icon" className="h-12 w-12 rounded-2xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
+                    <Button variant="default" size="icon" className="h-12 w-12 rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
                         {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <ArrowRight className="h-6 w-6" />}
                     </Button>
                 </div>
@@ -260,16 +259,16 @@ export function HeaderBarcodeLookup() {
 
             {/* RESULTS TERMINAL */}
             {(hasSearched || results.length > 0) && (
-              <Card className="max-h-[55vh] overflow-y-auto bg-background/80 backdrop-blur-3xl border-white/5 rounded-[2.5rem] shadow-2xl p-4 sm:p-8 animate-in fade-in zoom-in-95 duration-500">
+              <Card className="max-h-[55vh] overflow-y-auto bg-background/80 backdrop-blur-3xl border-white/5 rounded-2xl shadow-2xl p-4 sm:p-8 animate-in fade-in zoom-in-95 duration-500">
                 {results.length > 0 ? (
                     <div className="space-y-4">
                         {results.map((item) => (
                             <div 
                                 key={`spotlight-${item.id}`} 
-                                className="group relative flex items-center justify-between p-6 rounded-[2rem] border border-white/[0.03] bg-white/[0.02] hover:bg-primary/[0.05] hover:border-primary/20 transition-all duration-300"
+                                className="group relative flex items-center justify-between p-6 rounded-xl border border-white/[0.03] bg-white/[0.02] hover:bg-primary/[0.05] hover:border-primary/20 transition-all duration-300"
                             >
                                 <div className="flex items-center gap-6 min-w-0">
-                                    <div className="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                    <div className="h-14 w-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                                         <Layers className="h-7 w-7 text-primary" strokeWidth={2.5} />
                                     </div>
                                     <div className="flex flex-col min-w-0">
@@ -311,7 +310,7 @@ export function HeaderBarcodeLookup() {
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="bg-muted/20 p-10 rounded-[3rem] mb-6">
+                        <div className="bg-muted/20 p-10 rounded-3xl mb-6">
                             <PackageSearch className="h-20 w-20 text-muted-foreground/20" strokeWidth={1.5} />
                         </div>
                         <h3 className="text-2xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
@@ -326,7 +325,7 @@ export function HeaderBarcodeLookup() {
             {/* STATUS STRIP */}
             {!hasSearched && (
                 <div className="mx-auto flex items-center gap-6 animate-pulse">
-                    <div className="flex items-center gap-3 px-5 py-2 rounded-2xl bg-primary/5 border border-primary/10">
+                    <div className="flex items-center gap-3 px-5 py-2 rounded-xl bg-primary/5 border border-primary/10">
                         <Cpu className="h-4 w-4 text-primary" />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">System Identifying Handshake</span>
                     </div>
@@ -341,7 +340,7 @@ export function HeaderBarcodeLookup() {
       
       {/* SCANNER MODAL */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-          <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
+          <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
               <DialogHeader className="p-8 pb-4 bg-muted/40">
                   <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
                       <ScanBarcode className="h-8 w-8" /> Visual Capture
@@ -350,7 +349,7 @@ export function HeaderBarcodeLookup() {
               </DialogHeader>
               <div id={SCANNER_REGION_ID} className="w-full aspect-square bg-black relative" />
               <div className="p-6 bg-muted/40">
-                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all active:scale-95">
+                  <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all active:scale-95">
                     Abort Scan
                   </Button>
               </div>
