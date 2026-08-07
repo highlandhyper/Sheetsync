@@ -225,10 +225,10 @@ export function HeaderBarcodeLookup() {
           </DialogHeader>
           
           <div className="flex flex-col gap-6 p-4 sm:p-8">
-            {/* ROUNDED RECTANGLE SEARCH BAR */}
+            {/* CLEAN ROUNDED RECTANGLE SEARCH BAR */}
             <div className="relative group mx-auto w-full max-w-3xl">
-              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-2xl h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.4)] group-focus-within:border-primary/40 transition-all duration-300">
-                <Search className="h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors mr-4" strokeWidth={3} />
+              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-2xl h-16 sm:h-20 px-6 sm:px-8 shadow-2xl">
+                <Search className="h-6 w-6 text-muted-foreground mr-4" strokeWidth={3} />
                 <Input
                     ref={spotlightInputRef}
                     placeholder="Search Barcode or Asset Name..."
