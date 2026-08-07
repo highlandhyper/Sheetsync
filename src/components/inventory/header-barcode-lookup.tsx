@@ -218,7 +218,7 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
