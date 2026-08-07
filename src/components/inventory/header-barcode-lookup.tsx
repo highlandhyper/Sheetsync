@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
-import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, Command, ArrowRight, Activity, Cpu, Layers, ChevronRight, Hash, MapPin, Tag } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, ArrowRight, Layers, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,14 +14,13 @@ import { Card } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { ReturnQuantityDialog } from './return-quantity-dialog';
 import { EditInventoryItemDialog } from './edit-inventory-item-dialog';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 
 const SCANNER_REGION_ID = "header-barcode-scanner-region";
@@ -218,21 +216,20 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-2xl">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
           </DialogHeader>
           
-          <div className="flex flex-col gap-6 p-4 sm:p-8">
-            {/* CLEAN ROUNDED RECTANGLE SEARCH BAR */}
-            <div className="relative group mx-auto w-full max-w-3xl">
-              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-2xl h-16 sm:h-20 px-6 sm:px-8 shadow-2xl">
-                <Search className="h-6 w-6 text-muted-foreground mr-4" strokeWidth={3} />
-                <Input
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
+            {/* SEARCH BAR CONTAINER */}
+            <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-2xl h-16 sm:h-20 px-6 shadow-2xl overflow-hidden">
+                <Search className="h-6 w-6 text-muted-foreground mr-4 shrink-0" strokeWidth={3} />
+                <input
                     ref={spotlightInputRef}
-                    placeholder="Search Barcode or Asset Name..."
-                    className="h-full w-full border-none bg-transparent p-0 text-lg sm:text-xl font-bold tracking-tight focus-visible:ring-0 placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.3em]"
+                    placeholder="SEARCH BARCODE OR ASSET..."
+                    className="h-full w-full border-none bg-transparent p-0 text-lg sm:text-xl font-bold tracking-tight focus:outline-none focus:ring-0 placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.3em]"
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
                     onKeyDown={(e) => {
@@ -240,68 +237,67 @@ export function HeaderBarcodeLookup() {
                         if (e.key === 'Escape' && !barcode) setIsSearchModalOpen(false);
                     }}
                 />
-                <div className="flex items-center gap-2 sm:gap-3 ml-2">
+                <div className="flex items-center gap-2 ml-2 shrink-0">
                     {barcode && (
                         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-all" onClick={handleClear}>
                             <X className="h-5 w-5" />
                         </Button>
                     )}
                     <Separator orientation="vertical" className="h-8 bg-white/10" />
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
                         <ScanBarcode className="h-6 w-6" />
                     </Button>
-                    <Button variant="default" size="icon" className="h-12 w-12 rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
-                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <ArrowRight className="h-6 w-6" />}
+                    <Button variant="default" size="icon" className="h-10 w-10 rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
+                        {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
                     </Button>
                 </div>
-              </div>
             </div>
 
             {/* RESULTS TERMINAL */}
             {(hasSearched || results.length > 0) && (
-              <Card className="max-h-[55vh] overflow-y-auto bg-background/80 backdrop-blur-3xl border-white/5 rounded-2xl shadow-2xl p-4 sm:p-8 animate-in fade-in zoom-in-95 duration-500">
+              <Card className="max-h-[50vh] overflow-y-auto bg-background/90 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl p-2 sm:p-4 animate-in fade-in zoom-in-95 duration-300">
                 {results.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         {results.map((item) => (
                             <div 
                                 key={`spotlight-${item.id}`} 
-                                className="group relative flex items-center justify-between p-6 rounded-xl border border-white/[0.03] bg-white/[0.02] hover:bg-primary/[0.05] hover:border-primary/20 transition-all duration-300"
+                                className="group relative flex items-center justify-between p-4 rounded-xl border border-transparent hover:bg-primary/[0.05] hover:border-primary/10 transition-all duration-200"
                             >
-                                <div className="flex items-center gap-6 min-w-0">
-                                    <div className="h-14 w-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                                        <Layers className="h-7 w-7 text-primary" strokeWidth={2.5} />
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className="h-12 w-12 rounded-lg bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                                        <Layers className="h-6 w-6 text-primary" strokeWidth={2.5} />
                                     </div>
                                     <div className="flex flex-col min-w-0">
-                                        <h4 className="text-lg font-black text-slate-900 dark:text-white truncate tracking-tight mb-1">{item.productName}</h4>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-[10px] font-mono font-black bg-muted/60 px-2 py-0.5 rounded-md text-muted-foreground tracking-tighter uppercase">{item.barcode}</span>
-                                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-muted-foreground/50">
+                                        <h4 className="text-base font-black text-slate-900 dark:text-white truncate tracking-tight mb-0.5">{item.productName}</h4>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[9px] font-mono font-black bg-muted/60 px-1.5 py-0.5 rounded text-muted-foreground tracking-tighter uppercase">{item.barcode}</span>
+                                            <div className="flex items-center gap-1 text-[9px] font-black uppercase text-muted-foreground/50">
                                                 <MapPin className="h-3 w-3" /> {item.location}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-8 shrink-0">
+                                <div className="flex items-center gap-4 shrink-0">
                                     <div className="flex flex-col items-end">
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-2xl font-black text-primary tracking-tighter leading-none">{item.quantity}</span>
-                                            <span className="text-[9px] font-black uppercase text-muted-foreground/30">Units</span>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-xl font-black text-primary tracking-tighter leading-none">{item.quantity}</span>
+                                            <span className="text-[8px] font-black uppercase text-muted-foreground/30">Units</span>
                                         </div>
-                                        <div className={cn("mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600")}>
+                                        <div className={cn("mt-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600")}>
                                             {item.itemType}
                                         </div>
                                     </div>
 
                                     {role === 'admin' ? (
-                                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                                            <Button variant="outline" size="sm" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-10 w-10 p-0 rounded-xl bg-background border-primary/10"><Edit className="h-4 w-4" /></Button>
-                                            <Button variant="outline" size="sm" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-10 w-10 p-0 rounded-xl bg-background border-primary/10"><Undo2 className="h-4 w-4" /></Button>
-                                            <Button variant="outline" size="sm" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-10 w-10 p-0 rounded-xl bg-background border-destructive/10 text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></Button>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
+                                            <Button variant="outline" size="icon" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Edit className="h-3.5 w-3.5" /></Button>
+                                            <Button variant="outline" size="icon" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Undo2 className="h-3.5 w-3.5" /></Button>
+                                            <Button variant="outline" size="icon" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-destructive/10 text-destructive hover:bg-destructive/5"><Trash2 className="h-3.5 w-3.5" /></Button>
                                         </div>
                                     ) : (
-                                        <div className="opacity-20 translate-x-2 group-hover:translate-x-0 transition-transform">
-                                            <ChevronRight className="h-8 w-8 text-muted-foreground" />
+                                        <div className="opacity-20 translate-x-1 group-hover:translate-x-0 transition-transform">
+                                            <ChevronRight className="h-6 w-6 text-muted-foreground" />
                                         </div>
                                     )}
                                 </div>
@@ -309,12 +305,12 @@ export function HeaderBarcodeLookup() {
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="bg-muted/20 p-10 rounded-3xl mb-6">
-                            <PackageSearch className="h-20 w-20 text-muted-foreground/20" strokeWidth={1.5} />
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="bg-muted/20 p-6 rounded-2xl mb-4">
+                            <PackageSearch className="h-12 w-12 text-muted-foreground/20" strokeWidth={1.5} />
                         </div>
-                        <h3 className="text-2xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
-                        <p className="text-xs text-muted-foreground/60 mt-2 max-w-xs mx-auto">
+                        <h3 className="text-xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1 max-w-xs mx-auto">
                             The registry system could not locate identified stock for barcode: <span className="text-primary font-black">{lastSearchedBarcode}</span>
                         </p>
                     </div>
@@ -322,15 +318,15 @@ export function HeaderBarcodeLookup() {
               </Card>
             )}
 
-            {/* STATUS STRIP */}
+            {/* KEYBOARD SHORTCUT FOOTER */}
             {!hasSearched && (
-                <div className="mx-auto flex items-center gap-6 animate-pulse">
-                    <div className="flex items-center gap-3 px-5 py-2 rounded-xl bg-primary/5 border border-primary/10">
-                        <Cpu className="h-4 w-4 text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">System Identifying Handshake</span>
+                <div className="mx-auto flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
+                    <div className="flex items-center gap-1.5">
+                        <kbd className="bg-background border border-white/5 rounded px-1.5 py-0.5 text-foreground/50">ESC</kbd> <span>Close</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
-                        <kbd className="bg-background border border-white/5 rounded-md px-2 py-0.5 text-foreground/50">ESC</kbd> <span>Close</span>
+                    <Separator orientation="vertical" className="h-3 bg-white/5" />
+                    <div className="flex items-center gap-1.5">
+                        <kbd className="bg-background border border-white/5 rounded px-1.5 py-0.5 text-foreground/50">ENTER</kbd> <span>Search</span>
                     </div>
                 </div>
             )}
