@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Card } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -224,7 +225,7 @@ export function HeaderBarcodeLookup() {
           </DialogHeader>
           
           <div className="flex flex-col gap-6 p-4 sm:p-8">
-            {/* SEARCH INPUT BAR - BRAVE INSPIRED */}
+            {/* BRAVE-INSPIRED SEARCH BAR */}
             <div className="relative group mx-auto w-full max-w-3xl">
               <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
               <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-full h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-focus-within:border-primary/50 transition-all duration-300">
