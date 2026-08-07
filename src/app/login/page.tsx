@@ -9,7 +9,7 @@ function LoginFormSkeleton() {
   return (
     <div className="w-full max-w-md space-y-10 p-4">
       <div className="space-y-4">
-        <Skeleton className="h-20 w-20 rounded-[2.5rem] mx-auto" />
+        <Skeleton className="h-20 w-20 rounded-2xl mx-auto" />
         <Skeleton className="h-10 w-2/3 mx-auto" />
         <Skeleton className="h-4 w-1/3 mx-auto" />
       </div>
@@ -53,7 +53,7 @@ export default function LoginPage() {
                     { label: 'Network', value: 'Encrypted', icon: Network },
                     { label: 'Security', value: 'Verified', icon: Fingerprint },
                 ].map((stat, i) => (
-                    <div key={i} className="p-5 rounded-[2rem] bg-white/40 dark:bg-white/5 backdrop-blur-sm shadow-sm">
+                    <div key={i} className="p-5 rounded-2xl bg-white/40 dark:bg-white/5 backdrop-blur-sm shadow-sm">
                         <stat.icon className="h-5 w-5 text-primary mb-3" />
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{stat.label}</p>
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{stat.value}</p>

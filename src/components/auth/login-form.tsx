@@ -123,7 +123,7 @@ export function LoginForm() {
           <Button 
             type="submit" 
             disabled={isLoading} 
-            className="w-full h-14 text-base font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground group border-none"
+            className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground group border-none"
           >
             {isLoading ? (
               <div className="flex items-center justify-center gap-3">
