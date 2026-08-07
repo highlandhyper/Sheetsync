@@ -218,17 +218,17 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-[2rem]">
+        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-[2.5rem]">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
           </DialogHeader>
           
           <div className="flex flex-col gap-6 p-4 sm:p-8">
-            {/* BRAVE-INSPIRED SEARCH BAR */}
+            {/* ROUNDED RECTANGLE SEARCH BAR */}
             <div className="relative group mx-auto w-full max-w-3xl">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
-              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-full h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-focus-within:border-primary/50 transition-all duration-300">
+              <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
+              <div className="relative flex items-center bg-background/95 backdrop-blur-3xl border border-white/10 rounded-[2rem] h-16 sm:h-20 px-6 sm:px-8 shadow-[0_20px_50px_rgba(0,0,0,0.4)] group-focus-within:border-primary/40 transition-all duration-300">
                 <Search className="h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors mr-4" strokeWidth={3} />
                 <Input
                     ref={spotlightInputRef}
@@ -243,15 +243,15 @@ export function HeaderBarcodeLookup() {
                 />
                 <div className="flex items-center gap-2 sm:gap-3 ml-2">
                     {barcode && (
-                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={handleClear}>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-all" onClick={handleClear}>
                             <X className="h-5 w-5" />
                         </Button>
                     )}
                     <Separator orientation="vertical" className="h-8 bg-white/10" />
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full text-primary hover:bg-primary/10" onClick={() => setIsScannerOpen(true)}>
+                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
                         <ScanBarcode className="h-6 w-6" />
                     </Button>
-                    <Button variant="default" size="icon" className="h-12 w-12 rounded-full shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
+                    <Button variant="default" size="icon" className="h-12 w-12 rounded-2xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
                         {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <ArrowRight className="h-6 w-6" />}
                     </Button>
                 </div>
@@ -326,7 +326,7 @@ export function HeaderBarcodeLookup() {
             {/* STATUS STRIP */}
             {!hasSearched && (
                 <div className="mx-auto flex items-center gap-6 animate-pulse">
-                    <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-primary/5 border border-primary/10">
+                    <div className="flex items-center gap-3 px-5 py-2 rounded-2xl bg-primary/5 border border-primary/10">
                         <Cpu className="h-4 w-4 text-primary" />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">System Identifying Handshake</span>
                     </div>
