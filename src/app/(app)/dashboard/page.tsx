@@ -29,7 +29,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <>
-      <div className="absolute inset-0 z-0 overflow-hidden rounded-xl pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
         {children}
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-3 sm:px-6">
@@ -65,14 +65,14 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 
   const cardContainerClassName = cn(
-    "group transition-all duration-500 rounded-[1.25rem] sm:rounded-3xl border-white/5 h-full",
+    "group transition-all duration-500 rounded-2xl border-white/5 h-full",
     href ? "hover:border-primary/30 hover:scale-[1.02] cursor-pointer" : "",
     className
   );
   
   if (href) {
     return (
-      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[1.25rem] sm:rounded-[2rem] block h-full">
+      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl block h-full">
         <Card className={cardContainerClassName}>
           {cardInnerContent}
         </Card>
@@ -269,7 +269,7 @@ function StockTrendDetailedDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl rounded-[1.5rem] sm:rounded-[2rem] border-none shadow-2xl">
+            <DialogContent className="sm:max-w-3xl rounded-2xl border-none shadow-2xl">
                 <DialogHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -391,7 +391,7 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-2xl rounded-[1.25rem] sm:rounded-[2rem] border-white/5 bg-card/60 backdrop-blur-xl h-full flex flex-col group overflow-hidden">
+        <Card className="shadow-2xl rounded-2xl border-white/5 bg-card/60 backdrop-blur-xl h-full flex flex-col group overflow-hidden">
             <CardHeader className="pb-1 sm:pb-2 bg-primary/5 px-3 sm:px-6">
                 <CardTitle className="text-[9px] sm:text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
                 <CardDescription className="text-[8px] sm:text-[10px] font-bold">Proactive silent entry grant</CardDescription>
@@ -402,7 +402,7 @@ function QuickAuthorizeCard() {
                         <Button 
                             variant="outline" 
                             role="combobox" 
-                            className="w-full h-10 sm:h-12 text-xs sm:text-sm justify-between font-black uppercase tracking-tight rounded-[0.75rem] sm:rounded-2xl border-primary/10 bg-muted/20"
+                            className="w-full h-10 sm:h-12 text-xs sm:text-sm justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-muted/20"
                         >
                             <div className="flex items-center gap-2 truncate">
                                 <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
@@ -438,7 +438,7 @@ function QuickAuthorizeCard() {
                 </Popover>
                 
                 <Button 
-                    className="w-full h-10 sm:h-12 text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-[0.75rem] sm:rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
+                    className="w-full h-10 sm:h-12 text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
                     disabled={!selectedStaff}
                     onClick={handleOpenGrant}
                 >
@@ -492,7 +492,7 @@ function ActiveAuthorizations() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {activeSessions.map(session => (
-                    <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden flex flex-col group">
+                    <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-2xl rounded-2xl overflow-hidden flex flex-col group">
                         <CardHeader className="pb-3 bg-green-500/[0.03] border-b border-green-500/5 px-4 sm:px-6">
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
@@ -546,10 +546,10 @@ function PendingApprovalsSummary() {
     if (pendingRequests.length === 0) return null;
 
     return (
-        <Card className="border-primary/20 bg-primary/[0.03] shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 group">
+        <Card className="border-primary/20 bg-primary/[0.03] shadow-2xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 group">
             <CardContent className="p-4 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-8">
                 <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto">
-                    <div className="bg-primary p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] shadow-2xl shadow-primary/30 group-hover:scale-105 transition-transform duration-500 shrink-0">
+                    <div className="bg-primary p-4 sm:p-6 rounded-2xl shadow-2xl shadow-primary/30 group-hover:scale-105 transition-transform duration-500 shrink-0">
                         <ShieldQuestion className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" />
                     </div>
                     <div>
@@ -557,7 +557,7 @@ function PendingApprovalsSummary() {
                         <p className="text-muted-foreground font-bold uppercase text-[9px] sm:text-xs tracking-widest">You have <span className="text-primary font-black">{pendingRequests.length} incoming requests</span> awaiting administrator clearance.</p>
                     </div>
                 </div>
-                <Button asChild className="w-full md:w-auto px-6 sm:px-10 h-12 sm:h-16 text-sm sm:text-lg font-black uppercase tracking-widest rounded-xl sm:rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
+                <Button asChild className="w-full md:w-auto px-6 sm:px-10 h-12 sm:h-16 text-sm sm:text-lg font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
                     <Link href="/approvals">
                         Review Center <ArrowRight className="ml-2 sm:ml-3 h-5 w-5 sm:h-6 w-6" />
                     </Link>
@@ -593,7 +593,7 @@ function ProactiveGrantDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] rounded-[1.5rem] sm:rounded-[2rem] border-none shadow-2xl p-4 sm:p-6">
+            <DialogContent className="max-w-md w-[95%] rounded-2xl border-none shadow-2xl p-4 sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-black uppercase tracking-tighter">
                         <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
@@ -611,7 +611,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'single' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('single')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-xl group border-primary/10 font-bold"
                             >
                                 <Check className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'single' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Single</span>
@@ -619,7 +619,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === '10' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('10')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-xl group border-primary/10 font-bold"
                             >
                                 <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '10' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">10 Min</span>
@@ -627,7 +627,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === '30' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('30')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-xl group border-primary/10 font-bold"
                             >
                                 <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '30' ? "opacity-100" : "opacity-30")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">30 Min</span>
@@ -635,7 +635,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('custom')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-[0.75rem] sm:rounded-2xl group border-primary/10 font-bold"
+                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-xl group border-primary/10 font-bold"
                             >
                                 <Plus className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'custom' ? "opacity-100" : "opacity-030")} />
                                 <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Custom</span>
@@ -670,18 +670,18 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-8 sm:space-y-12">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr"> 
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl sm:rounded-[2rem]" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
       </div>
       <div className="space-y-6 pt-6 sm:pt-10">
           <Skeleton className="h-8 sm:h-10 w-48 sm:w-64 rounded-xl" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Skeleton className="h-64 w-full rounded-2xl sm:rounded-[2rem]" />
-              <Skeleton className="h-64 w-full rounded-2xl sm:rounded-[2rem]" />
-              <Skeleton className="h-64 w-full rounded-2xl sm:rounded-[2rem]" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
           </div>
       </div>
     </div>
@@ -886,7 +886,7 @@ export default function DashboardPage() {
         <ActiveAuthorizations />
 
         <div className="grid grid-cols-1 gap-6 sm:gap-8">
-          <Card className="shadow-2xl rounded-[1.25rem] sm:rounded-[3rem] border-white/5 bg-card/60 backdrop-blur-xl overflow-hidden">
+          <Card className="shadow-2xl rounded-2xl border-white/5 bg-card/60 backdrop-blur-xl overflow-hidden">
             <CardHeader className="border-b border-white/5 bg-primary/[0.02] p-4 sm:p-8 sm:pb-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>

@@ -443,7 +443,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   return (
     <>
-    <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card">
+    <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl">
       <CardHeader className="px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -763,7 +763,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     </Card>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl sm:rounded-lg border-0">
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-0">
             <DialogHeader className="p-6 pb-2 border-b bg-muted/30">
                 <DialogTitle className="font-black uppercase tracking-tighter">Scan Product</DialogTitle>
                 <DialogDescription>Use your camera to capture the product barcode.</DialogDescription>
@@ -778,7 +778,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     </Dialog>
 
     <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-        <DialogContent className="max-w-sm w-[90%] p-8 overflow-hidden rounded-3xl sm:rounded-2xl border-0 shadow-2xl bg-slate-950 text-white flex flex-col items-center text-center animate-fade-in">
+        <DialogContent className="max-w-sm w-[90%] p-8 overflow-hidden rounded-2xl border-0 shadow-2xl bg-slate-950 text-white flex flex-col items-center text-center animate-fade-in">
             <div className="bg-primary/20 p-4 rounded-full mb-6 animate-bounce">
                 <PartyPopper className="h-12 w-12 text-primary" />
             </div>
