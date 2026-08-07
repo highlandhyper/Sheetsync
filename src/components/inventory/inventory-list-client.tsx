@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode, ChevronsUpDown, Check } from 'lucide-react';
+import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode, ChevronsUpDown, Check, MapPin } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ import {
 
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
+const ALL_LOCATIONS_VALUE = "___ALL_LOCATIONS___";
 
 type DashboardFilterType = {
   type: 'damaged' | 'expiringSoon' | 'otherSuppliers' | 'customExpiry' | 'specificSupplier';
@@ -72,7 +73,9 @@ export function InventoryListClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+  const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<DashboardFilterType>(null);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -174,6 +177,10 @@ export function InventoryListClient() {
         items = items.filter(item => item.supplierName === selectedSupplier);
     }
 
+    if (selectedLocation) {
+        items = items.filter(item => item.location === selectedLocation);
+    }
+
     if (selectedDateRange?.from && selectedDateRange.to) {
         const fromDate = startOfDay(selectedDateRange.from);
         const toDate = startOfDay(selectedDateRange.to);
@@ -205,7 +212,7 @@ export function InventoryListClient() {
     }
 
     return items;
-  }, [cachedItems, activeDashboardFilter, debouncedSearch, selectedSupplier, selectedDateRange, typeFilter]);
+  }, [cachedItems, activeDashboardFilter, debouncedSearch, selectedSupplier, selectedLocation, selectedDateRange, typeFilter]);
   
   const groupedItems = useMemo(() => {
     const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();
@@ -298,7 +305,7 @@ export function InventoryListClient() {
     if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
       setActiveDashboardFilter(newPotentialFilter);
       if (newPotentialFilter) {
-        setSearchTerm(''); setSelectedSupplier(''); setSelectedDateRange(undefined);
+        setSearchTerm(''); setSelectedSupplier(''); setSelectedLocation(''); setSelectedDateRange(undefined);
         if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
             setSelectedSupplier(newPotentialFilter.suppliers[0]);
         }
@@ -311,12 +318,17 @@ export function InventoryListClient() {
   }, [isMultiSelectEnabled]);
 
   const clearFilters = () => {
-    setSearchTerm(''); setSelectedSupplier(''); setSelectedDateRange(undefined); setIsDatePopoverOpen(false); setTypeFilter('all');
+    setSearchTerm(''); setSelectedSupplier(''); setSelectedLocation(''); setSelectedDateRange(undefined); setIsDatePopoverOpen(false); setTypeFilter('all');
     if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   }
 
   const handleSupplierChange = (value: string) => {
     setSelectedSupplier(value === ALL_SUPPLIERS_VALUE ? '' : value);
+    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+  };
+
+  const handleLocationChange = (value: string) => {
+    setSelectedLocation(value === ALL_LOCATIONS_VALUE ? '' : value);
     if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
   };
 
@@ -449,9 +461,69 @@ export function InventoryListClient() {
                   </Command>
                 </PopoverContent>
               </Popover>
+
+              <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={locationComboboxOpen}
+                    className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal"
+                  >
+                    <div className="flex items-center truncate">
+                      <MapPin className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      {selectedLocation ? selectedLocation : "All Locations"}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search location..." />
+                    <CommandList>
+                      <CommandEmpty>No location found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value={ALL_LOCATIONS_VALUE}
+                          onSelect={() => {
+                            handleLocationChange(ALL_LOCATIONS_VALUE);
+                            setLocationComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !selectedLocation ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Locations
+                        </CommandItem>
+                        {uniqueDbLocations.map((loc) => (
+                          <CommandItem
+                            key={loc}
+                            value={loc}
+                            onSelect={() => {
+                              handleLocationChange(loc);
+                              setLocationComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedLocation === loc ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {loc}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-40 flex-1">
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-32 flex-1">
                  <div className="flex items-center"><Tag className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Type" /></div>
                 </SelectTrigger>
                 <SelectContent>
@@ -464,9 +536,9 @@ export function InventoryListClient() {
 
               <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen} modal={true}>
                 <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-48 flex-1", !selectedDateRange && "text-muted-foreground")}>
+                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-40 flex-1", !selectedDateRange && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Expiry Range</span>}
+                    {selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Range</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -475,7 +547,7 @@ export function InventoryListClient() {
               </Popover>
 
               <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                 {(searchTerm || selectedSupplier || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
+                 {(searchTerm || selectedSupplier || selectedLocation || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
                     <Button variant="ghost" onClick={clearFilters} className="flex-grow sm:flex-grow-0"><FilterX className="mr-2 h-4 w-4" /> Clear</Button>
                   )}
                    <DropdownMenu>
