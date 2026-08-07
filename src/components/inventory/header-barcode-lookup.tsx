@@ -324,19 +324,6 @@ export function HeaderBarcodeLookup() {
                 </Card>
               </div>
             </div>
-
-            {/* KEYBOARD SHORTCUT FOOTER */}
-            {!showResults && (
-                <div className="mx-auto flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
-                    <div className="flex items-center gap-1.5">
-                        <kbd className="bg-background border border-white/5 rounded px-1.5 py-0.5 text-foreground/50">ESC</kbd> <span>Close</span>
-                    </div>
-                    <Separator orientation="vertical" className="h-3 bg-white/5" />
-                    <div className="flex items-center gap-1.5">
-                        <kbd className="bg-background border border-white/5 rounded px-1.5 py-0.5 text-foreground/50">ENTER</kbd> <span>Search</span>
-                    </div>
-                </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
