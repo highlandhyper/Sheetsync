@@ -200,6 +200,8 @@ export function HeaderBarcodeLookup() {
     spotlightInputRef.current?.focus();
   }
 
+  const showResults = hasSearched || results.length > 0;
+
   return (
     <>
       <button 
@@ -253,73 +255,78 @@ export function HeaderBarcodeLookup() {
                 </div>
             </div>
 
-            {/* RESULTS TERMINAL */}
-            {(hasSearched || results.length > 0) && (
-              <Card className="max-h-[50vh] overflow-y-auto bg-background/90 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl p-2 sm:p-4 animate-in fade-in zoom-in-95 duration-300">
-                {results.length > 0 ? (
-                    <div className="space-y-2">
-                        {results.map((item) => (
-                            <div 
-                                key={`spotlight-${item.id}`} 
-                                className="group relative flex items-center justify-between p-4 rounded-xl border border-transparent hover:bg-primary/[0.05] hover:border-primary/10 transition-all duration-200"
-                            >
-                                <div className="flex items-center gap-4 min-w-0">
-                                    <div className="h-12 w-12 rounded-lg bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
-                                        <Layers className="h-6 w-6 text-primary" strokeWidth={2.5} />
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <h4 className="text-base font-black text-slate-900 dark:text-white truncate tracking-tight mb-0.5">{item.productName}</h4>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[9px] font-mono font-black bg-muted/60 px-1.5 py-0.5 rounded text-muted-foreground tracking-tighter uppercase">{item.barcode}</span>
-                                            <div className="flex items-center gap-1 text-[9px] font-black uppercase text-muted-foreground/50">
-                                                <MapPin className="h-3 w-3" /> {item.location}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+            {/* RESULTS TERMINAL WRAPPER FOR SMOOTH HEIGHT TRANSITION */}
+            <div className={cn(
+              "grid transition-all duration-500 ease-[cubic-bezier(0.33,1,0.68,1)]",
+              showResults ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+            )}>
+              <div className="overflow-hidden">
+                <Card className="max-h-[50vh] overflow-y-auto bg-background/90 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl p-2 sm:p-4">
+                  {results.length > 0 ? (
+                      <div className="space-y-2">
+                          {results.map((item) => (
+                              <div 
+                                  key={`spotlight-${item.id}`} 
+                                  className="group relative flex items-center justify-between p-4 rounded-xl border border-transparent hover:bg-primary/[0.05] hover:border-primary/10 transition-all duration-200"
+                              >
+                                  <div className="flex items-center gap-4 min-w-0">
+                                      <div className="h-12 w-12 rounded-lg bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                                          <Layers className="h-6 w-6 text-primary" strokeWidth={2.5} />
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                          <h4 className="text-base font-black text-slate-900 dark:text-white truncate tracking-tight mb-0.5">{item.productName}</h4>
+                                          <div className="flex items-center gap-3">
+                                              <span className="text-[9px] font-mono font-black bg-muted/60 px-1.5 py-0.5 rounded text-muted-foreground tracking-tighter uppercase">{item.barcode}</span>
+                                              <div className="flex items-center gap-1 text-[9px] font-black uppercase text-muted-foreground/50">
+                                                  <MapPin className="h-3 w-3" /> {item.location}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
 
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="flex flex-col items-end">
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xl font-black text-primary tracking-tighter leading-none">{item.quantity}</span>
-                                            <span className="text-[8px] font-black uppercase text-muted-foreground/30">Units</span>
-                                        </div>
-                                        <div className={cn("mt-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600")}>
-                                            {item.itemType}
-                                        </div>
-                                    </div>
+                                  <div className="flex items-center gap-4 shrink-0">
+                                      <div className="flex flex-col items-end">
+                                          <div className="flex items-baseline gap-1">
+                                              <span className="text-xl font-black text-primary tracking-tighter leading-none">{item.quantity}</span>
+                                              <span className="text-[8px] font-black uppercase text-muted-foreground/30">Units</span>
+                                          </div>
+                                          <div className={cn("mt-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest", item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600")}>
+                                              {item.itemType}
+                                          </div>
+                                      </div>
 
-                                    {role === 'admin' ? (
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
-                                            <Button variant="outline" size="icon" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Edit className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="outline" size="icon" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Undo2 className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="outline" size="icon" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-destructive/10 text-destructive hover:bg-destructive/5"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                        </div>
-                                    ) : (
-                                        <div className="opacity-20 translate-x-1 group-hover:translate-x-0 transition-transform">
-                                            <ChevronRight className="h-6 w-6 text-muted-foreground" />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="bg-muted/20 p-6 rounded-2xl mb-4">
-                            <PackageSearch className="h-12 w-12 text-muted-foreground/20" strokeWidth={1.5} />
-                        </div>
-                        <h3 className="text-xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1 max-w-xs mx-auto">
-                            The registry system could not locate identified stock for barcode: <span className="text-primary font-black">{lastSearchedBarcode}</span>
-                        </p>
-                    </div>
-                )}
-              </Card>
-            )}
+                                      {role === 'admin' ? (
+                                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
+                                              <Button variant="outline" size="icon" onClick={() => {setCurrentItemToEdit(item); setIsEditDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Edit className="h-3.5 w-3.5" /></Button>
+                                              <Button variant="outline" size="icon" onClick={() => {setSelectedItemForReturn(item); setIsReturnDialogOpen(true);}} disabled={item.quantity <= 0} className="h-8 w-8 rounded-lg bg-background border-primary/10"><Undo2 className="h-3.5 w-3.5" /></Button>
+                                              <Button variant="outline" size="icon" onClick={() => {setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true);}} className="h-8 w-8 rounded-lg bg-background border-destructive/10 text-destructive hover:bg-destructive/5"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                          </div>
+                                      ) : (
+                                          <div className="opacity-20 translate-x-1 group-hover:translate-x-0 transition-transform">
+                                              <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <div className="bg-muted/20 p-6 rounded-2xl mb-4">
+                              <PackageSearch className="h-12 w-12 text-muted-foreground/20" strokeWidth={1.5} />
+                          </div>
+                          <h3 className="text-xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1 max-w-xs mx-auto">
+                              The registry system could not locate identified stock for barcode: <span className="text-primary font-black">{lastSearchedBarcode}</span>
+                          </p>
+                      </div>
+                  )}
+                </Card>
+              </div>
+            </div>
 
             {/* KEYBOARD SHORTCUT FOOTER */}
-            {!hasSearched && (
+            {!showResults && (
                 <div className="mx-auto flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
                     <div className="flex items-center gap-1.5">
                         <kbd className="bg-background border border-white/5 rounded px-1.5 py-0.5 text-foreground/50">ESC</kbd> <span>Close</span>
@@ -354,14 +361,14 @@ export function HeaderBarcodeLookup() {
       
       {/* ACTION TERMINALS */}
       <ReturnQuantityDialog 
-        key={selectedItemForReturn ? `spot-ret-${selectedItemForReturn.id}` : 's-r'} 
+        key={selectedItemForReturn ? `spotlight-return-${selectedItemForReturn.id}` : 'spotlight-return-none'} 
         item={selectedItemForReturn} 
         isOpen={isReturnDialogOpen} 
         onOpenChange={setIsReturnDialogOpen} 
         onReturnSuccess={handleActionSuccess} 
       />
       <EditInventoryItemDialog 
-        key={currentItemToEdit ? `spot-ed-${currentItemToEdit.id}` : 's-e'} 
+        key={currentItemToEdit ? `spotlight-edit-${currentItemToEdit.id}` : 'spotlight-edit-none'} 
         item={currentItemToEdit} 
         isOpen={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen} 
@@ -369,7 +376,7 @@ export function HeaderBarcodeLookup() {
         uniqueLocationsFromDb={uniqueLocations} 
       />
       <DeleteConfirmationDialog 
-        key={selectedItemForDeletion ? `spot-del-${selectedItemForDeletion.id}` : 's-d'} 
+        key={selectedItemForDeletion ? `spotlight-delete-${selectedItemForDeletion.id}` : 'spotlight-delete-none'} 
         item={selectedItemForDeletion} 
         isOpen={isDeleteDialogOpen} 
         onOpenChange={setIsDeleteDialogOpen} 
