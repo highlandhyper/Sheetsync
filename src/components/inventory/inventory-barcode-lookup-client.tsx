@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
     Search, 
@@ -17,18 +16,13 @@ import {
     MapPin, 
     Wallet, 
     Hash, 
-    Clock,
     X,
     FilterX,
-    ChevronRight,
-    Barcode,
-    Tag,
-    AlertTriangle,
-    CheckCircle2
+    Barcode
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { InventoryItem } from '@/lib/types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
 import { useAuth } from '@/context/auth-context';
@@ -36,10 +30,9 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Html5Qrcode } from 'html5-qrcode';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
 import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 const SCANNER_REGION_ID = "barcode-scanner-region";
@@ -203,19 +196,19 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-stretch gap-3">
             <div className="relative flex-grow">
-               <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+               <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                <input
                 type="text"
                 placeholder="SCAN OR ENTER BARCODE KEY..."
                 value={barcodeToSearch}
                 onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(barcodeToSearch)}
-                className="w-full h-14 bg-muted/20 border border-white/5 rounded-xl pl-12 pr-4 text-lg font-black tracking-tight focus:outline-none focus:border-primary/30 transition-all placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.2em]"
+                className="w-full h-14 bg-muted/20 border border-white/5 rounded-2xl pl-12 pr-4 text-lg font-black tracking-tight focus:outline-none focus:border-primary/30 transition-all placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.2em]"
               />
               {barcodeToSearch && (
                   <button 
                     onClick={() => setBarcodeToSearch('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-destructive/10 rounded-lg text-muted-foreground/30 hover:text-destructive transition-all"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-destructive/10 rounded-xl text-muted-foreground/30 hover:text-destructive transition-all"
                   >
                       <X className="h-4 w-4" />
                   </button>
@@ -226,14 +219,14 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                 <Button 
                     onClick={() => setIsScannerDialogOpen(true)}
                     variant="outline" 
-                    className="flex-1 sm:flex-none px-6 h-full rounded-xl border-white/10 font-black uppercase tracking-widest text-xs hover:bg-primary/5 hover:text-primary"
+                    className="flex-1 sm:flex-none px-6 h-full rounded-2xl border-white/10 font-black uppercase tracking-widest text-xs hover:bg-primary/5 hover:text-primary"
                 >
                     <ScanBarcode className="mr-2 h-5 w-5" /> Scan
                 </Button>
                 <Button 
                     onClick={() => executeSearch(barcodeToSearch)} 
                     disabled={isLoading || !barcodeToSearch.trim()} 
-                    className="flex-1 sm:flex-none px-8 h-full rounded-xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-xs"
+                    className="flex-1 sm:flex-none px-8 h-full rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-xs"
                 >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                     <span className="ml-2">Identify</span>
@@ -247,7 +240,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
               <Card className="bg-primary/5 border-primary/10 rounded-2xl shadow-none p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div className="bg-primary/10 p-3 rounded-xl">
+                    <div className="bg-primary/10 p-3 rounded-2xl">
                         <Hash className="h-6 w-6 text-primary" />
                     </div>
                     <Badge className="bg-primary/20 text-primary border-none font-black text-[9px] uppercase tracking-widest">Active Units</Badge>
@@ -258,7 +251,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
 
               <Card className="bg-muted/30 border-white/5 rounded-2xl shadow-none p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div className="bg-muted p-3 rounded-xl border border-white/5">
+                    <div className="bg-muted p-3 rounded-2xl border border-white/5">
                         <MapPin className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <Badge variant="outline" className="text-muted-foreground border-muted-foreground/20 font-black text-[9px] uppercase tracking-widest">Zone Spread</Badge>
@@ -269,7 +262,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
 
               <Card className="bg-green-500/5 border-green-500/10 rounded-2xl shadow-none p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div className="bg-green-500/10 p-3 rounded-xl">
+                    <div className="bg-green-500/10 p-3 rounded-2xl">
                         <Wallet className="h-6 w-6 text-green-600" />
                     </div>
                     <Badge className="bg-green-500/20 text-green-600 border-none font-black text-[9px] uppercase tracking-widest">Asset Value</Badge>
@@ -287,7 +280,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
                 <Loader2 className="absolute inset-0 h-16 w-16 animate-[spin_3s_linear_infinite] text-primary" strokeWidth={2} />
             </div>
             <h3 className="text-xl font-black uppercase tracking-[0.3em] text-primary animate-pulse">Scanning Registry...</h3>
-            <p className="text-sm text-muted-foreground mt-2 font-bold opacity-40">Industrial Hub Verification v4.1</p>
         </div>
       )}
 
@@ -385,7 +377,7 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
             <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto font-medium opacity-60">
                 The barcode <span className="text-primary font-black">{lastSearchedBarcode}</span> is currently not identified in any active storage zones.
             </p>
-            <Button variant="outline" className="mt-8 rounded-xl border-white/10 font-black uppercase tracking-widest text-[10px]" onClick={() => setHasSearched(false)}>
+            <Button variant="outline" className="mt-8 rounded-2xl border-white/10 font-black uppercase tracking-widest text-[10px]" onClick={() => setHasSearched(false)}>
                 <FilterX className="mr-2 h-4 w-4" /> Reset Identification
             </Button>
           </div>
@@ -414,4 +406,3 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     </div>
   );
 }
-
