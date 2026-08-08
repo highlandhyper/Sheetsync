@@ -212,13 +212,13 @@ export function HeaderBarcodeLookup() {
             <Search className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
             <span className="text-sm font-medium text-muted-foreground/60">Registry Lookup...</span>
         </div>
-        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-black uppercase opacity-100 sm:flex">
+        <kbd className="pointer-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-black uppercase opacity-100 sm:flex">
             <span className="text-[8px]">ALT</span> /
         </kbd>
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 transition-all ease-[cubic-bezier(0.33,1,0.68,1)]">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 transition-all ease-out">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
@@ -257,7 +257,7 @@ export function HeaderBarcodeLookup() {
 
             {/* RESULTS TERMINAL */}
             <div className={cn(
-              "grid transition-all duration-500 ease-[cubic-bezier(0.33,1,0.68,1)]",
+              "grid transition-all duration-500 ease-out",
               showResults ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
             )}>
               <div className="overflow-hidden">
