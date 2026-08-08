@@ -14,8 +14,6 @@ import {
     Edit, 
     Layers, 
     MapPin, 
-    Wallet, 
-    Hash, 
     X,
     FilterX,
     Barcode
@@ -62,15 +60,11 @@ const playProfessionalBeep = () => {
   }
 };
 
-interface InventoryBarcodeLookupClientProps {
-  uniqueLocations: string[];
-}
-
-export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarcodeLookupClientProps) {
+export function InventoryBarcodeLookupClient() {
   const { toast } = useToast();
   const { role } = useAuth();
   const isMobile = useIsMobile();
-  const { inventoryItems, products: cachedProducts } = useDataCache();
+  const { inventoryItems, uniqueLocations, products: cachedProducts } = useDataCache();
   
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
@@ -92,23 +86,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
-
-  const aggregateMetrics = useMemo(() => {
-    if (searchResults.length === 0) return null;
-    
-    const totalQty = searchResults.reduce((acc, curr) => acc + curr.quantity, 0);
-    const locations = new Set(searchResults.map(i => i.location));
-    const product = productsByBarcode.get(lastSearchedBarcode);
-    const totalValuation = product?.costPrice ? totalQty * product.costPrice : 0;
-
-    return {
-      totalQty,
-      locationCount: locations.size,
-      valuation: totalValuation,
-      productName: searchResults[0].productName,
-      supplierName: searchResults[0].supplierName
-    };
-  }, [searchResults, lastSearchedBarcode, productsByBarcode]);
   
   const executeSearch = useCallback(async (barcode: string) => {
     if (!barcode || !barcode.trim()) return;
@@ -125,11 +102,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           variant: 'destructive',
           title: 'Identity Null',
           description: `No active stock records for SKU: ${cleanBarcode}`,
-        });
-      } else {
-        toast({
-          title: 'Identity Verified',
-          description: `Located ${filtered.length} log nodes in registry.`,
         });
       }
     });
@@ -235,43 +207,6 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           </div>
         </CardContent>
       </Card>
-
-      {aggregateMetrics && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
-              <Card className="bg-primary/5 border-primary/10 rounded-2xl shadow-none p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="bg-primary/10 p-3 rounded-2xl">
-                        <Hash className="h-6 w-6 text-primary" />
-                    </div>
-                    <Badge className="bg-primary/20 text-primary border-none font-black text-[9px] uppercase tracking-widest">Active Units</Badge>
-                </div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Global Stock Quantity</p>
-                <h3 className="text-3xl font-black text-primary tracking-tighter">{aggregateMetrics.totalQty} Units</h3>
-              </Card>
-
-              <Card className="bg-muted/30 border-white/5 rounded-2xl shadow-none p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="bg-muted p-3 rounded-2xl border border-white/5">
-                        <MapPin className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <Badge variant="outline" className="text-muted-foreground border-muted-foreground/20 font-black text-[9px] uppercase tracking-widest">Zone Spread</Badge>
-                </div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Unique Locations</p>
-                <h3 className="text-3xl font-black tracking-tighter">{aggregateMetrics.locationCount} Zones</h3>
-              </Card>
-
-              <Card className="bg-green-500/5 border-green-500/10 rounded-2xl shadow-none p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="bg-green-500/10 p-3 rounded-2xl">
-                        <Wallet className="h-6 w-6 text-green-600" />
-                    </div>
-                    <Badge className="bg-green-500/20 text-green-600 border-none font-black text-[9px] uppercase tracking-widest">Asset Value</Badge>
-                </div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Catalog Valuation</p>
-                <h3 className="text-3xl font-black text-green-600 tracking-tighter">QAR {aggregateMetrics.valuation.toLocaleString()}</h3>
-              </Card>
-          </div>
-      )}
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
