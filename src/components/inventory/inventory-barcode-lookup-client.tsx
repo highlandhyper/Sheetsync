@@ -1,13 +1,32 @@
 'use client';
 
-import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, PackageSearch, Loader2, Undo2, ScanBarcode, Trash2, Edit } from 'lucide-react';
+import { 
+    Search, 
+    PackageSearch, 
+    Loader2, 
+    Undo2, 
+    ScanBarcode, 
+    Trash2, 
+    Edit, 
+    Layers, 
+    MapPin, 
+    Wallet, 
+    Hash, 
+    Clock,
+    X,
+    FilterX,
+    ChevronRight,
+    Barcode,
+    Tag,
+    AlertTriangle,
+    CheckCircle2
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchInventoryLogEntriesByBarcodeAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -18,7 +37,10 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
+import { InventoryItemCardMobile } from './inventory-item-card-mobile';
 
 const SCANNER_REGION_ID = "barcode-scanner-region";
 
@@ -54,7 +76,9 @@ interface InventoryBarcodeLookupClientProps {
 export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarcodeLookupClientProps) {
   const { toast } = useToast();
   const { role } = useAuth();
-  const { inventoryItems } = useDataCache();
+  const isMobile = useIsMobile();
+  const { inventoryItems, products: cachedProducts } = useDataCache();
+  
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
   const [isLoading, startSearchTransition] = useTransition();
@@ -63,37 +87,61 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
 
   const [selectedItemForReturn, setSelectedItemForReturn] = useState<InventoryItem | null>(null);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
-  
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   const scanProcessedRef = useRef(false);
+
+  const productsByBarcode = useMemo(() => {
+    return new Map(cachedProducts.map(p => [p.barcode, p]));
+  }, [cachedProducts]);
+
+  const aggregateMetrics = useMemo(() => {
+    if (searchResults.length === 0) return null;
+    
+    const totalQty = searchResults.reduce((acc, curr) => acc + curr.quantity, 0);
+    const locations = new Set(searchResults.map(i => i.location));
+    const product = productsByBarcode.get(lastSearchedBarcode);
+    const totalValuation = product?.costPrice ? totalQty * product.costPrice : 0;
+
+    return {
+      totalQty,
+      locationCount: locations.size,
+      valuation: totalValuation,
+      productName: searchResults[0].productName,
+      supplierName: searchResults[0].supplierName
+    };
+  }, [searchResults, lastSearchedBarcode, productsByBarcode]);
   
   const executeSearch = useCallback(async (barcode: string) => {
     if (!barcode || !barcode.trim()) return;
+    const cleanBarcode = barcode.trim();
     setHasSearched(true);
-    setLastSearchedBarcode(barcode);
+    setLastSearchedBarcode(cleanBarcode);
     
     startSearchTransition(async () => {
-      // Use cache primarily for speed, falls back to action if needed
-      const filtered = inventoryItems.filter(i => i.barcode === barcode && i.quantity > 0);
+      const filtered = inventoryItems.filter(i => i.barcode === cleanBarcode && i.quantity > 0);
       setSearchResults(filtered);
       
       if (filtered.length === 0) {
         toast({
-          title: 'No Active Logs',
-          description: `No current inventory logs found for barcode: ${barcode}`,
+          variant: 'destructive',
+          title: 'Identity Null',
+          description: `No active stock records for SKU: ${cleanBarcode}`,
+        });
+      } else {
+        toast({
+          title: 'Identity Verified',
+          description: `Located ${filtered.length} log nodes in registry.`,
         });
       }
     });
   }, [inventoryItems, toast]);
 
-  // REACTIVE SYNC: Keep results up to date if global cache changes
   useEffect(() => {
     if (hasSearched && lastSearchedBarcode) {
       const filtered = inventoryItems.filter(i => i.barcode === lastSearchedBarcode && i.quantity > 0);
@@ -108,23 +156,17 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     playProfessionalBeep();
     setBarcodeToSearch(decodedText);
     setIsScannerDialogOpen(false);
-    toast({
-      title: 'Barcode Scanned!',
-      description: `Searching for: ${decodedText}`,
-    });
     executeSearch(decodedText);
 
     setTimeout(() => {
         scanProcessedRef.current = false;
     }, 1000);
-  }, [executeSearch, toast]);
-
+  }, [executeSearch]);
 
   useEffect(() => {
     if (isScannerDialogOpen) {
       const timer = setTimeout(() => {
         if (html5QrcodeScannerRef.current) return;
-
         const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
         scanner.start(
           { facingMode: 'environment' },
@@ -133,12 +175,8 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
           () => {}
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
-        }).catch(err => {
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Error',
-            description: 'Could not start camera. Check permissions.'
-          });
+        }).catch(() => {
+          toast({ variant: 'destructive', title: 'Hardware Error', description: 'Optical system failed to initialize.' });
           setIsScannerDialogOpen(false);
         });
       }, 800);
@@ -153,167 +191,220 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     }
   }, [isScannerDialogOpen, onScanSuccess, toast]);
 
-
-  const handleSearch = () => {
-    if (!barcodeToSearch.trim()) {
-      toast({
-        title: 'Barcode Required',
-        description: 'Please enter a barcode to search.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    executeSearch(barcodeToSearch.trim());
-  };
-
-  const handleOpenReturnDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return;
-    setSelectedItemForReturn(item);
-    setIsReturnDialogOpen(true);
-  };
-  
-  const handleOpenDeleteDialog = (item: InventoryItem) => {
-    if (role !== 'admin') return;
-    setSelectedItemForDeletion(item);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleOpenEditDialog = (item: InventoryItem) => {
-    if (role === 'viewer') return;
-    setCurrentItemToEdit(item);
-    setIsEditDialogOpen(true);
-  };
-
   const handleActionSuccess = useCallback(() => {
     setIsReturnDialogOpen(false);
     setIsDeleteDialogOpen(false);
     setIsEditDialogOpen(false);
-    // sync is now handled by useEffect
   }, []);
 
-
   return (
-    <div className="space-y-6">
-      <Card className="shadow-md">
-        <CardContent className="p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row items-stretch gap-2">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <Card className="shadow-2xl border-white/10 bg-card/60 backdrop-blur-xl rounded-2xl overflow-hidden group">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3">
             <div className="relative flex-grow">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Enter or scan barcode to lookup..."
+               <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+               <input
+                type="text"
+                placeholder="SCAN OR ENTER BARCODE KEY..."
                 value={barcodeToSearch}
-                onChange={(e) => setBarcodeToSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSearch();
-                  }
-                }}
-                className="flex-grow text-base pl-10"
-                aria-label="Barcode Input"
+                onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && executeSearch(barcodeToSearch)}
+                className="w-full h-14 bg-muted/20 border border-white/5 rounded-xl pl-12 pr-4 text-lg font-black tracking-tight focus:outline-none focus:border-primary/30 transition-all placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.2em]"
               />
+              {barcodeToSearch && (
+                  <button 
+                    onClick={() => setBarcodeToSearch('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-destructive/10 rounded-lg text-muted-foreground/30 hover:text-destructive transition-all"
+                  >
+                      <X className="h-4 w-4" />
+                  </button>
+              )}
             </div>
-             <Button 
-                onClick={() => setIsScannerDialogOpen(true)}
-                variant="outline" 
-                className="w-full sm:w-auto"
-                aria-label="Start Barcode Scanner"
-              >
-                <ScanBarcode className="mr-2 h-5 w-5" /> Scan
-              </Button>
-            <Button onClick={handleSearch} disabled={isLoading || !barcodeToSearch.trim()} className="w-full sm:w-auto">
-              {isLoading && lastSearchedBarcode === barcodeToSearch.trim() ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-              Search Log
-            </Button>
+            
+            <div className="flex gap-2 h-14">
+                <Button 
+                    onClick={() => setIsScannerDialogOpen(true)}
+                    variant="outline" 
+                    className="flex-1 sm:flex-none px-6 h-full rounded-xl border-white/10 font-black uppercase tracking-widest text-xs hover:bg-primary/5 hover:text-primary"
+                >
+                    <ScanBarcode className="mr-2 h-5 w-5" /> Scan
+                </Button>
+                <Button 
+                    onClick={() => executeSearch(barcodeToSearch)} 
+                    disabled={isLoading || !barcodeToSearch.trim()} 
+                    className="flex-1 sm:flex-none px-8 h-full rounded-xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-xs"
+                >
+                    {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+                    <span className="ml-2">Identify</span>
+                </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
+      {aggregateMetrics && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
+              <Card className="bg-primary/5 border-primary/10 rounded-2xl shadow-none p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-primary/10 p-3 rounded-xl">
+                        <Hash className="h-6 w-6 text-primary" />
+                    </div>
+                    <Badge className="bg-primary/20 text-primary border-none font-black text-[9px] uppercase tracking-widest">Active Units</Badge>
+                </div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Global Stock Quantity</p>
+                <h3 className="text-3xl font-black text-primary tracking-tighter">{aggregateMetrics.totalQty} Units</h3>
+              </Card>
+
+              <Card className="bg-muted/30 border-white/5 rounded-2xl shadow-none p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-muted p-3 rounded-xl border border-white/5">
+                        <MapPin className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <Badge variant="outline" className="text-muted-foreground border-muted-foreground/20 font-black text-[9px] uppercase tracking-widest">Zone Spread</Badge>
+                </div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Unique Locations</p>
+                <h3 className="text-3xl font-black tracking-tighter">{aggregateMetrics.locationCount} Zones</h3>
+              </Card>
+
+              <Card className="bg-green-500/5 border-green-500/10 rounded-2xl shadow-none p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-green-500/10 p-3 rounded-xl">
+                        <Wallet className="h-6 w-6 text-green-600" />
+                    </div>
+                    <Badge className="bg-green-500/20 text-green-600 border-none font-black text-[9px] uppercase tracking-widest">Asset Value</Badge>
+                </div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Catalog Valuation</p>
+                <h3 className="text-3xl font-black text-green-600 tracking-tighter">QAR {aggregateMetrics.valuation.toLocaleString()}</h3>
+              </Card>
+          </div>
+      )}
+
       {isLoading && (
-        <div className="text-center py-10">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-          <p className="mt-2 text-muted-foreground">Searching inventory log for "{lastSearchedBarcode}"...</p>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="relative mb-6">
+                <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" strokeWidth={1} />
+                <Loader2 className="absolute inset-0 h-16 w-16 animate-[spin_3s_linear_infinite] text-primary" strokeWidth={2} />
+            </div>
+            <h3 className="text-xl font-black uppercase tracking-[0.3em] text-primary animate-pulse">Scanning Registry...</h3>
+            <p className="text-sm text-muted-foreground mt-2 font-bold opacity-40">Industrial Hub Verification v4.1</p>
         </div>
       )}
 
       {!isLoading && hasSearched && searchResults.length > 0 && (
-        <Card className="shadow-md">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead>Staff</TableHead>
-                  <TableHead>Logged At</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Expiry</TableHead>
-                  <TableHead>Type</TableHead>
-                  {role === 'admin' && <TableHead className="text-center">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {searchResults.map((item) => {
-                  const parsedTimestamp = item.timestamp ? parseISO(item.timestamp) : null;
-                  const formattedTimestamp = parsedTimestamp && isValid(parsedTimestamp) ? format(parsedTimestamp, 'PPp') : 'N/A';
-                  
-                  let formattedExpiryDate = 'N/A';
-                  if (item.expiryDate) {
-                      const parsedExp = parseISO(item.expiryDate);
-                      if (isValid(parsedExp)) {
-                          formattedExpiryDate = format(parsedExp, 'PP');
-                      }
-                  }
-                  return (
-                    <TableRow key={`row-lookup-${item.id}`}>
-                      <TableCell className="font-medium">{item.productName}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.staffName}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{formattedTimestamp}</TableCell>
-                      <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {formattedExpiryDate}
-                      </TableCell>
-                      <TableCell className={cn(item.itemType === 'Damage' ? "text-orange-500" : "text-muted-foreground")}>
-                        {item.itemType}
-                      </TableCell>
-                      {role === 'admin' && (
-                        <TableCell className="text-center">
-                           <div className="flex justify-center items-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handleOpenEditDialog(item)} className="p-2 h-auto"><Edit className="h-4 w-4" /></Button>
-                              <Button variant="outline" size="sm" onClick={() => handleOpenReturnDialog(item)} disabled={item.quantity <= 0} className="p-2 h-auto"><Undo2 className="h-4 w-4" /></Button>
-                               <Button variant="destructive" size="sm" onClick={() => handleOpenDeleteDialog(item)} className="p-2 h-auto"><Trash2 className="h-4 w-4" /></Button>
-                           </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+        <div className="space-y-6">
+            <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-2 rounded-xl">
+                    <Layers className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="text-xl font-black uppercase tracking-tight">Verified Records Found</h2>
+            </div>
+            
+            <div className="hidden md:block">
+                <Card className="shadow-2xl border-white/10 overflow-hidden rounded-2xl">
+                    <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                        <TableHead className="text-[10px] uppercase font-black">Logged At</TableHead>
+                        <TableHead className="text-right text-[10px] uppercase font-black">Units</TableHead>
+                        <TableHead className="text-[10px] uppercase font-black">Zone</TableHead>
+                        <TableHead className="text-[10px] uppercase font-black">Staff</TableHead>
+                        <TableHead className="text-[10px] uppercase font-black">Expiry</TableHead>
+                        <TableHead className="text-[10px] uppercase font-black">Classification</TableHead>
+                        {role === 'admin' && <TableHead className="text-center text-[10px] uppercase font-black">Actions</TableHead>}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {searchResults.map((item) => (
+                            <TableRow key={item.id} className="group hover:bg-primary/[0.02] transition-colors">
+                                <TableCell className="text-xs font-mono text-muted-foreground">
+                                    {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                </TableCell>
+                                <TableCell className="text-right font-black text-primary text-base">
+                                    {item.quantity}
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="font-bold text-sm">{item.location}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-xs font-black uppercase tracking-tight text-muted-foreground">
+                                    {item.staffName}
+                                </TableCell>
+                                <TableCell className="text-xs font-medium">
+                                    {item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'None'}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className={cn(
+                                        "text-[9px] font-black uppercase tracking-widest py-1 border-none",
+                                        item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600"
+                                    )}>
+                                        {item.itemType}
+                                    </Badge>
+                                </TableCell>
+                                {role === 'admin' && (
+                                    <TableCell className="text-center">
+                                    <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/10 text-primary"><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/10 text-primary"><Undo2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); }} className="h-8 w-8 hover:bg-destructive/10 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                    </TableCell>
+                                )}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {searchResults.map((item) => (
+                    <InventoryItemCardMobile
+                        key={`card-lookup-${item.id}`}
+                        item={item}
+                        product={productsByBarcode.get(item.barcode)}
+                        onDetails={() => {}}
+                        onReturn={role === 'admin' ? () => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); } : undefined}
+                        onEdit={role === 'admin' ? () => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); } : undefined}
+                        onDelete={role === 'admin' ? () => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); } : undefined}
+                        context="inventory"
+                    />
+                ))}
+            </div>
+        </div>
       )}
 
       {hasSearched && !isLoading && searchResults.length === 0 && (
-          <div className="text-center py-12">
-            <PackageSearch className="mx-auto h-16 w-16 text-muted-foreground opacity-50" />
-            <h3 className="mt-4 text-lg font-semibold">No active entries</h3>
-            <p className="text-sm text-muted-foreground">Barcode "{lastSearchedBarcode}" has no stock remaining.</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-500">
+            <div className="bg-muted/20 p-8 rounded-[2.5rem] mb-6 shadow-inner border-2 border-dashed border-white/5">
+                <PackageSearch className="h-20 w-20 text-muted-foreground/10" strokeWidth={1} />
+            </div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-muted-foreground/40">Zero Inventory Match</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto font-medium opacity-60">
+                The barcode <span className="text-primary font-black">{lastSearchedBarcode}</span> is currently not identified in any active storage zones.
+            </p>
+            <Button variant="outline" className="mt-8 rounded-xl border-white/10 font-black uppercase tracking-widest text-[10px]" onClick={() => setHasSearched(false)}>
+                <FilterX className="mr-2 h-4 w-4" /> Reset Identification
+            </Button>
           </div>
       )}
 
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-full p-0">
-            <DialogHeader className="p-6 pb-2">
-                <DialogTitle>Scan Barcode</DialogTitle>
-                <DialogDescription>Position the barcode within the frame to search.</DialogDescription>
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+            <DialogHeader className="p-8 pb-4 bg-muted/40">
+                <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
+                    <ScanBarcode className="h-8 w-8" /> Visual Capture
+                </DialogTitle>
+                <DialogDescription className="text-xs font-medium text-muted-foreground/80">Position barcode within the identification frame.</DialogDescription>
             </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
-            <DialogFooter className="p-6 pt-0 flex justify-end">
-                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)}>Cancel</Button>
-            </DialogFooter>
+            <div id={SCANNER_REGION_ID} className="w-full aspect-square bg-black" />
+            <div className="p-6 bg-muted/40">
+                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">
+                  Abort Scan
+                </Button>
+            </div>
         </DialogContent>
       </Dialog>
 
@@ -323,3 +414,4 @@ export function InventoryBarcodeLookupClient({ uniqueLocations }: InventoryBarco
     </div>
   );
 }
+
