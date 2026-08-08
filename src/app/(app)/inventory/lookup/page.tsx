@@ -34,7 +34,7 @@ export default function InventoryLogLookupPage() {
        <div className="flex flex-col mb-8 gap-2">
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
                 <SearchCode className="mr-3 h-8 w-8 text-primary" strokeWidth={3} />
-                Asset Identifier
+                Barcode Log Lookup
             </h1>
        </div>
 
