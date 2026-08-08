@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { InventoryBarcodeLookupClient } from '@/components/inventory/inventory-barcode-lookup-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SearchCode, Activity } from 'lucide-react';
+import { SearchCode } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
 import { Card } from '@/components/ui/card';
 
@@ -17,12 +17,7 @@ function LookupSkeleton() {
                     <Skeleton className="h-14 w-full sm:w-40 rounded-2xl" />
                 </div>
             </Card>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Skeleton className="h-32 rounded-2xl" />
-                <Skeleton className="h-32 rounded-2xl" />
-                <Skeleton className="h-32 rounded-2xl" />
-            </div>
-            <div className="space-y-4 pt-8">
+            <div className="space-y-4 pt-4">
                 {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-20 w-full rounded-2xl" />
                 ))}
@@ -32,7 +27,7 @@ function LookupSkeleton() {
 }
 
 export default function InventoryLogLookupPage() {
-  const { uniqueLocations, isCacheReady } = useDataCache();
+  const { isCacheReady } = useDataCache();
 
   return (
     <div className="container mx-auto py-2">
@@ -41,16 +36,11 @@ export default function InventoryLogLookupPage() {
                 <SearchCode className="mr-3 h-8 w-8 text-primary" strokeWidth={3} />
                 Asset Identifier
             </h1>
-            <div className="flex flex-wrap items-center gap-3">
-                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">
-                    <Activity className="h-3 w-3 animate-pulse" /> Identification Hub Active
-                </div>
-            </div>
        </div>
 
       <Suspense fallback={<LookupSkeleton />}>
         {isCacheReady ? (
-            <InventoryBarcodeLookupClient uniqueLocations={uniqueLocations} />
+            <InventoryBarcodeLookupClient />
         ) : (
             <LookupSkeleton />
         )}
