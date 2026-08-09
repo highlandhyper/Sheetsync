@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
@@ -29,14 +30,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <>
-      <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none opacity-20">
         {children}
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-4 sm:px-6">
-        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</CardTitle>
+        <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</CardTitle>
         <div 
             className={cn(
-                "p-2 bg-primary/10 rounded-2xl text-primary transition-all duration-300", 
+                "p-2 bg-primary/10 rounded-xl text-primary transition-all duration-300", 
                 onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
             )}
             onClick={(e) => {
@@ -50,23 +51,23 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             <div className="h-4 w-4 sm:h-5 sm:w-5">{iconNode}</div>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full relative z-20 px-4 sm:px-6">
+      <CardContent className="flex flex-col h-full relative z-20 px-4 sm:px-6 pb-4 sm:pb-6">
         {isLoading ? (
             <Skeleton className="h-10 w-1/2" />
         ) : (
-            <div className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight break-all truncate">
+            <div className="text-xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-none break-all truncate">
                 {value}
             </div>
         )}
-        {description && !isLoading && <div className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/40 pt-2 flex items-center min-h-[1.5rem] sm:min-h-[2.5rem]">{description}</div>}
+        {description && !isLoading && <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight text-muted-foreground/40 pt-2 flex items-center min-h-[1.5rem]">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-2" />}
       </CardContent>
     </>
   );
 
   const cardContainerClassName = cn(
-    "group transition-all duration-500 rounded-2xl border-white/5 h-full",
-    href ? "hover:border-primary/30 hover:shadow-xl cursor-pointer" : "",
+    "group relative transition-all duration-500 rounded-2xl border-white/5 bg-card/60 backdrop-blur-xl h-full shadow-lg shadow-black/[0.02]",
+    href ? "hover:border-primary/30 hover:shadow-xl cursor-pointer active:scale-[0.98]" : "",
     className
   );
   
@@ -226,7 +227,6 @@ function StockTrendDetailedDialog({
     const { inventoryItems } = useDataCache();
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-    // Hydration Safe initialization
     useEffect(() => {
         if (isOpen && !dateRange) {
             setDateRange({
@@ -391,9 +391,9 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-none rounded-2xl border-white/10 bg-card/40 h-full flex flex-col group overflow-hidden">
+        <Card className="shadow-none rounded-2xl border-white/5 bg-card/40 h-full flex flex-col group overflow-hidden">
             <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
+                <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
                 <CardDescription className="text-[9px] font-bold">Proactive silent log grant</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-4 sm:px-6">
@@ -480,59 +480,46 @@ function ActiveAuthorizations() {
     };
 
     return (
-        <div className="space-y-6 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tighter">
-                <div className="bg-primary/10 p-2 rounded-2xl">
-                    <ShieldCheck className="h-6 w-6 text-primary" />
-                </div>
+        <div className="space-y-4 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
+                <ShieldCheck className="h-4 w-4 text-green-600" />
                 Active Grants
-                <Badge variant="secondary" className="ml-4 bg-green-500/10 text-green-600 border-none font-black uppercase text-[10px] tracking-widest">
+                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600 border-none font-black uppercase text-[8px] tracking-widest">
                     {activeSessions.length} Online
                 </Badge>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeSessions.map(session => (
                     <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-none rounded-2xl overflow-hidden flex flex-col group">
-                        <CardHeader className="pb-3 px-6">
+                        <CardContent className="p-4 space-y-4">
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg font-black tracking-tight flex items-center gap-2">
-                                    <User className="h-4 w-4 text-green-600" />
-                                    {session.staffName}
-                                </CardTitle>
-                                <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest bg-background border-green-200">
-                                    {session.type === 'timed' ? 'Timed' : 'Single'}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="text-xs space-y-4 pt-4 flex-grow px-6">
-                            <div className="flex justify-between items-center text-muted-foreground">
-                                <span className="font-bold uppercase tracking-widest text-[9px]"><Clock className="h-3.5 w-3.5 mr-1 inline" /> Logged:</span>
-                                <span className="font-black text-slate-900 dark:text-white text-sm">{session.approvedAt ? format(parseISO(session.approvedAt), 'HH:mm') : 'N/A'}</span>
-                            </div>
-                            {session.expiresAt && (
-                                <div className="flex justify-between items-center text-muted-foreground">
-                                    <span className="font-bold uppercase tracking-widest text-[9px] text-destructive"><Timer className="h-3.5 w-3.5 mr-1 inline" /> Expiry:</span>
-                                    <span className="font-black text-destructive text-sm">
-                                        {format(parseISO(session.expiresAt), 'HH:mm')}
-                                    </span>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-black tracking-tight">{session.staffName}</span>
+                                    <span className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest">{session.type === 'timed' ? 'Timed' : 'Single'} Entry</span>
                                 </div>
-                            )}
-                            <div className="py-4 px-5 bg-white dark:bg-black/20 rounded-2xl border-2 border-primary/10 shadow-inner flex justify-between items-center">
-                                <span className="text-[9px] font-black uppercase text-primary tracking-widest"><Key className="h-3.5 w-3.5 mr-1 inline" /> Key</span>
-                                <span className="font-black text-xl text-primary tracking-[0.3em] font-mono leading-none">{session.otp || '----'}</span>
+                                <div className="py-2 px-3 bg-white dark:bg-black/20 rounded-xl border-2 border-primary/10 shadow-inner flex flex-col items-center">
+                                    <span className="text-[7px] font-black uppercase text-primary tracking-widest mb-0.5">Key</span>
+                                    <span className="font-black text-sm text-primary tracking-[0.2em] font-mono leading-none">{session.otp || '----'}</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px]">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-lg px-2"
+                                    onClick={() => handleRevokeClick(session.id, session.staffName)}
+                                >
+                                    <Ban className="mr-1.5 h-3 w-3" />
+                                    Revoke
+                                </Button>
+                                {session.expiresAt && (
+                                    <div className="flex items-center gap-1.5 text-muted-foreground font-bold">
+                                        <Timer className="h-3 w-3 text-destructive" />
+                                        <span className="text-destructive">{format(parseISO(session.expiresAt), 'HH:mm')}</span>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
-                        <div className="p-3 border-t border-green-500/5">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-2xl"
-                                onClick={() => handleRevokeClick(session.id, session.staffName)}
-                            >
-                                <Ban className="mr-2 h-4 w-4" />
-                                Revoke Session
-                            </Button>
-                        </div>
                     </Card>
                 ))}
             </div>
@@ -547,19 +534,19 @@ function PendingApprovalsSummary() {
 
     return (
         <Card className="border-primary/10 bg-primary/[0.03] shadow-none rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="flex items-center gap-6">
-                    <div className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20">
-                        <ShieldQuestion className="h-10 w-10 text-primary-foreground" />
+            <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary p-3 sm:p-4 rounded-xl shadow-lg shadow-primary/20">
+                        <ShieldQuestion className="h-6 w-6 text-primary-foreground" />
                     </div>
                     <div>
-                        <h3 className="text-3xl font-black tracking-tighter uppercase leading-none mb-2">Security Pending</h3>
-                        <p className="text-muted-foreground font-bold uppercase text-xs tracking-widest"><span className="text-primary font-black">{pendingRequests.length} requests</span> awaiting clearance.</p>
+                        <h3 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none mb-1">Security Pending</h3>
+                        <p className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest"><span className="text-primary font-black">{pendingRequests.length} requests</span> awaiting clearance.</p>
                     </div>
                 </div>
-                <Button asChild className="w-full md:w-auto px-10 h-16 text-lg font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20">
+                <Button asChild size="sm" className="h-10 sm:h-12 px-4 sm:px-6 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20">
                     <Link href="/approvals">
-                        Review Center <ArrowRight className="ml-3 h-6 w-6" />
+                        Review <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                 </Button>
             </CardContent>
@@ -667,21 +654,17 @@ function ProactiveGrantDialog({
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8 sm:space-y-12">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-fr"> 
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4"> 
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl hidden lg:block" />
       </div>
-      <div className="space-y-6 pt-10">
-          <Skeleton className="h-10 w-64 rounded-2xl" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Skeleton className="h-64 w-full rounded-2xl" />
-              <Skeleton className="h-64 w-full rounded-2xl" />
-              <Skeleton className="h-64 w-full rounded-2xl" />
-          </div>
+      <div className="space-y-4 pt-6">
+          <Skeleton className="h-10 w-48 rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     </div>
   );
@@ -701,16 +684,9 @@ export default function DashboardPage() {
   const metrics = useMemo<DashboardMetrics>(() => {
     if (!isMounted) {
         return {
-            totalProducts: 0,
-            totalStockQuantity: 0,
-            itemsExpiringSoon: 0,
-            damagedItemsCount: 0,
-            totalSuppliers: 0,
-            totalStockValue: 0,
-            stockBySupplier: [],
-            netItemsAddedToday: 0,
-            dailyStockChangeDirection: 'none',
-            stockTrend: []
+            totalProducts: 0, totalStockQuantity: 0, itemsExpiringSoon: 0, damagedItemsCount: 0,
+            totalSuppliers: 0, totalStockValue: 0, stockBySupplier: [], netItemsAddedToday: 0,
+            dailyStockChangeDirection: 'none', stockTrend: []
         };
     }
 
@@ -723,25 +699,15 @@ export default function DashboardPage() {
 
     inventoryItems.forEach(item => {
         if (item.quantity <= 0) return;
-
         const product = prodsMap.get(item.barcode);
-        if (product?.costPrice) {
-            totalValue += (item.quantity * product.costPrice);
-        }
-
+        if (product?.costPrice) totalValue += (item.quantity * product.costPrice);
         const sName = item.supplierName || 'Unknown';
         supplierStock[sName] = (supplierStock[sName] || 0) + item.quantity;
-
-        if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) {
-            itemsAddedToday += item.quantity;
-        }
-
+        if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) itemsAddedToday += item.quantity;
         if (item.itemType === 'Expiry' && item.expiryDate) {
             try {
                 const expDate = startOfDay(parseISO(item.expiryDate));
-                if (!isBefore(expDate, today) && isBefore(expDate, addDays(today, 7))) {
-                    expiringSoon++;
-                }
+                if (!isBefore(expDate, today) && isBefore(expDate, addDays(today, 7))) expiringSoon++;
             } catch {}
         }
     });
@@ -753,11 +719,7 @@ export default function DashboardPage() {
         const addedAfterDay = inventoryItems
             .filter(item => item.timestamp && isAfter(parseISO(item.timestamp), endOfDay(day)))
             .reduce((sum, item) => sum + item.quantity, 0);
-        
-        stockTrend.push({
-            date: format(day, 'MMM dd'),
-            totalStock: Math.max(0, totalAtEndDay - addedAfterDay)
-        });
+        stockTrend.push({ date: format(day, 'MMM dd'), totalStock: Math.max(0, totalAtEndDay - addedAfterDay) });
     }
 
     return {
@@ -778,8 +740,8 @@ export default function DashboardPage() {
 
   if (!isCacheReady || !isMounted) {
     return (
-      <div className="space-y-8 sm:space-y-12">
-         <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
+      <div className="space-y-6">
+         <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
           Mission Control
         </h1>
         <DashboardSkeleton />
@@ -787,48 +749,34 @@ export default function DashboardPage() {
     );
   }
 
-  let totalStockDescription: React.ReactNode = "Warehouse Units";
+  let totalStockDescription: React.ReactNode = "Current Units";
   if (metrics.dailyStockChangeDirection !== 'none') {
-    const isIncrease = metrics.dailyStockChangeDirection === 'increase';
-    const colorClass = isIncrease ? 'text-primary' : 'text-green-600';
-    const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
-
     totalStockDescription = (
-        <div className="flex items-center flex-wrap gap-2">
-          <Badge variant="outline" className={cn("font-black text-[9px] uppercase tracking-widest px-2 py-0.5 border-none bg-primary/10", colorClass)}>
-            <ArrowIcon className="h-3 w-3 mr-1" />
+        <Badge variant="outline" className={cn("font-black text-[8px] uppercase tracking-widest px-1.5 py-0.5 border-none bg-primary/10 text-primary")}>
+            <ArrowUp className="h-2 w-2 mr-1" />
             {metrics.netItemsAddedToday} New Today
-          </Badge>
-        </div>
+        </Badge>
     );
   }
 
-
   return (
-    <div className="space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div>
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-2">
-                    Mission Control
-                </h1>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10 text-[9px] font-black uppercase tracking-widest px-3 py-1">
-                        {metrics.totalSuppliers} Suppliers Active
-                    </Badge>
-                    {isSyncing && (
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest animate-pulse">
-                            <RefreshCw className="h-3 w-3 animate-spin" /> Registry Sync
-                        </div>
-                    )}
-                </div>
+    <div className="space-y-6">
+        <div className="flex flex-col gap-1">
+            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
+                Mission <span className="text-primary">Control</span>
+            </h1>
+            <div className="flex items-center gap-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{metrics.totalSuppliers} Vendors Integrated</p>
+                {isSyncing && <RefreshCw className="h-3 w-3 text-primary animate-spin" />}
             </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-fr">
+        {/* COMPACT MOBILE GRID: 2 COLUMNS */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 auto-rows-fr">
           <MetricCard 
-            title="Active Volume" 
+            title="Volume" 
             value={metrics.totalStockQuantity} 
-            iconNode={<Warehouse className="h-6 w-6" />}
+            iconNode={<Warehouse className="h-5 w-5" />}
             onIconClick={() => setIsStockTrendDialogOpen(true)}
             description={totalStockDescription}
             href="/inventory"
@@ -838,33 +786,31 @@ export default function DashboardPage() {
           </MetricCard>
           
           <MetricCard 
-            title="Net Valuation" 
-            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-            iconNode={<Wallet className="h-6 w-6" />}
+            title="Valuation" 
+            value={`QAR ${Math.round(metrics.totalStockValue).toLocaleString()}`}
+            iconNode={<Wallet className="h-5 w-5" />}
             description="Total current assets"
           />
           
           <MetricCard 
-              title="Priority Expiry" 
+              title="Priority" 
               value={metrics.itemsExpiringSoon} 
-              iconNode={<CalendarClock className="h-6 w-6" />}
-              description="7-day priority window"
+              iconNode={<CalendarClock className="h-5 w-5" />}
+              description="7-day window"
               href="/inventory?filterType=expiringSoon"
-              className={cn(
-                  metrics.itemsExpiringSoon > 0 && "bg-yellow-500/[0.02] border-yellow-500/20"
-              )}
+              className={cn(metrics.itemsExpiringSoon > 0 && "bg-yellow-500/[0.02] border-yellow-500/20")}
           />
           
           <MetricCard 
-              title="Damage Logs" 
+              title="Damage" 
               value={metrics.damagedItemsCount} 
-              iconNode={<AlertTriangle className="h-6 w-6" />}
+              iconNode={<AlertTriangle className="h-5 w-5" />}
               description="Audit required"
               href="/inventory?filterType=damaged"
               className={cn(metrics.damagedItemsCount > 0 ? "bg-destructive/[0.02] border-destructive/20" : "")} 
           />
 
-          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
+          <div className="col-span-2 lg:col-span-1">
             <QuickAuthorizeCard />
           </div>
         </div>
@@ -872,22 +818,21 @@ export default function DashboardPage() {
         <PendingApprovalsSummary />
         <ActiveAuthorizations />
 
-        <div className="grid grid-cols-1 gap-8">
-          <Card className="shadow-none rounded-2xl border-white/10 bg-card/40 overflow-hidden">
-            <CardHeader className="border-b border-white/5 p-8 pb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                      <CardTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
-                        <TrendingUp className="h-7 w-7 text-primary" />
-                        Vendor Analytics
-                      </CardTitle>
-                      <CardDescription className="font-bold text-[10px]">Distribution across master suppliers</CardDescription>
+        <div className="grid grid-cols-1 gap-6">
+          <Card className="shadow-none rounded-2xl border-white/5 bg-card/40 overflow-hidden">
+            <CardHeader className="border-b border-white/5 p-6 pb-4">
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-xl">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle className="text-lg font-black uppercase tracking-tight">Vendor Analytics</CardTitle>
                   </div>
-                  <span className="text-[10px] text-muted-foreground uppercase font-black opacity-30">{mountedDate || '-- --- --'}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase font-black opacity-30 hidden sm:inline">{mountedDate}</span>
               </div>
             </CardHeader>
-            <CardContent className="p-10">
-              <div className="h-[250px] sm:h-[450px] w-full">
+            <CardContent className="p-6">
+              <div className="h-[250px] sm:h-[400px] w-full">
                   <StockBySupplierChart data={metrics.stockBySupplier} />
               </div>
             </CardContent>
