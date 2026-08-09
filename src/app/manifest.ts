@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SheetSync Inventory Management',
+    name: 'SheetSync',
     short_name: 'SheetSync',
     description: 'Cloud-Connected Real-time Inventory System',
     start_url: '/',
