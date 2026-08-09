@@ -95,7 +95,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       if (!welcomeShownSession) {
         setShowAdminWelcomeScreen(true);
         sessionStorage.setItem('adminWelcomeShown', 'true');
-        timerId = setTimeout(() => setShowAdminWelcomeScreen(false), 3500); 
+        timerId = setTimeout(() => setShowAdminWelcomeScreen(false), 2500); 
       }
     }
     return () => { if (timerId) clearTimeout(timerId); };
@@ -105,11 +105,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
-        <div className="relative mb-8">
-            <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" strokeWidth={1} />
-            <Loader2 className="absolute inset-0 h-16 w-16 animate-[spin_3s_linear_infinite] text-primary" strokeWidth={2} />
-        </div>
-        <p className="text-sm font-black uppercase tracking-[0.4em] text-primary animate-pulse">Establishing Secure Connection...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary/40" strokeWidth={3} />
+        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 animate-pulse">Initializing Registry...</p>
       </div>
     );
   }
@@ -120,17 +117,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4 overflow-hidden relative">
         <div className="absolute inset-0 bg-tech-grid opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px]" />
-        
         <div className="relative z-10 flex flex-col items-center">
-            <div className="p-6 bg-primary/10 rounded-[3rem] border border-primary/20 shadow-2xl mb-8 animate-in zoom-in-50 duration-700">
-                <ShieldCheck className="h-20 w-20 text-primary animate-pulse" strokeWidth={1.5} />
+            <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 shadow-none mb-8 animate-in zoom-in-95 duration-500">
+                <ShieldCheck className="h-16 w-16 text-primary" strokeWidth={1.5} />
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white mb-3 text-center tracking-tighter uppercase leading-none">
-                Welcome back, <span className="text-primary">Chief</span>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 text-center tracking-tighter uppercase leading-none">
+                Welcome back
             </h1>
-            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-[0.4em] mb-12 opacity-50">Industrial Hub Active</p>
-            <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">Administrator Session Active</p>
         </div>
       </div>
     );
@@ -143,17 +137,16 @@ export default function AppLayout({ children }: PropsWithChildren) {
         <SidebarInset className="flex min-w-0 flex-col relative overflow-hidden bg-background">
           {/* GLOBAL ATMOSPHERIC LAYER */}
           <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-            <div className="absolute inset-0 bg-tech-grid opacity-[0.4] dark:opacity-[0.6]" />
-            <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px] animate-pulse" />
-            <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-accent/10 blur-[100px]" />
+            <div className="absolute inset-0 bg-tech-grid opacity-[0.2]" />
+            <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
           </div>
 
           <Header className="noprint relative z-10" onManualLock={handleLock} />
           
           <main className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
-            "p-2 sm:p-4 md:p-6",
-            "pb-24 md:pb-6" // Extra bottom padding on mobile for floating nav
+            "p-4 sm:p-6 md:p-8",
+            "pb-32 md:pb-8" // Professional bottom padding for Nav
           )}>
             <div className="container mx-auto max-w-full lg:max-w-[1700px] animate-in fade-in slide-in-from-bottom-2 duration-700">
                 {children}

@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils';
 import { 
     LayoutDashboard, 
     Package, 
-    ClipboardPlus, 
-    SearchCode, 
-    Menu, 
+    Plus, 
+    Search, 
+    MoreHorizontal, 
     UserCheck
 } from 'lucide-react';
 
@@ -40,16 +40,11 @@ export function BottomNav() {
   }) => {
     const content = (
       <div className={cn(
-        "flex flex-col items-center justify-center gap-1 transition-all duration-300",
-        isActive ? "text-primary scale-110" : "text-muted-foreground/60"
+        "flex flex-col items-center justify-center gap-1.5 transition-all duration-300",
+        isActive ? "text-primary" : "text-muted-foreground/40"
       )}>
-        <div className={cn(
-          "p-1 rounded-xl transition-all duration-300",
-          isActive ? "bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.1)]" : ""
-        )}>
-          <Icon className={cn("h-5 w-5", isActive ? "stroke-[3px]" : "stroke-[2px]")} />
-        </div>
-        <span className={cn("text-[9px] font-black uppercase tracking-tighter", isActive ? "opacity-100" : "opacity-60")}>
+        <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
+        <span className={cn("text-[8px] font-black uppercase tracking-widest", isActive ? "opacity-100" : "opacity-0 h-0 overflow-hidden")}>
           {label}
         </span>
       </div>
@@ -57,25 +52,22 @@ export function BottomNav() {
 
     if (onClick) {
       return (
-        <button onClick={onClick} className="flex-1 py-2 outline-none focus:ring-0">
+        <button onClick={onClick} className="flex-1 py-2 outline-none focus:ring-0 active:scale-90 transition-transform">
           {content}
         </button>
       );
     }
 
     return (
-      <Link href={href || '#'} className="flex-1 py-2 outline-none focus:ring-0">
+      <Link href={href || '#'} className="flex-1 py-2 outline-none focus:ring-0 active:scale-90 transition-transform">
         {content}
       </Link>
     );
   };
 
   return (
-    <div className="md:hidden fixed bottom-6 left-4 right-4 z-50 animate-in slide-in-from-bottom-8 duration-700">
-      <div className="relative flex items-center h-16 bg-background/80 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl px-2 overflow-hidden">
-        {/* Glow accent */}
-        <div className="absolute inset-0 bg-primary/[0.02] pointer-events-none" />
-        
+    <div className="md:hidden fixed bottom-6 left-6 right-6 z-50 animate-in slide-in-from-bottom-8 duration-700">
+      <div className="relative flex items-center h-16 bg-background/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl px-2 overflow-hidden">
         <NavItem 
           href={role === 'admin' ? '/dashboard' : '/products'} 
           icon={role === 'admin' ? LayoutDashboard : UserCheck} 
@@ -90,29 +82,29 @@ export function BottomNav() {
           isActive={isCatalogActive}
         />
 
-        {/* Central Action Button */}
-        <div className="flex-1 -mt-8 flex justify-center">
-            <Link href="/inventory/add" className="group">
+        {/* Minimal Action Button */}
+        <div className="flex-1 flex justify-center">
+            <Link href="/inventory/add">
                 <div className={cn(
-                    "h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-xl",
+                    "h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-lg",
                     isAddActive 
-                        ? "bg-primary text-white scale-110 shadow-primary/40 rotate-90" 
-                        : "bg-primary/90 text-white hover:bg-primary group-active:scale-90"
+                        ? "bg-primary text-white scale-110 shadow-primary/30" 
+                        : "bg-muted text-foreground hover:bg-primary hover:text-white"
                 )}>
-                    <ClipboardPlus className="h-6 w-6" strokeWidth={3} />
+                    <Plus className="h-6 w-6" strokeWidth={3} />
                 </div>
             </Link>
         </div>
 
         <NavItem 
           href="/inventory/lookup" 
-          icon={SearchCode} 
+          icon={Search} 
           label="Lookup" 
           isActive={isLookupActive}
         />
 
         <NavItem 
-          icon={Menu} 
+          icon={MoreHorizontal} 
           label="More" 
           onClick={() => setOpenMobile(true)}
         />
