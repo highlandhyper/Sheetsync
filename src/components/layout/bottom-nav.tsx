@@ -82,7 +82,7 @@ export function BottomNav() {
           isActive={isCatalogActive}
         />
 
-        {/* Minimal Action Button */}
+        {/* Action Center Button */}
         <div className="flex-1 flex justify-center">
             <Link href="/inventory/add">
                 <div className={cn(
