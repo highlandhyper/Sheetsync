@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 import {
   Popover,
   PopoverContent,
@@ -102,8 +103,8 @@ function SessionTimer({ expiresAt }: { expiresAt: string }) {
 
 const steps = [
   { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
-  { id: 2, name: 'Add Details', fields: ['staffName', 'itemType', 'quantity', 'expiryDate'], icon: Info },
-  { id: 3, name: 'Set Location', fields: ['location'], icon: Warehouse },
+  { id: 2, name: 'Add Details', fields: ['staffName', 'quantity', 'expiryDate'], icon: Info },
+  { id: 3, name: 'Set Location', fields: ['location', 'itemType'], icon: Warehouse },
   { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
 
@@ -600,28 +601,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         {errors.staffName && <p className="text-sm text-destructive mt-1 font-medium">{errors.staffName.message}</p>}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-muted-foreground uppercase">Classification</Label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Button 
-                                type="button" 
-                                variant={allFormValues.itemType === 'Expiry' ? 'default' : 'outline'}
-                                className={cn("h-14 sm:h-10 text-base sm:text-sm font-bold rounded-xl sm:rounded-md border-2", allFormValues.itemType === 'Expiry' ? "border-primary" : "border-muted")}
-                                onClick={() => setValue('itemType', 'Expiry', { shouldValidate: true })}
-                            >
-                                <Tag className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Expiry
-                            </Button>
-                            <Button 
-                                type="button" 
-                                variant={allFormValues.itemType === 'Damage' ? 'destructive' : 'outline'}
-                                className={cn("h-14 sm:h-10 text-base sm:text-sm font-bold rounded-xl sm:rounded-md border-2", allFormValues.itemType === 'Damage' ? "border-destructive" : "border-muted")}
-                                onClick={() => setValue('itemType', 'Damage', { shouldValidate: true })}
-                            >
-                                <AlertTriangle className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Damage
-                            </Button>
-                        </div>
-                    </div>
-
                     <div className="flex gap-3">
                         <div className="w-1/3 space-y-2">
                             <Label className="text-xs font-bold text-muted-foreground uppercase">Qty</Label>
@@ -666,36 +645,53 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </div>
                 </div>
 
-                 <div className={cn(currentStep !== 2 && "hidden", "space-y-4")}>
-                    <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
-                        Storage Zone
-                    </Label>
-                    <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
-                             <div className="flex items-center gap-2">
-                                <span>{allFormValues.location || "Select Zone..."}</span>
-                             </div>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search location..." />
-                                <CommandList>
-                                    <CommandEmpty>No location found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (
-                                            <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
-                                                <Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
+                 <div className={cn(currentStep !== 2 && "hidden", "space-y-6")}>
+                    <div className="space-y-4">
+                        <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
+                            Storage Zone
+                        </Label>
+                        <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
+                                 <div className="flex items-center gap-2">
+                                    <span>{allFormValues.location || "Select Zone..."}</span>
+                                 </div>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search location..." />
+                                    <CommandList>
+                                        <CommandEmpty>No location found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (
+                                                <CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
+                                                    <Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-2xl border bg-muted/10">
+                        <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="damage-toggle" className="text-sm font-black uppercase">Report as Damage</Label>
+                                {allFormValues.itemType === 'Damage' && <AlertTriangle className="h-3.5 w-3.5 text-destructive animate-pulse" />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">Toggle if the item is broken or unusable.</p>
+                        </div>
+                        <Switch 
+                            id="damage-toggle"
+                            checked={allFormValues.itemType === 'Damage'}
+                            onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })}
+                        />
+                    </div>
                 </div>
                 
                 <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
