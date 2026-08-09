@@ -448,13 +448,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       <CardHeader className="px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                    Log New Inventory Item
-                    {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}
-                </CardTitle>
-                <CardDescription>
-                Follow the steps to log a new item into the inventory system.
-                </CardDescription>
+                {currentStep === 0 ? (
+                  <>
+                    <CardTitle className="text-2xl flex items-center gap-2">
+                        Log New Inventory Item
+                        {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}
+                    </CardTitle>
+                    <CardDescription>
+                      Follow the steps to log a new item into the inventory system.
+                    </CardDescription>
+                  </>
+                ) : (
+                   !isOnline && <Badge variant="destructive" className="animate-pulse w-fit"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>
+                )}
             </div>
             <div className="flex flex-col sm:items-end gap-2">
                 {activeSession && (
