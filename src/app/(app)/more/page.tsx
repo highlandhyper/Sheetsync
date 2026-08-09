@@ -13,7 +13,9 @@ import {
     Edit3, 
     ChevronRight,
     LayoutDashboard,
-    LucideIcon
+    LucideIcon,
+    ClipboardPlus,
+    SearchCode
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -33,6 +35,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
             { href: '/dashboard', label: 'Mission Control', icon: LayoutDashboard, description: 'Real-time dashboard metrics.', role: 'admin' },
             { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, description: 'Verify staff requests.', role: 'admin' },
             { href: '/inventory', label: 'Global Inventory', icon: ClipboardList, description: 'Master log of all units.', role: 'admin' },
+            { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, description: 'Standard SKU logging tool.', role: 'both' },
+            { href: '/inventory/lookup', label: 'Barcode Lookup', icon: SearchCode, description: 'Trace specific log history.', role: 'both' },
             { href: '/products', label: 'Return by Staff', icon: UserCheck, description: 'Individual return tracking.', role: 'both' },
             { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, description: 'Bulk vendor processing.', role: 'admin' },
         ]
@@ -47,7 +51,7 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
     {
         title: "System",
         items: [
-            { href: '/settings', label: 'Settings', icon: Settings, description: 'Preferences & users.', role: 'both' },
+            { href: '/settings', label: 'Settings', icon: Settings, description: 'Interface & account.', role: 'both' },
         ]
     }
 ];
@@ -88,13 +92,14 @@ export default function SystemHubPage() {
                     System <span className="text-primary">Hub</span>
                 </h1>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">
-                    Mobile Access Terminal
+                    Operational Access Terminal
                 </p>
             </div>
 
             {HUB_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter(item => {
                     const roleMatch = item.role === 'both' || item.role === role;
+                    // Standard check but always allow settings and operations for Viewers if roleMatch is true
                     const accessMatch = isAllowed(role, item.href);
                     return roleMatch && accessMatch;
                 });
@@ -118,7 +123,7 @@ export default function SystemHubPage() {
 
             <div className="pt-10 text-center">
                 <p className="text-[8px] font-black uppercase tracking-[0.5em] text-muted-foreground/20">
-                    Registry Interface • v4.1 Industrial
+                    Registry Interface • Industrial Core
                 </p>
             </div>
         </div>

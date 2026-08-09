@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useRef } from 'react';
@@ -24,9 +23,13 @@ const PERMISSIONS_CACHE_KEY = 'sheetSync_permissions_cache';
 const getDefaultPermissions = (): Permissions => {
   const adminPaths = [...allNavItems, ...accountNavItems].filter(i => i.roles.includes('admin')).map(i => i.href);
   const viewerPaths = [...allNavItems, ...accountNavItems].filter(i => i.roles.includes('viewer')).map(i => i.href);
+  
+  // CRITICAL: Ensure /more is always allowed for both as it's the nav hub
+  const baseViewerPaths = [...new Set([...viewerPaths, '/more', '/inventory/lookup'])];
+  
   return {
     admin: [...new Set(adminPaths)],
-    viewer: [...new Set(viewerPaths)],
+    viewer: baseViewerPaths,
     viewerFeatures: [],
     viewerDefaultPath: '/inventory/add',
   };
@@ -54,7 +57,13 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
       try {
         const response = await getPermissionsAction();
         if (response.success && response.data) {
-          const newPermissions = { ...getDefaultPermissions(), ...response.data };
+          const defaults = getDefaultPermissions();
+          const newPermissions = { 
+            ...defaults, 
+            ...response.data,
+            // Ensure system critical paths for mobile are preserved even if sheet is outdated
+            viewer: [...new Set([...(response.data.viewer || []), '/more', '/inventory/lookup'])]
+          };
           setPermissions(newPermissions);
           localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newPermissions));
         }
@@ -70,7 +79,9 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     setPermissions(prev => {
       const current = prev[roleToSet] || [];
       const updated = isEnabled ? [...new Set([...current, path])] : current.filter(p => p !== path);
-      const newState = { ...prev, [roleToSet]: updated };
+      // Safety: Never disable /more or /inventory/lookup via UI if it breaks primary navigation
+      const finalPaths = [...new Set([...updated, '/more'])];
+      const newState = { ...prev, [roleToSet]: finalPaths };
       localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newState));
       setPermissionsAction(newState).catch(console.error);
       return newState;
@@ -101,6 +112,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
 
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string) => {
     if (userRole === 'admin') return true;
+    if (path === '/more') return true; // System-critical hub
     return (permissions.viewer || []).includes(path);
   }, [permissions]);
 

@@ -11,6 +11,9 @@ import {
     Plus, 
     Search, 
     Menu,
+    UserCheck,
+    Settings,
+    LayoutDashboard,
     LucideIcon
 } from 'lucide-react';
 
@@ -18,11 +21,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const { role } = useAuth();
 
-  const isHomeActive = pathname === '/dashboard' || (role === 'viewer' && pathname === '/products');
-  const isCatalogActive = pathname === '/products/list';
-  const isAddActive = pathname === '/inventory/add';
-  const isLookupActive = pathname === '/inventory/lookup';
-  const isMoreActive = pathname === '/more';
+  if (!role) return null;
 
   const NavItem = ({ 
     href, 
@@ -40,69 +39,74 @@ export function BottomNav() {
         href={href} 
         className="flex items-center justify-center flex-1 h-full transition-all active:scale-90 outline-none"
       >
-        <Icon 
-          className={cn(
-            "h-[22px] w-[22px] transition-colors duration-200",
-            isActive ? "text-[#008CFF]" : "text-gray-400 dark:text-gray-500"
-          )} 
-          strokeWidth={isActive ? 2.5 : 2}
-        />
+        <div className="relative flex flex-col items-center justify-center h-full w-full">
+            <Icon 
+                className={cn(
+                    "h-[22px] w-[22px] transition-all duration-300",
+                    isActive ? "text-[#008CFF] scale-110" : "text-gray-400 dark:text-gray-500"
+                )} 
+                strokeWidth={isActive ? 2.5 : 2}
+            />
+            {isActive && (
+                <div className="absolute bottom-1 h-1 w-1 rounded-full bg-[#008CFF] animate-in fade-in zoom-in duration-300" />
+            )}
+        </div>
         <span className="sr-only">{label}</span>
       </Link>
     );
   };
 
+  const isAdmin = role === 'admin';
+
   return (
-    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto">
-      <div className="relative flex items-center h-[65px] w-full bg-white dark:bg-zinc-950 border-t border-black/[0.05] dark:border-white/[0.05] shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pb-safe">
+    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto px-4 pb-6">
+      <div className="relative flex items-center h-[58px] w-full max-w-[340px] bg-white/95 dark:bg-zinc-950/95 border border-black/[0.05] dark:border-white/[0.05] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] rounded-[20px] backdrop-blur-xl">
         
-        {/* 1. HOME */}
+        {/* SLOT 1: HOME / PRIMARY ACTION */}
         <NavItem 
-          href={role === 'admin' ? '/dashboard' : '/products'} 
-          icon={Home} 
+          href={isAdmin ? '/dashboard' : '/products'} 
+          icon={isAdmin ? LayoutDashboard : UserCheck} 
           label="Home" 
-          isActive={isHomeActive}
+          isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
         />
         
-        {/* 2. CATALOG (Admin Only) */}
-        {role === 'admin' && (
-            <NavItem 
-                href="/products/list" 
-                icon={Package} 
-                label="Catalog" 
-                isActive={isCatalogActive}
-            />
-        )}
+        {/* SLOT 2: CATALOG (ADMIN) / LOOKUP (VIEWER) */}
+        <NavItem 
+            href={isAdmin ? "/products/list" : "/inventory/lookup"} 
+            icon={isAdmin ? Package : Search} 
+            label={isAdmin ? "Catalog" : "Lookup"} 
+            isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
+        />
 
-        {/* 3. CENTRAL PLUS BUTTON (OVERLAPPING) */}
+        {/* SLOT 3: CENTRAL ACTION HUB (OVERLAPPING FAB) */}
         <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
             <Link 
                 href="/inventory/add" 
                 className={cn(
-                    "absolute -top-[22px] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-300 pointer-events-auto",
+                    "absolute -top-[24px] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-300 pointer-events-auto",
                     "bg-[#008CFF] text-white shadow-[0_8px_20px_-4px_rgba(0,140,255,0.4)]",
-                    "hover:scale-110 active:scale-90",
-                    isAddActive && "ring-4 ring-white dark:ring-zinc-950 shadow-[0_0_20px_rgba(0,140,255,0.6)]"
+                    "hover:scale-110 active:scale-95",
+                    pathname === '/inventory/add' && "ring-4 ring-white dark:ring-zinc-950 shadow-[0_0_20px_rgba(0,140,255,0.6)]"
                 )}
             >
                 <Plus className="h-[26px] w-[26px]" strokeWidth={3} />
             </Link>
         </div>
 
-        {/* 4. SEARCH (LOOKUP) */}
+        {/* SLOT 4: LOOKUP (ADMIN) / SETTINGS (VIEWER) */}
         <NavItem 
-          href="/inventory/lookup" 
-          icon={Search} 
-          label="Search" 
-          isActive={isLookupActive}
+          href={isAdmin ? "/inventory/lookup" : "/settings"} 
+          icon={isAdmin ? Search : Settings} 
+          label={isAdmin ? "Search" : "Settings"} 
+          isActive={isAdmin ? pathname === '/inventory/lookup' : pathname === '/settings'}
         />
 
-        {/* 5. MORE (SYSTEM HUB) */}
+        {/* SLOT 5: SYSTEM HUB (MORE) */}
         <NavItem 
           href="/more" 
           icon={Menu} 
           label="More" 
-          isActive={isMoreActive}
+          isActive={pathname === '/more'}
         />
       </div>
     </div>
