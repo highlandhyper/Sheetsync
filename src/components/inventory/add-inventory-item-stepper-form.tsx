@@ -445,7 +445,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   return (
     <>
     <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl">
-      <CardHeader className="px-4 sm:px-6">
+      <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 && "pb-2")}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 {currentStep === 0 ? (
@@ -489,7 +489,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
-        <div className="space-y-8">
+        <div className="space-y-6">
             <div className="space-y-3">
                 <Progress value={((currentStep + 1) / steps.length) * 100} className="h-2" />
                 <p className="text-xs font-bold text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-wider">
