@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -13,6 +12,7 @@ import {
     Search, 
     Menu,
     Settings,
+    UserCheck,
     LucideIcon
 } from 'lucide-react';
 
@@ -58,14 +58,14 @@ export function BottomNav() {
   const isAdmin = role === 'admin';
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto px-4 pb-6">
-      <div className="relative flex items-center h-[58px] w-full max-w-[340px] bg-white/95 dark:bg-zinc-950/95 border border-black/[0.05] dark:border-white/[0.05] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] rounded-[20px] backdrop-blur-xl">
+    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto pb-safe">
+      <div className="relative flex items-center h-[58px] w-full bg-white dark:bg-zinc-950 border-t border-black/[0.05] dark:border-white/[0.05] shadow-[0_-4px_10px_rgba(0,0,0,0.03)] backdrop-blur-xl">
         
-        {/* SLOT 1: HOME (Admin -> Dashboard, Viewer -> Return by Staff) */}
+        {/* SLOT 1: DYNAMIC HOME (Admin -> Dashboard [Home], Viewer -> Return by Staff [UserCheck]) */}
         <NavItem 
           href={isAdmin ? '/dashboard' : '/products'} 
-          icon={Home} 
-          label="Home" 
+          icon={isAdmin ? Home : UserCheck} 
+          label={isAdmin ? "Home" : "Returns"} 
           isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
         />
         
@@ -77,7 +77,7 @@ export function BottomNav() {
             isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
         />
 
-        {/* SLOT 3: PRIMARY ACTION (PLUS) */}
+        {/* SLOT 3: PRIMARY ACTION (PLUS) - OVERLAPPING CIRCLE */}
         <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
             <Link 
                 href="/inventory/add" 
