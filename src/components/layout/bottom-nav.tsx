@@ -22,7 +22,7 @@ export function BottomNav() {
   const isCatalogActive = pathname === '/products/list';
   const isAddActive = pathname === '/inventory/add';
   const isLookupActive = pathname === '/inventory/lookup';
-  const isMoreActive = pathname === '/settings' || pathname === '/audit-log';
+  const isMoreActive = pathname === '/more';
 
   const NavItem = ({ 
     href, 
@@ -53,8 +53,8 @@ export function BottomNav() {
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-none">
-      <div className="relative flex items-center h-[65px] w-full bg-white dark:bg-zinc-950 border-t border-black/[0.05] dark:border-white/[0.05] pointer-events-auto shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pb-safe">
+    <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto">
+      <div className="relative flex items-center h-[65px] w-full bg-white dark:bg-zinc-950 border-t border-black/[0.05] dark:border-white/[0.05] shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pb-safe">
         
         {/* 1. HOME */}
         <NavItem 
@@ -73,13 +73,14 @@ export function BottomNav() {
         />
 
         {/* 3. CENTRAL PLUS BUTTON (OVERLAPPING) */}
-        <div className="flex-1 flex justify-center items-center h-full relative">
+        <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
             <Link 
                 href="/inventory/add" 
                 className={cn(
-                    "absolute -top-[22px] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-300",
+                    "absolute -top-[22px] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-300 pointer-events-auto",
                     "bg-[#008CFF] text-white shadow-[0_8px_20px_-4px_rgba(0,140,255,0.4)]",
-                    "hover:scale-110 active:scale-90"
+                    "hover:scale-110 active:scale-90",
+                    isAddActive && "ring-4 ring-white dark:ring-zinc-950 shadow-[0_0_20px_rgba(0,140,255,0.6)]"
                 )}
             >
                 <Plus className="h-[26px] w-[26px]" strokeWidth={3} />
@@ -94,9 +95,9 @@ export function BottomNav() {
           isActive={isLookupActive}
         />
 
-        {/* 5. MORE (SETTINGS/MANAGEMENT) */}
+        {/* 5. MORE (SYSTEM HUB) */}
         <NavItem 
-          href="/settings" 
+          href="/more" 
           icon={Menu} 
           label="More" 
           isActive={isMoreActive}
