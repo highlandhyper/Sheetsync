@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, UserCircle, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff, ShieldCheck } from 'lucide-react';
+import { LogOut, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CommandPalette } from './command-palette';
 import { HeaderBarcodeLookup } from '../inventory/header-barcode-lookup';
 import { NotificationCenter } from './notification-center';
@@ -137,7 +136,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         className
       )}>
         <div className="flex items-center gap-4">
-            <SidebarTrigger className="h-9 w-9 hidden md:flex" />
+            {/* Redundant hamburger button removed for cleaner desktop look */}
         </div>
         
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">

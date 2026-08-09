@@ -9,7 +9,7 @@ import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
-import { Loader2, ShieldCheck, Activity } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
 import { cn } from '@/lib/utils';
@@ -135,7 +135,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <SidebarProvider defaultOpen={true}>
         <AppSidebar className="noprint" />
         <SidebarInset className="flex min-w-0 flex-col relative overflow-hidden bg-background">
-          {/* GLOBAL ATMOSPHERIC LAYER */}
+          {/* ATMOSPHERIC LAYER */}
           <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
             <div className="absolute inset-0 bg-tech-grid opacity-[0.2]" />
             <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
@@ -146,7 +146,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
           <main className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
             "p-4 sm:p-6 md:p-8",
-            "pb-32 md:pb-8" // Professional bottom padding for Nav
+            "pb-32 md:pb-8" 
           )}>
             <div className="container mx-auto max-w-full lg:max-w-[1700px] animate-in fade-in slide-in-from-bottom-2 duration-700">
                 {children}
