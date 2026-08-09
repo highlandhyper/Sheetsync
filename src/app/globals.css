@@ -84,18 +84,23 @@ body {
   }
 }
 
+/* Standardized Rounded Rectangle */
+.rounded-2xl {
+  border-radius: 1rem !important;
+}
+
 /* Technical Precision Grid Background */
 .bg-tech-grid {
   background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--primary) / 0.03) 1px, transparent 1px);
+    linear-gradient(to right, hsl(var(--primary) / 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--primary) / 0.02) 1px, transparent 1px);
 }
 
 .dark .bg-tech-grid {
   background-image: 
-    linear-gradient(to right, hsl(var(--primary) / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+    linear-gradient(to right, hsl(var(--primary) / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--primary) / 0.04) 1px, transparent 1px);
 }
 
 /* Glassmorphism Refinement */

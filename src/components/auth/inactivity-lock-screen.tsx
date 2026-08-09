@@ -51,15 +51,15 @@ export function InactivityLockScreen({ onUnlock }: InactivityLockScreenProps) {
     if (isAuthorized) {
       toast({
         title: "Unlocked",
-        description: `Welcome back, ${user?.email?.split('@')[0] || 'user'}!`,
+        description: `Session resumed.`,
       });
       onUnlock();
     } else {
       setError("password", { type: "manual", message: "Verification failed." });
       toast({
         variant: "destructive",
-        title: "Access Denied",
-        description: "The local administrator key provided is incorrect.",
+        title: "Invalid Key",
+        description: "The local administrator key is incorrect.",
       });
     }
   };
@@ -75,36 +75,20 @@ export function InactivityLockScreen({ onUnlock }: InactivityLockScreenProps) {
 
         <div className="relative z-10 w-full max-w-[1200px] flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-32 px-4 sm:px-6">
             
-            {/* LEFT PANEL: SYSTEM STATUS (Hidden on mobile) */}
-            <div className="hidden lg:flex flex-col space-y-10 max-w-sm animate-in fade-in slide-in-from-left-8 duration-1000">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">
-                        <Activity className="h-3 w-3 animate-pulse" /> System Locked
-                    </div>
-                    <h2 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
-                        Security <span className="text-primary">Gate</span><br/>Active
+            {/* LEFT PANEL: Branding (Hidden on mobile) */}
+            <div className="hidden lg:flex flex-col space-y-8 max-w-sm animate-in fade-in slide-in-from-left-8 duration-1000">
+                <div className="space-y-4">
+                    <h2 className="text-6xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
+                        Registry <span className="text-primary">Locked</span>
                     </h2>
-                    <p className="text-base text-muted-foreground font-medium leading-relaxed opacity-70">
-                        Protocol 4.1: Inactivity timer triggered. Local administrator verification required to resume session.
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-60">
+                        Inactivity timer triggered. Local administrator verification required to resume registry operations.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {[
-                        { label: 'Network', value: 'Encrypted', icon: Network },
-                        { label: 'Security', value: 'Verified', icon: Fingerprint },
-                    ].map((stat, i) => (
-                        <div key={i} className="p-5 rounded-[2rem] bg-white/40 dark:bg-white/5 backdrop-blur-sm shadow-sm">
-                            <stat.icon className="h-5 w-5 text-primary mb-3" />
-                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{stat.label}</p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white">{stat.value}</p>
-                        </div>
-                    ))}
-                </div>
-                
-                <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30">
-                    <LockKeyhole className="h-3 w-3" />
-                    <span>Auto-Lock Protocol Engaged</span>
+                <div className="flex items-center gap-4">
+                    <div className="h-1 w-12 bg-primary rounded-full" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/40">Secure Session Restore</span>
                 </div>
             </div>
 
@@ -112,24 +96,23 @@ export function InactivityLockScreen({ onUnlock }: InactivityLockScreenProps) {
             <div className="w-full max-w-sm space-y-10 animate-in fade-in zoom-in-95 duration-700 ease-out">
                 {/* MOBILE ONLY BRANDING */}
                 <div className="lg:hidden text-center space-y-2 mb-10">
-                    <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+                    <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
                         <LockKeyhole className="h-8 w-8 text-primary" />
                     </div>
                     <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">
-                        Security <span className="text-primary">Gate</span>
+                        Verification
                     </h1>
-                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Protocol: Inactivity Lock</p>
                 </div>
 
                 <div className="hidden lg:block text-center space-y-2">
-                    <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-primary/5 transition-transform hover:scale-105 duration-500">
+                    <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-primary/5">
                         <LockKeyhole className="h-8 w-8 text-primary" />
                     </div>
-                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
-                        Verification
+                    <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
+                        Identity Check
                     </h1>
                     <div className="pt-2">
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest opacity-60">
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-40">
                             Admin Session: <span className="text-foreground font-black">{user?.email}</span>
                         </p>
                     </div>
@@ -137,17 +120,17 @@ export function InactivityLockScreen({ onUnlock }: InactivityLockScreenProps) {
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                     <div className="space-y-1.5">
-                        <Label htmlFor="lock-password" title="Verification Code" className="text-[9px] font-black text-muted-foreground uppercase tracking-widest ml-0.5">
+                        <Label htmlFor="lock-password" visually-hidden="true" className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-0.5">
                             Local Access Key
                         </Label>
                         <div className="relative group">
-                            <KeyRound className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-primary transition-all duration-300" />
-                            <Input 
+                            <KeyRound className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/30 group-focus-within:text-primary transition-all duration-300" />
+                            <input 
                                 id="lock-password" 
                                 type={showPassword ? 'text' : 'password'}
                                 {...register('password')}
                                 className={cn(
-                                    "bg-transparent border-0 border-b-2 border-slate-200 dark:border-zinc-800 h-12 pl-7 pr-10 rounded-none font-bold transition-all focus:border-primary focus:ring-0 text-base placeholder:text-muted-foreground/20",
+                                    "w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-zinc-800 h-12 pl-8 pr-10 rounded-none font-bold transition-all focus:border-primary focus:ring-0 text-base placeholder:text-muted-foreground/20",
                                     errors.password && 'border-destructive'
                                 )} 
                                 placeholder="••••••••"
@@ -157,45 +140,35 @@ export function InactivityLockScreen({ onUnlock }: InactivityLockScreenProps) {
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors p-1"
-                                aria-label={showPassword ? "Hide access key" : "Show access key"}
+                                aria-label={showPassword ? "Hide key" : "Show key"}
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4 opacity-40" /> : <Eye className="h-4 w-4 opacity-40" />}
+                                {showPassword ? <EyeOff className="h-4 w-4 opacity-20" /> : <Eye className="h-4 w-4 opacity-20" />}
                             </button>
                         </div>
-                        {errors.password && <p className="text-[9px] text-destructive font-bold uppercase tracking-tighter ml-0.5">Key Verification Required</p>}
+                        {errors.password && <p className="text-[9px] text-destructive font-bold uppercase tracking-tighter ml-0.5">Verification Required</p>}
                     </div>
 
                     <div className="pt-2 space-y-6">
                         <Button 
                             type="submit" 
                             disabled={isSubmitting} 
-                            className="w-full h-14 text-base font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground group border-none"
+                            className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground group border-none"
                         >
                             {isSubmitting ? (
-                                <div className="flex items-center justify-center gap-3">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Verifying...</span>
-                                </div>
+                                <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
                                 <div className="flex items-center justify-center gap-2">
                                     <span>Verify & Resume</span>
-                                    <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                    <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                                 </div>
                             )}
                         </Button>
-                        
-                        <div className="flex flex-col items-center gap-2 opacity-40">
-                            <div className="flex items-center gap-2 text-[8px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                                <Activity className="h-2.5 w-2.5 animate-pulse" />
-                                <span>Security Handshake Active</span>
-                            </div>
-                        </div>
                     </div>
                 </form>
 
                 <div className="pt-12 text-center">
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground/20">
-                        End-to-End Encryption Hub v4.1
+                    <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/10">
+                        Registry Protection Active
                     </p>
                 </div>
             </div>

@@ -100,8 +100,8 @@ export function InventoryBarcodeLookupClient() {
       if (filtered.length === 0) {
         toast({
           variant: 'destructive',
-          title: 'Identity Null',
-          description: `No active stock records for SKU: ${cleanBarcode}`,
+          title: 'Identity Zero',
+          description: `No active records for SKU: ${cleanBarcode}`,
         });
       }
     });
@@ -141,7 +141,7 @@ export function InventoryBarcodeLookupClient() {
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
         }).catch(() => {
-          toast({ variant: 'destructive', title: 'Hardware Error', description: 'Optical system failed to initialize.' });
+          toast({ variant: 'destructive', title: 'Hardware Error', description: 'Optical system failed.' });
           setIsScannerDialogOpen(false);
         });
       }, 800);
@@ -164,18 +164,18 @@ export function InventoryBarcodeLookupClient() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <Card className="shadow-2xl border-white/10 bg-card/60 backdrop-blur-xl rounded-2xl overflow-hidden group">
+      <Card className="shadow-none border-white/10 bg-card/40 rounded-2xl overflow-hidden">
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-stretch gap-3">
             <div className="relative flex-grow">
                <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                <input
                 type="text"
-                placeholder="SCAN OR ENTER BARCODE KEY..."
+                placeholder="SCAN OR ENTER BARCODE..."
                 value={barcodeToSearch}
                 onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(barcodeToSearch)}
-                className="w-full h-14 bg-muted/20 border border-white/5 rounded-2xl pl-12 pr-4 text-lg font-black tracking-tight focus:outline-none focus:border-primary/30 transition-all placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.2em]"
+                className="w-full h-14 bg-muted/10 border border-white/5 rounded-2xl pl-12 pr-4 text-lg font-black tracking-tight focus:outline-none focus:border-primary/20 transition-all placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.2em]"
               />
               {barcodeToSearch && (
                   <button 
@@ -191,17 +191,17 @@ export function InventoryBarcodeLookupClient() {
                 <Button 
                     onClick={() => setIsScannerDialogOpen(true)}
                     variant="outline" 
-                    className="flex-1 sm:flex-none px-6 h-full rounded-2xl border-white/10 font-black uppercase tracking-widest text-xs hover:bg-primary/5 hover:text-primary"
+                    className="flex-1 sm:flex-none px-6 h-full rounded-2xl border-white/5 font-black uppercase tracking-widest text-[10px]"
                 >
-                    <ScanBarcode className="mr-2 h-5 w-5" /> Scan
+                    <ScanBarcode className="mr-2 h-5 w-5 text-primary" /> Scan
                 </Button>
                 <Button 
                     onClick={() => executeSearch(barcodeToSearch)} 
                     disabled={isLoading || !barcodeToSearch.trim()} 
-                    className="flex-1 sm:flex-none px-8 h-full rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-xs"
+                    className="flex-1 sm:flex-none px-8 h-full rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-[10px]"
                 >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
-                    <span className="ml-2">Identify</span>
+                    <span className="ml-2">Lookup</span>
                 </Button>
             </div>
           </div>
@@ -210,11 +210,8 @@ export function InventoryBarcodeLookupClient() {
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="relative mb-6">
-                <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" strokeWidth={1} />
-                <Loader2 className="absolute inset-0 h-16 w-16 animate-[spin_3s_linear_infinite] text-primary" strokeWidth={2} />
-            </div>
-            <h3 className="text-xl font-black uppercase tracking-[0.3em] text-primary animate-pulse">Scanning Registry...</h3>
+            <Loader2 className="h-12 w-12 animate-spin text-primary/40" strokeWidth={3} />
+            <h3 className="text-lg font-black uppercase tracking-[0.2em] text-primary/40 animate-pulse mt-4">Identifying...</h3>
         </div>
       )}
 
@@ -224,26 +221,25 @@ export function InventoryBarcodeLookupClient() {
                 <div className="bg-primary/10 p-2 rounded-xl">
                     <Layers className="h-5 w-5 text-primary" />
                 </div>
-                <h2 className="text-xl font-black uppercase tracking-tight">Verified Records Found</h2>
+                <h2 className="text-xl font-black uppercase tracking-tight">System Records Found</h2>
             </div>
             
             <div className="hidden md:block">
-                <Card className="shadow-2xl border-white/10 overflow-hidden rounded-2xl">
+                <Card className="shadow-none border-white/10 overflow-hidden rounded-2xl">
                     <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader className="bg-muted/30">
                         <TableRow>
-                        <TableHead className="text-[10px] uppercase font-black">Logged At</TableHead>
+                        <TableHead className="text-[10px] uppercase font-black">Timestamp</TableHead>
                         <TableHead className="text-right text-[10px] uppercase font-black">Units</TableHead>
                         <TableHead className="text-[10px] uppercase font-black">Zone</TableHead>
                         <TableHead className="text-[10px] uppercase font-black">Staff</TableHead>
                         <TableHead className="text-[10px] uppercase font-black">Expiry</TableHead>
-                        <TableHead className="text-[10px] uppercase font-black">Classification</TableHead>
-                        {role === 'admin' && <TableHead className="text-center text-[10px] uppercase font-black">Actions</TableHead>}
+                        {role === 'admin' && <TableHead className="text-center text-[10px] uppercase font-black">Action</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {searchResults.map((item) => (
-                            <TableRow key={item.id} className="group hover:bg-primary/[0.02] transition-colors">
+                            <TableRow key={item.id} className="group hover:bg-primary/[0.01] transition-colors">
                                 <TableCell className="text-xs font-mono text-muted-foreground">
                                     {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </TableCell>
@@ -262,20 +258,12 @@ export function InventoryBarcodeLookupClient() {
                                 <TableCell className="text-xs font-medium">
                                     {item.expiryDate ? format(parseISO(item.expiryDate), 'PP') : 'None'}
                                 </TableCell>
-                                <TableCell>
-                                    <Badge variant="outline" className={cn(
-                                        "text-[9px] font-black uppercase tracking-widest py-1 border-none",
-                                        item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-blue-500/10 text-blue-600"
-                                    )}>
-                                        {item.itemType}
-                                    </Badge>
-                                </TableCell>
                                 {role === 'admin' && (
                                     <TableCell className="text-center">
                                     <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/10 text-primary"><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/10 text-primary"><Undo2 className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); }} className="h-8 w-8 hover:bg-destructive/10 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/5 text-primary"><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/5 text-primary"><Undo2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); }} className="h-8 w-8 hover:bg-destructive/5 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                     </TableCell>
                                 )}
@@ -304,15 +292,15 @@ export function InventoryBarcodeLookupClient() {
       )}
 
       {hasSearched && !isLoading && searchResults.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-500">
-            <div className="bg-muted/20 p-8 rounded-[2.5rem] mb-6 shadow-inner border-2 border-dashed border-white/5">
-                <PackageSearch className="h-20 w-20 text-muted-foreground/10" strokeWidth={1} />
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="bg-muted/10 p-8 rounded-2xl mb-6 border-2 border-dashed border-white/5">
+                <PackageSearch className="h-16 w-16 text-muted-foreground/10" strokeWidth={1} />
             </div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter text-muted-foreground/40">Zero Inventory Match</h3>
-            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto font-medium opacity-60">
-                The barcode <span className="text-primary font-black">{lastSearchedBarcode}</span> is currently not identified in any active storage zones.
+            <h3 className="text-xl font-black uppercase tracking-tighter text-muted-foreground/40">Zero Inventory Match</h3>
+            <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto font-medium">
+                Barcode <span className="text-primary font-black">{lastSearchedBarcode}</span> is currently not in active zones.
             </p>
-            <Button variant="outline" className="mt-8 rounded-2xl border-white/10 font-black uppercase tracking-widest text-[10px]" onClick={() => setHasSearched(false)}>
+            <Button variant="outline" className="mt-8 rounded-2xl border-white/10 font-black uppercase tracking-widest text-[9px]" onClick={() => setHasSearched(false)}>
                 <FilterX className="mr-2 h-4 w-4" /> Reset Identification
             </Button>
           </div>

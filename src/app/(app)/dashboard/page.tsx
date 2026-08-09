@@ -32,11 +32,11 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
       <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
         {children}
       </div>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-3 sm:px-6">
-        <CardTitle className="text-[9px] sm:text-xs font-black uppercase tracking-widest text-muted-foreground/80">{title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 relative z-20 px-4 sm:px-6">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</CardTitle>
         <div 
             className={cn(
-                "p-1.5 sm:p-2 bg-primary/10 rounded-2xl text-primary transition-all duration-300", 
+                "p-2 bg-primary/10 rounded-2xl text-primary transition-all duration-300", 
                 onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
             )}
             onClick={(e) => {
@@ -47,10 +47,10 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
                 }
             }}
         >
-            <div className="h-3.5 w-3.5 sm:h-5 sm:w-5">{iconNode}</div>
+            <div className="h-4 w-4 sm:h-5 sm:w-5">{iconNode}</div>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full relative z-20 px-3 sm:px-6">
+      <CardContent className="flex flex-col h-full relative z-20 px-4 sm:px-6">
         {isLoading ? (
             <Skeleton className="h-10 w-1/2" />
         ) : (
@@ -58,7 +58,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
                 {value}
             </div>
         )}
-        {description && !isLoading && <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 pt-1 sm:pt-2 flex items-center min-h-[1.5rem] sm:min-h-[2.5rem]">{description}</div>}
+        {description && !isLoading && <div className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/40 pt-2 flex items-center min-h-[1.5rem] sm:min-h-[2.5rem]">{description}</div>}
         {isLoading && <Skeleton className="h-4 w-3/4 mt-2" />}
       </CardContent>
     </>
@@ -66,7 +66,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
 
   const cardContainerClassName = cn(
     "group transition-all duration-500 rounded-2xl border-white/5 h-full",
-    href ? "hover:border-primary/30 hover:scale-[1.02] cursor-pointer" : "",
+    href ? "hover:border-primary/30 hover:shadow-xl cursor-pointer" : "",
     className
   );
   
@@ -190,7 +190,7 @@ function StockTrendSparkline({ data }: { data: StockTrendData[] }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-20 pointer-events-none z-0">
+    <ChartContainer config={chartConfig} className="absolute inset-0 w-full h-full opacity-10 pointer-events-none z-0">
         <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorStock" x1="0" x2="0" y2="1">
@@ -275,10 +275,10 @@ function StockTrendDetailedDialog({
                         <div>
                             <DialogTitle className="flex items-center gap-2 text-xl sm:text-2xl font-black uppercase tracking-tighter">
                                 <TrendingUp className="h-6 w-6 text-primary" />
-                                Inventory Volume Analysis
+                                Volume Analysis
                             </DialogTitle>
                             <DialogDescription className="text-xs">
-                                Historical stock trend based on recorded additions and current levels.
+                                Historical stock trend based on recorded additions.
                             </DialogDescription>
                         </div>
                         <div className="flex flex-col gap-1 sm:items-end">
@@ -383,7 +383,7 @@ function QuickAuthorizeCard() {
         grantProactiveEntry(selectedStaff, grantParams?.duration);
         toast({
             title: "Access Granted",
-            description: `Authorization sent to ${selectedStaff}. A dynamic OTP has been generated.`,
+            description: `Authorization sent to ${selectedStaff}.`,
         });
         setSelectedStaff("");
         setGrantParams(null);
@@ -391,24 +391,24 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-2xl rounded-2xl border-white/5 bg-card/60 backdrop-blur-xl h-full flex flex-col group overflow-hidden">
-            <CardHeader className="pb-1 sm:pb-2 bg-primary/5 px-3 sm:px-6">
-                <CardTitle className="text-[9px] sm:text-xs font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
-                <CardDescription className="text-[8px] sm:text-[10px] font-bold">Proactive silent entry grant</CardDescription>
+        <Card className="shadow-none rounded-2xl border-white/10 bg-card/40 h-full flex flex-col group overflow-hidden">
+            <CardHeader className="pb-1 sm:pb-2 px-4 sm:px-6">
+                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Quick Authorize</CardTitle>
+                <CardDescription className="text-[9px] font-bold">Proactive silent log grant</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 flex-grow flex flex-col justify-center px-3 sm:px-6">
+            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-4 sm:px-6">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
                             variant="outline" 
                             role="combobox" 
-                            className="w-full h-10 sm:h-12 text-xs sm:text-sm justify-between font-black uppercase tracking-tight rounded-2xl border-primary/10 bg-muted/20"
+                            className="w-full h-11 text-xs justify-between font-black uppercase tracking-tight rounded-2xl border-primary/5 bg-muted/20"
                         >
                             <div className="flex items-center gap-2 truncate">
-                                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
+                                <User className="h-3.5 w-3.5 text-primary shrink-0" />
                                 {selectedStaff || "Select Staff"}
                             </div>
-                            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+                            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl" align="start">
@@ -438,11 +438,11 @@ function QuickAuthorizeCard() {
                 </Popover>
                 
                 <Button 
-                    className="w-full h-10 sm:h-12 text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
+                    className="w-full h-11 text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
                     disabled={!selectedStaff}
                     onClick={handleOpenGrant}
                 >
-                    <UserPlus className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <UserPlus className="mr-2 h-3.5 w-3.5" />
                     Authorize
                 </Button>
             </CardContent>
@@ -459,7 +459,7 @@ function QuickAuthorizeCard() {
             isOpen={isAuthDialogOpen}
             onOpenChange={setIsAuthDialogOpen}
             onAuthorizationSuccess={handleAuthorizationSuccess}
-            actionDescription={`Granting special silent mode access to ${selectedStaff}. Requires admin credentials.`}
+            actionDescription={`Granting special silent mode access to ${selectedStaff}.`}
         />
         </>
     );
@@ -474,59 +474,59 @@ function ActiveAuthorizations() {
     const handleRevokeClick = (id: string, name: string) => {
         revokeRequest(id);
         toast({
-            title: "Authorization Revoked",
-            description: `Silent mode access for ${name} has been terminated.`,
+            title: "Revoked",
+            description: `Access for ${name} terminated.`,
         });
     };
 
     return (
         <div className="space-y-6 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tighter">
-                <div className="bg-primary/10 p-1.5 sm:p-2 rounded-2xl">
-                    <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tighter">
+                <div className="bg-primary/10 p-2 rounded-2xl">
+                    <ShieldCheck className="h-6 w-6 text-primary" />
                 </div>
-                Live Sessions
-                <Badge variant="secondary" className="ml-2 sm:ml-4 bg-green-500/10 text-green-600 border-green-500/20 font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-3 py-1">
-                    {activeSessions.length} Active
+                Active Grants
+                <Badge variant="secondary" className="ml-4 bg-green-500/10 text-green-600 border-none font-black uppercase text-[10px] tracking-widest">
+                    {activeSessions.length} Online
                 </Badge>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {activeSessions.map(session => (
-                    <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-2xl rounded-2xl overflow-hidden flex flex-col group">
-                        <CardHeader className="pb-3 bg-green-500/[0.03] border-b border-green-500/5 px-4 sm:px-6">
+                    <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-none rounded-2xl overflow-hidden flex flex-col group">
+                        <CardHeader className="pb-3 px-6">
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
-                                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                                <CardTitle className="text-lg font-black tracking-tight flex items-center gap-2">
+                                    <User className="h-4 w-4 text-green-600" />
                                     {session.staffName}
                                 </CardTitle>
-                                <Badge variant="outline" className="text-[8px] sm:text-[9px] uppercase font-black tracking-widest bg-background border-green-200">
-                                    {session.type === 'timed' ? 'Timed' : 'Single Use'}
+                                <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest bg-background border-green-200">
+                                    {session.type === 'timed' ? 'Timed' : 'Single'}
                                 </Badge>
                             </div>
                         </CardHeader>
-                        <CardContent className="text-xs space-y-3 sm:space-y-4 pt-4 sm:pt-6 flex-grow px-4 sm:px-6">
+                        <CardContent className="text-xs space-y-4 pt-4 flex-grow px-6">
                             <div className="flex justify-between items-center text-muted-foreground">
-                                <span className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-[8px] sm:text-[9px]"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Authorized:</span>
+                                <span className="font-bold uppercase tracking-widest text-[9px]"><Clock className="h-3.5 w-3.5 mr-1 inline" /> Logged:</span>
                                 <span className="font-black text-slate-900 dark:text-white text-sm">{session.approvedAt ? format(parseISO(session.approvedAt), 'HH:mm') : 'N/A'}</span>
                             </div>
                             {session.expiresAt && (
                                 <div className="flex justify-between items-center text-muted-foreground">
-                                    <span className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-[8px] sm:text-[9px] text-destructive"><Timer className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Expiry:</span>
+                                    <span className="font-bold uppercase tracking-widest text-[9px] text-destructive"><Timer className="h-3.5 w-3.5 mr-1 inline" /> Expiry:</span>
                                     <span className="font-black text-destructive text-sm">
                                         {format(parseISO(session.expiresAt), 'HH:mm')}
                                     </span>
                                 </div>
                             )}
-                            <div className="py-3 sm:py-4 px-4 sm:px-5 bg-white dark:bg-black/20 rounded-2xl border-2 border-primary/10 shadow-inner flex justify-between items-center">
-                                <span className="text-[8px] sm:text-[9px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-1.5"><Key className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Key</span>
-                                <span className="font-black text-xl sm:text-2xl text-primary tracking-[0.3em] font-mono leading-none">{session.otp || '----'}</span>
+                            <div className="py-4 px-5 bg-white dark:bg-black/20 rounded-2xl border-2 border-primary/10 shadow-inner flex justify-between items-center">
+                                <span className="text-[9px] font-black uppercase text-primary tracking-widest"><Key className="h-3.5 w-3.5 mr-1 inline" /> Key</span>
+                                <span className="font-black text-xl text-primary tracking-[0.3em] font-mono leading-none">{session.otp || '----'}</span>
                             </div>
                         </CardContent>
-                        <div className="p-2 sm:p-3 border-t border-green-500/5 bg-muted/10">
+                        <div className="p-3 border-t border-green-500/5">
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="w-full h-9 sm:h-10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-2xl"
+                                className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-2xl"
                                 onClick={() => handleRevokeClick(session.id, session.staffName)}
                             >
                                 <Ban className="mr-2 h-4 w-4" />
@@ -546,20 +546,20 @@ function PendingApprovalsSummary() {
     if (pendingRequests.length === 0) return null;
 
     return (
-        <Card className="border-primary/20 bg-primary/[0.03] shadow-2xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 group">
-            <CardContent className="p-4 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-8">
-                <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto">
-                    <div className="bg-primary p-4 sm:p-6 rounded-2xl shadow-2xl shadow-primary/30 group-hover:scale-105 transition-transform duration-500 shrink-0">
-                        <ShieldQuestion className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" />
+        <Card className="border-primary/10 bg-primary/[0.03] shadow-none rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="flex items-center gap-6">
+                    <div className="bg-primary p-6 rounded-2xl shadow-xl shadow-primary/20">
+                        <ShieldQuestion className="h-10 w-10 text-primary-foreground" />
                     </div>
                     <div>
-                        <h3 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none mb-1 sm:mb-2 text-primary sm:text-foreground">Security Override</h3>
-                        <p className="text-muted-foreground font-bold uppercase text-[9px] sm:text-xs tracking-widest">You have <span className="text-primary font-black">{pendingRequests.length} incoming requests</span> awaiting administrator clearance.</p>
+                        <h3 className="text-3xl font-black tracking-tighter uppercase leading-none mb-2">Security Pending</h3>
+                        <p className="text-muted-foreground font-bold uppercase text-xs tracking-widest"><span className="text-primary font-black">{pendingRequests.length} requests</span> awaiting clearance.</p>
                     </div>
                 </div>
-                <Button asChild className="w-full md:w-auto px-6 sm:px-10 h-12 sm:h-16 text-sm sm:text-lg font-black uppercase tracking-widest rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
+                <Button asChild className="w-full md:w-auto px-10 h-16 text-lg font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20">
                     <Link href="/approvals">
-                        Review Center <ArrowRight className="ml-2 sm:ml-3 h-5 w-5 sm:h-6 w-6" />
+                        Review Center <ArrowRight className="ml-3 h-6 w-6" />
                     </Link>
                 </Button>
             </CardContent>
@@ -593,71 +593,70 @@ function ProactiveGrantDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] rounded-2xl border-none shadow-2xl p-4 sm:p-6">
+            <DialogContent className="max-w-md w-[95%] rounded-2xl border-none shadow-2xl p-6">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-black uppercase tracking-tighter">
-                        <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-                        Authorize Silent Mode
+                    <DialogTitle className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter">
+                        <ShieldCheck className="h-7 w-7 text-primary" />
+                        Authorize Mode
                     </DialogTitle>
-                    <DialogDescription className="font-medium text-xs sm:text-sm pt-2">
-                        Granting proactive silent access for <span className="font-black text-slate-900 dark:text-white">{staffName}</span>. 
-                        A unique 4-digit OTP will be generated instantly.
+                    <DialogDescription className="font-medium text-sm pt-2">
+                        Granting silent access for <span className="font-black text-slate-900 dark:text-white">{staffName}</span>.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
                     <div className="space-y-4">
-                        <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Select Duration Strategy</Label>
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Select Duration</Label>
+                        <div className="grid grid-cols-2 gap-3">
                             <Button 
                                 variant={selectedDuration === 'single' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('single')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-20 flex flex-col gap-1 rounded-2xl border-primary/5 font-bold"
                             >
-                                <Check className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'single' ? "opacity-100" : "opacity-30")} />
-                                <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Single</span>
+                                <Check className={cn("h-5 w-5 mb-1", selectedDuration === 'single' ? "opacity-100" : "opacity-30")} />
+                                <span className="text-[10px] uppercase tracking-widest">Single</span>
                             </Button>
                             <Button 
                                 variant={selectedDuration === '10' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('10')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-20 flex flex-col gap-1 rounded-2xl border-primary/5 font-bold"
                             >
-                                <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '10' ? "opacity-100" : "opacity-30")} />
-                                <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">10 Min</span>
+                                <Clock className={cn("h-5 w-5 mb-1", selectedDuration === '10' ? "opacity-100" : "opacity-30")} />
+                                <span className="text-[10px] uppercase tracking-widest">10 Min</span>
                             </Button>
                             <Button 
                                 variant={selectedDuration === '30' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('30')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-20 flex flex-col gap-1 rounded-2xl border-primary/5 font-bold"
                             >
-                                <Clock className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === '30' ? "opacity-100" : "opacity-30")} />
-                                <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">30 Min</span>
+                                <Clock className={cn("h-5 w-5 mb-1", selectedDuration === '30' ? "opacity-100" : "opacity-30")} />
+                                <span className="text-[10px] uppercase tracking-widest">30 Min</span>
                             </Button>
                             <Button 
                                 variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('custom')}
-                                className="h-14 sm:h-20 flex flex-col gap-1 rounded-2xl group border-primary/10 font-bold"
+                                className="h-20 flex flex-col gap-1 rounded-2xl border-primary/5 font-bold"
                             >
-                                <Plus className={cn("h-4 w-4 sm:h-5 sm:w-5 mb-1 group-hover:scale-110 transition-transform", selectedDuration === 'custom' ? "opacity-100" : "opacity-030")} />
-                                <span className="text-[9px] sm:text-[10px] uppercase tracking-widest">Custom</span>
+                                <Plus className={cn("h-5 w-5 mb-1", selectedDuration === 'custom' ? "opacity-100" : "opacity-30")} />
+                                <span className="text-[10px] uppercase tracking-widest">Custom</span>
                             </Button>
                         </div>
                         {selectedDuration === 'custom' && (
                             <div className="pt-2 animate-in slide-in-from-top-2 duration-300">
-                                <Label htmlFor="custom-mins" className="text-[9px] uppercase font-black text-primary tracking-widest">Minutes (Active)</Label>
+                                <Label htmlFor="custom-mins" className="text-[10px] uppercase font-black text-primary tracking-widest">Minutes</Label>
                                 <Input 
                                     id="custom-mins" 
                                     type="number" 
                                     value={customMins} 
                                     onChange={(e) => setCustomMins(e.target.value)}
-                                    className="mt-1 h-10 sm:h-12 text-lg font-black border-primary/20 rounded-2xl bg-primary/5"
+                                    className="mt-1 h-12 text-lg font-black border-primary/10 rounded-2xl bg-primary/5"
                                 />
                             </div>
                         )}
                     </div>
                 </div>
-                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <Button variant="ghost" className="font-bold uppercase tracking-widest text-[9px] sm:text-[10px] order-2 sm:order-1" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleGrant} className="h-11 sm:h-12 px-8 font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 order-1 sm:order-2">
+                <DialogFooter className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="ghost" className="font-bold uppercase tracking-widest text-[10px] order-2 sm:order-1" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleGrant} className="h-12 px-8 font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 order-1 sm:order-2">
                         Verify Admin
                     </Button>
                 </DialogFooter>
@@ -669,15 +668,15 @@ function ProactiveGrantDialog({
 function DashboardSkeleton() {
   return (
     <div className="space-y-8 sm:space-y-12">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr"> 
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
-        <Skeleton className="h-32 sm:h-40 w-full rounded-2xl" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-fr"> 
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       </div>
-      <div className="space-y-6 pt-6 sm:pt-10">
-          <Skeleton className="h-8 sm:h-10 w-48 sm:w-64 rounded-2xl" />
+      <div className="space-y-6 pt-10">
+          <Skeleton className="h-10 w-64 rounded-2xl" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Skeleton className="h-64 w-full rounded-2xl" />
               <Skeleton className="h-64 w-full rounded-2xl" />
@@ -700,7 +699,6 @@ export default function DashboardPage() {
   }, []);
 
   const metrics = useMemo<DashboardMetrics>(() => {
-    // HYDRATION SAFETY: Ensure calculations only run fully after component mounts to avoid mismatches
     if (!isMounted) {
         return {
             totalProducts: 0,
@@ -731,7 +729,7 @@ export default function DashboardPage() {
             totalValue += (item.quantity * product.costPrice);
         }
 
-        const sName = item.supplierName || 'Unknown Vendor';
+        const sName = item.supplierName || 'Unknown';
         supplierStock[sName] = (supplierStock[sName] || 0) + item.quantity;
 
         if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) {
@@ -781,8 +779,7 @@ export default function DashboardPage() {
   if (!isCacheReady || !isMounted) {
     return (
       <div className="space-y-8 sm:space-y-12">
-         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
-          <Activity className="mr-3 sm:mr-4 h-6 w-6 sm:h-8 sm:w-8 text-primary" strokeWidth={3} />
+         <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
           Mission Control
         </h1>
         <DashboardSkeleton />
@@ -790,18 +787,17 @@ export default function DashboardPage() {
     );
   }
 
-  let totalStockDescription: React.ReactNode = "Active warehouse units";
+  let totalStockDescription: React.ReactNode = "Warehouse Units";
   if (metrics.dailyStockChangeDirection !== 'none') {
     const isIncrease = metrics.dailyStockChangeDirection === 'increase';
     const colorClass = isIncrease ? 'text-primary' : 'text-green-600';
     const ArrowIcon = isIncrease ? ArrowUp : ArrowDown;
 
     totalStockDescription = (
-        <div className="flex items-center flex-wrap gap-1 sm:gap-2">
-          <span className="hidden sm:inline">Levels</span>
-          <Badge variant="outline" className={cn("font-black text-[7px] sm:text-[9px] uppercase tracking-widest px-1 py-0 border-none bg-primary/10", colorClass)}>
-            <ArrowIcon className="h-2 w-2 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
-            {metrics.netItemsAddedToday} New
+        <div className="flex items-center flex-wrap gap-2">
+          <Badge variant="outline" className={cn("font-black text-[9px] uppercase tracking-widest px-2 py-0.5 border-none bg-primary/10", colorClass)}>
+            <ArrowIcon className="h-3 w-3 mr-1" />
+            {metrics.netItemsAddedToday} New Today
           </Badge>
         </div>
     );
@@ -809,72 +805,63 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-            <div className="flex items-center gap-4 sm:gap-6">
-                <div className="flex flex-col">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-1 sm:mb-2">
-                        Mission Control
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                         <div className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                            <Activity className="h-2 sm:h-3 w-2 sm:w-3 animate-pulse" /> Network: Encrypted
+    <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div>
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none mb-2">
+                    Mission Control
+                </h1>
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10 text-[9px] font-black uppercase tracking-widest px-3 py-1">
+                        {metrics.totalSuppliers} Suppliers Active
+                    </Badge>
+                    {isSyncing && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest animate-pulse">
+                            <RefreshCw className="h-3 w-3 animate-spin" /> Registry Sync
                         </div>
-                        {isSyncing && (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] shadow-[0_0_15px_rgba(var(--primary),0.1)] animate-pulse">
-                                <RefreshCw className="h-2.5 sm:h-3 w-2.5 sm:w-3 animate-spin" strokeWidth={3} /> Live Syncing
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <div className="inline-flex sm:flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-1.5 sm:py-3 rounded-2xl bg-white/40 dark:bg-white/5 border border-white/10 backdrop-blur-md shadow-inner w-fit sm:w-auto">
-                <Layers className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                <div className="flex flex-col">
-                    <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Registered Vendors</span>
-                    <span className="text-[10px] sm:text-sm font-black text-primary leading-none">{metrics.totalSuppliers} Suppliers</span>
+                    )}
                 </div>
             </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 auto-rows-fr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-fr">
           <MetricCard 
-            title="Volume" 
+            title="Active Volume" 
             value={metrics.totalStockQuantity} 
-            iconNode={<Warehouse className="h-5 w-5 sm:h-6 sm:w-6" />}
+            iconNode={<Warehouse className="h-6 w-6" />}
             onIconClick={() => setIsStockTrendDialogOpen(true)}
             description={totalStockDescription}
             href="/inventory"
-            className="bg-primary/[0.03] border-primary/10 shadow-primary/5"
+            className="bg-primary/[0.02] border-primary/10"
           >
               {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
           </MetricCard>
           
           <MetricCard 
-            title="Valuation" 
-            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            iconNode={<Wallet className="h-5 w-5 sm:h-6 sm:w-6" />}
+            title="Net Valuation" 
+            value={`QAR ${metrics.totalStockValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            iconNode={<Wallet className="h-6 w-6" />}
             description="Total current assets"
           />
           
           <MetricCard 
-              title="Expiring" 
+              title="Priority Expiry" 
               value={metrics.itemsExpiringSoon} 
-              iconNode={<CalendarClock className="h-5 w-5 sm:h-6 sm:w-6" />}
-              description="7-day priority threshold"
+              iconNode={<CalendarClock className="h-6 w-6" />}
+              description="7-day priority window"
               href="/inventory?filterType=expiringSoon"
               className={cn(
-                  metrics.itemsExpiringSoon > 0 && "bg-yellow-500/[0.03] border-yellow-500/20 shadow-yellow-500/5 hover:border-yellow-500/50"
+                  metrics.itemsExpiringSoon > 0 && "bg-yellow-500/[0.02] border-yellow-500/20"
               )}
           />
           
           <MetricCard 
-              title="Damage" 
+              title="Damage Logs" 
               value={metrics.damagedItemsCount} 
-              iconNode={<AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" />}
+              iconNode={<AlertTriangle className="h-6 w-6" />}
               description="Audit required"
               href="/inventory?filterType=damaged"
-              className={cn(metrics.damagedItemsCount > 0 ? "bg-destructive/[0.03] border-destructive/20 shadow-destructive/5 hover:border-destructive/50" : "")} 
+              className={cn(metrics.damagedItemsCount > 0 ? "bg-destructive/[0.02] border-destructive/20" : "")} 
           />
 
           <div className="col-span-1 sm:col-span-2 lg:col-span-1">
@@ -885,24 +872,21 @@ export default function DashboardPage() {
         <PendingApprovalsSummary />
         <ActiveAuthorizations />
 
-        <div className="grid grid-cols-1 gap-6 sm:gap-8">
-          <Card className="shadow-2xl rounded-2xl border-white/5 bg-card/60 backdrop-blur-xl overflow-hidden">
-            <CardHeader className="border-b border-white/5 bg-primary/[0.02] p-4 sm:p-8 sm:pb-6">
+        <div className="grid grid-cols-1 gap-8">
+          <Card className="shadow-none rounded-2xl border-white/10 bg-card/40 overflow-hidden">
+            <CardHeader className="border-b border-white/5 p-8 pb-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                      <CardTitle className="text-lg sm:text-2xl font-black uppercase tracking-tighter flex items-center gap-2 sm:gap-3">
-                        <TrendingUp className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
+                      <CardTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+                        <TrendingUp className="h-7 w-7 text-primary" />
                         Vendor Analytics
                       </CardTitle>
-                      <CardDescription className="font-bold text-[8px] sm:text-[10px] mt-0.5 sm:mt-1">Unit distribution across master suppliers</CardDescription>
+                      <CardDescription className="font-bold text-[10px]">Distribution across master suppliers</CardDescription>
                   </div>
-                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
-                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[7px] sm:text-[9px] font-black uppercase tracking-widest px-2 sm:px-3 py-0.5 sm:py-1">Live View</Badge>
-                      <span className="text-[7px] sm:text-[10px] text-muted-foreground uppercase font-black opacity-40">{mountedDate || '-- --- --'}</span>
-                  </div>
+                  <span className="text-[10px] text-muted-foreground uppercase font-black opacity-30">{mountedDate || '-- --- --'}</span>
               </div>
             </CardHeader>
-            <CardContent className="p-3 sm:p-10">
+            <CardContent className="p-10">
               <div className="h-[250px] sm:h-[450px] w-full">
                   <StockBySupplierChart data={metrics.stockBySupplier} />
               </div>
