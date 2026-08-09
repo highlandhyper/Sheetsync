@@ -64,13 +64,15 @@ export function BottomNav() {
           isActive={isHomeActive}
         />
         
-        {/* 2. CATALOG */}
-        <NavItem 
-          href="/products/list" 
-          icon={Package} 
-          label="Catalog" 
-          isActive={isCatalogActive}
-        />
+        {/* 2. CATALOG (Admin Only) */}
+        {role === 'admin' && (
+            <NavItem 
+                href="/products/list" 
+                icon={Package} 
+                label="Catalog" 
+                isActive={isCatalogActive}
+            />
+        )}
 
         {/* 3. CENTRAL PLUS BUTTON (OVERLAPPING) */}
         <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
