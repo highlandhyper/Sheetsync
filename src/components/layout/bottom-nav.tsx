@@ -66,8 +66,8 @@ export function BottomNav() {
   };
 
   return (
-    <div className="md:hidden fixed bottom-6 left-6 right-6 z-50 animate-in slide-in-from-bottom-8 duration-700">
-      <div className="relative flex items-center h-16 bg-background/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl px-2 overflow-hidden">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-2 duration-700">
+      <div className="relative flex items-center h-16 bg-background/80 backdrop-blur-2xl border-t border-white/10 shadow-2xl px-2 overflow-hidden">
         <NavItem 
           href={role === 'admin' ? '/dashboard' : '/products'} 
           icon={role === 'admin' ? LayoutDashboard : UserCheck} 
