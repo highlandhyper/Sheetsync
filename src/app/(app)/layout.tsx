@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Header } from '@/components/layout/header';
+import { BottomNav } from '@/components/layout/bottom-nav';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
 import { Loader2, ShieldCheck, Activity } from 'lucide-react';
@@ -151,12 +152,15 @@ export default function AppLayout({ children }: PropsWithChildren) {
           
           <main className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
-            "p-2 sm:p-4 md:p-6"
+            "p-2 sm:p-4 md:p-6",
+            "pb-24 md:pb-6" // Extra bottom padding on mobile for floating nav
           )}>
             <div className="container mx-auto max-w-full lg:max-w-[1700px] animate-in fade-in slide-in-from-bottom-2 duration-700">
                 {children}
             </div>
           </main>
+          
+          <BottomNav />
         </SidebarInset>
       </SidebarProvider>
       {isLocked && role === 'admin' && <InactivityLockScreen onUnlock={handleUnlock} />}

@@ -175,7 +175,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         />
 
         <div className="flex items-center gap-2 sm:gap-4">
-            <SidebarTrigger className="h-9 w-9 sm:h-10 sm:w-10 md:hidden" />
+            <SidebarTrigger className="h-9 w-9 sm:h-10 sm:w-10 hidden md:flex" />
         </div>
         
         <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-4 md:gap-6">
