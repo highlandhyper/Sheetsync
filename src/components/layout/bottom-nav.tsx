@@ -77,20 +77,13 @@ export function BottomNav() {
             isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
         />
 
-        {/* SLOT 3: PRIMARY ACTION (PLUS) - OVERLAPPING CIRCLE */}
-        <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
-            <Link 
-                href="/inventory/add" 
-                className={cn(
-                    "absolute -top-[24px] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-300 pointer-events-auto",
-                    "bg-[#008CFF] text-white shadow-[0_8px_20px_-4px_rgba(0,140,255,0.4)]",
-                    "hover:scale-110 active:scale-95",
-                    pathname === '/inventory/add' && "ring-4 ring-white dark:ring-zinc-950 shadow-[0_0_20px_rgba(0,140,255,0.6)]"
-                )}
-            >
-                <Plus className="h-[26px] w-[26px]" strokeWidth={3} />
-            </Link>
-        </div>
+        {/* SLOT 3: PRIMARY ACTION (PLUS) - NOW INLINE */}
+        <NavItem 
+          href="/inventory/add" 
+          icon={Plus} 
+          label="Log Item" 
+          isActive={pathname === '/inventory/add'}
+        />
 
         {/* SLOT 4: SEARCH (Admin) or SETTINGS (Viewer) */}
         <NavItem 
