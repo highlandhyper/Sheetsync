@@ -36,6 +36,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useNotifications } from '@/context/notification-context';
+import { useAuth } from '@/context/auth-context';
 import type { AppNotification } from '@/lib/types';
 import { Badge } from '../ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -56,6 +57,7 @@ interface NotificationCenterProps {
 
 export function NotificationCenter({ onOpenProductRequest }: NotificationCenterProps) {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
+  const { role } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
   const isMobile = useIsMobile();
 
@@ -81,15 +83,18 @@ export function NotificationCenter({ onOpenProductRequest }: NotificationCenterP
           >
             <CheckCheck className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10 rounded-lg"
-            onClick={(e) => { e.stopPropagation(); clearAll(); }}
-            title="Clear all"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {/* SECURITY: Only Admins can clear the audit trail of logs */}
+          {role === 'admin' && (
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10 rounded-lg"
+                onClick={(e) => { e.stopPropagation(); clearAll(); }}
+                title="Clear all"
+            >
+                <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </>
       )}
     </div>
