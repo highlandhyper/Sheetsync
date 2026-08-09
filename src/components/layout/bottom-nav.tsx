@@ -12,7 +12,8 @@ import {
     Plus, 
     Search, 
     MoreHorizontal, 
-    UserCheck
+    UserCheck,
+    LucideIcon
 } from 'lucide-react';
 
 export function BottomNav() {
@@ -33,60 +34,61 @@ export function BottomNav() {
     onClick 
   }: { 
     href?: string, 
-    icon: any, 
+    icon: LucideIcon, 
     label: string, 
     isActive?: boolean,
     onClick?: () => void
   }) => {
     const content = (
-      <div className="flex flex-col items-center justify-center h-full relative px-2 transition-all duration-300">
-        {/* ICON HUB */}
+      <div className="flex flex-col items-center justify-center w-full h-full relative group pt-2">
+        {/* ICON */}
         <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-out",
-            isActive ? "text-primary scale-110 -translate-y-1" : "text-muted-foreground/40 hover:text-muted-foreground/60"
+            "transition-all duration-300 ease-out",
+            isActive ? "text-primary scale-110" : "text-muted-foreground/30 hover:text-muted-foreground/50"
         )}>
             <Icon className={cn(
-              "h-5 w-5",
+              "h-6 w-6",
               isActive ? "stroke-[2.5px]" : "stroke-[2px]"
             )} />
         </div>
         
-        {/* MINIMALIST LABEL */}
-        <span className={cn(
-            "text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all duration-500",
-            isActive ? "opacity-100 translate-y-0 text-primary" : "opacity-0 -translate-y-1 text-muted-foreground/20"
-        )}>
-          {label}
-        </span>
-
-        {/* ACTIVE INDICATOR LINE */}
+        {/* INTELLIGENCE DOT (Active Indicator) */}
         <div className={cn(
-          "absolute bottom-2 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-primary transition-all duration-500 ease-in-out",
-          isActive ? "w-4 opacity-100" : "w-0 opacity-0"
+          "h-1 w-1 rounded-full bg-primary mt-1.5 transition-all duration-300",
+          isActive ? "opacity-100 scale-100" : "opacity-0 scale-0"
         )} />
+        
+        {/* SCREEN READER LABEL */}
+        <span className="sr-only">{label}</span>
       </div>
     );
 
+    const commonClasses = "flex-1 h-full flex items-center justify-center outline-none active:scale-90 transition-transform";
+
     if (onClick) {
       return (
-        <button onClick={onClick} className="flex-1 h-full flex flex-col items-center justify-center outline-none focus:ring-0 active:scale-90 transition-transform">
+        <button onClick={onClick} className={commonClasses}>
           {content}
         </button>
       );
     }
 
     return (
-      <Link href={href || '#'} className="flex-1 h-full flex flex-col items-center justify-center outline-none focus:ring-0 active:scale-90 transition-transform">
+      <Link href={href || '#'} className={commonClasses}>
         {content}
       </Link>
     );
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-4 duration-700">
-      {/* SEAMLESS EDGE-TO-EDGE SURFACE */}
-      <div className="relative flex items-center h-[72px] bg-background/80 backdrop-blur-3xl border-t border-white/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-0 pb-0">
+      {/* ELEVATED SHADOW LAYER */}
+      <div className="absolute inset-x-0 top-0 h-10 -translate-y-full bg-gradient-to-t from-black/[0.03] to-transparent pointer-events-none dark:from-black/20" />
+      
+      {/* THE NAVIGATION CONTAINER */}
+      <div className="relative flex items-center h-20 bg-background/95 dark:bg-zinc-950/95 backdrop-blur-2xl border-t border-white/10 rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
         
+        {/* LEFT SLOT 1: HOME */}
         <NavItem 
           href={role === 'admin' ? '/dashboard' : '/products'} 
           icon={role === 'admin' ? LayoutDashboard : UserCheck} 
@@ -94,6 +96,7 @@ export function BottomNav() {
           isActive={isHomeActive}
         />
         
+        {/* LEFT SLOT 2: CATALOG */}
         <NavItem 
           href="/products/list" 
           icon={Package} 
@@ -101,25 +104,23 @@ export function BottomNav() {
           isActive={isCatalogActive}
         />
 
-        {/* PRIMARY ACTION HUB */}
-        <div className="flex-1 flex justify-center items-center h-full">
-            <Link href="/inventory/add" className="relative">
-                <div className={cn(
-                    "h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500",
-                    "shadow-2xl border border-white/10",
+        {/* CENTER SLOT: OVERLAPPING FAB */}
+        <div className="flex-1 flex justify-center items-center h-full relative px-2">
+            <Link 
+                href="/inventory/add" 
+                className={cn(
+                    "absolute -top-6 h-16 w-16 rounded-full flex items-center justify-center transition-all duration-500",
+                    "shadow-2xl border-4 border-background dark:border-zinc-950",
                     isAddActive 
-                        ? "bg-primary text-white scale-105 shadow-primary/20" 
-                        : "bg-muted/10 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-90"
-                )}>
-                    <Plus className="h-8 w-8" strokeWidth={3} />
-                </div>
-                {/* SUBTLE GLOW */}
-                {isAddActive && (
-                    <div className="absolute inset-0 bg-primary/15 rounded-2xl blur-xl animate-pulse" />
+                        ? "bg-primary text-primary-foreground scale-105 shadow-primary/40" 
+                        : "bg-primary text-primary-foreground hover:scale-110 active:scale-95 shadow-primary/20"
                 )}
+            >
+                <Plus className="h-9 w-9" strokeWidth={3} />
             </Link>
         </div>
 
+        {/* RIGHT SLOT 1: LOOKUP */}
         <NavItem 
           href="/inventory/lookup" 
           icon={Search} 
@@ -127,9 +128,10 @@ export function BottomNav() {
           isActive={isLookupActive}
         />
 
+        {/* RIGHT SLOT 2: MENU (MORE) */}
         <NavItem 
           icon={MoreHorizontal} 
-          label="Menu" 
+          label="More" 
           onClick={() => setOpenMobile(true)}
         />
       </div>
