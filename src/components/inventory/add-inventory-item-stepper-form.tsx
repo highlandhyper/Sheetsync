@@ -445,11 +445,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   return (
     <>
     <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl">
-      <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 && "pb-2")}>
+      <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 ? "pb-1 pt-4" : "pb-4")}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                {currentStep === 0 ? (
-                  <>
+            {currentStep === 0 && (
+                <div>
                     <CardTitle className="text-2xl flex items-center gap-2">
                         Log New Inventory Item
                         {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}
@@ -457,11 +456,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <CardDescription>
                       Follow the steps to log a new item into the inventory system.
                     </CardDescription>
-                  </>
-                ) : (
-                   !isOnline && <Badge variant="destructive" className="animate-pulse w-fit"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>
-                )}
-            </div>
+                </div>
+            )}
             <div className="flex flex-col sm:items-end gap-2">
                 {activeSession && (
                     <div className="flex items-center gap-2">
@@ -489,10 +485,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
-        <div className="space-y-6">
-            <div className="space-y-3">
-                <Progress value={((currentStep + 1) / steps.length) * 100} className="h-2" />
-                <p className="text-xs font-bold text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-wider">
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" />
+                <p className="text-[10px] font-black text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-widest">
                     {React.createElement(steps[currentStep].icon, { className: "h-3 w-3" })}
                     Step {currentStep + 1} of {steps.length}: {steps[currentStep].name}
                 </p>
@@ -501,7 +497,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             <form 
                 ref={formRef} 
                 onSubmit={handleSubmit(onSubmit)}
-                className="space-y-6"
+                className="space-y-4"
             >
                 <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
                     <Label htmlFor="barcode" className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase">
@@ -743,7 +739,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 </div>
 
             </form>
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-2">
                 <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold">
                     <ArrowLeft className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Back
                 </Button>
