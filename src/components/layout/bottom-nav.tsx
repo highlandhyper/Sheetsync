@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -11,9 +12,7 @@ import {
     Plus, 
     Search, 
     Menu,
-    UserCheck,
     Settings,
-    LayoutDashboard,
     LucideIcon
 } from 'lucide-react';
 
@@ -62,15 +61,15 @@ export function BottomNav() {
     <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto px-4 pb-6">
       <div className="relative flex items-center h-[58px] w-full max-w-[340px] bg-white/95 dark:bg-zinc-950/95 border border-black/[0.05] dark:border-white/[0.05] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] rounded-[20px] backdrop-blur-xl">
         
-        {/* SLOT 1: HOME / PRIMARY ACTION */}
+        {/* SLOT 1: HOME (Admin -> Dashboard, Viewer -> Return by Staff) */}
         <NavItem 
           href={isAdmin ? '/dashboard' : '/products'} 
-          icon={isAdmin ? LayoutDashboard : UserCheck} 
+          icon={Home} 
           label="Home" 
           isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
         />
         
-        {/* SLOT 2: CATALOG (ADMIN) / LOOKUP (VIEWER) */}
+        {/* SLOT 2: CATALOG (Admin) or SEARCH (Viewer) */}
         <NavItem 
             href={isAdmin ? "/products/list" : "/inventory/lookup"} 
             icon={isAdmin ? Package : Search} 
@@ -78,7 +77,7 @@ export function BottomNav() {
             isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
         />
 
-        {/* SLOT 3: CENTRAL ACTION HUB (OVERLAPPING FAB) */}
+        {/* SLOT 3: PRIMARY ACTION (PLUS) */}
         <div className="flex-1 flex justify-center items-center h-full relative pointer-events-none">
             <Link 
                 href="/inventory/add" 
@@ -93,7 +92,7 @@ export function BottomNav() {
             </Link>
         </div>
 
-        {/* SLOT 4: LOOKUP (ADMIN) / SETTINGS (VIEWER) */}
+        {/* SLOT 4: SEARCH (Admin) or SETTINGS (Viewer) */}
         <NavItem 
           href={isAdmin ? "/inventory/lookup" : "/settings"} 
           icon={isAdmin ? Search : Settings} 
@@ -101,7 +100,7 @@ export function BottomNav() {
           isActive={isAdmin ? pathname === '/inventory/lookup' : pathname === '/settings'}
         />
 
-        {/* SLOT 5: SYSTEM HUB (MORE) */}
+        {/* SLOT 5: MENU (MORE) */}
         <NavItem 
           href="/more" 
           icon={Menu} 
