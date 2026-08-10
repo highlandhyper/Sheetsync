@@ -83,11 +83,9 @@ export function BulkImportTerminal() {
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     
-                    // Find the first element with children (the record container)
                     const root = xmlDoc.documentElement;
                     let firstRecord: Element | null = null;
                     
-                    // Recursive search for first repeating element with fields
                     const findFirstRecord = (node: Element): Element | null => {
                         if (node.children.length > 0 && Array.from(node.children).every(c => c.children.length === 0)) {
                             return node;
@@ -138,7 +136,6 @@ export function BulkImportTerminal() {
         setProgress(0);
         setStats({ success: 0, failed: 0 });
 
-        // 1. Wipe Existing Database
         toast({ title: "Wiping Registry", description: "Clearing existing products for fresh sync..." });
         const wipeRes = await clearDatabaseAction(user.email);
         if (!wipeRes.success) {
@@ -147,7 +144,6 @@ export function BulkImportTerminal() {
             return;
         }
 
-        // 2. Process based on type
         if (fileType === 'xml') {
             const reader = new FileReader();
             reader.onload = async (e) => {
@@ -191,7 +187,6 @@ export function BulkImportTerminal() {
                 const cost = parseFloat(String(row[mapping.costPrice] || '0').replace(/[^0-9.-]+/g, ""));
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                 
-                // DB Row Format: [BarcodeA, BarcodeB, Name, Supplier, Cost, '', '', UniqueID]
                 return [barcode, '', name, supplier, isNaN(cost) ? 0 : cost, '', '', uniqueId];
             });
 
@@ -280,21 +275,27 @@ export function BulkImportTerminal() {
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Barcode Column</Label>
                                     <Select value={mapping.barcode} onValueChange={(v) => setMapping(p => ({...p, barcode: v}))}>
                                         <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
-                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                        <SelectContent>
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-barcode`} value={h}>{h}</SelectItem>)}
+                                        </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Product Name Column</Label>
                                     <Select value={mapping.productName} onValueChange={(v) => setMapping(p => ({...p, productName: v}))}>
                                         <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
-                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                        <SelectContent>
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-name`} value={h}>{h}</SelectItem>)}
+                                        </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Supplier/Brand Column</Label>
                                     <Select value={mapping.supplierName} onValueChange={(v) => setMapping(p => ({...p, supplierName: v}))}>
                                         <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
-                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                        <SelectContent>
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-supplier`} value={h}>{h}</SelectItem>)}
+                                        </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-3">
@@ -303,7 +304,7 @@ export function BulkImportTerminal() {
                                         <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="">-- Skip Cost --</SelectItem>
-                                            {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-cost`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
