@@ -306,6 +306,11 @@ export async function clearProductDatabase(email: string) {
   return success;
 }
 
+export async function updateProductBatch(batch: any[][], startRow: number) {
+  const range = `${DB_SHEET_NAME}!A${startRow}:H${startRow + batch.length - 1}`;
+  return updateSheetData(range, batch);
+}
+
 export async function appendProductBatch(batch: any[][]) {
   return appendSheetData(`${DB_SHEET_NAME}!A:H`, batch);
 }
