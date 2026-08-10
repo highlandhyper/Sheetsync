@@ -42,6 +42,14 @@ interface Mapping {
     costPrice: string;
 }
 
+/**
+ * Strips invalid XML 1.0 control characters that cause DOMParser to fail.
+ * This handles errors like "xmlParseCharRef: invalid xmlChar value 30"
+ */
+function sanitizeXmlString(xml: string): string {
+    return xml.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]/g, "");
+}
+
 export function BulkImportTerminal() {
     const { user } = useAuth();
     const { refreshData } = useDataCache();
@@ -84,10 +92,18 @@ export function BulkImportTerminal() {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    const text = e.target?.result as string;
+                    let text = e.target?.result as string;
+                    // FIX: Sanitize XML to remove invalid control characters before parsing
+                    text = sanitizeXmlString(text);
+                    
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     
+                    const parseError = xmlDoc.getElementsByTagName("parsererror");
+                    if (parseError.length > 0) {
+                        throw new Error(parseError[0].textContent || "XML Structure Error");
+                    }
+
                     const root = xmlDoc.documentElement;
                     let firstRecord: Element | null = null;
                     
@@ -135,8 +151,9 @@ export function BulkImportTerminal() {
                         toast({ variant: "destructive", title: "Invalid XML", description: "Could not identify data records in file." });
                         setFile(null);
                     }
-                } catch (err) {
-                    toast({ variant: "destructive", title: "Parse Error", description: "Failed to read XML structure." });
+                } catch (err: any) {
+                    console.error("XML Parse Error:", err);
+                    toast({ variant: "destructive", title: "Parse Error", description: err.message || "Failed to read XML structure." });
                 } finally {
                     setIsParsing(false);
                 }
@@ -187,20 +204,27 @@ export function BulkImportTerminal() {
         if (fileType === 'xml') {
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const text = e.target?.result as string;
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(text, "text/xml");
-                const records = Array.from(xmlDoc.getElementsByTagName(xmlRecordTag));
-                
-                const data = records.map(record => {
-                    const obj: any = {};
-                    Array.from(record.children).forEach(child => {
-                        obj[child.tagName] = child.textContent;
+                try {
+                    let text = e.target?.result as string;
+                    text = sanitizeXmlString(text);
+
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(text, "text/xml");
+                    const records = Array.from(xmlDoc.getElementsByTagName(xmlRecordTag));
+                    
+                    const data = records.map(record => {
+                        const obj: any = {};
+                        Array.from(record.children).forEach(child => {
+                            obj[child.tagName] = child.textContent;
+                        });
+                        return obj;
                     });
-                    return obj;
-                });
-                
-                await runBatchImport(data);
+                    
+                    await runBatchImport(data);
+                } catch (err: any) {
+                    toast({ variant: "destructive", title: "Sync Error", description: "Internal processing failure." });
+                    setIsImporting(false);
+                }
             };
             reader.readAsText(file);
         } else {
