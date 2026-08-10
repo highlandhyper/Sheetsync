@@ -44,18 +44,11 @@ interface Mapping {
 
 /**
  * Strips invalid XML 1.0 control characters that cause DOMParser to fail.
- * This handles literal characters and numeric references like "&#30;" (Record Separator).
  */
 function sanitizeXmlString(xml: string): string {
-    // 1. Remove literal invalid control characters
     let cleaned = xml.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]/g, "");
-    
-    // 2. Remove numeric character references for invalid characters (0-31 except 9, 10, 13)
-    // Decimal: &#0; to &#31;
     cleaned = cleaned.replace(/&#(?:0?[0-8]|1[12]|1[4-9]|2[0-9]|3[0-1]);/g, "");
-    // Hex: &#x0; to &#x1F;
     cleaned = cleaned.replace(/&#x(?:0?[0-8]|1[0-9a-fA-F]|[bB]|[cC]|[eE]|[fF]);/gi, "");
-    
     return cleaned;
 }
 
@@ -102,7 +95,6 @@ export function BulkImportTerminal() {
             reader.onload = (e) => {
                 try {
                     let text = e.target?.result as string;
-                    // FIX: Sanitize XML to remove invalid control characters and numeric references before parsing
                     text = sanitizeXmlString(text);
                     
                     const parser = new DOMParser();
@@ -154,15 +146,13 @@ export function BulkImportTerminal() {
                             if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
                         });
                         setMapping(newMapping);
-
                         setCurrentStep('map');
                     } else {
                         toast({ variant: "destructive", title: "Invalid XML", description: "Could not identify data records in file." });
                         setFile(null);
                     }
                 } catch (err: any) {
-                    console.error("XML Parse Error:", err);
-                    toast({ variant: "destructive", title: "Parse Error", description: err.message || "Failed to read XML structure." });
+                    toast({ variant: "destructive", title: "Parse Error", description: err.message || "Failed to read XML." });
                 } finally {
                     setIsParsing(false);
                 }
@@ -186,7 +176,6 @@ export function BulkImportTerminal() {
                         if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
                     });
                     setMapping(newMapping);
-
                     setIsParsing(false);
                     setCurrentStep('map');
                 }
@@ -202,7 +191,6 @@ export function BulkImportTerminal() {
         setProgress(0);
         setStats({ success: 0, failed: 0 });
 
-        toast({ title: "Wiping Registry", description: "Clearing existing products for fresh sync..." });
         const wipeRes = await clearDatabaseAction(user.email);
         if (!wipeRes.success) {
             toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear existing database." });
@@ -228,10 +216,9 @@ export function BulkImportTerminal() {
                         });
                         return obj;
                     });
-                    
                     await runBatchImport(data);
                 } catch (err: any) {
-                    toast({ variant: "destructive", title: "Sync Error", description: "Internal processing failure." });
+                    toast({ variant: "destructive", title: "Sync Error", description: "Processing failure." });
                     setIsImporting(false);
                 }
             };
@@ -249,14 +236,17 @@ export function BulkImportTerminal() {
 
     const runBatchImport = async (data: any[]) => {
         setTotalRows(data.length);
-        let processed = 0;
+        let processedCount = 0;
 
         for (let i = 0; i < data.length; i += BATCH_SIZE) {
             const batch = data.slice(i, i + BATCH_SIZE);
             const formattedBatch = batch.map(row => {
-                const barcode = String(row[mapping.barcode] || '').trim();
-                const name = String(row[mapping.productName] || '').trim();
-                const supplier = String(row[mapping.supplierName] || '').trim();
+                const rawBarcode = String(row[mapping.barcode] || '').trim();
+                const productName = String(row[mapping.productName] || '').trim();
+                const supplierName = String(row[mapping.supplierName] || '').trim();
+                
+                // CRITICAL FIX: Prefix barcode with ' to force Google Sheets to treat it as string
+                const barcode = rawBarcode ? `'${rawBarcode}` : '';
                 
                 let cost = 0;
                 if (mapping.costPrice !== SKIP_VALUE && row[mapping.costPrice] !== undefined) {
@@ -266,22 +256,23 @@ export function BulkImportTerminal() {
                 
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                 
-                return [barcode, '', name, supplier, cost, '', '', uniqueId];
-            });
+                // Return row as [Barcode, '', Name, Supplier, Cost, '', '', UniqueID]
+                return [barcode, '', productName, supplierName, cost, '', '', uniqueId];
+            }).filter(row => row[0]); // Skip rows with no barcode
 
             const res = await batchImportProductsAction(user?.email!, formattedBatch);
             
             if (res.success) {
-                processed += batch.length;
-                setProgress(Math.round((processed / data.length) * 100));
-                setStats(prev => ({ ...prev, success: processed }));
+                processedCount += batch.length;
+                setProgress(Math.round((processedCount / data.length) * 100));
+                setStats(prev => ({ ...prev, success: prev.success + formattedBatch.length }));
             } else {
                 setStats(prev => ({ ...prev, failed: prev.failed + batch.length }));
             }
         }
 
         setIsImporting(false);
-        toast({ title: "Import Complete", description: `Processed ${data.length} records.` });
+        toast({ title: "Import Complete", description: `Successfully processed ${stats.success} records.` });
         refreshData();
     };
 
@@ -327,15 +318,13 @@ export function BulkImportTerminal() {
                                 accept=".csv,.xml" 
                                 onChange={handleFileChange} 
                             />
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <Button 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="h-12 px-8 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
-                                >
-                                    {isParsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
-                                    Select File
-                                </Button>
-                            </div>
+                            <Button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="h-12 px-8 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                            >
+                                {isParsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                                Select File
+                            </Button>
                         </div>
                     )}
 
