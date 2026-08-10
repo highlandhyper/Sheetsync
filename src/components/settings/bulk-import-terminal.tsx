@@ -44,10 +44,19 @@ interface Mapping {
 
 /**
  * Strips invalid XML 1.0 control characters that cause DOMParser to fail.
- * This handles errors like "xmlParseCharRef: invalid xmlChar value 30"
+ * This handles literal characters and numeric references like "&#30;" (Record Separator).
  */
 function sanitizeXmlString(xml: string): string {
-    return xml.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]/g, "");
+    // 1. Remove literal invalid control characters
+    let cleaned = xml.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]/g, "");
+    
+    // 2. Remove numeric character references for invalid characters (0-31 except 9, 10, 13)
+    // Decimal: &#0; to &#31;
+    cleaned = cleaned.replace(/&#(?:0?[0-8]|1[12]|1[4-9]|2[0-9]|3[0-1]);/g, "");
+    // Hex: &#x0; to &#x1F;
+    cleaned = cleaned.replace(/&#x(?:0?[0-8]|1[0-9a-fA-F]|[bB]|[cC]|[eE]|[fF]);/gi, "");
+    
+    return cleaned;
 }
 
 export function BulkImportTerminal() {
@@ -93,7 +102,7 @@ export function BulkImportTerminal() {
             reader.onload = (e) => {
                 try {
                     let text = e.target?.result as string;
-                    // FIX: Sanitize XML to remove invalid control characters before parsing
+                    // FIX: Sanitize XML to remove invalid control characters and numeric references before parsing
                     text = sanitizeXmlString(text);
                     
                     const parser = new DOMParser();
