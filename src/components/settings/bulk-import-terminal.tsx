@@ -22,12 +22,15 @@ import {
     Settings2,
     Database,
     Zap,
-    X
+    X,
+    Eye
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { clearDatabaseAction, batchImportProductsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const BATCH_SIZE = 500;
 const SKIP_VALUE = "___SKIP_FIELD___";
@@ -47,6 +50,7 @@ export function BulkImportTerminal() {
     const [file, setFile] = useState<File | null>(null);
     const [fileType, setFileType] = useState<'csv' | 'xml' | null>(null);
     const [headers, setHeaders] = useState<string[]>([]);
+    const [previewRows, setPreviewRows] = useState<any[]>([]); 
     const [xmlRecordTag, setXmlRecordTag] = useState<string>('');
     const [mapping, setMapping] = useState<Mapping>({
         barcode: '',
@@ -101,9 +105,31 @@ export function BulkImportTerminal() {
                     firstRecord = findFirstRecord(root);
 
                     if (firstRecord) {
-                        setXmlRecordTag(firstRecord.tagName);
+                        const tagName = firstRecord.tagName;
+                        setXmlRecordTag(tagName);
                         const tagNames = Array.from(firstRecord.children).map(c => c.tagName);
                         setHeaders(tagNames);
+
+                        const allRecords = Array.from(xmlDoc.getElementsByTagName(tagName)).slice(0, 3);
+                        const samples = allRecords.map(record => {
+                            const obj: any = {};
+                            Array.from(record.children).forEach(child => {
+                                obj[child.tagName] = child.textContent;
+                            });
+                            return obj;
+                        });
+                        setPreviewRows(samples);
+
+                        const newMapping = { barcode: '', productName: '', supplierName: '', costPrice: SKIP_VALUE };
+                        tagNames.forEach(h => {
+                            const lower = h.toLowerCase();
+                            if (lower.includes('barcode') || lower.includes('upc') || lower.includes('sku') || lower === 'id') newMapping.barcode = h;
+                            if (lower.includes('name') || lower.includes('title') || lower.includes('desc')) newMapping.productName = h;
+                            if (lower.includes('supp') || lower.includes('vendor') || lower.includes('brand')) newMapping.supplierName = h;
+                            if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
+                        });
+                        setMapping(newMapping);
+
                         setCurrentStep('map');
                     } else {
                         toast({ variant: "destructive", title: "Invalid XML", description: "Could not identify data records in file." });
@@ -119,9 +145,22 @@ export function BulkImportTerminal() {
         } else {
             Papa.parse(file, {
                 header: true,
-                preview: 1,
+                preview: 5,
                 complete: (results) => {
-                    setHeaders(results.meta.fields || []);
+                    const foundHeaders = results.meta.fields || [];
+                    setHeaders(foundHeaders);
+                    setPreviewRows(results.data.slice(0, 3));
+
+                    const newMapping = { barcode: '', productName: '', supplierName: '', costPrice: SKIP_VALUE };
+                    foundHeaders.forEach(h => {
+                        const lower = h.toLowerCase();
+                        if (lower.includes('barcode') || lower.includes('upc') || lower.includes('sku') || lower === 'id') newMapping.barcode = h;
+                        if (lower.includes('name') || lower.includes('title') || lower.includes('desc')) newMapping.productName = h;
+                        if (lower.includes('supp') || lower.includes('vendor') || lower.includes('brand')) newMapping.supplierName = h;
+                        if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
+                    });
+                    setMapping(newMapping);
+
                     setIsParsing(false);
                     setCurrentStep('map');
                 }
@@ -186,7 +225,6 @@ export function BulkImportTerminal() {
                 const name = String(row[mapping.productName] || '').trim();
                 const supplier = String(row[mapping.supplierName] || '').trim();
                 
-                // Handle optional cost mapping
                 let cost = 0;
                 if (mapping.costPrice !== SKIP_VALUE && row[mapping.costPrice] !== undefined) {
                     const parsed = parseFloat(String(row[mapping.costPrice]).replace(/[^0-9.-]+/g, ""));
@@ -229,7 +267,7 @@ export function BulkImportTerminal() {
                     </div>
                 </div>
                 {currentStep !== 'upload' && !isImporting && (
-                    <Button variant="ghost" size="icon" onClick={() => setCurrentStep('upload')} className="rounded-full">
+                    <Button variant="ghost" size="icon" onClick={() => { setFile(null); setCurrentStep('upload'); }} className="rounded-full">
                         <X className="h-5 w-5" />
                     </Button>
                 )}
@@ -269,47 +307,79 @@ export function BulkImportTerminal() {
                     )}
 
                     {currentStep === 'map' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                                 <div className="flex items-center gap-3">
                                     {fileType === 'xml' ? <FileCode className="h-5 w-5 text-primary" /> : <FileSpreadsheet className="h-5 w-5 text-primary" />}
-                                    <h4 className="text-sm font-black uppercase tracking-widest">Schema Mapping ({file?.name})</h4>
+                                    <h4 className="text-sm font-black uppercase tracking-widest truncate max-w-[200px]">{file?.name}</h4>
                                 </div>
                                 <Badge variant="outline" className="font-mono text-[10px]">{fileType?.toUpperCase()}</Badge>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-3">
+                            <div className="rounded-2xl border bg-background overflow-hidden shadow-inner">
+                                <div className="bg-muted/50 p-3 border-b flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data Identification Preview</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold text-primary/60 uppercase italic">Check values to find your fields</span>
+                                </div>
+                                <ScrollArea className="h-[150px] w-full">
+                                    <Table>
+                                        <TableHeader className="bg-muted/20 sticky top-0 z-10">
+                                            <TableRow>
+                                                {headers.map((h, i) => (
+                                                    <TableHead key={`preview-head-${h}-${i}`} className="text-[9px] uppercase font-black px-4 whitespace-nowrap">{h}</TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {previewRows.map((row, i) => (
+                                                <TableRow key={`preview-row-${i}`}>
+                                                    {headers.map((h, j) => (
+                                                        <TableCell key={`preview-cell-${i}-${j}`} className="text-[10px] font-medium py-2 px-4 whitespace-nowrap border-r last:border-r-0">
+                                                            {String(row[h] || '')}
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Barcode Column</Label>
                                     <Select value={mapping.barcode} onValueChange={(v) => setMapping(p => ({...p, barcode: v}))}>
-                                        <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
+                                        <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
                                             {headers.map((h, i) => <SelectItem key={`${h}-${i}-barcode`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Product Name Column</Label>
                                     <Select value={mapping.productName} onValueChange={(v) => setMapping(p => ({...p, productName: v}))}>
-                                        <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
+                                        <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
                                             {headers.map((h, i) => <SelectItem key={`${h}-${i}-name`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Supplier/Brand Column</Label>
                                     <Select value={mapping.supplierName} onValueChange={(v) => setMapping(p => ({...p, supplierName: v}))}>
-                                        <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
+                                        <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
                                             {headers.map((h, i) => <SelectItem key={`${h}-${i}-supplier`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Cost Price Column</Label>
                                     <Select value={mapping.costPrice} onValueChange={(v) => setMapping(p => ({...p, costPrice: v}))}>
-                                        <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
+                                        <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value={SKIP_VALUE}>-- Skip Cost --</SelectItem>
                                             {headers.map((h, i) => <SelectItem key={`${h}-${i}-cost`} value={h}>{h}</SelectItem>)}
@@ -318,7 +388,7 @@ export function BulkImportTerminal() {
                                 </div>
                             </div>
 
-                            <div className="pt-6 flex flex-col sm:flex-row gap-3">
+                            <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                 <Button variant="ghost" onClick={() => setCurrentStep('upload')} className="font-bold h-12 px-6 rounded-xl">Change File</Button>
                                 <Button 
                                     disabled={!isMappingComplete}
