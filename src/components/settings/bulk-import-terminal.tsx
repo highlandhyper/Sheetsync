@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 400; // Slightly smaller to ensure safety with timeout
 const SKIP_VALUE = "___SKIP_FIELD___";
 
 interface Mapping {
@@ -237,9 +237,10 @@ export function BulkImportTerminal() {
 
     const runBatchImport = async (data: any[]) => {
         setTotalRows(data.length);
-        let totalProcessed = 0;
+        let totalProcessedCount = 0;
         let totalSuccessCount = 0;
         let totalFailedCount = 0;
+        let currentRow = 2; // Data starts at A2
 
         for (let i = 0; i < data.length; i += BATCH_SIZE) {
             const batch = data.slice(i, i + BATCH_SIZE);
@@ -261,19 +262,26 @@ export function BulkImportTerminal() {
                 return [barcode, '', productName, supplierName, cost, '', '', uniqueId];
             }).filter(row => row[0]); // Skip records with no barcode
 
-            const res = await batchImportProductsAction(user?.email!, formattedBatch);
+            // PERFORMANCE FIX: Use sequential range updates instead of appends
+            const res = await batchImportProductsAction(user?.email!, formattedBatch, currentRow);
             
             if (res.success) {
                 totalSuccessCount += formattedBatch.length;
-                // Add skipped rows to failed count for accurate progress
                 totalFailedCount += (batch.length - formattedBatch.length);
             } else {
                 totalFailedCount += batch.length;
             }
 
-            totalProcessed += batch.length;
-            setProgress(Math.round((totalProcessed / data.length) * 100));
+            totalProcessedCount += batch.length;
+            currentRow += formattedBatch.length;
+            
+            setProgress(Math.round((totalProcessedCount / data.length) * 100));
             setStats({ success: totalSuccessCount, failed: totalFailedCount });
+            
+            // Add a small breather for the API (Cool-down)
+            if (i + BATCH_SIZE < data.length) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
         }
 
         setIsImporting(false);

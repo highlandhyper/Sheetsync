@@ -30,7 +30,8 @@ import {
   getAppMetaData,
   getInventoryLogEntriesByBarcode,
   clearProductDatabase,
-  appendProductBatch
+  appendProductBatch,
+  updateProductBatch
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
@@ -316,12 +317,13 @@ export async function clearDatabaseAction(email: string) {
     }
 }
 
-export async function batchImportProductsAction(email: string, products: any[][]) {
+export async function batchImportProductsAction(email: string, products: any[][], startRow: number = 2) {
     try {
         if (getRoleByEmail(email) !== 'admin') return { success: false, message: "Unauthorized." };
-        const success = await appendProductBatch(products);
+        const success = await updateProductBatch(products, startRow);
         return { success };
     } catch (e) {
+        console.error("Batch import action error:", e);
         return { success: false };
     }
 }
