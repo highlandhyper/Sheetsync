@@ -195,6 +195,25 @@ export async function updateSheetData(range: string, values: any[][]): Promise<b
   }
 }
 
+export async function clearSheetData(range: string): Promise<boolean> {
+  const currentSheetsClient = await getSheetsClient();
+  if (!currentSheetsClient || !GOOGLE_SHEET_ID) {
+    console.error(`clearSheetData: Sheets client or GOOGLE_SHEET_ID not available for range '${range}'.`);
+     if (sheetsClientInitializationError) console.error("Underlying reason for client not being available:", sheetsClientInitializationError);
+    return false;
+  }
+  try {
+    await currentSheetsClient.spreadsheets.values.clear({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: range,
+    });
+    return true;
+  } catch (error: any) {
+    console.error(`Error clearing sheet data in range ${range}:`, error.message);
+    return false;
+  }
+}
+
 export async function batchUpdateSheetCells(data: {range: string; values: any[][] }[]): Promise<boolean> {
   const currentSheetsClient = await getSheetsClient();
   if (!currentSheetsClient || !GOOGLE_SHEET_ID) {

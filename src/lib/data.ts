@@ -1,5 +1,5 @@
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
-import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch } from './google-sheets-client';
+import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -298,6 +298,16 @@ export async function deleteProductsByBarcodes(email: string, identifiers: strin
   const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
   if (success) await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `Batch removal.`);
   return success;
+}
+
+export async function clearProductDatabase(email: string) {
+  const success = await clearSheetData(`${DB_SHEET_NAME}!A2:H`);
+  if (success) await logAuditEvent(email, 'WIPE_DATABASE', 'GLOBAL', `All products removed for bulk update.`);
+  return success;
+}
+
+export async function appendProductBatch(batch: any[][]) {
+  return appendSheetData(`${DB_SHEET_NAME}!A:H`, batch);
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {

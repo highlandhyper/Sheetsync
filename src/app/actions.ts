@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -29,7 +28,9 @@ import {
   saveStaffListToSheet,
   saveLocationListToSheet,
   getAppMetaData,
-  getInventoryLogEntriesByBarcode
+  getInventoryLogEntriesByBarcode,
+  clearProductDatabase,
+  appendProductBatch
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
@@ -305,6 +306,26 @@ export async function bulkDeleteProductsAction(email: string, identifiers: strin
     }
 }
 
+export async function clearDatabaseAction(email: string) {
+    try {
+        if (getRoleByEmail(email) !== 'admin') return { success: false, message: "Unauthorized." };
+        const success = await clearProductDatabase(email);
+        return { success };
+    } catch (e) {
+        return { success: false };
+    }
+}
+
+export async function batchImportProductsAction(email: string, products: any[][]) {
+    try {
+        if (getRoleByEmail(email) !== 'admin') return { success: false, message: "Unauthorized." };
+        const success = await appendProductBatch(products);
+        return { success };
+    } catch (e) {
+        return { success: false };
+    }
+}
+
 export async function updateInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
     try {
         const userEmail = formData.get('userEmail') as string || 'Admin';
@@ -539,5 +560,15 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
         return { success: false, message: "Not found." };
     } catch (e) {
         return { success: false, message: "Fetch failed." };
+    }
+}
+
+export async function getMasterSpreadsheetUrlAction(): Promise<ActionResponse<string>> {
+    try {
+        const sheetId = process.env.GOOGLE_SHEET_ID;
+        if (!sheetId) return { success: false, message: "Spreadsheet identifier not configured." };
+        return { success: true, data: `https://docs.google.com/spreadsheets/d/${sheetId}/edit` };
+    } catch (e) {
+        return { success: false, message: "Failed to retrieve database path." };
     }
 }
