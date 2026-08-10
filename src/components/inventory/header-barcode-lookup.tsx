@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
+import { useState, useCallback, useTransition, useEffect, useRef, useMemo } from 'react';
 import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, ArrowRight, Layers, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,7 +53,6 @@ const playProfessionalBeep = () => {
 export function HeaderBarcodeLookup() {
   const [barcode, setBarcode] = useState('');
   const [lastSearchedBarcode, setLastSearchedBarcode] = useState('');
-  const [results, setResults] = useState<InventoryItem[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isLoading, startSearchTransition] = useTransition();
@@ -73,6 +72,22 @@ export function HeaderBarcodeLookup() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // DERIVE SEARCH RESULTS: Ensures instant updates when items are returned or deleted
+  const results = useMemo(() => {
+    if (!lastSearchedBarcode.trim()) return [];
+    const lowerSearch = lastSearchedBarcode.trim().toLowerCase();
+    
+    return inventoryItems.filter(
+      item => (item.barcode.toLowerCase() === lowerSearch || 
+               item.productName.toLowerCase().includes(lowerSearch)) && 
+               item.quantity > 0
+    ).sort((a, b) => {
+        const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+        const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+        return dateB - dateA;
+    });
+  }, [inventoryItems, lastSearchedBarcode]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,34 +107,32 @@ export function HeaderBarcodeLookup() {
         }, 150);
     } else {
         setBarcode('');
-        setResults([]);
+        setLastSearchedBarcode('');
         setHasSearched(false);
     }
   }, [isSearchModalOpen]);
 
   const executeSearch = useCallback(
     (barcodeToSearch: string) => {
-      if (!barcodeToSearch.trim()) return;
+      const cleanBarcode = barcodeToSearch.trim();
+      if (!cleanBarcode) return;
 
       startSearchTransition(() => {
         setHasSearched(true);
-        setLastSearchedBarcode(barcodeToSearch);
-        const searchResults = inventoryItems.filter(
-          item => (item.barcode.toLowerCase() === barcodeToSearch.trim().toLowerCase() || 
-                   item.productName.toLowerCase().includes(barcodeToSearch.trim().toLowerCase())) && 
+        setLastSearchedBarcode(cleanBarcode);
+        
+        // Perform a quick check for feedback
+        const matches = inventoryItems.some(
+          item => (item.barcode.toLowerCase() === cleanBarcode.toLowerCase() || 
+                   item.productName.toLowerCase().includes(cleanBarcode.toLowerCase())) && 
                    item.quantity > 0
-        ).sort((a, b) => {
-            const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
-            const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
-            return dateB - dateA;
-        });
+        );
 
-        setResults(searchResults);
-        if (searchResults.length === 0) {
+        if (!matches) {
             toast({
                 variant: 'destructive',
                 title: 'Registry Zero',
-                description: `No active logs found for: ${barcodeToSearch}`,
+                description: `No active logs found for: ${cleanBarcode}`,
             });
         }
       });
@@ -190,12 +203,12 @@ export function HeaderBarcodeLookup() {
     setIsReturnDialogOpen(false);
     setIsEditDialogOpen(false);
     setIsDeleteDialogOpen(false);
-    if (lastSearchedBarcode) executeSearch(lastSearchedBarcode);
-  }, [lastSearchedBarcode, executeSearch]);
+    // Note: executeSearch is no longer needed here as results are derived from cache
+  }, []);
 
   const handleClear = () => {
     setBarcode('');
-    setResults([]);
+    setLastSearchedBarcode('');
     setHasSearched(false);
     spotlightInputRef.current?.focus();
   }
