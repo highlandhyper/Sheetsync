@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 const BATCH_SIZE = 500;
+const SKIP_VALUE = "___SKIP_FIELD___";
 
 interface Mapping {
     barcode: string;
@@ -51,7 +52,7 @@ export function BulkImportTerminal() {
         barcode: '',
         productName: '',
         supplierName: '',
-        costPrice: ''
+        costPrice: SKIP_VALUE
     });
 
     const [isParsing, setIsParsing] = useState(false);
@@ -184,10 +185,17 @@ export function BulkImportTerminal() {
                 const barcode = String(row[mapping.barcode] || '').trim();
                 const name = String(row[mapping.productName] || '').trim();
                 const supplier = String(row[mapping.supplierName] || '').trim();
-                const cost = parseFloat(String(row[mapping.costPrice] || '0').replace(/[^0-9.-]+/g, ""));
+                
+                // Handle optional cost mapping
+                let cost = 0;
+                if (mapping.costPrice !== SKIP_VALUE && row[mapping.costPrice] !== undefined) {
+                    const parsed = parseFloat(String(row[mapping.costPrice]).replace(/[^0-9.-]+/g, ""));
+                    cost = isNaN(parsed) ? 0 : parsed;
+                }
+                
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                 
-                return [barcode, '', name, supplier, isNaN(cost) ? 0 : cost, '', '', uniqueId];
+                return [barcode, '', name, supplier, cost, '', '', uniqueId];
             });
 
             const res = await batchImportProductsAction(user?.email!, formattedBatch);
@@ -303,7 +311,7 @@ export function BulkImportTerminal() {
                                     <Select value={mapping.costPrice} onValueChange={(v) => setMapping(p => ({...p, costPrice: v}))}>
                                         <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">-- Skip Cost --</SelectItem>
+                                            <SelectItem value={SKIP_VALUE}>-- Skip Cost --</SelectItem>
                                             {headers.map((h, i) => <SelectItem key={`${h}-${i}-cost`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
