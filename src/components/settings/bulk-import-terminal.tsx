@@ -27,6 +27,7 @@ import {
 import Papa from 'papaparse';
 import { clearDatabaseAction, batchImportProductsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const BATCH_SIZE = 500;
 
