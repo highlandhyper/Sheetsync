@@ -191,6 +191,7 @@ export function BulkImportTerminal() {
         setProgress(0);
         setStats({ success: 0, failed: 0 });
 
+        // CLEAN SLATE ACTION
         const wipeRes = await clearDatabaseAction(user.email);
         if (!wipeRes.success) {
             toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear existing database." });
@@ -236,7 +237,9 @@ export function BulkImportTerminal() {
 
     const runBatchImport = async (data: any[]) => {
         setTotalRows(data.length);
-        let processedCount = 0;
+        let totalProcessed = 0;
+        let totalSuccessCount = 0;
+        let totalFailedCount = 0;
 
         for (let i = 0; i < data.length; i += BATCH_SIZE) {
             const batch = data.slice(i, i + BATCH_SIZE);
@@ -245,7 +248,7 @@ export function BulkImportTerminal() {
                 const productName = String(row[mapping.productName] || '').trim();
                 const supplierName = String(row[mapping.supplierName] || '').trim();
                 
-                // CRITICAL FIX: Prefix barcode with ' to force Google Sheets to treat it as string
+                // CRITICAL FIX: Force string format for Sheet writing
                 const barcode = rawBarcode ? `'${rawBarcode}` : '';
                 
                 let cost = 0;
@@ -255,24 +258,29 @@ export function BulkImportTerminal() {
                 }
                 
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                
-                // Return row as [Barcode, '', Name, Supplier, Cost, '', '', UniqueID]
                 return [barcode, '', productName, supplierName, cost, '', '', uniqueId];
-            }).filter(row => row[0]); // Skip rows with no barcode
+            }).filter(row => row[0]); // Skip records with no barcode
 
             const res = await batchImportProductsAction(user?.email!, formattedBatch);
             
             if (res.success) {
-                processedCount += batch.length;
-                setProgress(Math.round((processedCount / data.length) * 100));
-                setStats(prev => ({ ...prev, success: prev.success + formattedBatch.length }));
+                totalSuccessCount += formattedBatch.length;
+                // Add skipped rows to failed count for accurate progress
+                totalFailedCount += (batch.length - formattedBatch.length);
             } else {
-                setStats(prev => ({ ...prev, failed: prev.failed + batch.length }));
+                totalFailedCount += batch.length;
             }
+
+            totalProcessed += batch.length;
+            setProgress(Math.round((totalProcessed / data.length) * 100));
+            setStats({ success: totalSuccessCount, failed: totalFailedCount });
         }
 
         setIsImporting(false);
-        toast({ title: "Import Complete", description: `Successfully processed ${stats.success} records.` });
+        toast({ 
+            title: "Import Finished", 
+            description: `Registry updated with ${totalSuccessCount} verified products.` 
+        });
         refreshData();
     };
 
@@ -344,7 +352,7 @@ export function BulkImportTerminal() {
                                         <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data Identification Preview</span>
                                     </div>
-                                    <span className="text-[9px] font-bold text-primary/60 uppercase italic">Check values to find your fields</span>
+                                    <span className="text-[9px] font-bold text-primary/60 uppercase italic">Verify data values</span>
                                 </div>
                                 <ScrollArea className="h-[150px] w-full">
                                     <Table>
@@ -448,7 +456,7 @@ export function BulkImportTerminal() {
                                 </div>
                                 <Progress value={progress} className="h-3 rounded-full" />
                                 <div className="flex justify-between items-baseline pt-1">
-                                    <span className="text-xs font-bold text-muted-foreground">{stats.success.toLocaleString()} Rows Transferred</span>
+                                    <span className="text-xs font-bold text-muted-foreground">{stats.success.toLocaleString()} Verified Success</span>
                                     <span className="text-xs font-black text-primary">{totalRows.toLocaleString()} Total Target</span>
                                 </div>
                             </div>
@@ -458,7 +466,7 @@ export function BulkImportTerminal() {
                                     <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                            <span className="text-sm font-bold text-green-800">Database Overwrite Successful</span>
+                                            <span className="text-sm font-bold text-green-800">Database Transferred Successfully</span>
                                         </div>
                                         <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest text-green-700 hover:bg-green-500/10" asChild>
                                             <a href="/products/list">View Catalog</a>
@@ -479,7 +487,7 @@ export function BulkImportTerminal() {
                                     <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Active Protocol</p>
-                                        <p className="text-[10px] text-yellow-700/80 font-medium leading-relaxed">DO NOT close this window or navigate away. The batch engine requires a live connection to finalize the multi-row write operations.</p>
+                                        <p className="text-[10px] text-yellow-700/80 font-medium leading-relaxed">The batch engine requires a live connection to finalize the multi-row write operations. Keep this tab open.</p>
                                     </div>
                                 </div>
                             )}
