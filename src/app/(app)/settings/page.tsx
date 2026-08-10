@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, Settings2, Lock, MapPin, UserPlus, Database, ExternalLink, AlertTriangle, CloudUpload } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, Settings2, Lock, MapPin, UserPlus, Database, ExternalLink, AlertTriangle, CloudUpload, Loader2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
