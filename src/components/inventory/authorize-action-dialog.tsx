@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, ShieldCheck, ShieldQuestion, KeyRound, User } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldQuestion, KeyRound, User, Mail } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,11 +27,12 @@ interface AuthorizeActionDialogProps {
   onOpenChange: (open: boolean) => void;
   onAuthorizationSuccess: () => void;
   actionDescription: string;
+  fixedIdentifier?: string;
 }
 
 const authSchema = z.object({
-  username: z.string().min(1, "Username is required."),
-  password: z.string().min(1, "Password is required."),
+  username: z.string().min(1, "Identity is required."),
+  password: z.string().min(1, "Access key is required."),
 });
 
 type AuthFormValues = z.infer<typeof authSchema>;
@@ -41,6 +42,7 @@ export function AuthorizeActionDialog({
   onOpenChange,
   onAuthorizationSuccess,
   actionDescription,
+  fixedIdentifier,
 }: AuthorizeActionDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,11 +54,18 @@ export function AuthorizeActionDialog({
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
-    defaultValues: { username: '', password: '' },
+    defaultValues: { username: fixedIdentifier || '', password: '' },
   });
+
+  useEffect(() => {
+    if (isOpen && fixedIdentifier) {
+      setValue('username', fixedIdentifier);
+    }
+  }, [isOpen, fixedIdentifier, setValue]);
 
   const handleOpenChange = (open: boolean) => {
     if (!isSubmitting) {
@@ -69,7 +78,9 @@ export function AuthorizeActionDialog({
 
   const onSubmit = async (data: AuthFormValues) => {
     setIsSubmitting(true);
-    const isAuthorized = verifyCredentials(data.username, data.password);
+    // Use fixedIdentifier if provided to ensure the challenge matches the intended user
+    const checkUsername = fixedIdentifier || data.username;
+    const isAuthorized = verifyCredentials(checkUsername, data.password);
     
     // Simulate a small delay for user feedback
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -78,17 +89,16 @@ export function AuthorizeActionDialog({
 
     if (isAuthorized) {
       toast({
-        title: "Authorized",
-        description: "Credentials verified successfully.",
+        title: "Identity Verified",
+        description: "Administrative access granted.",
       });
       onAuthorizationSuccess();
     } else {
-      setError("username", { type: "manual", message: "Invalid username or password." });
-      setError("password", { type: "manual", message: "" });
+      setError("password", { type: "manual", message: "Invalid access key for this identity." });
       toast({
         variant: "destructive",
         title: "Authorization Failed",
-        description: "The local admin credentials provided are incorrect.",
+        description: "The access key provided is incorrect.",
       });
     }
   };
@@ -97,27 +107,36 @@ export function AuthorizeActionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[360px]">
+      <DialogContent className="sm:max-w-[360px] rounded-3xl border-none shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center text-primary text-lg">
-            <ShieldQuestion className="mr-2 h-5 w-5" />
-            Authorization
+          <DialogTitle className="flex items-center text-primary text-xl font-black uppercase tracking-tight">
+            <ShieldQuestion className="mr-3 h-6 w-6 text-primary" />
+            Verification
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="text-xs font-medium leading-relaxed">
             {actionDescription}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-                <Label htmlFor="authUsername" className="text-xs font-bold uppercase text-muted-foreground">Admin Username</Label>
+                <Label htmlFor="authUsername" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Account Identity</Label>
                 <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    {fixedIdentifier ? (
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                    ) : (
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    )}
                     <Input 
                         id="authUsername" 
                         {...register('username')} 
-                        className={cn('pl-9 h-9 text-sm', errors.username && 'border-destructive')} 
-                        placeholder="Username" 
+                        readOnly={!!fixedIdentifier}
+                        className={cn(
+                            'pl-9 h-11 text-sm font-bold', 
+                            fixedIdentifier ? 'bg-primary/5 border-primary/20 cursor-not-allowed text-primary' : '',
+                            errors.username && 'border-destructive'
+                        )} 
+                        placeholder="Identity (Email or Username)" 
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -126,10 +145,10 @@ export function AuthorizeActionDialog({
                         }}
                     />
                 </div>
-                {errors.username && <p className="text-[10px] text-destructive font-medium">{errors.username.message}</p>}
+                {errors.username && <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1">{errors.username.message}</p>}
             </div>
              <div className="space-y-1.5">
-                <Label htmlFor="authPassword" className="text-xs font-bold uppercase text-muted-foreground">Admin Password</Label>
+                <Label htmlFor="authPassword" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Access Key</Label>
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -140,21 +159,22 @@ export function AuthorizeActionDialog({
                             passwordHookRef(e);
                             (passwordInputRef as any).current = e;
                         }}
-                        className={cn('pl-9 h-9 text-sm', errors.password && 'border-destructive')} 
-                        placeholder="Password" 
+                        className={cn('pl-9 h-11 text-sm font-bold bg-muted/20 border-white/10', errors.password && 'border-destructive')} 
+                        placeholder="••••••••" 
+                        autoFocus={!!fixedIdentifier}
                     />
                 </div>
-                {errors.password && <p className="text-[10px] text-destructive font-medium">{errors.password.message}</p>}
+                {errors.password && <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1">{errors.password.message}</p>}
             </div>
 
-          <DialogFooter className="pt-2 grid grid-cols-2 gap-2">
+          <DialogFooter className="pt-2 grid grid-cols-2 gap-3">
             <DialogClose asChild>
-              <Button type="button" variant="outline" size="sm" disabled={isSubmitting}>
+              <Button type="button" variant="outline" className="h-11 font-bold rounded-xl" disabled={isSubmitting}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-2 h-3 w-3" />}
+            <Button type="submit" className="h-11 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               Authorize
             </Button>
           </DialogFooter>

@@ -27,7 +27,6 @@ interface DialogCardProps {
   triggerText?: string;
   dialogClassName?: string;
   onOpen?: () => void;
-  // Enhanced for manual control (e.g. password protection)
   isManual?: boolean;
   onManualClick?: () => void;
 }
@@ -83,7 +82,7 @@ function DialogCard({ icon, title, description, children, triggerText = "Manage"
 }
 
 export default function SettingsPage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { toast } = useToast();
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbLoading, setIsDbLoading] = React.useState(false);
@@ -285,11 +284,12 @@ export default function SettingsPage() {
         isOpen={isBulkAuthOpen}
         onOpenChange={setIsBulkAuthOpen}
         onAuthorizationSuccess={handleBulkImportAuthSuccess}
-        actionDescription="Local administrator authorization is required to access high-volume registry modification tools."
+        fixedIdentifier={user?.email || undefined}
+        actionDescription={`Administrative identity verification for ${user?.email || 'Administrator'}. Please enter your local access key to unlock high-volume tools.`}
       />
 
       <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
-          <DialogContent className="sm:max-w-3xl">
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl">
               <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                       <CloudUpload className="h-5 w-5 text-primary" />
