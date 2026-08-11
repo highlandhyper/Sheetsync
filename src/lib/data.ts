@@ -44,7 +44,7 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-const SCRIPT_URL = process.env.GOOGELE_APPSCRIPT_API || "";
+const SCRIPT_URL = process.env.GOOGLE_APPSCRIPT_API || "";
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
