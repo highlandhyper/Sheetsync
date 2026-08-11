@@ -97,29 +97,21 @@ export function BulkImportTerminal() {
                 try {
                     let text = e.target?.result as string;
                     text = sanitizeXmlString(text);
-                    
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, "text/xml");
-                    
                     const parseError = xmlDoc.getElementsByTagName("parsererror");
-                    if (parseError.length > 0) {
-                        throw new Error(parseError[0].textContent || "XML Structure Error");
-                    }
+                    if (parseError.length > 0) throw new Error(parseError[0].textContent || "XML Error");
 
                     const root = xmlDoc.documentElement;
                     let firstRecord: Element | null = null;
-                    
                     const findFirstRecord = (node: Element): Element | null => {
-                        if (node.children.length > 0 && Array.from(node.children).every(c => c.children.length === 0)) {
-                            return node;
-                        }
+                        if (node.children.length > 0 && Array.from(node.children).every(c => c.children.length === 0)) return node;
                         for (let i = 0; i < node.children.length; i++) {
                             const found = findFirstRecord(node.children[i]);
                             if (found) return found;
                         }
                         return null;
                     };
-
                     firstRecord = findFirstRecord(root);
 
                     if (firstRecord) {
@@ -127,36 +119,30 @@ export function BulkImportTerminal() {
                         setXmlRecordTag(tagName);
                         const tagNames = Array.from(firstRecord.children).map(c => c.tagName);
                         setHeaders(tagNames);
-
                         const allRecords = Array.from(xmlDoc.getElementsByTagName(tagName)).slice(0, 3);
                         const samples = allRecords.map(record => {
                             const obj: any = {};
-                            Array.from(record.children).forEach(child => {
-                                obj[child.tagName] = child.textContent;
-                            });
+                            Array.from(record.children).forEach(child => { obj[child.tagName] = child.textContent; });
                             return obj;
                         });
                         setPreviewRows(samples);
-
                         const newMapping = { barcode: '', productName: '', supplierName: '', costPrice: SKIP_VALUE };
                         tagNames.forEach(h => {
-                            const lower = h.toLowerCase();
-                            if (lower.includes('barcode') || lower.includes('upc') || lower.includes('sku') || lower === 'id') newMapping.barcode = h;
-                            if (lower.includes('name') || lower.includes('title') || lower.includes('desc')) newMapping.productName = h;
-                            if (lower.includes('supp') || lower.includes('vendor') || lower.includes('brand')) newMapping.supplierName = h;
-                            if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
+                            const l = h.toLowerCase();
+                            if (l.includes('barcode') || l.includes('upc') || l.includes('sku') || l === 'id') newMapping.barcode = h;
+                            if (l.includes('name') || l.includes('title') || l.includes('desc')) newMapping.productName = h;
+                            if (l.includes('supp') || l.includes('vendor') || l.includes('brand')) newMapping.supplierName = h;
+                            if (l.includes('cost') || l.includes('price') || l.includes('rate')) newMapping.costPrice = h;
                         });
                         setMapping(newMapping);
                         setCurrentStep('map');
                     } else {
-                        toast({ variant: "destructive", title: "Invalid XML", description: "Could not identify data records in file." });
+                        toast({ variant: "destructive", title: "Invalid XML", description: "No records found." });
                         setFile(null);
                     }
                 } catch (err: any) {
-                    toast({ variant: "destructive", title: "Parse Error", description: err.message || "Failed to read XML." });
-                } finally {
-                    setIsParsing(false);
-                }
+                    toast({ variant: "destructive", title: "Parse Error", description: err.message });
+                } finally { setIsParsing(false); }
             };
             reader.readAsText(file);
         } else {
@@ -167,14 +153,13 @@ export function BulkImportTerminal() {
                     const foundHeaders = results.meta.fields || [];
                     setHeaders(foundHeaders);
                     setPreviewRows(results.data.slice(0, 3));
-
                     const newMapping = { barcode: '', productName: '', supplierName: '', costPrice: SKIP_VALUE };
                     foundHeaders.forEach(h => {
-                        const lower = h.toLowerCase();
-                        if (lower.includes('barcode') || lower.includes('upc') || lower.includes('sku') || lower === 'id') newMapping.barcode = h;
-                        if (lower.includes('name') || lower.includes('title') || lower.includes('desc')) newMapping.productName = h;
-                        if (lower.includes('supp') || lower.includes('vendor') || lower.includes('brand')) newMapping.supplierName = h;
-                        if (lower.includes('cost') || lower.includes('price') || lower.includes('rate')) newMapping.costPrice = h;
+                        const l = h.toLowerCase();
+                        if (l.includes('barcode') || l.includes('upc') || l.includes('sku') || l === 'id') newMapping.barcode = h;
+                        if (l.includes('name') || l.includes('title') || l.includes('desc')) newMapping.productName = h;
+                        if (l.includes('supp') || l.includes('vendor') || l.includes('brand')) newMapping.supplierName = h;
+                        if (l.includes('cost') || l.includes('price') || l.includes('rate')) newMapping.costPrice = h;
                     });
                     setMapping(newMapping);
                     setIsParsing(false);
@@ -186,7 +171,6 @@ export function BulkImportTerminal() {
 
     const startImport = async () => {
         if (!file || !user?.email) return;
-
         setIsImporting(true);
         setCurrentStep('process');
         setProgress(0);
@@ -195,7 +179,7 @@ export function BulkImportTerminal() {
         if (isWipeEnabled) {
             const wipeRes = await clearDatabaseAction(user.email);
             if (!wipeRes.success) {
-                toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear existing database." });
+                toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear database." });
                 setIsImporting(false);
                 return;
             }
@@ -207,16 +191,12 @@ export function BulkImportTerminal() {
                 try {
                     let text = e.target?.result as string;
                     text = sanitizeXmlString(text);
-
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     const records = Array.from(xmlDoc.getElementsByTagName(xmlRecordTag));
-                    
                     const data = records.map(record => {
                         const obj: any = {};
-                        Array.from(record.children).forEach(child => {
-                            obj[child.tagName] = child.textContent;
-                        });
+                        Array.from(record.children).forEach(child => { obj[child.tagName] = child.textContent; });
                         return obj;
                     });
                     await runBatchImport(data);
@@ -239,11 +219,11 @@ export function BulkImportTerminal() {
 
     const runBatchImport = async (data: any[]) => {
         setTotalRows(data.length);
-        let totalProcessedCount = 0;
         let totalSuccessCount = 0;
         let totalFailedCount = 0;
         
-        // If wiping, start at Row 2. If appending, start at end of existing data.
+        // GRID EXPANSION PROTOCOL:
+        // Wipe mode starts at row 2. Append mode starts after existing products.
         let currentRow = isWipeEnabled ? 2 : (cachedProducts.length + 2);
 
         for (let i = 0; i < data.length; i += BATCH_SIZE) {
@@ -259,36 +239,33 @@ export function BulkImportTerminal() {
                     const parsed = parseFloat(String(row[mapping.costPrice]).replace(/[^0-9.-]+/g, ""));
                     cost = isNaN(parsed) ? 0 : parsed;
                 }
-                
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                 return [barcode, '', productName, supplierName, cost, '', '', uniqueId];
             }).filter(row => row[0]); 
 
-            const res = await batchImportProductsAction(user?.email!, formattedBatch, currentRow);
-            
-            if (res.success) {
-                totalSuccessCount += formattedBatch.length;
-                totalFailedCount += (batch.length - formattedBatch.length);
+            if (formattedBatch.length > 0) {
+                // SEQUENTIAL BATCH SYNC
+                const res = await batchImportProductsAction(user?.email!, formattedBatch, currentRow);
+                if (res.success) {
+                    totalSuccessCount += formattedBatch.length;
+                    totalFailedCount += (batch.length - formattedBatch.length);
+                    currentRow += formattedBatch.length; // ADVANCE TO NEXT PHYSICAL ROW
+                } else {
+                    totalFailedCount += batch.length;
+                }
             } else {
                 totalFailedCount += batch.length;
             }
 
-            totalProcessedCount += batch.length;
-            currentRow += formattedBatch.length;
-            
-            setProgress(Math.round((totalProcessedCount / data.length) * 100));
+            setProgress(Math.round(((i + batch.length) / data.length) * 100));
             setStats({ success: totalSuccessCount, failed: totalFailedCount });
             
-            if (i + BATCH_SIZE < data.length) {
-                await new Promise(resolve => setTimeout(resolve, 250));
-            }
+            // DELAY TO PREVENT QUOTA EXHAUSTION
+            if (i + BATCH_SIZE < data.length) await new Promise(r => setTimeout(r, 300));
         }
 
         setIsImporting(false);
-        toast({ 
-            title: "Import Finished", 
-            description: `Registry updated with ${totalSuccessCount} verified products.` 
-        });
+        toast({ title: "Import Finished", description: `Updated registry with ${totalSuccessCount} products.` });
         refreshData();
     };
 
@@ -325,19 +302,10 @@ export function BulkImportTerminal() {
                             </div>
                             <div className="space-y-2">
                                 <h4 className="font-black uppercase tracking-tight text-lg">Load Registry File</h4>
-                                <p className="text-xs text-muted-foreground max-w-xs font-medium">Upload your local database (CSV or XML) to begin the industrial synchronization process.</p>
+                                <p className="text-xs text-muted-foreground max-w-xs font-medium">Upload CSV or XML to begin industrial synchronization.</p>
                             </div>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept=".csv,.xml" 
-                                onChange={handleFileChange} 
-                            />
-                            <Button 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="h-12 px-8 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
-                            >
+                            <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xml" onChange={handleFileChange} />
+                            <Button onClick={() => fileInputRef.current?.click()} className="h-12 px-8 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-primary/20">
                                 {isParsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
                                 Select File
                             </Button>
@@ -367,15 +335,15 @@ export function BulkImportTerminal() {
                                         <TableHeader className="bg-muted/20 sticky top-0 z-10">
                                             <TableRow>
                                                 {headers.map((h, i) => (
-                                                    <TableHead key={`preview-head-${h}-${i}`} className="text-[9px] uppercase font-black px-4 whitespace-nowrap">{h}</TableHead>
+                                                    <TableHead key={`p-head-${h}-${i}`} className="text-[9px] uppercase font-black px-4 whitespace-nowrap">{h}</TableHead>
                                                 ))}
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {previewRows.map((row, i) => (
-                                                <TableRow key={`preview-row-${i}`}>
+                                                <TableRow key={`p-row-${i}`}>
                                                     {headers.map((h, j) => (
-                                                        <TableCell key={`preview-cell-${i}-${j}`} className="text-[10px] font-medium py-2 px-4 whitespace-nowrap border-r last:border-r-0">
+                                                        <TableCell key={`p-cell-${i}-${j}`} className="text-[10px] font-medium py-2 px-4 whitespace-nowrap border-r last:border-r-0">
                                                             {String(row[h] || '')}
                                                         </TableCell>
                                                     ))}
@@ -392,7 +360,7 @@ export function BulkImportTerminal() {
                                     <Select value={mapping.barcode} onValueChange={(v) => setMapping(p => ({...p, barcode: v}))}>
                                         <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
-                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-barcode`} value={h}>{h}</SelectItem>)}
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-bc`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -410,7 +378,7 @@ export function BulkImportTerminal() {
                                     <Select value={mapping.supplierName} onValueChange={(v) => setMapping(p => ({...p, supplierName: v}))}>
                                         <SelectTrigger className="h-11 rounded-xl font-bold bg-background border-primary/10"><SelectValue placeholder="Select Column..." /></SelectTrigger>
                                         <SelectContent>
-                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-supplier`} value={h}>{h}</SelectItem>)}
+                                            {headers.map((h, i) => <SelectItem key={`${h}-${i}-supp`} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -429,22 +397,14 @@ export function BulkImportTerminal() {
                             <div className="p-4 bg-muted/20 border rounded-2xl flex items-center justify-between">
                                 <div className="space-y-0.5">
                                     <Label htmlFor="wipe-toggle" className="text-sm font-black uppercase">Wipe Existing Registry</Label>
-                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight">Erase all current records before starting. Disable this to append split files.</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight">Erase all current records before starting. Disable to append split files.</p>
                                 </div>
-                                <Switch 
-                                    id="wipe-toggle"
-                                    checked={isWipeEnabled}
-                                    onCheckedChange={setIsWipeEnabled}
-                                />
+                                <Switch id="wipe-toggle" checked={isWipeEnabled} onCheckedChange={setIsWipeEnabled} />
                             </div>
 
                             <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                 <Button variant="ghost" onClick={() => setCurrentStep('upload')} className="font-bold h-12 px-6 rounded-xl">Change File</Button>
-                                <Button 
-                                    disabled={!isMappingComplete}
-                                    onClick={startImport}
-                                    className="flex-1 h-12 font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
-                                >
+                                <Button disabled={!isMappingComplete} onClick={startImport} className="flex-1 h-12 font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/20">
                                     <Zap className="mr-2 h-4 w-4 fill-primary-foreground" />
                                     Begin {isWipeEnabled ? 'Wipe & Import' : 'Append Import'}
                                 </Button>
@@ -466,20 +426,20 @@ export function BulkImportTerminal() {
                                         {isImporting ? "Syncing Records..." : "Sync Complete"}
                                     </h4>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">
-                                        {isWipeEnabled ? "Full Registry Overwrite" : "Extension Protocol Active"}
+                                        {isWipeEnabled ? "Full Overwrite Mode" : "Extension Mode Active"}
                                     </p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
                                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                                    <span>Progress</span>
+                                    <span>Sync Status</span>
                                     <span>{progress}%</span>
                                 </div>
                                 <Progress value={progress} className="h-3 rounded-full" />
                                 <div className="flex justify-between items-baseline pt-1">
                                     <span className="text-xs font-bold text-muted-foreground">{stats.success.toLocaleString()} Verified Success</span>
-                                    <span className="text-xs font-black text-primary">{totalRows.toLocaleString()} Total Target</span>
+                                    <span className="text-xs font-black text-primary">{totalRows.toLocaleString()} Target</span>
                                 </div>
                             </div>
 
@@ -490,24 +450,16 @@ export function BulkImportTerminal() {
                                             <CheckCircle2 className="h-5 w-5 text-green-600" />
                                             <span className="text-sm font-bold text-green-800">Database Synchronized</span>
                                         </div>
-                                        <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest text-green-700 hover:bg-green-500/10" asChild>
+                                        <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest text-green-700" asChild>
                                             <a href="/products/list">View Catalog</a>
                                         </Button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => setCurrentStep('upload')} 
-                                            className="h-12 font-black uppercase tracking-widest rounded-xl border-primary/10"
-                                        >
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Import Another
+                                        <Button variant="outline" onClick={() => setCurrentStep('upload')} className="h-12 font-black uppercase tracking-widest rounded-xl border-primary/10">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Another File
                                         </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            onClick={() => { setFile(null); setCurrentStep('upload'); }} 
-                                            className="h-12 font-black uppercase tracking-widest rounded-xl"
-                                        >
-                                            Done
+                                        <Button variant="ghost" onClick={() => { setFile(null); setCurrentStep('upload'); }} className="h-12 font-black uppercase tracking-widest rounded-xl">
+                                            Finish
                                         </Button>
                                     </div>
                                 </div>
@@ -517,8 +469,8 @@ export function BulkImportTerminal() {
                                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-start gap-3">
                                     <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Active Protocol</p>
-                                        <p className="text-[10px] text-yellow-700/80 font-medium leading-relaxed">The batch engine requires a live connection to finalize the multi-row write operations. Keep this tab open.</p>
+                                        <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Industrial Protocol</p>
+                                        <p className="text-[10px] text-yellow-700/80 font-medium">Auto-expanding grid and verifying 80k+ records. Keep this window active to finalize sync.</p>
                                     </div>
                                 </div>
                             )}
