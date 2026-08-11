@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -23,7 +24,9 @@ import {
     Database,
     Zap,
     X,
-    Eye
+    Eye,
+    PlusCircle,
+    RotateCcw
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { clearDatabaseAction, batchImportProductsAction } from '@/app/actions';
@@ -32,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const BATCH_SIZE = 400; // Slightly smaller to ensure safety with timeout
+const BATCH_SIZE = 400; 
 const SKIP_VALUE = "___SKIP_FIELD___";
 
 interface Mapping {
@@ -42,9 +45,6 @@ interface Mapping {
     costPrice: string;
 }
 
-/**
- * Strips invalid XML 1.0 control characters that cause DOMParser to fail.
- */
 function sanitizeXmlString(xml: string): string {
     let cleaned = xml.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]/g, "");
     cleaned = cleaned.replace(/&#(?:0?[0-8]|1[12]|1[4-9]|2[0-9]|3[0-1]);/g, "");
@@ -54,7 +54,7 @@ function sanitizeXmlString(xml: string): string {
 
 export function BulkImportTerminal() {
     const { user } = useAuth();
-    const { refreshData } = useDataCache();
+    const { refreshData, products: cachedProducts } = useDataCache();
     const { toast } = useToast();
 
     const [file, setFile] = useState<File | null>(null);
@@ -62,6 +62,7 @@ export function BulkImportTerminal() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [previewRows, setPreviewRows] = useState<any[]>([]); 
     const [xmlRecordTag, setXmlRecordTag] = useState<string>('');
+    const [isWipeEnabled, setIsWipeEnabled] = useState(true);
     const [mapping, setMapping] = useState<Mapping>({
         barcode: '',
         productName: '',
@@ -191,12 +192,13 @@ export function BulkImportTerminal() {
         setProgress(0);
         setStats({ success: 0, failed: 0 });
 
-        // CLEAN SLATE ACTION
-        const wipeRes = await clearDatabaseAction(user.email);
-        if (!wipeRes.success) {
-            toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear existing database." });
-            setIsImporting(false);
-            return;
+        if (isWipeEnabled) {
+            const wipeRes = await clearDatabaseAction(user.email);
+            if (!wipeRes.success) {
+                toast({ variant: "destructive", title: "Sync Failed", description: "Could not clear existing database." });
+                setIsImporting(false);
+                return;
+            }
         }
 
         if (fileType === 'xml') {
@@ -240,7 +242,9 @@ export function BulkImportTerminal() {
         let totalProcessedCount = 0;
         let totalSuccessCount = 0;
         let totalFailedCount = 0;
-        let currentRow = 2; // Data starts at A2
+        
+        // If wiping, start at Row 2. If appending, start at end of existing data.
+        let currentRow = isWipeEnabled ? 2 : (cachedProducts.length + 2);
 
         for (let i = 0; i < data.length; i += BATCH_SIZE) {
             const batch = data.slice(i, i + BATCH_SIZE);
@@ -248,8 +252,6 @@ export function BulkImportTerminal() {
                 const rawBarcode = String(row[mapping.barcode] || '').trim();
                 const productName = String(row[mapping.productName] || '').trim();
                 const supplierName = String(row[mapping.supplierName] || '').trim();
-                
-                // CRITICAL FIX: Force string format for Sheet writing
                 const barcode = rawBarcode ? `'${rawBarcode}` : '';
                 
                 let cost = 0;
@@ -260,9 +262,8 @@ export function BulkImportTerminal() {
                 
                 const uniqueId = `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                 return [barcode, '', productName, supplierName, cost, '', '', uniqueId];
-            }).filter(row => row[0]); // Skip records with no barcode
+            }).filter(row => row[0]); 
 
-            // PERFORMANCE FIX: Use sequential range updates instead of appends
             const res = await batchImportProductsAction(user?.email!, formattedBatch, currentRow);
             
             if (res.success) {
@@ -278,7 +279,6 @@ export function BulkImportTerminal() {
             setProgress(Math.round((totalProcessedCount / data.length) * 100));
             setStats({ success: totalSuccessCount, failed: totalFailedCount });
             
-            // Add a small breather for the API (Cool-down)
             if (i + BATCH_SIZE < data.length) {
                 await new Promise(resolve => setTimeout(resolve, 250));
             }
@@ -426,6 +426,18 @@ export function BulkImportTerminal() {
                                 </div>
                             </div>
 
+                            <div className="p-4 bg-muted/20 border rounded-2xl flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="wipe-toggle" className="text-sm font-black uppercase">Wipe Existing Registry</Label>
+                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight">Erase all current records before starting. Disable this to append split files.</p>
+                                </div>
+                                <Switch 
+                                    id="wipe-toggle"
+                                    checked={isWipeEnabled}
+                                    onCheckedChange={setIsWipeEnabled}
+                                />
+                            </div>
+
                             <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                 <Button variant="ghost" onClick={() => setCurrentStep('upload')} className="font-bold h-12 px-6 rounded-xl">Change File</Button>
                                 <Button 
@@ -434,7 +446,7 @@ export function BulkImportTerminal() {
                                     className="flex-1 h-12 font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
                                 >
                                     <Zap className="mr-2 h-4 w-4 fill-primary-foreground" />
-                                    Begin Batch Import
+                                    Begin {isWipeEnabled ? 'Wipe & Import' : 'Append Import'}
                                 </Button>
                             </div>
                         </div>
@@ -453,7 +465,9 @@ export function BulkImportTerminal() {
                                     <h4 className="text-2xl font-black tracking-tight uppercase">
                                         {isImporting ? "Syncing Records..." : "Sync Complete"}
                                     </h4>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">Batch Engine Activity</p>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">
+                                        {isWipeEnabled ? "Full Registry Overwrite" : "Extension Protocol Active"}
+                                    </p>
                                 </div>
                             </div>
 
@@ -474,19 +488,28 @@ export function BulkImportTerminal() {
                                     <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                            <span className="text-sm font-bold text-green-800">Database Transferred Successfully</span>
+                                            <span className="text-sm font-bold text-green-800">Database Synchronized</span>
                                         </div>
                                         <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest text-green-700 hover:bg-green-500/10" asChild>
                                             <a href="/products/list">View Catalog</a>
                                         </Button>
                                     </div>
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => setCurrentStep('upload')} 
-                                        className="h-12 font-black uppercase tracking-widest rounded-xl border-primary/10"
-                                    >
-                                        Close Terminal
-                                    </Button>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => setCurrentStep('upload')} 
+                                            className="h-12 font-black uppercase tracking-widest rounded-xl border-primary/10"
+                                        >
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Import Another
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            onClick={() => { setFile(null); setCurrentStep('upload'); }} 
+                                            className="h-12 font-black uppercase tracking-widest rounded-xl"
+                                        >
+                                            Done
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 
