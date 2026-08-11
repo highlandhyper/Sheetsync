@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cog, KeyRound, ShieldCheck, Palette, Settings2, Lock, MapPin, UserPlus, Database, ExternalLink, AlertTriangle, CloudUpload, Loader2 } from 'lucide-react';
+import { Cog, KeyRound, ShieldCheck, Palette, Settings2, Lock, MapPin, UserPlus, Database, ExternalLink, AlertTriangle, CloudUpload, Loader2, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
@@ -18,29 +18,18 @@ import { getMasterSpreadsheetUrlAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
 
-export default function SettingsPage() {
-  const { role } = useAuth();
-  const { toast } = useToast();
-  const [dbUrl, setDbUrl] = React.useState<string | null>(null);
-  const [isDbLoading, setIsDbLoading] = React.useState(false);
+interface DialogCardProps {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  triggerText?: string;
+  dialogClassName?: string;
+  onOpen?: () => void;
+}
 
-  const handleOpenMasterDb = async () => {
-    setIsDbLoading(true);
-    const res = await getMasterSpreadsheetUrlAction();
-    setIsDbLoading(false);
-    
-    if (res.success && res.data) {
-        setDbUrl(res.data);
-    } else {
-        toast({ 
-            variant: "destructive", 
-            title: "Access Error", 
-            description: res.message || "The spreadsheet identifier is not configured correctly." 
-        });
-    }
-  };
-
-  const DialogCard = ({ icon, title, description, children, triggerText = "Manage", dialogClassName }: { icon: React.ElementType, title: string, description: string, children: React.ReactNode, triggerText?: string, dialogClassName?: string }) => (
+function DialogCard({ icon, title, description, children, triggerText = "Manage", dialogClassName, onOpen }: DialogCardProps) {
+  return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader>
         <div className="flex items-start gap-4">
@@ -54,7 +43,7 @@ export default function SettingsPage() {
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex items-end">
-        <Dialog onOpenChange={(open) => { if (open && title === "Master Database") handleOpenMasterDb(); }}>
+        <Dialog onOpenChange={(open) => { if (open && onOpen) onOpen(); }}>
           <DialogTrigger asChild>
             <Button variant="outline" className="w-full mt-auto font-bold">
                 <Settings2 className="mr-2 h-4 w-4" />
@@ -63,7 +52,10 @@ export default function SettingsPage() {
           </DialogTrigger>
           <DialogContent className={dialogClassName || "sm:max-w-2xl"}>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">{React.createElement(icon, { className: "h-5 w-5" })}{title}</DialogTitle>
+              <DialogTitle className="flex items-center gap-3">
+                {React.createElement(icon, { className: "h-5 w-5" })}
+                {title}
+              </DialogTitle>
               <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
             <div className="py-4">{children}</div>
@@ -72,6 +64,36 @@ export default function SettingsPage() {
       </CardContent>
     </Card>
   );
+}
+
+export default function SettingsPage() {
+  const { role } = useAuth();
+  const { toast } = useToast();
+  const [dbUrl, setDbUrl] = React.useState<string | null>(null);
+  const [isDbLoading, setIsDbLoading] = React.useState(false);
+
+  const handleOpenMasterDb = async () => {
+    // Only load if we haven't already
+    if (dbUrl) return;
+
+    setIsDbLoading(true);
+    try {
+        const res = await getMasterSpreadsheetUrlAction();
+        if (res.success && res.data) {
+            setDbUrl(res.data);
+        } else {
+            toast({ 
+                variant: "destructive", 
+                title: "Access Error", 
+                description: res.message || "The spreadsheet identifier is not configured correctly." 
+            });
+        }
+    } catch (e) {
+        toast({ variant: "destructive", title: "Sync Error", description: "Failed to authenticate database session." });
+    } finally {
+        setIsDbLoading(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -185,6 +207,7 @@ export default function SettingsPage() {
                 description="Direct access to the source Google Sheet registry."
                 triggerText="Explore Sheet"
                 dialogClassName="sm:max-w-md"
+                onOpen={handleOpenMasterDb}
             >
                 <div className="space-y-6 py-2">
                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-start gap-3">
@@ -197,23 +220,25 @@ export default function SettingsPage() {
                         </div>
                     </div>
                     
-                    <Button 
-                        asChild 
-                        disabled={!dbUrl || isDbLoading} 
-                        className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
-                    >
-                        {dbUrl ? (
+                    {dbUrl ? (
+                        <Button 
+                            asChild 
+                            className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                        >
                             <a href={dbUrl} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="mr-2 h-5 w-5" />
                                 Launch Spreadsheet
                             </a>
-                        ) : (
-                            <span className="flex items-center">
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                Authenticating...
-                            </span>
-                        )}
-                    </Button>
+                        </Button>
+                    ) : (
+                        <Button 
+                            disabled 
+                            className="w-full h-14 rounded-2xl font-black uppercase tracking-widest opacity-50"
+                        >
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Authenticating Session...
+                        </Button>
+                    )}
                 </div>
             </DialogCard>
 
