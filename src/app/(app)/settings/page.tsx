@@ -17,6 +17,7 @@ import { LocationManager } from '@/components/settings/location-manager';
 import { getMasterSpreadsheetUrlAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
+import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 
 interface DialogCardProps {
   icon: React.ElementType;
@@ -26,9 +27,23 @@ interface DialogCardProps {
   triggerText?: string;
   dialogClassName?: string;
   onOpen?: () => void;
+  // Enhanced for manual control (e.g. password protection)
+  isManual?: boolean;
+  onManualClick?: () => void;
 }
 
-function DialogCard({ icon, title, description, children, triggerText = "Manage", dialogClassName, onOpen }: DialogCardProps) {
+function DialogCard({ icon, title, description, children, triggerText = "Manage", dialogClassName, onOpen, isManual, onManualClick }: DialogCardProps) {
+  const triggerButton = (
+    <Button 
+        variant="outline" 
+        className="w-full mt-auto font-bold"
+        onClick={isManual ? onManualClick : undefined}
+    >
+        <Settings2 className="mr-2 h-4 w-4" />
+        {triggerText}
+    </Button>
+  );
+
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
       <CardHeader>
@@ -43,24 +58,25 @@ function DialogCard({ icon, title, description, children, triggerText = "Manage"
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex items-end">
-        <Dialog onOpenChange={(open) => { if (open && onOpen) onOpen(); }}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="w-full mt-auto font-bold">
-                <Settings2 className="mr-2 h-4 w-4" />
-                {triggerText}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className={dialogClassName || "sm:max-w-2xl"}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
-                {React.createElement(icon, { className: "h-5 w-5" })}
-                {title}
-              </DialogTitle>
-              <DialogDescription>{description}</DialogDescription>
-            </DialogHeader>
-            <div className="py-4">{children}</div>
-          </DialogContent>
-        </Dialog>
+        {isManual ? (
+            triggerButton
+        ) : (
+            <Dialog onOpenChange={(open) => { if (open && onOpen) onOpen(); }}>
+                <DialogTrigger asChild>
+                    {triggerButton}
+                </DialogTrigger>
+                <DialogContent className={dialogClassName || "sm:max-w-2xl"}>
+                    <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                        {React.createElement(icon, { className: "h-5 w-5" })}
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">{children}</div>
+                </DialogContent>
+            </Dialog>
+        )}
       </CardContent>
     </Card>
   );
@@ -71,11 +87,13 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbLoading, setIsDbLoading] = React.useState(false);
+  
+  // Protected Terminal States
+  const [isBulkAuthOpen, setIsBulkAuthOpen] = React.useState(false);
+  const [isImportTerminalOpen, setIsImportTerminalOpen] = React.useState(false);
 
   const handleOpenMasterDb = async () => {
-    // Only load if we haven't already
     if (dbUrl) return;
-
     setIsDbLoading(true);
     try {
         const res = await getMasterSpreadsheetUrlAction();
@@ -95,8 +113,13 @@ export default function SettingsPage() {
     }
   };
 
+  const handleBulkImportAuthSuccess = () => {
+      setIsBulkAuthOpen(false);
+      setIsImportTerminalOpen(true);
+  };
+
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+    <div className="container mx-auto p-4 md:p-6 lg:p-8 pb-20">
       <h1 className="text-3xl font-black mb-8 text-primary flex items-center tracking-tight uppercase">
         < Cog className="mr-3 h-8 w-8" />
         System Settings
@@ -186,7 +209,8 @@ export default function SettingsPage() {
                 title="Bulk DB Update"
                 description="Import large datasets (50k+ rows) via CSV mapping terminal."
                 triggerText="Open Terminal"
-                dialogClassName="sm:max-w-3xl"
+                isManual={true}
+                onManualClick={() => setIsBulkAuthOpen(true)}
             >
                 <BulkImportTerminal />
             </DialogCard>
@@ -255,6 +279,31 @@ export default function SettingsPage() {
         )}
 
       </div>
+
+      {/* SECURE TERMINAL DIALOGS */}
+      <AuthorizeActionDialog 
+        isOpen={isBulkAuthOpen}
+        onOpenChange={setIsBulkAuthOpen}
+        onAuthorizationSuccess={handleBulkImportAuthSuccess}
+        actionDescription="Local administrator authorization is required to access high-volume registry modification tools."
+      />
+
+      <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
+          <DialogContent className="sm:max-w-3xl">
+              <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                      <CloudUpload className="h-5 w-5 text-primary" />
+                      Bulk DB Update Terminal
+                  </DialogTitle>
+                  <DialogDescription>
+                      High-performance industrial synchronization for CSV/XML datasets.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <BulkImportTerminal />
+              </div>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
