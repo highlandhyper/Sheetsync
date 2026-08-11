@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, ShieldCheck, ShieldQuestion, KeyRound, User, Mail } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldQuestion, KeyRound, User, Mail, AlertCircle } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -78,28 +80,54 @@ export function AuthorizeActionDialog({
 
   const onSubmit = async (data: AuthFormValues) => {
     setIsSubmitting(true);
-    // Use fixedIdentifier if provided to ensure the challenge matches the intended user
-    const checkUsername = fixedIdentifier || data.username;
-    const isAuthorized = verifyCredentials(checkUsername, data.password);
-    
-    // Simulate a small delay for user feedback
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    setIsSubmitting(false);
+    const identifier = fixedIdentifier || data.username;
+    const isEmail = identifier.includes('@');
 
-    if (isAuthorized) {
-      toast({
-        title: "Identity Verified",
-        description: "Administrative access granted.",
-      });
-      onAuthorizationSuccess();
-    } else {
-      setError("password", { type: "manual", message: "Invalid access key for this identity." });
-      toast({
-        variant: "destructive",
-        title: "Authorization Failed",
-        description: "The access key provided is incorrect.",
-      });
+    try {
+        let isAuthorized = false;
+
+        if (isEmail && auth) {
+            // FIREBASE RE-AUTHENTICATION: Use login password
+            try {
+                await signInWithEmailAndPassword(auth, identifier, data.password);
+                isAuthorized = true;
+            } catch (firebaseErr: any) {
+                console.error("Re-auth failed:", firebaseErr.code);
+                isAuthorized = false;
+            }
+        } else {
+            // LOCAL KEY FALLBACK: Use generic admin key
+            isAuthorized = verifyCredentials(identifier, data.password);
+        }
+
+        // Simulate a small delay for user feedback
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        if (isAuthorized) {
+            toast({
+                title: "Identity Verified",
+                description: isEmail ? "Cloud credentials confirmed." : "Administrative access granted.",
+            });
+            onAuthorizationSuccess();
+        } else {
+            setError("password", { 
+                type: "manual", 
+                message: isEmail ? "Invalid password for this account." : "Invalid access key for this identity." 
+            });
+            toast({
+                variant: "destructive",
+                title: "Verification Failed",
+                description: isEmail ? "The password provided is incorrect." : "The access key is incorrect.",
+            });
+        }
+    } catch (e) {
+        toast({
+            variant: "destructive",
+            title: "System Error",
+            description: "An unexpected error occurred during verification.",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -122,7 +150,7 @@ export function AuthorizeActionDialog({
             <div className="space-y-1.5">
                 <Label htmlFor="authUsername" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Account Identity</Label>
                 <div className="relative">
-                    {fixedIdentifier ? (
+                    {fixedIdentifier?.includes('@') ? (
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                     ) : (
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -148,7 +176,9 @@ export function AuthorizeActionDialog({
                 {errors.username && <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1">{errors.username.message}</p>}
             </div>
              <div className="space-y-1.5">
-                <Label htmlFor="authPassword" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Access Key</Label>
+                <Label htmlFor="authPassword" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                    {fixedIdentifier?.includes('@') ? "Login Password" : "Access Key"}
+                </Label>
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
