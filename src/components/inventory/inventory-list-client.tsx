@@ -502,12 +502,12 @@ export function InventoryListClient() {
                   <Input type="search" placeholder="Search records by name, barcode or personnel..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full h-11" />
                 </div>
                 <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     size="icon" 
                     onClick={() => setIsScannerDialogOpen(true)} 
-                    className="h-11 w-11 shrink-0 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all"
+                    className="h-11 w-11 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
                 >
-                    <ScanBarcode className="h-6 w-6" />
+                    <ScanBarcode className="h-5 w-5" />
                 </Button>
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
