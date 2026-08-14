@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
-import { Search, PackageOpen, FilterX, Eye, Undo2, Tag, Printer, CalendarIcon, Trash2, Building, Wallet, FileText, ChevronDown, Barcode, ChevronsUpDown, Check, MapPin } from 'lucide-react';
+import { 
+    Search, 
+    PackageOpen, 
+    FilterX, 
+    Eye, 
+    Undo2, 
+    Tag, 
+    Printer, 
+    CalendarIcon, 
+    Trash2, 
+    Building, 
+    Wallet, 
+    FileText, 
+    ChevronDown, 
+    Barcode, 
+    ChevronsUpDown, 
+    Check, 
+    MapPin,
+    ScanBarcode,
+    X
+} from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -43,10 +63,37 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 const ALL_LOCATIONS_VALUE = "___ALL_LOCATIONS___";
+const SCANNER_REGION_ID = "inventory-list-scanner";
+
+const playProfessionalBeep = () => {
+  try {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {
+    console.warn("Audio feedback failed:", e);
+  }
+};
 
 type DashboardFilterType = {
   type: 'damaged' | 'expiringSoon' | 'otherSuppliers' | 'customExpiry' | 'specificSupplier';
@@ -100,6 +147,11 @@ export function InventoryListClient() {
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
+
+  // Scanner State
+  const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
+  const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const scanProcessedRef = useRef(false);
 
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
@@ -377,6 +429,53 @@ export function InventoryListClient() {
     generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal, orientation);
   };
 
+  // Scanner Implementation
+  const onScanSuccess = useCallback((decodedText: string) => {
+    if (scanProcessedRef.current || !decodedText) return;
+    scanProcessedRef.current = true;
+
+    playProfessionalBeep();
+    setSearchTerm(decodedText);
+    setIsScannerDialogOpen(false);
+
+    toast({
+        title: "Barcode Identified",
+        description: `Filtering records for: ${decodedText}`,
+    });
+
+    setTimeout(() => {
+        scanProcessedRef.current = false;
+    }, 1000);
+  }, [toast]);
+
+  useEffect(() => {
+    if (isScannerDialogOpen) {
+      const timer = setTimeout(() => {
+        if (html5QrcodeScannerRef.current) return;
+        const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
+        scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          onScanSuccess,
+          () => {}
+        ).then(() => {
+          html5QrcodeScannerRef.current = scanner;
+        }).catch(() => {
+          toast({ variant: 'destructive', title: 'Hardware Error', description: 'Optical system failed.' });
+          setIsScannerDialogOpen(false);
+        });
+      }, 800);
+
+      return () => {
+        clearTimeout(timer);
+        if (html5QrcodeScannerRef.current) {
+          html5QrcodeScannerRef.current.stop().catch(console.error);
+          html5QrcodeScannerRef.current = null;
+        }
+      };
+    }
+  }, [isScannerDialogOpen, onScanSuccess, toast]);
+
   return (
     <div className="space-y-6">
       <Card className="p-4 shadow-md filters-card-noprint">
@@ -397,9 +496,19 @@ export function InventoryListClient() {
              </div>
           ) : (
           <div className="flex flex-col gap-4">
-            <div className="relative flex-grow">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search records..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full" />
+            <div className="flex gap-2 w-full">
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input type="search" placeholder="Search records by name, barcode or personnel..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full h-11" />
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setIsScannerDialogOpen(true)} 
+                    className="h-11 w-11 shrink-0 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all"
+                >
+                    <ScanBarcode className="h-6 w-6" />
+                </Button>
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
               <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
@@ -731,6 +840,24 @@ export function InventoryListClient() {
       
       <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
       <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
+
+      {/* SEARCH SCANNER MODAL */}
+      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+            <DialogHeader className="p-8 pb-4 bg-muted/40">
+                <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
+                    <ScanBarcode className="h-8 w-8" /> Visual Filter
+                </DialogTitle>
+                <DialogDescription className="text-xs font-medium text-muted-foreground/80">Position barcode to instantly filter records.</DialogDescription>
+            </DialogHeader>
+            <div id={SCANNER_REGION_ID} className="w-full aspect-square bg-black" />
+            <div className="p-6 bg-muted/40">
+                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">
+                  Cancel Scan
+                </Button>
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
