@@ -16,7 +16,8 @@ import {
     MapPin, 
     X,
     FilterX,
-    Barcode
+    Barcode,
+    Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { InventoryItem } from '@/lib/types';
@@ -28,6 +29,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Html5Qrcode } from 'html5-qrcode';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { EditInventoryItemDialog } from '@/components/inventory/edit-inventory-item-dialog';
+import { InventoryItemDetailsDialog } from '@/components/inventory/inventory-item-details-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
@@ -78,6 +80,8 @@ export function InventoryBarcodeLookupClient() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentItemToEdit, setCurrentItemToEdit] = useState<InventoryItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState<InventoryItem | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -160,7 +164,13 @@ export function InventoryBarcodeLookupClient() {
     setIsReturnDialogOpen(false);
     setIsDeleteDialogOpen(false);
     setIsEditDialogOpen(false);
+    setIsDetailsDialogOpen(false);
   }, []);
+
+  const handleOpenDetails = (item: InventoryItem) => {
+    setSelectedItemForDetails(item);
+    setIsDetailsDialogOpen(true);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -217,11 +227,13 @@ export function InventoryBarcodeLookupClient() {
 
       {!isLoading && hasSearched && searchResults.length > 0 && (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-xl">
-                    <Layers className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-xl">
+                        <Layers className="h-5 w-5 text-primary" />
+                    </div>
+                    <h2 className="text-xl font-black uppercase tracking-tight">System Records Found</h2>
                 </div>
-                <h2 className="text-xl font-black uppercase tracking-tight">System Records Found</h2>
             </div>
             
             <div className="hidden md:block">
@@ -280,7 +292,7 @@ export function InventoryBarcodeLookupClient() {
                         key={`card-lookup-${item.id}`}
                         item={item}
                         product={productsByBarcode.get(item.barcode)}
-                        onDetails={() => {}}
+                        onDetails={() => handleOpenDetails(item)}
                         onReturn={role === 'admin' ? () => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); } : undefined}
                         onEdit={role === 'admin' ? () => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); } : undefined}
                         onDelete={role === 'admin' ? () => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); } : undefined}
@@ -323,9 +335,35 @@ export function InventoryBarcodeLookupClient() {
         </DialogContent>
       </Dialog>
 
-      <ReturnQuantityDialog key={selectedItemForReturn ? `lookup-return-${selectedItemForReturn.id}` : 'lookup-return'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
-      <DeleteConfirmationDialog key={selectedItemForDeletion ? `lookup-delete-${selectedItemForDeletion.id}` : 'lookup-delete'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
-      <EditInventoryItemDialog key={currentItemToEdit ? `lookup-edit-${currentItemToEdit.id}` : 'lookup-edit'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
+      <ReturnQuantityDialog 
+        key={selectedItemForReturn ? `lookup-return-${selectedItemForReturn.id}` : 'lookup-return'} 
+        item={selectedItemForReturn} 
+        isOpen={isReturnDialogOpen} 
+        onOpenChange={setIsReturnDialogOpen} 
+        onReturnSuccess={handleActionSuccess} 
+      />
+      <DeleteConfirmationDialog 
+        key={selectedItemForDeletion ? `lookup-delete-${selectedItemForDeletion.id}` : 'lookup-delete'} 
+        item={selectedItemForDeletion} 
+        isOpen={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen} 
+        onSuccess={handleActionSuccess} 
+      />
+      <EditInventoryItemDialog 
+        key={currentItemToEdit ? `lookup-edit-${currentItemToEdit.id}` : 'lookup-edit'} 
+        item={currentItemToEdit} 
+        isOpen={isEditDialogOpen} 
+        onOpenChange={setIsEditDialogOpen} 
+        onSuccess={handleActionSuccess} 
+        uniqueLocationsFromDb={uniqueLocations} 
+      />
+      <InventoryItemDetailsDialog
+        key={selectedItemForDetails ? `lookup-details-${selectedItemForDetails.id}` : 'lookup-details'}
+        item={selectedItemForDetails}
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        onStartEdit={role === 'admin' ? (item) => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); } : undefined}
+      />
     </div>
   );
 }
