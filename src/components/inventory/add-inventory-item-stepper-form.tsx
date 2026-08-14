@@ -120,14 +120,14 @@ const playProfessionalBeep = () => {
     gainNode.connect(audioCtx.destination);
 
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Standard A5 industrial pitch
 
     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
 
     oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + 0.15);
+    oscillator.stop(audioCtx.currentTime + 0.2);
   } catch (e) {
     console.warn("Audio feedback failed:", e);
   }
@@ -167,7 +167,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
-  const SCANNER_REGION_ID = 'scanner';
+  const SCANNER_REGION_ID = 'scanner-log-new';
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -423,7 +423,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           const scanner = new Html5Qrcode(SCANNER_REGION_ID);
           scanner.start(
             { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+            { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
             onScanSuccess,
             () => {}
           ).then(() => {
@@ -761,15 +761,28 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     </Card>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-0">
-            <DialogHeader className="p-6 pb-2 border-b bg-muted/30">
-                <DialogTitle className="font-black uppercase tracking-tighter">Scan Product</DialogTitle>
-                <DialogDescription>Use your camera to capture the product barcode.</DialogDescription>
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
+            <DialogHeader className="p-6 pb-2 border-b border-white/10 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
+                <DialogTitle className="font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle>
+                <DialogDescription className="text-zinc-400 text-xs">Align product barcode with the center target.</DialogDescription>
             </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-square [&>span]:hidden" />
-            <div className="p-4 bg-muted/30 flex justify-center">
-                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl sm:rounded-md font-bold">
-                  Cancel Scanning
+            
+            <div className="relative scanner-container h-[400px] w-full">
+                <div id={SCANNER_REGION_ID} className="h-full w-full [&>span]:hidden" />
+                <div className="scanner-overlay">
+                    <div className="scanner-focus">
+                        <div className="scanner-laser" />
+                        <div className="scanner-corner scanner-corner-tl" />
+                        <div className="scanner-corner scanner-corner-tr" />
+                        <div className="scanner-corner scanner-corner-bl" />
+                        <div className="scanner-corner scanner-corner-br" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 bg-zinc-900/50 border-t border-white/10 flex justify-center relative z-20">
+                <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
+                  Terminate Scan
                 </Button>
             </div>
         </DialogContent>

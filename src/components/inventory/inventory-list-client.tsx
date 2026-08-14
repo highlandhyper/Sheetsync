@@ -68,7 +68,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 const ALL_LOCATIONS_VALUE = "___ALL_LOCATIONS___";
-const SCANNER_REGION_ID = "inventory-list-scanner";
+const SCANNER_REGION_ID = "inventory-list-filter-scanner";
 
 const playProfessionalBeep = () => {
   try {
@@ -82,14 +82,14 @@ const playProfessionalBeep = () => {
     gainNode.connect(audioCtx.destination);
 
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
 
     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
 
     oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + 0.15);
+    oscillator.stop(audioCtx.currentTime + 0.2);
   } catch (e) {
     console.warn("Audio feedback failed:", e);
   }
@@ -455,7 +455,7 @@ export function InventoryListClient() {
         const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
         scanner.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           onScanSuccess,
           () => {}
         ).then(() => {
@@ -843,15 +843,28 @@ export function InventoryListClient() {
 
       {/* SEARCH SCANNER MODAL */}
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
-            <DialogHeader className="p-8 pb-4 bg-muted/40">
+        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
+            <DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
                 <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
                     <ScanBarcode className="h-8 w-8" /> Visual Filter
                 </DialogTitle>
-                <DialogDescription className="text-xs font-medium text-muted-foreground/80">Position barcode to instantly filter records.</DialogDescription>
+                <DialogDescription className="text-xs font-medium text-zinc-400">Position barcode to instantly filter records.</DialogDescription>
             </DialogHeader>
-            <div id={SCANNER_REGION_ID} className="w-full aspect-square bg-black" />
-            <div className="p-6 bg-muted/40">
+            
+            <div className="relative scanner-container h-[400px] w-full">
+                <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
+                <div className="scanner-overlay">
+                    <div className="scanner-focus">
+                        <div className="scanner-laser" />
+                        <div className="scanner-corner scanner-corner-tl" />
+                        <div className="scanner-corner scanner-corner-tr" />
+                        <div className="scanner-corner scanner-corner-bl" />
+                        <div className="scanner-corner scanner-corner-br" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-6 bg-zinc-900/50 border-t border-white/10 relative z-20">
                 <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">
                   Cancel Scan
                 </Button>
