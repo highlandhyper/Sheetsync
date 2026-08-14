@@ -62,8 +62,8 @@ export function InventoryItemCardMobile({
   const isProductFound = item.productName !== 'Not Found';
   const costPrice = product?.costPrice;
   const quantityToShow = totalQuantity ?? item.quantity;
-  const isSingleItem = individualItemCount === 1;
-
+  // Handle case where individualItemCount is not provided (single lookup)
+  const isSingleItem = !individualItemCount || individualItemCount === 1;
 
   let formattedExpiryDate = 'N/A';
   if (item.expiryDate) {
@@ -179,6 +179,7 @@ export function InventoryItemCardMobile({
           isSingleItem ? (
             <>
               <Button variant="outline" size="sm" onClick={onDetails} className="font-bold"><Eye className="mr-2 h-4 w-4" />Details</Button>
+              {onEdit && <Button variant="ghost" size="sm" onClick={onEdit} className="font-bold"><Pencil className="mr-2 h-4 w-4" />Edit</Button>}
               {onReturn && <Button variant="outline" size="sm" onClick={onReturn} disabled={item.quantity === 0} className="font-bold"><Undo2 className="mr-2 h-4 w-4" />Return</Button>}
               {onDelete && <Button variant="destructive" size="sm" onClick={onDelete} className="font-bold"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
             </>
