@@ -42,7 +42,8 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 180000; 
+// INDUSTRIAL SYNC PROTOCOL: 15s interval for near real-time authorization delivery
+const SYNC_INTERVAL_MS = 15000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
