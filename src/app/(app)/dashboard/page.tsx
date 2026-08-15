@@ -30,7 +30,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <>
-      <div className="absolute inset-0 z-0 overflow-hidden rounded-[2.5rem] pointer-events-none opacity-30">
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
         {children}
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 relative z-20 px-8 pt-8">
@@ -89,27 +89,29 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 }
 
-function VolumeGauge({ value, max = 100000 }: { value: number, max?: number }) {
+function VolumeGauge({ value, max = 50000 }: { value: number, max?: number }) {
   const data = [
     { name: 'value', value: Math.min(value, max) },
     { name: 'remainder', value: Math.max(0, max - value) },
   ];
 
   return (
-    <div className="w-full h-full relative flex items-center justify-center">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full h-full relative flex items-center justify-center overflow-hidden">
+      <ResponsiveContainer width="100%" height="150%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
-            cy="80%"
+            cy="70%"
             startAngle={180}
             endAngle={0}
-            innerRadius="65%"
-            outerRadius="90%"
+            innerRadius="75%"
+            outerRadius="95%"
             paddingAngle={0}
             dataKey="value"
             stroke="none"
+            isAnimationActive={true}
+            animationDuration={2000}
           >
             <Cell fill="hsl(var(--primary))" />
             <Cell fill="hsl(var(--primary) / 0.1)" />
@@ -849,7 +851,7 @@ export default function DashboardPage() {
             href="/inventory"
             className="col-span-2 sm:col-span-1"
           >
-              <div className="absolute inset-0 pt-16 flex items-center justify-center opacity-40 group-hover:opacity-60 transition-opacity">
+              <div className="absolute inset-0 flex items-center justify-center pt-8 pointer-events-none z-0">
                   <VolumeGauge value={metrics.totalStockQuantity} max={50000} />
               </div>
           </MetricCard>
