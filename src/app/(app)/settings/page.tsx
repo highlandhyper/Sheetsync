@@ -23,7 +23,7 @@ interface DialogCardProps {
   icon: React.ElementType;
   title: string;
   description: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   triggerText?: string;
   dialogClassName?: string;
   onOpen?: () => void;
@@ -84,10 +84,14 @@ function DialogCard({ icon, title, description, children, triggerText = "Manage"
 export default function SettingsPage() {
   const { role, user } = useAuth();
   const { toast } = useToast();
+  
+  // Master DB States
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbLoading, setIsDbLoading] = React.useState(false);
+  const [isDbAuthOpen, setIsDbAuthOpen] = React.useState(false);
+  const [isMasterDbDialogOpen, setIsMasterDbDialogOpen] = React.useState(false);
   
-  // Protected Terminal States
+  // Bulk Import States
   const [isBulkAuthOpen, setIsBulkAuthOpen] = React.useState(false);
   const [isImportTerminalOpen, setIsImportTerminalOpen] = React.useState(false);
 
@@ -104,12 +108,20 @@ export default function SettingsPage() {
                 title: "Access Error", 
                 description: res.message || "The spreadsheet identifier is not configured correctly." 
             });
+            setIsMasterDbDialogOpen(false);
         }
     } catch (e) {
         toast({ variant: "destructive", title: "Sync Error", description: "Failed to authenticate database session." });
+        setIsMasterDbDialogOpen(false);
     } finally {
         setIsDbLoading(false);
     }
+  };
+
+  const handleDbAuthSuccess = () => {
+      setIsDbAuthOpen(false);
+      setIsMasterDbDialogOpen(true);
+      handleOpenMasterDb();
   };
 
   const handleBulkImportAuthSuccess = () => {
@@ -210,9 +222,7 @@ export default function SettingsPage() {
                 triggerText="Open Terminal"
                 isManual={true}
                 onManualClick={() => setIsBulkAuthOpen(true)}
-            >
-                <BulkImportTerminal />
-            </DialogCard>
+            />
 
             <DialogCard
                 icon={KeyRound}
@@ -229,41 +239,9 @@ export default function SettingsPage() {
                 title="Master Database"
                 description="Direct access to the source Google Sheet registry."
                 triggerText="Explore Sheet"
-                dialogClassName="sm:max-w-md"
-                onOpen={handleOpenMasterDb}
-            >
-                <div className="space-y-6 py-2">
-                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                        <div className="space-y-1">
-                            <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Structural Warning</p>
-                            <p className="text-[10px] text-yellow-700/80 font-medium leading-relaxed">
-                                Manual changes to column headers or sheet names can break the synchronization engine. Avoid renaming tabs or shifting the primary data structure.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    {dbUrl ? (
-                        <Button 
-                            asChild 
-                            className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
-                        >
-                            <a href={dbUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-5 w-5" />
-                                Launch Spreadsheet
-                            </a>
-                        </Button>
-                    ) : (
-                        <Button 
-                            disabled 
-                            className="w-full h-14 rounded-2xl font-black uppercase tracking-widest opacity-50"
-                        >
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Authenticating Session...
-                        </Button>
-                    )}
-                </div>
-            </DialogCard>
+                isManual={true}
+                onManualClick={() => setIsDbAuthOpen(true)}
+            />
 
             <DialogCard
                 icon={ShieldCheck}
@@ -279,13 +257,73 @@ export default function SettingsPage() {
 
       </div>
 
+      {/* MASTER DATABASE ACCESS DIALOG */}
+      <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>
+          <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-6">
+              <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter">
+                      <Database className="h-7 w-7 text-primary" />
+                      Master Database
+                  </DialogTitle>
+                  <DialogDescription>
+                      Secure access terminal for the source registry.
+                  </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                          <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Structural Warning</p>
+                          <p className="text-[10px] text-yellow-700/80 font-medium leading-relaxed">
+                              Manual changes to column headers or sheet names can break the synchronization engine. Avoid renaming tabs or shifting the primary data structure.
+                          </p>
+                      </div>
+                  </div>
+                  
+                  {dbUrl ? (
+                      <Button 
+                          asChild 
+                          className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                      >
+                          <a href={dbUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 h-5 w-5" />
+                              Launch Spreadsheet
+                          </a>
+                      </Button>
+                  ) : (
+                      <Button 
+                          disabled 
+                          className="w-full h-14 rounded-2xl font-black uppercase tracking-widest opacity-50"
+                      >
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Authenticating Session...
+                      </Button>
+                  )}
+              </div>
+              <DialogFooter>
+                  <DialogClose asChild>
+                      <Button variant="ghost" className="font-bold">Close Terminal</Button>
+                  </DialogClose>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
       {/* SECURE TERMINAL DIALOGS */}
+      <AuthorizeActionDialog 
+        isOpen={isDbAuthOpen}
+        onOpenChange={setIsDbAuthOpen}
+        onAuthorizationSuccess={handleDbAuthSuccess}
+        fixedIdentifier={user?.email || undefined}
+        actionDescription={`Administrative identity verification for ${user?.email || 'Administrator'}. Please enter your login password to unlock the master database link.`}
+      />
+
       <AuthorizeActionDialog 
         isOpen={isBulkAuthOpen}
         onOpenChange={setIsBulkAuthOpen}
         onAuthorizationSuccess={handleBulkImportAuthSuccess}
         fixedIdentifier={user?.email || undefined}
-        actionDescription={`Administrative identity verification for ${user?.email || 'Administrator'}. Please enter your local access key to unlock high-volume tools.`}
+        actionDescription={`Administrative identity verification for ${user?.email || 'Administrator'}. Please enter your login password to unlock high-volume tools.`}
       />
 
       <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
