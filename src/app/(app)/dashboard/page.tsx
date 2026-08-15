@@ -3,7 +3,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw, Layers } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw, Layers, Globe } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -383,7 +383,7 @@ function QuickAuthorizeCard() {
         grantProactiveEntry(selectedStaff, grantParams?.duration);
         toast({
             title: "Access Granted",
-            description: `Authorization sent to ${selectedStaff}.`,
+            description: selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "Silent mode active for all users." : `Authorization sent to ${selectedStaff}.`,
         });
         setSelectedStaff("");
         setGrantParams(null);
@@ -405,7 +405,7 @@ function QuickAuthorizeCard() {
                             className="w-full h-11 text-xs justify-between font-black uppercase tracking-tight rounded-2xl border-primary/5 bg-muted/20"
                         >
                             <div className="flex items-center gap-2 truncate">
-                                <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                                {selectedStaff === "ALL PERSONNEL (GLOBAL)" ? <Globe className="h-3.5 w-3.5 text-primary shrink-0" /> : <User className="h-3.5 w-3.5 text-primary shrink-0" />}
                                 {selectedStaff || "Select Staff"}
                             </div>
                             <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -416,7 +416,21 @@ function QuickAuthorizeCard() {
                             <CommandInput placeholder="Search staff..." className="h-11 text-xs" />
                             <CommandList>
                                 <CommandEmpty className="text-xs py-4 text-center">No personnel found.</CommandEmpty>
-                                <CommandGroup>
+                                <CommandGroup heading="Broadcast Control">
+                                    <CommandItem
+                                        value="ALL PERSONNEL (GLOBAL)"
+                                        onSelect={() => {
+                                            setSelectedStaff("ALL PERSONNEL (GLOBAL)");
+                                            setStaffPopoverOpen(false);
+                                        }}
+                                        className="text-xs font-black text-primary h-10 px-4"
+                                    >
+                                        <Globe className="mr-2 h-4 w-4" />
+                                        ALL PERSONNEL (GLOBAL)
+                                        <Check className={cn("ml-auto h-4 w-4", selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "opacity-100" : "opacity-0")} />
+                                    </CommandItem>
+                                </CommandGroup>
+                                <CommandGroup heading="Individual Registry">
                                     {uniqueStaffNames.map(name => (
                                         <CommandItem 
                                             key={name} 
@@ -459,7 +473,7 @@ function QuickAuthorizeCard() {
             isOpen={isAuthDialogOpen}
             onOpenChange={setIsAuthDialogOpen}
             onAuthorizationSuccess={handleAuthorizationSuccess}
-            actionDescription={`Granting special silent mode access to ${selectedStaff}.`}
+            actionDescription={selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "Initiating global silent mode authorization. All personnel will bypass alerts." : `Granting special silent mode access to ${selectedStaff}.`}
         />
         </>
     );
@@ -489,39 +503,47 @@ function ActiveAuthorizations() {
                 </Badge>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeSessions.map(session => (
-                    <Card key={session.id} className="border-green-500/10 bg-green-500/[0.02] shadow-none rounded-2xl overflow-hidden flex flex-col group">
-                        <CardContent className="p-4 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-black tracking-tight">{session.staffName}</span>
-                                    <span className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest">{session.type === 'timed' ? 'Timed' : 'Single'} Entry</span>
-                                </div>
-                                <div className="py-2 px-3 bg-white dark:bg-black/20 rounded-xl border-2 border-primary/10 shadow-inner flex flex-col items-center">
-                                    <span className="text-[7px] font-black uppercase text-primary tracking-widest mb-0.5">Key</span>
-                                    <span className="font-black text-sm text-primary tracking-[0.2em] font-mono leading-none">{session.otp || '----'}</span>
-                                </div>
-                            </div>
-                            <div className="flex justify-between items-center text-[10px]">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-lg px-2"
-                                    onClick={() => handleRevokeClick(session.id, session.staffName)}
-                                >
-                                    <Ban className="mr-1.5 h-3 w-3" />
-                                    Revoke
-                                </Button>
-                                {session.expiresAt && (
-                                    <div className="flex items-center gap-1.5 text-muted-foreground font-bold">
-                                        <Timer className="h-3 w-3 text-destructive" />
-                                        <span className="text-destructive">{format(parseISO(session.expiresAt), 'HH:mm')}</span>
+                {activeSessions.map(session => {
+                    const isGlobal = session.staffName === "ALL PERSONNEL (GLOBAL)";
+                    return (
+                        <Card key={session.id} className={cn("border-green-500/10 bg-green-500/[0.02] shadow-none rounded-2xl overflow-hidden flex flex-col group", isGlobal && "border-primary/20 bg-primary/[0.02]")}>
+                            <CardContent className="p-4 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("p-2 rounded-xl", isGlobal ? "bg-primary/10 text-primary" : "bg-green-500/10 text-green-600")}>
+                                            {isGlobal ? <Globe className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black tracking-tight">{isGlobal ? "Universal Grant" : session.staffName}</span>
+                                            <span className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest">{session.type === 'timed' ? 'Timed' : 'Single'} Entry</span>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                                    <div className="py-2 px-3 bg-white dark:bg-black/20 rounded-xl border-2 border-primary/10 shadow-inner flex flex-col items-center">
+                                        <span className="text-[7px] font-black uppercase text-primary tracking-widest mb-0.5">Key</span>
+                                        <span className="font-black text-sm text-primary tracking-[0.2em] font-mono leading-none">{session.otp || '----'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-lg px-2"
+                                        onClick={() => handleRevokeClick(session.id, session.staffName)}
+                                    >
+                                        <Ban className="mr-1.5 h-3 w-3" />
+                                        Revoke
+                                    </Button>
+                                    {session.expiresAt && (
+                                        <div className="flex items-center gap-1.5 text-muted-foreground font-bold">
+                                            <Timer className="h-3 w-3 text-destructive" />
+                                            <span className="text-destructive">{format(parseISO(session.expiresAt), 'HH:mm')}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );
@@ -587,7 +609,11 @@ function ProactiveGrantDialog({
                         Authorize Mode
                     </DialogTitle>
                     <DialogDescription className="font-medium text-sm pt-2">
-                        Granting silent access for <span className="font-black text-slate-900 dark:text-white">{staffName}</span>.
+                        {staffName === "ALL PERSONNEL (GLOBAL)" ? (
+                            "Initiating universal silent entry. This will apply to all personnel currently logged into the registry terminal."
+                        ) : (
+                            <>Granting silent access for <span className="font-black text-slate-900 dark:text-white">{staffName}</span>.</>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">

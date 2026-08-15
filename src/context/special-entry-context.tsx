@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
@@ -73,22 +74,23 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
     const currentEmail = user.email.toLowerCase().trim();
 
-    const myApprovedSessions = specialRequests.filter(r => 
-      (r.userEmail?.toLowerCase().trim() === currentEmail) && 
+    // SESSIONS VISIBLE TO THIS USER: Their own or Global ones
+    const sessionsVisibleToMe = specialRequests.filter(r => 
+      (r.userEmail?.toLowerCase().trim() === currentEmail || r.staffName === "ALL PERSONNEL (GLOBAL)") && 
       r.status === 'approved' && 
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
 
-    if (myApprovedSessions.length > prevApprovedCountRef.current && role === 'viewer') {
+    if (sessionsVisibleToMe.length > prevApprovedCountRef.current && role === 'viewer') {
         toast({
-            title: "Request Updated!",
-            description: "An administrator has processed your request. Check notifications for details.",
+            title: "Authorization Alert",
+            description: "A silent mode grant is available for activation.",
         });
     }
-    prevApprovedCountRef.current = myApprovedSessions.length;
+    prevApprovedCountRef.current = sessionsVisibleToMe.length;
 
-    const currentActive = myApprovedSessions.find(r => r.id === activatedSessionId);
-    const firstUnactivated = myApprovedSessions.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
+    const currentActive = sessionsVisibleToMe.find(r => r.id === activatedSessionId);
+    const firstUnactivated = sessionsVisibleToMe.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
 
     if (currentActive) {
         setActiveSession(currentActive);
@@ -152,8 +154,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
     if (!user) return;
     
-    const existingReq = specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase());
-    const targetEmail = existingReq?.userEmail?.toLowerCase().trim() || "viewer@example.com"; 
+    const isGlobal = staffName === "ALL PERSONNEL (GLOBAL)";
+    const targetEmail = isGlobal ? "broadcast@system.com" : (specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase())?.userEmail?.toLowerCase().trim() || "viewer@example.com"); 
 
     const now = new Date();
     const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
