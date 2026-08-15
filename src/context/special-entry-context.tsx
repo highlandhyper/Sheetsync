@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
@@ -84,9 +83,10 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     // Alert if new authorization key is available
     if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
         const latest = sessionsVisibleToMe[0];
+        // PROACTIVE TOAST: Show the OTP immediately in the popup toast
         toast({
-            title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Grant Active" : "Authorization Key Ready",
-            description: "Check your security notifications for the activation OTP.",
+            title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Key Active" : "Authorization Key Ready",
+            description: `KEY GRANTED: ${latest.otp}. Enter this on the Log Item page.`,
         });
     }
     prevApprovedCountRef.current = sessionsVisibleToMe.length;
@@ -176,7 +176,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       expiresAt: expiresAt,
       grantedByAdmin: true,
       otp: otp,
-      isDismissedByAdmin: false, // Ensure it shows up for admins as well in their notification center
+      isDismissedByAdmin: false, 
       isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
