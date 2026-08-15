@@ -1,10 +1,12 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useMemo, useCallback } from 'react';
+import { createContext, useContext, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { AppNotification, SpecialEntryRequest } from '@/lib/types';
 import { useDataCache } from './data-cache-context';
 import { useAuth } from './auth-context';
+import { useGeneralSettings } from './general-settings-context';
 import { isAfter, subHours, parseISO } from 'date-fns';
 
 interface NotificationContextType {
@@ -14,6 +16,7 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   clearAll: () => void;
   addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => void;
+  requestPermission: () => Promise<boolean>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -21,24 +24,22 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: PropsWithChildren) {
   const { specialRequests, updateSpecialRequests } = useDataCache();
   const { user: authUser, role } = useAuth();
+  const { settings } = useGeneralSettings();
+  const prevNotificationsCountRef = useRef(0);
 
   const notifications = useMemo(() => {
-    // Safety check: Don't process if user/role is missing
     if (!role || !authUser?.email) return [];
 
     const list: AppNotification[] = [];
     const currentEmail = authUser.email.toLowerCase().trim();
-    // Show notifications from the last 48 hours to ensure visibility across shifts
     const threshold = subHours(new Date(), 48); 
 
     specialRequests.forEach((req: SpecialEntryRequest) => {
       const reqEmail = (req.userEmail || "").toLowerCase().trim();
       const reqDate = parseISO(req.requestedAt);
       
-      // TTL Check: Filter out old records
       if (!isAfter(reqDate, threshold)) return;
 
-      // ADMIN VIEW: See pending requests that aren't dismissed
       if (role === 'admin') {
         if (req.status === 'pending' && !req.isDismissedByAdmin) {
           if (req.type === 'product_add') {
@@ -83,8 +84,6 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         }
       }
 
-      // VIEWER VIEW: See their own approved/rejected status
-      // We use case-insensitive matching for the email
       if (role === 'viewer' && reqEmail === currentEmail) {
         if (req.status === 'approved' || req.status === 'rejected') {
           let title = '';
@@ -122,9 +121,42 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       }
     });
 
-    // Return sorted by newest first
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [specialRequests, role, authUser]);
+
+  // NATIVE BROWSER NOTIFICATION ENGINE
+  useEffect(() => {
+    if (!settings.isBrowserNotificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    if (notifications.length > prevNotificationsCountRef.current) {
+      const latest = notifications[0]; // Newest is at index 0
+      if (!latest.isRead) {
+        let body = latest.message;
+        if (latest.metadata?.otp) {
+            body = `KEY GRANTED: Your OTP is ${latest.metadata.otp}. ${latest.message}`;
+        }
+
+        try {
+            new Notification(`SheetSync: ${latest.title}`, {
+                body,
+                icon: '/logo-pwa.jpg',
+                tag: latest.id,
+                requireInteraction: latest.type === 'request' || !!latest.metadata?.otp
+            });
+        } catch (e) {
+            console.warn("Browser Notifications failed to fire.");
+        }
+      }
+    }
+    prevNotificationsCountRef.current = notifications.length;
+  }, [notifications, settings.isBrowserNotificationsEnabled]);
+
+  const requestPermission = useCallback(async () => {
+      if (typeof window === 'undefined' || !('Notification' in window)) return false;
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+  }, []);
 
   const markAsRead = useCallback(async (id: string) => {
     const requestId = id.startsWith('notif_') ? id.replace('notif_', '') : id;
@@ -151,9 +183,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     await markAllAsRead();
   }, [markAllAsRead]);
 
-  const addNotification = useCallback(() => {
-    // This is currently handled by the data sync engine
-  }, []);
+  const addNotification = useCallback(() => {}, []);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
 
@@ -163,8 +193,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     markAsRead,
     markAllAsRead,
     clearAll,
-    addNotification
-  }), [notifications, unreadCount, markAsRead, markAllAsRead, clearAll, addNotification]);
+    addNotification,
+    requestPermission
+  }), [notifications, unreadCount, markAsRead, markAllAsRead, clearAll, addNotification, requestPermission]);
 
   return (
     <NotificationContext.Provider value={value}>

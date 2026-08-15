@@ -1,13 +1,9 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-
-interface GeneralSettings {
-  showAdminWelcome: boolean;
-  inactivityTimeout: number; // in minutes
-  isLockOnInactivityEnabled: boolean;
-}
+import type { GeneralSettings } from '@/lib/types';
 
 interface GeneralSettingsContextType {
   settings: GeneralSettings;
@@ -23,6 +19,7 @@ const defaultSettings: GeneralSettings = {
   showAdminWelcome: true,
   inactivityTimeout: 5,
   isLockOnInactivityEnabled: true,
+  isBrowserNotificationsEnabled: false,
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {

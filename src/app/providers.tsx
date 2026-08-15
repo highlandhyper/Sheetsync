@@ -20,24 +20,24 @@ export function Providers({ children }: PropsWithChildren) {
       enableSystem
       disableTransitionOnChange
     >
-      <LocalSettingsAuthProvider>
-        <AuthProvider>
-          <DataCacheProvider>
-            <NotificationProvider>
-              <SpecialEntryProvider>
-                <AccessControlProvider>
-                  <GeneralSettingsProvider>
+      <GeneralSettingsProvider>
+        <LocalSettingsAuthProvider>
+          <AuthProvider>
+            <DataCacheProvider>
+              <NotificationProvider>
+                <SpecialEntryProvider>
+                  <AccessControlProvider>
                     <MultiSelectProvider>
                       {children}
                       <Toaster />
                     </MultiSelectProvider>
-                  </GeneralSettingsProvider>
-                </AccessControlProvider>
-              </SpecialEntryProvider>
-            </NotificationProvider>
-          </DataCacheProvider>
-        </AuthProvider>
-      </LocalSettingsAuthProvider>
+                  </AccessControlProvider>
+                </SpecialEntryProvider>
+              </NotificationProvider>
+            </DataCacheProvider>
+          </AuthProvider>
+        </LocalSettingsAuthProvider>
+      </GeneralSettingsProvider>
     </ThemeProvider>
   );
 }
