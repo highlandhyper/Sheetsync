@@ -144,23 +144,69 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
   }, []);
 }
 
+/**
+ * FETCH AUDIT LOGS: Industrial Retention Protocol
+ * Fetches everything in range and filters locally for the last 365 days.
+ * Returns up to 10,000 records sorted by newest first.
+ */
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (!data || data.length === 0) return [];
-  const recentData = data.slice(-300);
-  return recentData.map((r, i) => ({
-    id: `a_${i}`,
-    timestamp: parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP])?.toISOString() || new Date().toISOString(),
-    user: String(r[AUDIT_COL_USER] || 'Unknown'),
-    action: String(r[AUDIT_COL_ACTION] || ''),
-    target: String(r[AUDIT_COL_TARGET] || ''),
-    details: String(r[AUDIT_COL_DETAILS] || ''),
-  })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  
+  const oneYearAgo = subDays(new Date(), 365);
+  
+  const logs = data.map((r, i) => {
+    const ts = parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP]);
+    return {
+      id: `a_${i}`,
+      timestamp: ts?.toISOString() || new Date().toISOString(),
+      user: String(r[AUDIT_COL_USER] || 'Unknown'),
+      action: String(r[AUDIT_COL_ACTION] || ''),
+      target: String(r[AUDIT_COL_TARGET] || ''),
+      details: String(r[AUDIT_COL_DETAILS] || ''),
+      _date: ts
+    };
+  });
+
+  return logs
+    .filter(log => log._date && isAfter(log._date, oneYearAgo))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10000)
+    .map(({ _date, ...rest }) => rest) as AuditLogEntry[];
+}
+
+/**
+ * MAINTENANCE: Prune logs older than 1 year to preserve Sheet performance.
+ */
+export async function pruneAuditLogs() {
+    const data = await readSheetData(AUDIT_LOG_READ_RANGE);
+    if (!data || data.length < 500) return; // Don't prune small datasets
+
+    const oneYearAgo = subDays(new Date(), 365);
+    const rowsToDelete: number[] = [];
+
+    data.forEach((row, i) => {
+        const ts = parseFlexibleTimestamp(row[AUDIT_COL_TIMESTAMP]);
+        if (ts && isBefore(ts, oneYearAgo)) {
+            rowsToDelete.push(i + 2); // A2 is data start
+        }
+    });
+
+    if (rowsToDelete.length > 0) {
+        // Sequential batch deletion to avoid Google API timeouts
+        await deleteSheetRowsBatch(AUDIT_LOG_SHEET_NAME, rowsToDelete);
+        console.log(`Pruned ${rowsToDelete.length} expired audit logs.`);
+    }
 }
 
 export async function logAuditEvent(user: string, action: string, target: string, details: string) {
   const ts = format(new Date(), "yyyy-MM-dd HH:mm:ss");
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);
+  
+  // LOG ROTATION PROTOCOL: 1% probability of cleanup on every write
+  if (Math.random() < 0.01) {
+      pruneAuditLogs().catch(err => console.error("Auto-pruning failed:", err));
+  }
 }
 
 export async function getAppMetaData() {
