@@ -81,10 +81,12 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
 
-    if (sessionsVisibleToMe.length > prevApprovedCountRef.current && role === 'viewer') {
+    // Alert if new authorization key is available
+    if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
+        const latest = sessionsVisibleToMe[0];
         toast({
-            title: "Authorization Alert",
-            description: "A silent mode grant is available for activation.",
+            title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Grant Active" : "Authorization Key Ready",
+            description: "Check your security notifications for the activation OTP.",
         });
     }
     prevApprovedCountRef.current = sessionsVisibleToMe.length;
@@ -174,7 +176,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       expiresAt: expiresAt,
       grantedByAdmin: true,
       otp: otp,
-      isDismissedByAdmin: true,
+      isDismissedByAdmin: false, // Ensure it shows up for admins as well in their notification center
       isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
