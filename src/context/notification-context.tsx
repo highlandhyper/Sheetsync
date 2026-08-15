@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -25,7 +24,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const { specialRequests, updateSpecialRequests } = useDataCache();
   const { user: authUser, role } = useAuth();
   const { settings } = useGeneralSettings();
-  const prevNotificationsCountRef = useRef(0);
+  const prevApprovedIdsRef = useRef<Set<string>>(new Set());
 
   const notifications = useMemo(() => {
     if (!role || !authUser?.email) return [];
@@ -83,7 +82,6 @@ export function NotificationProvider({ children }: PropsWithChildren) {
             });
           }
         } else if (isGlobal && req.status === 'approved' && !req.isDismissedByAdmin) {
-            // Admin also gets a record of the global OTP they just generated
             list.push({
                 id: `notif_${req.id}`,
                 title: 'Global Silent Mode Active',
@@ -100,7 +98,6 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         }
       }
 
-      // VIEWERS: Show their own approvals OR any Global Approval
       if (role === 'viewer' && (reqEmail === currentEmail || isGlobal)) {
         if (req.status === 'approved' || req.status === 'rejected') {
           let title = '';
@@ -141,32 +138,40 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [specialRequests, role, authUser]);
 
-  // NATIVE BROWSER NOTIFICATION ENGINE
+  // NATIVE PUSH DISPATCHER: Dispatches browser notifications for newly approved sessions
   useEffect(() => {
     if (!settings.isBrowserNotificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
-    if (notifications.length > prevNotificationsCountRef.current) {
-      const latest = notifications[0]; // Newest is at index 0
-      if (!latest.isRead) {
-        let body = latest.message;
-        if (latest.metadata?.otp) {
-            body = `KEY GRANTED: Your OTP is ${latest.metadata.otp}. ${latest.message}`;
+    // Detect state changes (from pending to approved)
+    const newlyApproved = notifications.filter(n => {
+        const isAuth = n.metadata?.type === 'authorization';
+        const isNew = !prevApprovedIdsRef.current.has(n.id);
+        return isAuth && isNew && !n.isRead;
+    });
+
+    newlyApproved.forEach(n => {
+        let body = n.message;
+        if (n.metadata?.otp) {
+            body = `KEY GRANTED: Your OTP is ${n.metadata.otp}. ${n.message}`;
         }
 
         try {
-            new Notification(`SheetSync: ${latest.title}`, {
+            new Notification(`SheetSync: ${n.title}`, {
                 body,
                 icon: '/logo-pwa.jpg',
-                tag: latest.id,
-                requireInteraction: latest.type === 'request' || !!latest.metadata?.otp
+                tag: n.id,
+                requireInteraction: true
             });
         } catch (e) {
             console.warn("Browser Notifications failed to fire.");
         }
-      }
-    }
-    prevNotificationsCountRef.current = notifications.length;
+    });
+
+    // Update historical approved set
+    const currentApprovedIds = new Set(notifications.filter(n => n.type === 'success').map(n => n.id));
+    prevApprovedIdsRef.current = currentApprovedIds;
+    
   }, [notifications, settings.isBrowserNotificationsEnabled]);
 
   const requestPermission = useCallback(async () => {
