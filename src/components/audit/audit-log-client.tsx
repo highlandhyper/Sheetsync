@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AuditLogEntry } from '@/lib/types';
-import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info, FileText } from 'lucide-react';
+import { Search, FilterX, CalendarIcon, User, Tag, Crosshair, Info, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
@@ -19,9 +19,9 @@ import { Calendar } from '../ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '../ui/separator';
 
-
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
+const ITEMS_PER_PAGE = 50;
 
 const formatActionString = (action: string) => {
   if (!action) return '';
@@ -43,7 +43,13 @@ export function AuditLogClient() {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   
+  const [currentPage, setCurrentPage] = useState(1);
   const isMobile = useIsMobile();
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedUser, selectedAction, selectedDateRange]);
 
   const { uniqueUsers, uniqueActions } = useMemo(() => {
     if (!allLogs) return { uniqueUsers: [], uniqueActions: [] };
@@ -96,6 +102,13 @@ export function AuditLogClient() {
     return logs;
   }, [allLogs, searchTerm, selectedUser, selectedAction, selectedDateRange]);
 
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedUser(ALL_USERS_VALUE);
@@ -106,6 +119,57 @@ export function AuditLogClient() {
   const handleOpenDetails = (log: AuditLogEntry) => {
     setSelectedLog(log);
     setIsDetailsDialogOpen(true);
+  };
+
+  const PaginationControls = () => {
+      if (totalPages <= 1) return null;
+      return (
+          <div className="flex items-center justify-center gap-2 py-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                  <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                  <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="flex items-center gap-1 mx-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Page</span>
+                  <span className="text-sm font-black text-primary">{currentPage}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">of {totalPages}</span>
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                  <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                  <ChevronsRight className="h-4 w-4" />
+              </Button>
+          </div>
+      );
   };
   
   return (
@@ -162,11 +226,18 @@ export function AuditLogClient() {
         </CardContent>
       </Card>
 
+      <div className="flex items-center justify-between px-1">
+          <Badge variant="outline" className="font-black uppercase tracking-tighter text-[9px] bg-muted/20 border-white/5 py-1">
+              Found {filteredLogs.length} Security Records
+          </Badge>
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-40 italic">RETENTION: 365 DAYS</span>
+      </div>
+
       <Card className="shadow-md">
         {isMobile ? (
            <div className="space-y-4 p-4">
-            {filteredLogs.length > 0 ? (
-              filteredLogs.map(log => (
+            {paginatedLogs.length > 0 ? (
+              paginatedLogs.map(log => (
                 <Card key={log.id} className="w-full">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
@@ -213,8 +284,8 @@ export function AuditLogClient() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.length > 0 ? (
-                filteredLogs.map(log => (
+              {paginatedLogs.length > 0 ? (
+                paginatedLogs.map(log => (
                   <TableRow key={log.id}>
                     <TableCell className="text-xs whitespace-nowrap">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
                     <TableCell className="font-medium break-all">{log.user}</TableCell>
@@ -235,6 +306,7 @@ export function AuditLogClient() {
             </TableBody>
           </Table>
         )}
+        <PaginationControls />
       </Card>
       
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
