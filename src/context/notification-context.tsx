@@ -37,6 +37,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     specialRequests.forEach((req: SpecialEntryRequest) => {
       const reqEmail = (req.userEmail || "").toLowerCase().trim();
       const reqDate = parseISO(req.requestedAt);
+      const isGlobal = req.staffName === "ALL PERSONNEL (GLOBAL)";
       
       if (!isAfter(reqDate, threshold)) return;
 
@@ -81,10 +82,26 @@ export function NotificationProvider({ children }: PropsWithChildren) {
               link: '/dashboard'
             });
           }
+        } else if (isGlobal && req.status === 'approved' && !req.isDismissedByAdmin) {
+            // Admin also gets a record of the global OTP they just generated
+            list.push({
+                id: `notif_${req.id}`,
+                title: 'Global Silent Mode Active',
+                message: `Universal authorization key generated for all personnel.`,
+                timestamp: req.approvedAt || req.requestedAt,
+                type: 'success',
+                isRead: false,
+                metadata: {
+                    requestId: req.id,
+                    otp: req.otp,
+                    type: 'authorization'
+                }
+            });
         }
       }
 
-      if (role === 'viewer' && reqEmail === currentEmail) {
+      // VIEWERS: Show their own approvals OR any Global Approval
+      if (role === 'viewer' && (reqEmail === currentEmail || isGlobal)) {
         if (req.status === 'approved' || req.status === 'rejected') {
           let title = '';
           let message = '';
@@ -96,9 +113,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
                 ? `Your update for ${req.editDetails?.productName} has been applied to the catalog.`
                 : `Your edit request for ${req.editDetails?.productName} was declined.`;
           } else {
-            title = req.status === 'approved' ? 'Access Authorized' : 'Request Declined';
+            title = isGlobal ? 'System-Wide Authorization' : (req.status === 'approved' ? 'Access Authorized' : 'Request Declined');
             message = req.status === 'approved' 
-              ? `Your silent mode request for ${req.staffName} was granted. Use the code below to activate.`
+              ? `${isGlobal ? 'Global silent mode' : 'Your request'} was granted. Use the code below to activate.`
               : `Your request for ${req.staffName} was declined by an administrator.`;
             link = req.status === 'approved' ? '/inventory/add' : undefined;
           }
@@ -173,7 +190,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     const updated = specialRequests.map(req => {
       const reqEmail = (req.userEmail || "").toLowerCase().trim();
       if (role === 'admin' && req.status === 'pending') return { ...req, isDismissedByAdmin: true };
-      if (role === 'viewer' && reqEmail === currentEmail) return { ...req, isReadByUser: true };
+      if (role === 'viewer' && (reqEmail === currentEmail || req.staffName === "ALL PERSONNEL (GLOBAL)")) return { ...req, isReadByUser: true };
       return req;
     });
     await updateSpecialRequests(updated);
