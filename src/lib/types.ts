@@ -170,3 +170,10 @@ export interface OfflineAction {
   timestamp: string;
   retryCount?: number;
 }
+
+export interface GeneralSettings {
+  showAdminWelcome: boolean;
+  inactivityTimeout: number;
+  isLockOnInactivityEnabled: boolean;
+  isBrowserNotificationsEnabled: boolean;
+}

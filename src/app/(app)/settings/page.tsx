@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -21,7 +22,9 @@ import {
     Globe,
     Layers,
     Shield,
-    Terminal
+    Terminal,
+    Bell,
+    CheckCircle2
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -40,6 +43,10 @@ import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useGeneralSettings } from '@/context/general-settings-context';
+import { useNotifications } from '@/context/notification-context';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface SettingsCardProps {
   icon: React.ElementType;
@@ -86,7 +93,6 @@ function SettingsCard({
 
   return (
     <Card className="group relative flex flex-col h-full border-white/5 bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden shadow-none hover:border-primary/20 transition-all duration-500">
-      {/* CARD DECORATION */}
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
          {badge && (
              <Badge variant="outline" className="font-black text-[8px] uppercase tracking-widest border-primary/20 text-primary bg-primary/5">
@@ -149,6 +155,55 @@ function SettingsCard({
   );
 }
 
+function NotificationTerminal() {
+    const { settings, setSetting } = useGeneralSettings();
+    const { requestPermission } = useNotifications();
+    const { toast } = useToast();
+    const [isRequesting, setIsRequesting] = React.useState(false);
+
+    const handleToggle = async (enabled: boolean) => {
+        if (enabled) {
+            setIsRequesting(true);
+            const granted = await requestPermission();
+            setIsRequesting(false);
+            
+            if (granted) {
+                setSetting('isBrowserNotificationsEnabled', true);
+                toast({ title: "Alerts Enabled", description: "Browser notifications are now active." });
+            } else {
+                toast({ variant: "destructive", title: "Action Required", description: "Please enable notification permissions in your browser settings." });
+            }
+        } else {
+            setSetting('isBrowserNotificationsEnabled', false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="rounded-[2rem] border-2 border-primary/5 p-8 bg-muted/5 shadow-inner">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="space-y-1">
+                        <h3 className="text-base font-black uppercase tracking-widest">OS System Alerts</h3>
+                        <p className="text-muted-foreground text-xs font-medium leading-relaxed uppercase tracking-tight">Receive OTPs and security alerts directly on your device screen.</p>
+                    </div>
+                    <Switch 
+                        checked={settings.isBrowserNotificationsEnabled} 
+                        onCheckedChange={handleToggle}
+                        disabled={isRequesting}
+                    />
+                </div>
+                
+                {settings.isBrowserNotificationsEnabled && (
+                    <div className="py-4 px-6 bg-green-500/5 border border-green-500/10 rounded-2xl flex items-center gap-4 animate-in zoom-in-95 duration-300">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-green-700">Native Protocol Online</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function SettingsPage() {
   const { role, user } = useAuth();
   const { toast } = useToast();
@@ -197,7 +252,6 @@ export default function SettingsPage() {
 
   return (
     <div className="container max-w-7xl mx-auto p-4 sm:p-8 lg:p-12 pb-32 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-      {/* SYSTEM HEADER */}
       <div className="flex flex-col gap-2 mb-16 relative">
         <div className="absolute -left-12 top-0 h-full w-1 bg-primary/20 rounded-full hidden lg:block" />
         <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
@@ -206,7 +260,7 @@ export default function SettingsPage() {
         </h1>
         <div className="flex items-center gap-4 ml-1">
             <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.6em] opacity-40">
-                Operational Registry Control • v4.0.2
+                Operational Registry Control • v4.1.0
             </p>
             <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-2 py-0.5 animate-pulse">Live Link Active</Badge>
         </div>
@@ -214,7 +268,6 @@ export default function SettingsPage() {
 
       <div className="space-y-24">
         
-        {/* SECTION 01: INTERFACE PROTOCOL */}
         <div className="space-y-8">
             <div className="flex items-center gap-4 px-1">
                 <div className="text-3xl font-black text-primary/10 tracking-tighter">01</div>
@@ -243,6 +296,16 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </SettingsCard>
+
+                <SettingsCard
+                    icon={Bell}
+                    title="Communication"
+                    description="Configure how the system delivers OTP keys and security alerts."
+                    triggerText="Alert Settings"
+                    badge="PUSH OPS"
+                >
+                    <NotificationTerminal />
+                </SettingsCard>
                 
                 {role === 'admin' && (
                     <SettingsCard
@@ -270,13 +333,12 @@ export default function SettingsPage() {
             </div>
         </div>
 
-        {/* SECTION 02: WAREHOUSE LOGIC */}
         {role === 'admin' && (
             <div className="space-y-8">
                 <div className="flex items-center gap-4 px-1">
                     <div className="text-3xl font-black text-primary/10 tracking-tighter">02</div>
                     <h2 className="text-sm font-black uppercase tracking-[0.4em] text-primary">Warehouse Logic</h2>
-                    <div className="h-px flex-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
+                    <div className="h-px flex-1 bg- gradient-to-r from-primary/10 via-primary/5 to-transparent" />
                 </div>
                 <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <SettingsCard
@@ -318,7 +380,6 @@ export default function SettingsPage() {
             </div>
         )}
 
-        {/* SECTION 03: DATA CORE */}
         {role === 'admin' && (
             <div className="space-y-8">
                 <div className="flex items-center gap-4 px-1">
@@ -374,7 +435,6 @@ export default function SettingsPage() {
 
       </div>
 
-      {/* SECURE OVERLAYS */}
       <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>
           <DialogContent className="sm:max-w-lg rounded-[3rem] border-none shadow-3xl p-0 overflow-hidden bg-background">
               <div className="p-10 pb-4">
