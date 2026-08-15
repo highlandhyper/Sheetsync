@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, BellOff, Zap } from 'lucide-react';
+import { ShieldCheck, KeyRound, Zap } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
@@ -67,26 +67,11 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
 
         <div className="p-6 space-y-6">
             <div className="space-y-4">
-                {/* PROMINENT KEY DISPLAY */}
-                {session.otp && (
-                    <div className="bg-primary/5 border-2 border-primary/10 rounded-2xl p-4 flex flex-col items-center text-center space-y-2 animate-in zoom-in-95 duration-500">
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Authorization Key Found</span>
-                        <div className="flex items-center gap-4">
-                            <KeyRound className="h-5 w-5 text-primary opacity-40" />
-                            <span className="text-4xl font-mono font-black text-primary tracking-[0.4em] leading-none ml-2">
-                                {session.otp}
-                            </span>
-                        </div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight pt-1">
-                            Grant Type: <span className="text-foreground">{session.type === 'single' ? 'Single Entry' : 'Timed Session'}</span>
-                        </p>
-                    </div>
-                )}
-
                 <div className="text-center px-2">
                     <DialogDescription className="text-xs font-medium leading-relaxed">
                         Administrator access has been granted for <span className="font-bold text-foreground">{session.staffName === "ALL PERSONNEL (GLOBAL)" ? "ALL PERSONNEL" : session.staffName}</span>.
-                        <br />Input the system key shown above to initialize silent logging.
+                        <br /><br />
+                        Please enter the 4-digit security key provided in your notifications to initialize silent logging.
                     </DialogDescription>
                 </div>
             </div>
