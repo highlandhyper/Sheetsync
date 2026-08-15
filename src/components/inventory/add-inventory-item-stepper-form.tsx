@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -182,7 +183,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   } = useForm<AddInventoryItemFormValues>({
     resolver: zodResolver(addInventoryItemSchema),
     defaultValues: {
-      staffName: activeSession?.staffName || '',
+      staffName: activeSession?.staffName !== "ALL PERSONNEL (GLOBAL)" ? (activeSession?.staffName || '') : '',
       itemType: 'Expiry',
       barcode: '',
       quantity: 1,
@@ -194,7 +195,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const allFormValues = watch();
 
   useEffect(() => {
-    if (activeSession?.staffName && !allFormValues.staffName) {
+    if (activeSession?.staffName && activeSession.staffName !== "ALL PERSONNEL (GLOBAL)" && !allFormValues.staffName) {
         setValue('staffName', activeSession.staffName);
     }
   }, [activeSession, setValue, allFormValues.staffName]);
@@ -442,6 +443,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     }
   }, [isScannerDialogOpen, onScanSuccess]);
 
+  const isGlobalSession = activeSession?.staffName === "ALL PERSONNEL (GLOBAL)";
+
   return (
     <>
     <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl">
@@ -465,8 +468,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             <SessionTimer expiresAt={activeSession.expiresAt} />
                         )}
                         <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">
-                            <BellOff className="h-3.5 w-3.5" />
-                            Authorized Silent Mode
+                            {isGlobalSession ? <Globe className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                            {isGlobalSession ? "Global Silent Mode" : "Authorized Silent Mode"}
                         </Badge>
                     </div>
                 )}
@@ -727,7 +730,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         {activeSession && (
                             <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-tight">
                                 <ShieldCheck className="h-4 w-4" />
-                                <span>Silent Entry Authorized - No Email Alert</span>
+                                <span>{isGlobalSession ? "Global Silent Mode Active - No Email Alert" : "Silent Entry Authorized - No Email Alert"}</span>
                             </div>
                         )}
                         {!isOnline && (
