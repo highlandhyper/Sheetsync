@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, BellOff } from 'lucide-react';
+import { ShieldCheck, KeyRound, BellOff, Zap } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 interface SpecialEntryActivationDialogProps {
   session: SpecialEntryRequest;
@@ -43,56 +44,84 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
       toast({
         variant: "destructive",
         title: "Activation Failed",
-        description: "The One-Time Password (OTP) is incorrect. Check your notifications.",
+        description: "The One-Time Password (OTP) is incorrect.",
       });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border-primary/20 shadow-2xl">
-        <DialogHeader className="text-center items-center">
-          <div className="bg-primary/10 p-4 rounded-full mb-2">
-            <BellOff className="h-8 w-8 text-primary" />
-          </div>
-          <DialogTitle className="text-2xl font-black tracking-tight">Activate Silent Mode</DialogTitle>
-          <DialogDescription className="text-center">
-            Access has been granted for <span className="font-bold text-foreground">{session.staffName}</span> ({session.type === 'single' ? 'Single Entry' : `${session.durationMinutes} Minutes`}). 
-            <br />Please enter the <span className="font-bold text-primary">4-Digit OTP</span> from your notification to proceed.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="py-6 space-y-4">
-          <div className="space-y-2 text-center">
-            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Verification Code Required</Label>
-            <div className="relative max-w-[200px] mx-auto">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    type="text" 
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={4} 
-                    value={otp}
-                    onChange={(e) => {
-                        setIsError(false);
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setOtp(val);
-                    }}
-                    className={isError ? "border-destructive text-center text-2xl tracking-[0.5em] font-mono h-12" : "text-center text-2xl tracking-[0.5em] font-mono h-12"}
-                    placeholder="****"
-                    autoFocus
-                    onKeyDown={(e) => e.key === 'Enter' && handleActivate()}
-                />
+      <DialogContent className="sm:max-w-md border-primary/20 shadow-2xl p-0 overflow-hidden rounded-3xl">
+        <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-xl">
+                    <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div>
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight leading-none">Security Handshake</DialogTitle>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">Personnel Authorization Required</p>
+                </div>
             </div>
-          </div>
+            <Zap className="h-5 w-5 opacity-40 animate-pulse" />
         </div>
 
-        <DialogFooter>
-          <Button onClick={handleActivate} className="w-full h-12 text-lg font-bold" disabled={otp.length < 4}>
-            <ShieldCheck className="mr-2 h-5 w-5" />
-            Verify OTP & Activate
+        <div className="p-6 space-y-6">
+            <div className="space-y-4">
+                {/* PROMINENT KEY DISPLAY */}
+                {session.otp && (
+                    <div className="bg-primary/5 border-2 border-primary/10 rounded-2xl p-4 flex flex-col items-center text-center space-y-2 animate-in zoom-in-95 duration-500">
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Authorization Key Found</span>
+                        <div className="flex items-center gap-4">
+                            <KeyRound className="h-5 w-5 text-primary opacity-40" />
+                            <span className="text-4xl font-mono font-black text-primary tracking-[0.4em] leading-none ml-2">
+                                {session.otp}
+                            </span>
+                        </div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight pt-1">
+                            Grant Type: <span className="text-foreground">{session.type === 'single' ? 'Single Entry' : 'Timed Session'}</span>
+                        </p>
+                    </div>
+                )}
+
+                <div className="text-center px-2">
+                    <DialogDescription className="text-xs font-medium leading-relaxed">
+                        Administrator access has been granted for <span className="font-bold text-foreground">{session.staffName === "ALL PERSONNEL (GLOBAL)" ? "ALL PERSONNEL" : session.staffName}</span>.
+                        <br />Input the system key shown above to initialize silent logging.
+                    </DialogDescription>
+                </div>
+            </div>
+            
+            <Separator className="bg-primary/5" />
+
+            <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block text-center">Verify Identity Key</Label>
+                <div className="relative max-w-[220px] mx-auto">
+                    <Input 
+                        type="text" 
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={4} 
+                        value={otp}
+                        onChange={(e) => {
+                            setIsError(false);
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setOtp(val);
+                        }}
+                        className={isError ? "border-destructive text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30" : "text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30 border-primary/20 focus:border-primary transition-all"}
+                        placeholder="----"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleActivate()}
+                    />
+                </div>
+            </div>
+        </div>
+
+        <div className="p-6 pt-0">
+          <Button onClick={handleActivate} className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20" disabled={otp.length < 4}>
+            <Zap className="mr-2 h-5 w-5 fill-primary-foreground" />
+            Initialize Session
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
