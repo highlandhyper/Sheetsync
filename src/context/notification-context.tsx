@@ -6,6 +6,7 @@ import type { AppNotification, SpecialEntryRequest } from '@/lib/types';
 import { useDataCache } from './data-cache-context';
 import { useAuth } from './auth-context';
 import { useGeneralSettings } from './general-settings-context';
+import { useToast } from '@/hooks/use-toast';
 import { isAfter, subHours, parseISO } from 'date-fns';
 
 interface NotificationContextType {
@@ -24,7 +25,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const { specialRequests, updateSpecialRequests } = useDataCache();
   const { user: authUser, role } = useAuth();
   const { settings } = useGeneralSettings();
+  const { toast } = useToast();
   const prevApprovedIdsRef = useRef<Set<string>>(new Set());
+  const isInitialSyncRef = useRef(true);
 
   const notifications = useMemo(() => {
     if (!role || !authUser?.email) return [];
@@ -112,7 +115,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
           } else {
             title = isGlobal ? 'System-Wide Authorization' : (req.status === 'approved' ? 'Access Authorized' : 'Request Declined');
             message = req.status === 'approved' 
-              ? `${isGlobal ? 'Global silent mode' : 'Your request'} was granted. Use the code below to activate.`
+              ? `${isGlobal ? 'Global silent mode' : 'Your request'} was granted. Retrieve the key from notifications.`
               : `Your request for ${req.staffName} was declined by an administrator.`;
             link = req.status === 'approved' ? '/inventory/add' : undefined;
           }
@@ -138,41 +141,53 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [specialRequests, role, authUser]);
 
-  // NATIVE PUSH DISPATCHER: Dispatches browser notifications for newly approved sessions
+  // NATIVE PUSH & IN-APP TOAST DISPATCHER
   useEffect(() => {
-    if (!settings.isBrowserNotificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!authUser?.email) return;
 
-    // Detect state changes (from pending to approved)
-    const newlyApproved = notifications.filter(n => {
+    // Detect new authorization alerts
+    const newNotifications = notifications.filter(n => {
         const isAuth = n.metadata?.type === 'authorization';
         const isNew = !prevApprovedIdsRef.current.has(n.id);
         return isAuth && isNew && !n.isRead;
     });
 
-    newlyApproved.forEach(n => {
-        let body = n.message;
-        if (n.metadata?.otp) {
-            body = `KEY GRANTED: Your OTP is ${n.metadata.otp}. ${n.message}`;
-        }
-
-        try {
-            new Notification(`SheetSync: ${n.title}`, {
-                body,
-                icon: '/logo-pwa.jpg',
-                tag: n.id,
-                requireInteraction: true
+    if (newNotifications.length > 0 && !isInitialSyncRef.current) {
+        newNotifications.forEach(n => {
+            // Trigger in-app toast for visibility
+            toast({
+                title: `ALERT: ${n.title}`,
+                description: n.message,
             });
-        } catch (e) {
-            console.warn("Browser Notifications failed to fire.");
-        }
-    });
+
+            // Trigger native push if enabled
+            if (settings.isBrowserNotificationsEnabled && typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    let body = n.message;
+                    if (n.metadata?.otp) {
+                        body = `KEY GRANTED: Your OTP is ${n.metadata.otp}. ${n.message}`;
+                    }
+                    try {
+                        new Notification(`SheetSync: ${n.title}`, {
+                            body,
+                            icon: '/logo-pwa.jpg',
+                            tag: n.id,
+                            requireInteraction: true
+                        });
+                    } catch (e) {
+                        console.warn("Browser Notifications failed to fire.");
+                    }
+                }
+            }
+        });
+    }
 
     // Update historical approved set
-    const currentApprovedIds = new Set(notifications.filter(n => n.type === 'success').map(n => n.id));
-    prevApprovedIdsRef.current = currentApprovedIds;
+    const currentNotifIds = new Set(notifications.map(n => n.id));
+    prevApprovedIdsRef.current = currentNotifIds;
+    isInitialSyncRef.current = false;
     
-  }, [notifications, settings.isBrowserNotificationsEnabled]);
+  }, [notifications, settings.isBrowserNotificationsEnabled, authUser, toast]);
 
   const requestPermission = useCallback(async () => {
       if (typeof window === 'undefined' || !('Notification' in window)) return false;

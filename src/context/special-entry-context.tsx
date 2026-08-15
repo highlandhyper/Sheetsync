@@ -43,6 +43,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   
   const [isInitialized, setIsInitialized] = useState(false);
   const prevApprovedCountRef = useRef(0);
+  const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -80,19 +81,27 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     );
 
-    // Alert if new authorization key is available
-    if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
-        const latest = sessionsVisibleToMe[0];
-        // PROACTIVE TOAST: Show the OTP immediately in the popup toast
-        toast({
-            title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Key Active" : "Authorization Key Ready",
-            description: `KEY GRANTED: ${latest.otp}. Enter this on the Log Item page.`,
-        });
-    }
-    prevApprovedCountRef.current = sessionsVisibleToMe.length;
-
     const currentActive = sessionsVisibleToMe.find(r => r.id === activatedSessionId);
     const firstUnactivated = sessionsVisibleToMe.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
+
+    // AGGRESSIVE ALERT DISPATCHER
+    if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
+        const latest = sessionsVisibleToMe[0];
+        
+        // 1. Trigger In-App Popup Dialog automatically
+        if (firstUnactivated) {
+            setPendingActivationSession(firstUnactivated);
+            setIsActivationDialogOpen(true);
+        }
+
+        // 2. Trigger In-App Toast
+        if (!isFirstLoadRef.current) {
+            toast({
+                title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Key Active" : "Authorization Key Ready",
+                description: "New authorization key generated. Activation prompt initiated.",
+            });
+        }
+    }
 
     if (currentActive) {
         setActiveSession(currentActive);
@@ -103,7 +112,11 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     } else {
         setActiveSession(null);
         setPendingActivationSession(null);
+        setIsActivationDialogOpen(false);
     }
+
+    prevApprovedCountRef.current = sessionsVisibleToMe.length;
+    isFirstLoadRef.current = false;
   }, [specialRequests, user, activatedSessionId, isInitialized, role, toast]);
 
   const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => {
