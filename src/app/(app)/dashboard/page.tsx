@@ -89,37 +89,77 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 }
 
-function VolumeGauge({ value, max = 50000 }: { value: number, max?: number }) {
-  const data = [
-    { name: 'value', value: Math.min(value, max) },
-    { name: 'remainder', value: Math.max(0, max - value) },
-  ];
+function VolumeGaugeCard({ title, value, max = 50000, description, onIconClick, href }: { title: string, value: number, max?: number, description: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void, href: string }) {
+    const data = [
+        { name: 'value', value: Math.min(value, max) },
+        { name: 'remainder', value: Math.max(0, max - value) },
+    ];
 
-  return (
-    <div className="w-full h-full relative flex items-center justify-center overflow-hidden">
-      <ResponsiveContainer width="100%" height="150%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="70%"
-            startAngle={180}
-            endAngle={0}
-            innerRadius="75%"
-            outerRadius="95%"
-            paddingAngle={0}
-            dataKey="value"
-            stroke="none"
-            isAnimationActive={true}
-            animationDuration={2000}
-          >
-            <Cell fill="hsl(var(--primary))" />
-            <Cell fill="hsl(var(--primary) / 0.1)" />
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
+    const cardContent = (
+        <>
+            <div className="absolute inset-0 z-0 flex items-center justify-center pt-24 pointer-events-none">
+                <ResponsiveContainer width="120%" height="200%">
+                    <PieChart>
+                        <Pie
+                            data={data}
+                            cx="50%"
+                            cy="50%"
+                            startAngle={180}
+                            endAngle={0}
+                            innerRadius="78%"
+                            outerRadius="95%"
+                            paddingAngle={0}
+                            dataKey="value"
+                            stroke="none"
+                            isAnimationActive={true}
+                            animationDuration={2000}
+                        >
+                            <Cell fill="hsl(var(--primary))" />
+                            <Cell fill="hsl(var(--primary) / 0.1)" />
+                        </Pie>
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
+            <div className="relative z-10 p-8 h-full flex flex-col items-center justify-between text-center pointer-events-none">
+                <div className="w-full flex justify-between items-start pointer-events-auto">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
+                    <div 
+                        className="w-8 h-8 flex items-center justify-center bg-primary/5 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
+                        onClick={(e) => {
+                            if (onIconClick) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onIconClick(e);
+                            }
+                        }}
+                    >
+                        <Warehouse className="h-4 w-4" />
+                    </div>
+                </div>
+                
+                <div className="flex flex-col items-center justify-center mt-4">
+                    <div className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                        {value}
+                    </div>
+                    <div className="mt-4 flex items-center justify-center">
+                        {description}
+                    </div>
+                </div>
+                
+                <div className="w-full h-4" />
+            </div>
+            {/* GLOW EFFECT */}
+            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[40px] pointer-events-none" />
+        </>
+    );
+
+    const className = "group relative transition-all duration-700 rounded-[2.5rem] border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]";
+
+    return (
+        <Link href={href} className="col-span-2 lg:col-span-1 h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[2.5rem]">
+            <Card className={className}>{cardContent}</Card>
+        </Link>
+    );
 }
 
 const MAX_SUPPLIERS_IN_CHART = 10;
@@ -842,19 +882,14 @@ export default function DashboardPage() {
 
         {/* HIGH-DENSITY METRIC GRID */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-          <MetricCard 
+          {/* SPECIALIZED GAUGE CARD */}
+          <VolumeGaugeCard 
             title="Registry Volume" 
             value={metrics.totalStockQuantity} 
-            iconNode={<Warehouse />}
-            onIconClick={() => setIsStockTrendDialogOpen(true)}
             description={totalStockDescription}
             href="/inventory"
-            className="col-span-2 sm:col-span-1"
-          >
-              <div className="absolute inset-0 flex items-center justify-center pt-8 pointer-events-none z-0">
-                  <VolumeGauge value={metrics.totalStockQuantity} max={50000} />
-              </div>
-          </MetricCard>
+            onIconClick={() => setIsStockTrendDialogOpen(true)}
+          />
           
           <MetricCard 
             title="Total Valuation" 
