@@ -5,6 +5,7 @@ import { useAccessControl } from '@/context/access-control-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
     ShieldCheck, 
