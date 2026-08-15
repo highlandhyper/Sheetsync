@@ -1,4 +1,3 @@
-
 'use client'; 
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
@@ -89,10 +88,17 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   );
 }
 
-function VolumeGaugeCard({ title, value, max = 50000, description, onIconClick, href }: { title: string, value: number, max?: number, description: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void, href: string }) {
+function VolumeGaugeCard({ title, value, description, onIconClick, href }: { title: string, value: number, description: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void, href: string }) {
+    // Capacity 6,000: 3000 for Round 1, 3000 for Round 2
+    const MAX_CAPACITY = 6000;
+    const tier1 = Math.min(value, 3000);
+    const tier2 = Math.max(0, Math.min(value - 3000, 3000));
+    const remainder = Math.max(0, MAX_CAPACITY - value);
+
     const data = [
-        { name: 'value', value: Math.min(value, max) },
-        { name: 'remainder', value: Math.max(0, max - value) },
+        { name: 'Tier 1', value: tier1 },
+        { name: 'Tier 2', value: tier2 },
+        { name: 'Remainder', value: remainder },
     ];
 
     const cardContent = (
@@ -112,9 +118,10 @@ function VolumeGaugeCard({ title, value, max = 50000, description, onIconClick, 
                             dataKey="value"
                             stroke="none"
                             isAnimationActive={true}
-                            animationDuration={2000}
+                            animationDuration={2500}
                         >
                             <Cell fill="hsl(var(--primary))" />
+                            <Cell fill="hsl(var(--primary) / 0.5)" />
                             <Cell fill="hsl(var(--primary) / 0.1)" />
                         </Pie>
                     </PieChart>
