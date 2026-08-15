@@ -20,7 +20,8 @@ import {
     Layout,
     Globe,
     Layers,
-    Shield
+    Shield,
+    Terminal
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -31,13 +32,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
-import { StaffManager } from '@/components/settings/staff-manager';
+import { StaffManager } from '@/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
 import { getMasterSpreadsheetUrlAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface SettingsCardProps {
   icon: React.ElementType;
@@ -49,7 +51,8 @@ interface SettingsCardProps {
   onOpen?: () => void;
   isManual?: boolean;
   onManualClick?: () => void;
-  variant?: 'default' | 'premium' | 'security';
+  variant?: 'default' | 'premium' | 'security' | 'logic';
+  badge?: string;
 }
 
 function SettingsCard({ 
@@ -57,20 +60,22 @@ function SettingsCard({
     title, 
     description, 
     children, 
-    triggerText = "Open Manager", 
+    triggerText = "Configure", 
     dialogClassName, 
     onOpen, 
     isManual, 
     onManualClick,
-    variant = 'default'
+    variant = 'default',
+    badge
 }: SettingsCardProps) {
   
   const triggerButton = (
     <Button 
         variant={variant === 'premium' ? "default" : "outline"} 
         className={cn(
-            "w-full mt-auto font-black uppercase tracking-widest text-[10px] h-10 rounded-xl transition-all",
-            variant === 'premium' ? "shadow-lg shadow-primary/20" : "bg-muted/10 border-white/5"
+            "w-full mt-auto font-black uppercase tracking-widest text-[10px] h-11 rounded-xl transition-all duration-300",
+            variant === 'premium' ? "shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90" : "bg-muted/10 border-white/5 hover:bg-primary/5 hover:text-primary hover:border-primary/20",
+            variant === 'security' ? "hover:border-destructive/30 hover:text-destructive" : ""
         )}
         onClick={isManual ? onManualClick : undefined}
     >
@@ -80,25 +85,36 @@ function SettingsCard({
   );
 
   return (
-    <Card className="group relative flex flex-col h-full border-white/5 bg-card/40 backdrop-blur-xl rounded-3xl overflow-hidden shadow-none hover:border-primary/20 transition-all duration-500">
-      <CardHeader className="pb-4">
-        <div className="flex items-start gap-4">
+    <Card className="group relative flex flex-col h-full border-white/5 bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden shadow-none hover:border-primary/20 transition-all duration-500">
+      {/* CARD DECORATION */}
+      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+         {badge && (
+             <Badge variant="outline" className="font-black text-[8px] uppercase tracking-widest border-primary/20 text-primary bg-primary/5">
+                {badge}
+             </Badge>
+         )}
+      </div>
+
+      <CardHeader className="pb-4 pt-8 px-8">
+        <div className="flex flex-col gap-6">
           <div className={cn(
-              "p-3 rounded-2xl transition-all duration-500 group-hover:scale-110",
-              variant === 'premium' ? "bg-primary/10 text-primary" : 
-              variant === 'security' ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+              "w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg",
+              variant === 'premium' ? "bg-primary/10 text-primary group-hover:shadow-primary/20" : 
+              variant === 'security' ? "bg-destructive/10 text-destructive group-hover:shadow-destructive/20" : 
+              variant === 'logic' ? "bg-accent/10 text-accent-foreground group-hover:shadow-accent/20" :
+              "bg-muted text-muted-foreground"
           )}>
-            {React.createElement(icon, { className: "h-6 w-6" })}
+            {React.createElement(icon, { className: "h-6 w-6", strokeWidth: 2.5 })}
           </div>
-          <div className="space-y-1">
-            <CardTitle className="text-lg font-black uppercase tracking-tight leading-none pt-1">{title}</CardTitle>
-            <CardDescription className="text-[10px] font-bold text-muted-foreground/60 leading-relaxed uppercase tracking-tighter">
+          <div className="space-y-2">
+            <CardTitle className="text-xl font-black uppercase tracking-tight leading-none">{title}</CardTitle>
+            <CardDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed uppercase tracking-tighter">
                 {description}
             </CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow flex items-end pt-2">
+      <CardContent className="flex-grow flex items-end pt-2 pb-8 px-8">
         {isManual ? (
             triggerButton
         ) : (
@@ -106,15 +122,25 @@ function SettingsCard({
                 <DialogTrigger asChild>
                     {triggerButton}
                 </DialogTrigger>
-                <DialogContent className={cn("rounded-3xl border-none shadow-2xl", dialogClassName || "sm:max-w-2xl")}>
-                    <DialogHeader>
-                    <DialogTitle className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter">
-                        {React.createElement(icon, { className: "h-6 w-6 text-primary" })}
-                        {title}
-                    </DialogTitle>
-                    <DialogDescription className="font-medium text-sm">{description}</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">{children}</div>
+                <DialogContent className={cn("rounded-[2.5rem] border-none shadow-3xl", dialogClassName || "sm:max-w-2xl")}>
+                    <div className="p-2">
+                        <DialogHeader className="mb-6">
+                        <div className="flex items-center gap-4 mb-2">
+                             <div className="p-3 bg-primary/10 rounded-2xl">
+                                {React.createElement(icon, { className: "h-6 w-6 text-primary" })}
+                             </div>
+                             <div>
+                                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
+                                    {title}
+                                </DialogTitle>
+                                <DialogDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground/60">
+                                    {description}
+                                </DialogDescription>
+                             </div>
+                        </div>
+                        </DialogHeader>
+                        <div className="py-2">{children}</div>
+                    </div>
                 </DialogContent>
             </Dialog>
         )}
@@ -170,42 +196,49 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container max-w-6xl mx-auto p-4 sm:p-6 lg:p-10 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      <div className="flex flex-col gap-1 mb-12">
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
-            <Cog className="mr-4 h-8 w-8 sm:h-12 sm:w-12 text-primary" strokeWidth={3} />
+    <div className="container max-w-7xl mx-auto p-4 sm:p-8 lg:p-12 pb-32 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      {/* SYSTEM HEADER */}
+      <div className="flex flex-col gap-2 mb-16 relative">
+        <div className="absolute -left-12 top-0 h-full w-1 bg-primary/20 rounded-full hidden lg:block" />
+        <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
+            <Terminal className="mr-6 h-10 w-10 sm:h-14 sm:w-14 text-primary" strokeWidth={3} />
             System <span className="text-primary">Terminal</span>
         </h1>
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.5em] opacity-40 ml-1">
-            Industrial Control & Security Interface
-        </p>
+        <div className="flex items-center gap-4 ml-1">
+            <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.6em] opacity-40">
+                Operational Registry Control • v4.0.2
+            </p>
+            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-2 py-0.5 animate-pulse">Live Link Active</Badge>
+        </div>
       </div>
 
-      <div className="space-y-16">
+      <div className="space-y-24">
         
-        {/* SECTION: INTERFACE & EXPERIENCE */}
-        <div className="space-y-6">
-            <div className="flex items-center gap-3 px-1">
-                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-primary">01 Interface Protocol</h2>
-                <div className="h-px flex-1 bg-gradient-to-right from-primary/10 to-transparent" />
+        {/* SECTION 01: INTERFACE PROTOCOL */}
+        <div className="space-y-8">
+            <div className="flex items-center gap-4 px-1">
+                <div className="text-3xl font-black text-primary/10 tracking-tighter">01</div>
+                <h2 className="text-sm font-black uppercase tracking-[0.4em] text-primary">Interface Protocol</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 <SettingsCard
                     icon={Palette}
                     title="User Experience"
-                    description="Themes, dark mode, and multi-select interface toggles."
-                    triggerText="Preferences"
+                    description="Personalize the industrial interface and batch operation toggles."
+                    triggerText="Manage Experience"
                     dialogClassName="sm:max-w-xl"
+                    badge="UI CORE"
                 >
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="rounded-2xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5">
-                            <h3 className="text-sm font-black uppercase tracking-widest mb-1">Visual Theme</h3>
-                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed">Toggle between dark and light industrial modes.</p>
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
+                            <h3 className="text-base font-black uppercase tracking-widest mb-2">Visual Theme</h3>
+                            <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Synchronize interface luminosity with environment lighting.</p>
                             <ThemeToggle />
                         </div>
-                        <div className="rounded-2xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5">
-                            <h3 className="text-sm font-black uppercase tracking-widest mb-1">Batch Operations</h3>
-                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed">Enable checkboxes for high-volume inventory tasks.</p>
+                        <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
+                            <h3 className="text-base font-black uppercase tracking-widest mb-2">Batch Processing</h3>
+                            <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Enable high-volume log manipulation via multi-select checkboxes.</p>
                             <MultiSelectToggle />
                         </div>
                     </div>
@@ -214,15 +247,21 @@ export default function SettingsPage() {
                 {role === 'admin' && (
                     <SettingsCard
                         icon={Shield}
-                        title="Session Security"
-                        description="Auto-lock timers and administrative greeting protocols."
-                        triggerText="Clearance"
+                        title="Session Armor"
+                        description="Security handshake protocols and automated inactivity locking."
+                        triggerText="Security Clearances"
+                        variant="security"
+                        badge="SEC OPS"
                     >
-                        <div className="space-y-4">
-                            <div className="rounded-2xl border-2 border-primary/5 p-5 bg-muted/5">
+                        <div className="space-y-6">
+                            <div className="rounded-[2rem] border-2 border-destructive/5 p-8 bg-muted/5 shadow-inner">
+                                <h3 className="text-base font-black uppercase tracking-widest mb-2">Greeting Protocol</h3>
+                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Display administrative welcome sequence on session start.</p>
                                 <AdminWelcomeToggle />
                             </div>
-                            <div className="rounded-2xl border-2 border-primary/5 p-5 bg-muted/5">
+                            <div className="rounded-[2rem] border-2 border-destructive/5 p-8 bg-muted/5 shadow-inner">
+                                <h3 className="text-base font-black uppercase tracking-widest mb-2">Auto-Lock Timer</h3>
+                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Terminate active terminal access after idle period.</p>
                                 <InactivityTimeoutInput />
                             </div>
                         </div>
@@ -231,40 +270,47 @@ export default function SettingsPage() {
             </div>
         </div>
 
-        {/* SECTION: ASSET INFRASTRUCTURE */}
+        {/* SECTION 02: WAREHOUSE LOGIC */}
         {role === 'admin' && (
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 px-1">
-                    <h2 className="text-xs font-black uppercase tracking-[0.3em] text-primary">02 Warehouse Logic</h2>
-                    <div className="h-px flex-1 bg-gradient-to-right from-primary/10 to-transparent" />
+            <div className="space-y-8">
+                <div className="flex items-center gap-4 px-1">
+                    <div className="text-3xl font-black text-primary/10 tracking-tighter">02</div>
+                    <h2 className="text-sm font-black uppercase tracking-[0.4em] text-primary">Warehouse Logic</h2>
+                    <div className="h-px flex-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
                 </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <SettingsCard
                         icon={UserPlus}
                         title="Staff Registry"
-                        description="Identify authorized personnel for logging operations."
-                        triggerText="Registry"
+                        description="Modify the authoritative list of personnel eligible for inventory logging."
+                        triggerText="Personnel Database"
+                        variant="logic"
                         dialogClassName="sm:max-w-md"
+                        badge="HR SYNC"
                     >
                         <StaffManager />
                     </SettingsCard>
 
                     <SettingsCard
                         icon={MapPin}
-                        title="Zones"
-                        description="Define storage locations and warehouse regions."
-                        triggerText="Zones"
+                        title="Storage Zones"
+                        description="Define physical storage locations and warehouse regions."
+                        triggerText="Zone Mapping"
+                        variant="logic"
                         dialogClassName="sm:max-w-md"
+                        badge="LOC DATA"
                     >
                         <LocationManager />
                     </SettingsCard>
 
                     <SettingsCard
                         icon={ShieldCheck}
-                        title="Viewer Access"
-                        description="Restrict role-based visibility across system pages."
-                        triggerText="Permissions"
+                        title="Viewer Matrix"
+                        description="Granular control over restricted role page visibility and feature sets."
+                        triggerText="Access Matrix"
+                        variant="logic"
                         dialogClassName="sm:max-w-3xl"
+                        badge="RBAC"
                     >
                         <AccessControlManager />
                     </SettingsCard>
@@ -272,44 +318,53 @@ export default function SettingsPage() {
             </div>
         )}
 
-        {/* SECTION: DATA TERMINAL */}
+        {/* SECTION 03: DATA CORE */}
         {role === 'admin' && (
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 px-1">
-                    <h2 className="text-xs font-black uppercase tracking-[0.3em] text-primary">03 Data Core</h2>
-                    <div className="h-px flex-1 bg-gradient-to-right from-primary/10 to-transparent" />
+            <div className="space-y-8">
+                <div className="flex items-center gap-4 px-1">
+                    <div className="text-3xl font-black text-primary/10 tracking-tighter">03</div>
+                    <h2 className="text-sm font-black uppercase tracking-[0.4em] text-primary">Data Core</h2>
+                    <div className="h-px flex-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
                 </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <SettingsCard
                         icon={CloudUpload}
-                        title="Bulk Sync"
-                        description="Synchronize 80k+ records via industrial CSV terminal."
-                        triggerText="Open Terminal"
+                        title="Industrial Bulk Sync"
+                        description="Synchronize 80k+ records via high-performance industrial terminal."
+                        triggerText="Launch Terminal"
                         variant="premium"
                         isManual={true}
                         onManualClick={() => setIsBulkAuthOpen(true)}
+                        badge="HIGH VOL"
                     />
 
                     <SettingsCard
                         icon={Database}
-                        title="Master DB"
-                        description="Direct cloud access to the Google Sheet source."
-                        triggerText="Launch Cloud"
+                        title="Registry Source"
+                        description="Direct authenticated tunnel to the Google Sheets industrial core."
+                        triggerText="Access Cloud Source"
                         isManual={true}
                         onManualClick={() => setIsDbAuthOpen(true)}
+                        badge="RAW DATA"
                     />
 
                     <SettingsCard
                         icon={KeyRound}
-                        title="Local Keys"
-                        description="Set secondary credentials for critical action overrides."
-                        triggerText="Manage Keys"
+                        title="System Keys"
+                        description="Manage local administrative keys for critical logic overrides."
+                        triggerText="Manage Access Keys"
                         variant="security"
                         dialogClassName="sm:max-w-md"
+                        badge="CORE SEC"
                     >
-                        <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl mb-4 flex items-start gap-3">
-                            <AlertTriangle className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
-                            <p className="text-[10px] font-bold text-yellow-800 leading-tight uppercase">Critical: These keys authorize deletes and quantity overrides.</p>
+                        <div className="p-6 bg-yellow-500/10 border-2 border-yellow-500/20 rounded-[2rem] mb-8 flex items-start gap-4">
+                            <AlertTriangle className="h-6 w-6 text-yellow-600 shrink-0 mt-1" />
+                            <div className="space-y-1">
+                                <p className="text-sm font-black uppercase text-yellow-800 tracking-tight leading-none">Security Alert</p>
+                                <p className="text-[10px] font-bold text-yellow-700 leading-relaxed uppercase tracking-tighter">
+                                    These credentials authorize stock deletion and quantity overrides. Guard these keys with extreme prejudice.
+                                </p>
+                            </div>
                         </div>
                         <LocalCredentialsForm />
                     </SettingsCard>
@@ -321,28 +376,33 @@ export default function SettingsPage() {
 
       {/* SECURE OVERLAYS */}
       <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>
-          <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
-              <div className="p-8 pb-4">
+          <DialogContent className="sm:max-w-lg rounded-[3rem] border-none shadow-3xl p-0 overflow-hidden bg-background">
+              <div className="p-10 pb-4">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-4 text-3xl font-black uppercase tracking-tighter">
-                        <div className="bg-primary/10 p-3 rounded-2xl">
-                            <Database className="h-8 w-8 text-primary" />
+                    <div className="flex items-center gap-5 mb-4">
+                        <div className="bg-primary/10 p-4 rounded-[1.5rem] shadow-lg shadow-primary/5">
+                            <Database className="h-10 w-10 text-primary" strokeWidth={2.5} />
                         </div>
-                        Cloud Access
-                    </DialogTitle>
-                    <DialogDescription className="font-medium pt-2">
-                        System link to the Google Sheets industrial core.
+                        <div>
+                            <DialogTitle className="text-4xl font-black uppercase tracking-tighter">
+                                Cloud Tunnel
+                            </DialogTitle>
+                            <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-widest text-primary border-primary/20">Authorized Access</Badge>
+                        </div>
+                    </div>
+                    <DialogDescription className="font-bold text-sm leading-relaxed uppercase tracking-tight text-muted-foreground">
+                        Establishing secure system link to the Google Sheets industrial registry.
                     </DialogDescription>
                 </DialogHeader>
               </div>
               
-              <div className="p-8 pt-4 space-y-8">
-                  <div className="p-5 bg-yellow-500/5 border-2 border-yellow-500/10 rounded-2xl flex items-start gap-4">
-                      <AlertTriangle className="h-6 w-6 text-yellow-600 shrink-0" />
+              <div className="p-10 pt-4 space-y-10">
+                  <div className="p-6 bg-yellow-500/5 border-2 border-yellow-500/10 rounded-[2rem] flex items-start gap-5">
+                      <AlertTriangle className="h-8 w-8 text-yellow-600 shrink-0 mt-1" />
                       <div className="space-y-1">
-                          <p className="text-xs font-black uppercase text-yellow-800 tracking-tight">Integrity Alert</p>
-                          <p className="text-[10px] text-yellow-700/80 font-semibold leading-relaxed">
-                              Manual structural changes to headers or tab names will disrupt the synchronization engine.
+                          <p className="text-xs font-black uppercase text-yellow-800 tracking-widest">Integrity Protocol</p>
+                          <p className="text-[11px] text-yellow-700/70 font-semibold leading-relaxed uppercase tracking-tighter">
+                              Manual structural modifications to headers, column order, or tab definitions will disrupt the synchronization engine. Proceed with extreme caution.
                           </p>
                       </div>
                   </div>
@@ -350,26 +410,26 @@ export default function SettingsPage() {
                   {dbUrl ? (
                       <Button 
                           asChild 
-                          className="w-full h-16 rounded-2xl text-lg font-black uppercase tracking-widest shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                          className="w-full h-20 rounded-[2rem] text-xl font-black uppercase tracking-widest shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white"
                       >
                           <a href={dbUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-3 h-6 w-6" />
-                              Open Spreadsheet
+                              <ExternalLink className="mr-4 h-8 w-8" strokeWidth={3} />
+                              Open Registry
                           </a>
                       </Button>
                   ) : (
                       <Button 
                           disabled 
-                          className="w-full h-16 rounded-2xl font-black uppercase tracking-widest opacity-50 bg-muted"
+                          className="w-full h-20 rounded-[2rem] font-black uppercase tracking-widest opacity-50 bg-muted/50 border-2 border-dashed border-muted"
                       >
-                          <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                          Verifying Link...
+                          <Loader2 className="mr-4 h-8 w-8 animate-spin text-primary" />
+                          Handshaking...
                       </Button>
                   )}
               </div>
-              <div className="p-4 bg-muted/30 border-t flex justify-center">
+              <div className="p-6 bg-muted/30 border-t flex justify-center">
                   <DialogClose asChild>
-                      <Button variant="ghost" className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Terminate Session</Button>
+                      <Button variant="ghost" className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 hover:opacity-100 hover:bg-transparent">Terminate Link Session</Button>
                   </DialogClose>
               </div>
           </DialogContent>
@@ -380,7 +440,7 @@ export default function SettingsPage() {
         onOpenChange={setIsDbAuthOpen}
         onAuthorizationSuccess={handleDbAuthSuccess}
         fixedIdentifier={user?.email || undefined}
-        actionDescription={`Identity check required for ${user?.email}. Enter your login password to unlock the registry core link.`}
+        actionDescription={`Identity check required for ${user?.email}. Provide account credentials to establish a secure registry tunnel.`}
       />
 
       <AuthorizeActionDialog 
@@ -388,23 +448,22 @@ export default function SettingsPage() {
         onOpenChange={setIsBulkAuthOpen}
         onAuthorizationSuccess={handleBulkImportAuthSuccess}
         fixedIdentifier={user?.email || undefined}
-        actionDescription={`Identity check required for ${user?.email}. Enter your login password to unlock the industrial bulk sync terminal.`}
+        actionDescription={`Identity check required for ${user?.email}. Enterprise synchronization terminal requires verified administrative clearance.`}
       />
 
       <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
-          <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto rounded-[2.5rem] border-none shadow-3xl p-0">
-              <div className="p-8 sm:p-12">
+          <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto rounded-[3rem] border-none shadow-3xl p-0">
+              <div className="p-10 sm:p-16">
                 <BulkImportTerminal />
               </div>
           </DialogContent>
       </Dialog>
 
-      <div className="mt-20 text-center">
-          <p className="text-[9px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-4">
-              SHEETSYNC CORE • 2024 • ENTERPRISE EDITION
+      <div className="mt-24 text-center pb-12">
+          <p className="text-[10px] font-black uppercase tracking-[0.8em] text-muted-foreground/10 flex items-center justify-center gap-8">
+              SHEETSYNC CORE • SECURED TERMINAL • 2024
           </p>
       </div>
     </div>
   );
 }
-
