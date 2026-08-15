@@ -32,7 +32,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
-import { StaffManager } from '@/settings/staff-manager';
+import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
 import { getMasterSpreadsheetUrlAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
