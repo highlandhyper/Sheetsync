@@ -84,21 +84,15 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const currentActive = sessionsVisibleToMe.find(r => r.id === activatedSessionId);
     const firstUnactivated = sessionsVisibleToMe.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
 
-    // AGGRESSIVE ALERT DISPATCHER
+    // AGGRESSIVE ALERT DISPATCHER (NO AUTO-OPEN AS REQUESTED)
     if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
         const latest = sessionsVisibleToMe[0];
         
-        // 1. Trigger In-App Popup Dialog automatically
-        if (firstUnactivated) {
-            setPendingActivationSession(firstUnactivated);
-            setIsActivationDialogOpen(true);
-        }
-
-        // 2. Trigger In-App Toast
+        // Trigger In-App Toast with OTP context if not the first load
         if (!isFirstLoadRef.current) {
             toast({
-                title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Key Active" : "Authorization Key Ready",
-                description: "New authorization key generated. Activation prompt initiated.",
+                title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Grant Active" : "Authorization Granted",
+                description: latest.otp ? `Access Code Identifed: ${latest.otp}. Click "Activate Silent Mode" to begin.` : "New authorization detected.",
             });
         }
     }

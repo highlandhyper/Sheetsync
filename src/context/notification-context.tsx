@@ -88,7 +88,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
             list.push({
                 id: `notif_${req.id}`,
                 title: 'Global Silent Mode Active',
-                message: `Universal authorization key generated for all personnel.`,
+                message: `AUTHORIZATION GRANTED. KEY: ${req.otp || '----'}`,
                 timestamp: req.approvedAt || req.requestedAt,
                 type: 'success',
                 isRead: false,
@@ -110,13 +110,13 @@ export function NotificationProvider({ children }: PropsWithChildren) {
           if (req.type === 'inventory_edit') {
             title = req.status === 'approved' ? 'Edit Request Approved' : 'Edit Request Declined';
             message = req.status === 'approved' 
-                ? `Your update for ${req.editDetails?.productName} has been applied to the catalog.`
-                : `Your edit request for ${req.editDetails?.productName} was declined.`;
+                ? `Update for ${req.editDetails?.productName} has been applied.`
+                : `Edit request for ${req.editDetails?.productName} was declined.`;
           } else {
             title = isGlobal ? 'System-Wide Authorization' : (req.status === 'approved' ? 'Access Authorized' : 'Request Declined');
             message = req.status === 'approved' 
-              ? `${isGlobal ? 'Global silent mode' : 'Your request'} was granted. Retrieve the key from notifications.`
-              : `Your request for ${req.staffName} was declined by an administrator.`;
+              ? `AUTHORIZATION GRANTED. KEY: ${req.otp || '----'}`
+              : `Your request for ${req.staffName} was declined.`;
             link = req.status === 'approved' ? '/inventory/add' : undefined;
           }
 
@@ -156,20 +156,16 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         newNotifications.forEach(n => {
             // Trigger in-app toast for visibility
             toast({
-                title: `ALERT: ${n.title}`,
+                title: n.title,
                 description: n.message,
             });
 
             // Trigger native push if enabled
             if (settings.isBrowserNotificationsEnabled && typeof window !== 'undefined' && 'Notification' in window) {
                 if (Notification.permission === 'granted') {
-                    let body = n.message;
-                    if (n.metadata?.otp) {
-                        body = `KEY GRANTED: Your OTP is ${n.metadata.otp}. ${n.message}`;
-                    }
                     try {
                         new Notification(`SheetSync: ${n.title}`, {
-                            body,
+                            body: n.message,
                             icon: '/logo-pwa.jpg',
                             tag: n.id,
                             requireInteraction: true
