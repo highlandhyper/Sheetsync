@@ -8,7 +8,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
 import { useSpecialEntry } from '@/context/special-entry-context';
@@ -86,6 +86,37 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
     <Card className={cardContainerClassName}>
         {cardInnerContent}
     </Card>
+  );
+}
+
+function VolumeGauge({ value, max = 100000 }: { value: number, max?: number }) {
+  const data = [
+    { name: 'value', value: Math.min(value, max) },
+    { name: 'remainder', value: Math.max(0, max - value) },
+  ];
+
+  return (
+    <div className="w-full h-full relative flex items-center justify-center">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="80%"
+            startAngle={180}
+            endAngle={0}
+            innerRadius="65%"
+            outerRadius="90%"
+            paddingAngle={0}
+            dataKey="value"
+            stroke="none"
+          >
+            <Cell fill="hsl(var(--primary))" />
+            <Cell fill="hsl(var(--primary) / 0.1)" />
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -818,7 +849,9 @@ export default function DashboardPage() {
             href="/inventory"
             className="col-span-2 sm:col-span-1"
           >
-              {metrics.stockTrend && <StockTrendSparkline data={metrics.stockTrend} />}
+              <div className="absolute inset-0 pt-16 flex items-center justify-center opacity-40 group-hover:opacity-60 transition-opacity">
+                  <VolumeGauge value={metrics.totalStockQuantity} max={50000} />
+              </div>
           </MetricCard>
           
           <MetricCard 
