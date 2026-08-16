@@ -134,15 +134,6 @@ const playProfessionalBeep = () => {
   }
 };
 
-const playThankYouAudio = () => {
-  try {
-    const audio = new Audio('/thankyou.m4a');
-    audio.play().catch(e => console.warn("Audio playback failed:", e));
-  } catch (e) {
-    console.warn("Audio error:", e);
-  }
-};
-
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -161,6 +152,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
   const scanProcessedRef = useRef(false);
+  
+  // High-performance audio pre-loading
+  const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        thankYouAudioRef.current = new Audio('/thankyou.m4a');
+        thankYouAudioRef.current.load();
+    }
+  }, []);
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   const [staffComboboxOpen, setStaffComboboxOpen] = useState(false);
@@ -209,8 +210,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     }
   }, [activeSession, setValue, allFormValues.staffName]);
 
+  const playThankYouAudio = useCallback(() => {
+    if (thankYouAudioRef.current) {
+        thankYouAudioRef.current.currentTime = 0;
+        thankYouAudioRef.current.play().catch(e => console.warn("Audio playback inhibited by browser:", e));
+    }
+  }, []);
+
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
+    
+    // IMMEDIATE AUDITORY AND VISUAL FEEDBACK
+    playThankYouAudio();
+    setIsSuccessDialogOpen(true);
     
     setIsSubmitting(true);
     submitLockRef.current = true;
@@ -234,8 +246,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
-    setIsSuccessDialogOpen(true);
-    playThankYouAudio(); // Trigger audio feedback upon successful visual confirmation
+    
     setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
 
     const savedStaffName = data.staffName; 
