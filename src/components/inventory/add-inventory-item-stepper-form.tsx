@@ -210,13 +210,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     }
   }, [permissions.isAudioEnabled, permissions.identityAudioType]);
 
-  // INSTANT IDENTITY PROMPT: Triggered immediately when step transitions to staff selection
-  useEffect(() => {
-    if (currentStep === 1) {
-      playIdentityAudio();
-    }
-  }, [currentStep, playIdentityAudio]);
-
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
@@ -596,7 +589,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
-                        <Popover open={staffComboboxOpen} onOpenChange={setStaffComboboxOpen}>
+                        <Popover 
+                            open={staffComboboxOpen} 
+                            onOpenChange={(open) => {
+                                setStaffComboboxOpen(open);
+                                if (open) playIdentityAudio();
+                            }}
+                        >
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
                                      <div className="flex items-center gap-2">
