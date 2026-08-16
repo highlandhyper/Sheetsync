@@ -145,15 +145,15 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!authUser?.email) return;
 
-    // Detect new authorization alerts
+    // Detect new authorization alerts or admin requests
     const newNotifications = notifications.filter(n => {
-        const isAuth = n.metadata?.type === 'authorization';
+        const isActionable = n.metadata?.type === 'authorization' || n.type === 'request' || n.type === 'success' || n.type === 'error';
         const isNew = !prevApprovedIdsRef.current.has(n.id);
-        return isAuth && isNew && !n.isRead;
+        return isActionable && isNew && !n.isRead;
     });
 
     if (newNotifications.length > 0 && !isInitialSyncRef.current) {
-        newNotifications.forEach(n => {
+        newNotifications.forEach(async (n) => {
             // Trigger in-app toast for visibility
             toast({
                 title: n.title,
@@ -161,17 +161,33 @@ export function NotificationProvider({ children }: PropsWithChildren) {
             });
 
             // Trigger native push if enabled
-            if (settings.isBrowserNotificationsEnabled && typeof window !== 'undefined' && 'Notification' in window) {
+            if (settings.isBrowserNotificationsEnabled && typeof window !== 'undefined') {
                 if (Notification.permission === 'granted') {
                     try {
-                        new Notification(`SheetSync: ${n.title}`, {
-                            body: n.message,
-                            icon: '/logo-pwa.jpg',
-                            tag: n.id,
-                            requireInteraction: true
-                        });
+                        // CRITICAL PWA FIX: Use ServiceWorker registration for reliable notifications on mobile/PWA
+                        if ('serviceWorker' in navigator) {
+                            const registration = await navigator.serviceWorker.ready;
+                            await registration.showNotification(n.title, {
+                                body: n.message,
+                                icon: '/logo-pwa.jpg',
+                                badge: '/logo-pwa.jpg',
+                                tag: n.id,
+                                data: {
+                                    url: n.link || '/'
+                                },
+                                vibrate: [200, 100, 200],
+                                renotify: true
+                            });
+                        } else if ('Notification' in window) {
+                            // Fallback for standard desktop browsers
+                            new Notification(n.title, {
+                                body: n.message,
+                                icon: '/logo-pwa.jpg',
+                                tag: n.id,
+                            });
+                        }
                     } catch (e) {
-                        console.warn("Browser Notifications failed to fire.");
+                        console.warn("Native Notification failed to dispatch:", e);
                     }
                 }
             }
@@ -186,8 +202,18 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, [notifications, settings.isBrowserNotificationsEnabled, authUser, toast]);
 
   const requestPermission = useCallback(async () => {
-      if (typeof window === 'undefined' || !('Notification' in window)) return false;
+      if (typeof window === 'undefined') return false;
+      
       const permission = await Notification.requestPermission();
+      
+      // If granted, ensure Service Worker is ready
+      if (permission === 'granted' && 'serviceWorker' in navigator) {
+          try {
+              await navigator.serviceWorker.ready;
+              console.log("Notification Protocol: Service Worker Synced");
+          } catch (e) {}
+      }
+      
       return permission === 'granted';
   }, []);
 
