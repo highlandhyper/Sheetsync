@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -25,6 +24,7 @@ import Image from 'next/image';
 import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
