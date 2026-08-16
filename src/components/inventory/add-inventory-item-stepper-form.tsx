@@ -202,13 +202,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   }, [permissions.isAudioEnabled]);
 
   const playIdentityAudio = useCallback(() => {
-    if (!permissions.isAudioEnabled) return;
+    // DUAL-CHECK: Global settings AND specific Identity Prompt setting
+    if (!permissions.isAudioEnabled || permissions.isIdentityAudioEnabled === false) return;
+    
     const audio = permissions.identityAudioType === 'whoareyou1' ? identityAudio1Ref.current : identityAudioRef.current;
     if (audio) {
         audio.currentTime = 0;
         audio.play().catch(e => console.warn("Identity audio inhibited:", e));
     }
-  }, [permissions.isAudioEnabled, permissions.identityAudioType]);
+  }, [permissions.isAudioEnabled, permissions.isIdentityAudioEnabled, permissions.identityAudioType]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;

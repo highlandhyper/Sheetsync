@@ -104,6 +104,7 @@ export type Permissions = {
   viewerFeatures?: ViewerFeature[];
   viewerDefaultPath?: string;
   isAudioEnabled?: boolean;
+  isIdentityAudioEnabled?: boolean;
   identityAudioType?: 'whoareyou' | 'whoareyou1';
 };
 
