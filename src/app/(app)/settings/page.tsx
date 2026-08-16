@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -134,24 +133,26 @@ function SettingsCard({
                 <DialogTrigger asChild>
                     {triggerButton}
                 </DialogTrigger>
-                <DialogContent className={cn("rounded-[2.5rem] border-none shadow-3xl", dialogClassName || "sm:max-w-2xl")}>
-                    <div className="p-2">
-                        <DialogHeader className="mb-6">
-                        <div className="flex items-center gap-4 mb-2">
-                             <div className="p-3 bg-primary/10 rounded-2xl">
-                                {React.createElement(icon, { className: "h-6 w-6 text-primary" })}
-                             </div>
-                             <div>
-                                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
-                                    {title}
-                                </DialogTitle>
-                                <DialogDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground/60">
-                                    {description}
-                                </DialogDescription>
-                             </div>
-                        </div>
+                <DialogContent className={cn("rounded-[2.5rem] border-none shadow-3xl p-0 overflow-hidden", dialogClassName || "sm:max-w-2xl")}>
+                    <div className="flex flex-col max-h-[90vh]">
+                        <DialogHeader className="p-8 pb-4 shrink-0 bg-muted/20">
+                            <div className="flex items-center gap-4 mb-1">
+                                <div className="p-3 bg-primary/10 rounded-2xl">
+                                    {React.createElement(icon, { className: "h-6 w-6 text-primary" })}
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
+                                        {title}
+                                    </DialogTitle>
+                                    <DialogDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground/60">
+                                        {description}
+                                    </DialogDescription>
+                                </div>
+                            </div>
                         </DialogHeader>
-                        <div className="py-2">{children}</div>
+                        <div className="p-8 pt-4 overflow-y-auto">
+                            {children}
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -286,35 +287,35 @@ export default function SettingsPage() {
                     title="User Experience"
                     description="Personalize the industrial interface and batch operation toggles."
                     triggerText="Manage Experience"
-                    dialogClassName="sm:max-w-3xl"
+                    dialogClassName="sm:max-w-4xl"
                     badge="UI CORE"
                 >
-                    <div className="grid grid-cols-1 gap-6">
-                        <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
-                            <h3 className="text-base font-black uppercase tracking-widest mb-2">Visual Theme</h3>
-                            <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Synchronize interface luminosity with environment lighting.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
+                            <h3 className="text-xs font-black uppercase tracking-widest mb-1.5">Visual Theme</h3>
+                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Sync luminosity with lighting.</p>
                             <ThemeToggle />
                         </div>
-                        <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
-                            <h3 className="text-base font-black uppercase tracking-widest mb-2">Batch Processing</h3>
-                            <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Enable high-volume log manipulation via multi-select checkboxes.</p>
+                        <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
+                            <h3 className="text-xs font-black uppercase tracking-widest mb-1.5">Batch Processing</h3>
+                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Enable high-volume log manipulation.</p>
                             <MultiSelectToggle />
                         </div>
                         {role === 'admin' && (
-                          <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
-                              <h3 className="text-base font-black uppercase tracking-widest mb-2 flex items-center gap-2">
-                                <Volume2 className="h-4 w-4" /> Audio Feedback
+                          <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
+                              <h3 className="text-xs font-black uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                <Volume2 className="h-3.5 w-3.5" /> Audio Feedback
                               </h3>
-                              <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Toggle the "Thank You" audio playback for all system logs globally.</p>
+                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Global "Thank You" sounds.</p>
                               <AudioFeedbackToggle />
                           </div>
                         )}
                         {role === 'admin' && (
-                          <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
-                              <h3 className="text-base font-black uppercase tracking-widest mb-2 flex items-center gap-2">
-                                <Music className="h-4 w-4" /> Identity Prompt
+                          <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
+                              <h3 className="text-xs font-black uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                <Music className="h-3.5 w-3.5" /> Identity Prompt
                               </h3>
-                              <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Select which "Who are you?" audio to play upon personnel identification.</p>
+                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">"Who are you?" voice variants.</p>
                               <IdentityAudioSelector />
                           </div>
                         )}
