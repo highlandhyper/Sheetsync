@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useRef } from 'react';
@@ -13,6 +14,7 @@ interface AccessControlContextType {
   setPermission: (role: 'viewer', path: string, isEnabled: boolean) => void;
   setFeaturePermission: (feature: ViewerFeature, isEnabled: boolean) => void;
   setViewerDefaultPath: (path: string) => void;
+  setAudioPermission: (enabled: boolean) => void;
   isAllowed: (role: 'admin' | 'viewer', path: string) => boolean;
   hasFeature: (feature: ViewerFeature) => boolean;
 }
@@ -32,6 +34,7 @@ const getDefaultPermissions = (): Permissions => {
     viewer: baseViewerPaths,
     viewerFeatures: [],
     viewerDefaultPath: '/inventory/add',
+    isAudioEnabled: true,
   };
 };
 
@@ -110,6 +113,16 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     });
   }, [role]);
 
+  const setAudioPermission = useCallback((enabled: boolean) => {
+    if (role !== 'admin') return;
+    setPermissions(prev => {
+      const newState = { ...prev, isAudioEnabled: enabled };
+      localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newState));
+      setPermissionsAction(newState).catch(console.error);
+      return newState;
+    });
+  }, [role]);
+
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string) => {
     if (userRole === 'admin') return true;
     if (path === '/more') return true; // System-critical hub
@@ -122,7 +135,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   }, [permissions, role]);
 
   return (
-    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, isAllowed, hasFeature }}>
+    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, setAudioPermission, isAllowed, hasFeature }}>
       {children}
     </AccessControlContext.Provider>
   );

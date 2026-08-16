@@ -24,7 +24,10 @@ import {
     Shield,
     Terminal,
     Bell,
-    CheckCircle2
+    CheckCircle2,
+    Save,
+    BellDot,
+    Volume2
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -47,6 +50,7 @@ import { useGeneralSettings } from '@/context/general-settings-context';
 import { useNotifications } from '@/context/notification-context';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { AudioFeedbackToggle } from '@/components/settings/audio-feedback-toggle';
 
 interface SettingsCardProps {
   icon: React.ElementType;
@@ -294,6 +298,15 @@ export default function SettingsPage() {
                             <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Enable high-volume log manipulation via multi-select checkboxes.</p>
                             <MultiSelectToggle />
                         </div>
+                        {role === 'admin' && (
+                          <div className="rounded-[2rem] border-2 border-primary/5 p-8 flex flex-col bg-muted/5 shadow-inner">
+                              <h3 className="text-base font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Volume2 className="h-4 w-4" /> Audio Feedback
+                              </h3>
+                              <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Toggle the "Thank You" audio playback for all system logs globally.</p>
+                              <AudioFeedbackToggle />
+                          </div>
+                        )}
                     </div>
                 </SettingsCard>
 
