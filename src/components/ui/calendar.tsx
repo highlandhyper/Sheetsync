@@ -23,7 +23,10 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center h-10",
-        caption_label: "text-sm font-medium flex items-center h-7",
+        caption_label: cn(
+          "text-sm font-medium flex items-center h-7",
+          props.captionLayout && props.captionLayout !== "buttons" && "hidden"
+        ),
         caption_dropdowns: "flex justify-center gap-1 z-10",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
