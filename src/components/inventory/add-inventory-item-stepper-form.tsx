@@ -134,6 +134,15 @@ const playProfessionalBeep = () => {
   }
 };
 
+const playThankYouAudio = () => {
+  try {
+    const audio = new Audio('/thankyou.m4a');
+    audio.play().catch(e => console.warn("Audio playback failed:", e));
+  } catch (e) {
+    console.warn("Audio error:", e);
+  }
+};
+
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -226,6 +235,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
     setIsSuccessDialogOpen(true);
+    playThankYouAudio(); // Trigger audio feedback upon successful visual confirmation
     setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
 
     const savedStaffName = data.staffName; 
@@ -347,7 +357,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setIsFetchingProduct(false);
           return false;
       }
-  }, [cachedProducts]);
+  }, [cachedProducts, fetchProductAction, fetchProductExternalDataAction]);
 
   const handleRequestProductAdd = () => {
     if (!allFormValues.barcode) return;
