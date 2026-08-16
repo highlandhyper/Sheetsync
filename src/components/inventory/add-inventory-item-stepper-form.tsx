@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -156,11 +157,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   
   // Zero-Latency Industrial Audio Engine
   const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
+  const identityAudioRef = useRef<HTMLAudioElement | null>(null);
+  const identityAudio1Ref = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
         thankYouAudioRef.current = new Audio('/thankyou.m4a');
         thankYouAudioRef.current.load();
+        
+        identityAudioRef.current = new Audio('/whoareyou.mp3');
+        identityAudioRef.current.load();
+        
+        identityAudio1Ref.current = new Audio('/whoareyou1.mp3');
+        identityAudio1Ref.current.load();
     }
   }, []);
 
@@ -217,6 +226,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         thankYouAudioRef.current.play().catch(e => console.warn("Audio playback inhibited by browser:", e));
     }
   }, [permissions.isAudioEnabled]);
+
+  const playIdentityAudio = useCallback(() => {
+    if (!permissions.isAudioEnabled) return;
+    const audio = permissions.identityAudioType === 'whoareyou1' ? identityAudio1Ref.current : identityAudioRef.current;
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.warn("Identity audio inhibited:", e));
+    }
+  }, [permissions.isAudioEnabled, permissions.identityAudioType]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
@@ -618,7 +636,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         <CommandEmpty>No staff member found.</CommandEmpty>
                                         <CommandGroup>
                                             {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
-                                                <CommandItem key={staff} value={staff} onSelect={() => { setValue("staffName", staff, { shouldValidate: true }); setStaffComboboxOpen(false); }} className="h-12 sm:h-10 text-base sm:text-sm font-medium">
+                                                <CommandItem 
+                                                  key={staff} 
+                                                  value={staff} 
+                                                  onSelect={() => { 
+                                                    setValue("staffName", staff, { shouldValidate: true }); 
+                                                    setStaffComboboxOpen(false); 
+                                                    playIdentityAudio();
+                                                  }} 
+                                                  className="h-12 sm:h-10 text-base sm:text-sm font-medium"
+                                                >
                                                     <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>{staff}
                                                 </CommandItem>
                                             ))}

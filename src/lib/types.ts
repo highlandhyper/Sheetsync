@@ -104,6 +104,7 @@ export type Permissions = {
   viewerFeatures?: ViewerFeature[];
   viewerDefaultPath?: string;
   isAudioEnabled?: boolean;
+  identityAudioType?: 'whoareyou' | 'whoareyou1';
 };
 
 export interface AuditLogEntry {

@@ -15,6 +15,7 @@ interface AccessControlContextType {
   setFeaturePermission: (feature: ViewerFeature, isEnabled: boolean) => void;
   setViewerDefaultPath: (path: string) => void;
   setAudioPermission: (enabled: boolean) => void;
+  setIdentityAudioType: (type: 'whoareyou' | 'whoareyou1') => void;
   isAllowed: (role: 'admin' | 'viewer', path: string) => boolean;
   hasFeature: (feature: ViewerFeature) => boolean;
 }
@@ -35,6 +36,7 @@ const getDefaultPermissions = (): Permissions => {
     viewerFeatures: [],
     viewerDefaultPath: '/inventory/add',
     isAudioEnabled: true,
+    identityAudioType: 'whoareyou',
   };
 };
 
@@ -123,6 +125,16 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     });
   }, [role]);
 
+  const setIdentityAudioType = useCallback((type: 'whoareyou' | 'whoareyou1') => {
+    if (role !== 'admin') return;
+    setPermissions(prev => {
+      const newState = { ...prev, identityAudioType: type };
+      localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newState));
+      setPermissionsAction(newState).catch(console.error);
+      return newState;
+    });
+  }, [role]);
+
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string) => {
     if (userRole === 'admin') return true;
     if (path === '/more') return true; // System-critical hub
@@ -135,7 +147,7 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   }, [permissions, role]);
 
   return (
-    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, setAudioPermission, isAllowed, hasFeature }}>
+    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, setAudioPermission, setIdentityAudioType, isAllowed, hasFeature }}>
       {children}
     </AccessControlContext.Provider>
   );
