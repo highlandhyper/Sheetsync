@@ -286,7 +286,7 @@ export default function SettingsPage() {
                     title="User Experience"
                     description="Personalize the industrial interface and batch operation toggles."
                     triggerText="Manage Experience"
-                    dialogClassName="sm:max-w-xl"
+                    dialogClassName="sm:max-w-3xl"
                     badge="UI CORE"
                 >
                     <div className="grid grid-cols-1 gap-6">
