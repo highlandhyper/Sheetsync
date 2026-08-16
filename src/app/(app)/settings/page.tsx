@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -351,7 +350,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4 px-1">
                     <div className="text-3xl font-black text-primary/10 tracking-tighter">02</div>
                     <h2 className="text-sm font-black uppercase tracking-[0.4em] text-primary">Warehouse Logic</h2>
-                    <div className="h-px flex-1 bg- gradient-to-r from-primary/10 via-primary/5 to-transparent" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
                 </div>
                 <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <SettingsCard

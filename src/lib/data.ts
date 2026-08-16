@@ -266,7 +266,7 @@ export async function addProduct(email: string, p: any) {
   const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
   await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `Product: ${p.productName}`);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `[CREATED] Product: ${p.productName} | Barcode: ${p.barcode}`);
   return { id: uniqueId, uniqueId, ...p };
 }
 
@@ -277,7 +277,7 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
     const data = await readSheetData(`${DB_SHEET_NAME}!C${row}:C${row}`);
     const name = data?.[0]?.[0] || 'Unknown';
     await deleteSheetRow(DB_SHEET_NAME, row);
-    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `Removed Product: ${name}`);
+    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `[REMOVED] Barcode: ${barcode} | Product: ${name}`);
     return true;
   }
   return false;
@@ -288,25 +288,25 @@ export async function deleteProductsByBarcodes(email: string, identifiers: strin
   if (!sheetData || sheetData.length === 0) return false;
   const idSet = new Set(identifiers.map(id => id.trim()));
   const rowIndicesToDelete: number[] = [];
-  const deletedNames: string[] = [];
+  const deletedInfo: string[] = [];
 
   sheetData.forEach((row, i) => {
     const rowUniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
     if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) {
         rowIndicesToDelete.push(i + 2); 
-        deletedNames.push(String(row[DB_COL_PRODUCT_NAME] || 'Unknown'));
+        deletedInfo.push(`${row[DB_COL_PRODUCT_NAME]} (${rowBarcode})`);
     }
   });
   if (rowIndicesToDelete.length === 0) return false;
   const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
-  if (success) await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `Batch removal of ${deletedNames.length} items: ${deletedNames.join(', ')}`);
+  if (success) await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `[BATCH REMOVAL] Deleted ${deletedInfo.length} catalog items: ${deletedInfo.join(', ')}`);
   return success;
 }
 
 export async function clearProductDatabase(email: string) {
   const success = await clearSheetData(`${DB_SHEET_NAME}!A2:H`);
-  if (success) await logAuditEvent(email, 'WIPE_DATABASE', 'GLOBAL', `Catalog cleared.`);
+  if (success) await logAuditEvent(email, 'WIPE_DATABASE', 'GLOBAL', `[FULL WIPE] Catalog cleared by administrator.`);
   return success;
 }
 
@@ -331,7 +331,7 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
       { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, 
       { range: `${DB_SHEET_NAME}!E${row}`, values: [[costValue]] }
     ]);
-    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `Updated Catalog: ${n} | Supplier: ${s}`);
+    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `[UPDATED] Barcode: ${b} | Product: ${n} | Supplier: ${s} | Unit Cost: ${costValue}`);
     return true;
   }
   return false;
@@ -351,7 +351,7 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
     });
     if (dbUpdates.length > 0) await batchUpdateSheetCells(dbUpdates);
   }
-  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldSupplier, `Renamed to "${newSupplier}".`);
+  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldSupplier, `[RENAMED VENDOR] Changed from "${oldSupplier}" to "${newSupplier}" across all registries.`);
   return true;
 }
 
@@ -440,7 +440,7 @@ export async function deleteInventoryItemById(email: string, id: string) {
         const barcode = data[0][INV_COL_BARCODE];
         const productName = data[0][INV_COL_PRODUCT_NAME];
         await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-        await logAuditEvent(email, 'DELETE_INVENTORY', id, `[DELETED] Barcode: ${barcode} | Product: ${productName} | Log removal.`);
+        await logAuditEvent(email, 'DELETE_INVENTORY', id, `[DELETED] Barcode: ${barcode} | Product: ${productName} | Permanent log removal.`);
         return true;
     }
     await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
@@ -467,7 +467,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     }
   });
   const trend: StockTrendData[] = [];
-  for (let d = 6; d >= 0; d--) {
+  for (let d = 14; d >= 0; d--) {
     const day = subDays(today, d);
     const curr = inv.reduce((s, x) => s + x.quantity, 0);
     const post = inv.filter(x => x.timestamp && isAfter(parseISO(x.timestamp), endOfDay(day))).reduce((s, x) => s + x.quantity, 0);
