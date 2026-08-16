@@ -5,7 +5,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Edit2, Check, X, Loader2, AlertTriangle, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Loader2, AlertTriangle, UserPlus, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 export function StaffManager() {
   const { toast } = useToast();
