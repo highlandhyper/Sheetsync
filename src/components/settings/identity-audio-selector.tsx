@@ -59,7 +59,7 @@ export function IdentityAudioSelector() {
           <RadioGroup 
             value={permissions.identityAudioType || 'whoareyou'} 
             onValueChange={(v: any) => setIdentityAudioType(v)}
-            className="grid grid-cols-1 gap-3"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3"
           >
             <div className="flex items-center justify-between p-4 rounded-2xl border bg-background hover:bg-muted/10 transition-colors">
               <div className="flex items-center gap-3">
