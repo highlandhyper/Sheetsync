@@ -18,7 +18,11 @@ import {
     MapPin, 
     User as UserIcon, 
     Layers,
-    Tag
+    Tag,
+    ShieldCheck,
+    AlertTriangle,
+    Undo2,
+    Trash2
 } from 'lucide-react';
 import Image from 'next/image';
 import { format, parseISO, isValid } from 'date-fns';
@@ -53,7 +57,7 @@ import { Separator } from "@/components/ui/separator";
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Product, Supplier, InventoryItem } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, AuditLogEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useAuth } from '@/context/auth-context';
@@ -67,10 +71,30 @@ interface EditProductDialogProps {
   onSuccess: (updatedProduct: Product) => void;
 }
 
+const getActionIcon = (action: string) => {
+    switch (action) {
+        case 'LOG_INVENTORY': return <PlusCircle className="h-2.5 w-2.5" />;
+        case 'RETURN_INVENTORY': return <Undo2 className="h-2.5 w-2.5" />;
+        case 'UPDATE_INVENTORY': return <Edit className="h-2.5 w-2.5" />;
+        case 'DELETE_INVENTORY': return <Trash2 className="h-2.5 w-2.5" />;
+        default: return <Tag className="h-2.5 w-2.5" />;
+    }
+};
+
+const getActionColor = (action: string) => {
+    switch (action) {
+        case 'LOG_INVENTORY': return "bg-green-500/10 text-green-600";
+        case 'RETURN_INVENTORY': return "bg-blue-500/10 text-blue-600";
+        case 'UPDATE_INVENTORY': return "bg-accent/10 text-accent-foreground";
+        case 'DELETE_INVENTORY': return "bg-destructive/10 text-destructive";
+        default: return "bg-muted text-muted-foreground";
+    }
+};
+
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
   const { user, role } = useAuth();
-  const { updateProduct: updateProductInCache, refreshData, inventoryItems } = useDataCache();
+  const { updateProduct: updateProductInCache, refreshData, inventoryItems, auditLogs } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
@@ -108,21 +132,53 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
   const supplierNameValue = watch('supplierName');
 
-  // Filter history for this product
-  const productHistory = useMemo(() => {
+  // Filter history for this product from both current inventory and permanent audit logs
+  const combinedHistory = useMemo(() => {
     if (!product) return [];
-    return inventoryItems
-        .filter(item => item.barcode === product.barcode && item.quantity > 0)
-        .sort((a, b) => {
-            const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
-            const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
-            return dateB - dateA;
-        });
-  }, [inventoryItems, product]);
+
+    const barcode = product.barcode.toLowerCase().trim();
+
+    // 1. Map Current Inventory Logs
+    const currentLogs = inventoryItems
+        .filter(item => item.barcode.toLowerCase().trim() === barcode && item.quantity > 0)
+        .map(item => ({
+            id: item.id,
+            timestamp: item.timestamp || '',
+            user: item.staffName,
+            action: 'ACTIVE_STOCK',
+            details: `Quantity: ${item.quantity} | Zone: ${item.location}`,
+            type: 'inventory'
+        }));
+
+    // 2. Map Forensic Audit Logs
+    const auditTraces = auditLogs
+        .filter(log => {
+            const detailStr = log.details.toLowerCase();
+            const targetStr = log.target.toLowerCase();
+            return detailStr.includes(barcode) || targetStr.includes(barcode);
+        })
+        .map(log => ({
+            id: log.id,
+            timestamp: log.timestamp,
+            user: log.user,
+            action: log.action,
+            details: log.details,
+            type: 'audit'
+        }));
+
+    // 3. Combine and Sort
+    return [...currentLogs, ...auditTraces].sort((a, b) => {
+        const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+        const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+        return dateB - dateA;
+    });
+  }, [inventoryItems, auditLogs, product]);
 
   const totalStockInRegistry = useMemo(() => {
-    return productHistory.reduce((sum, item) => sum + item.quantity, 0);
-  }, [productHistory]);
+    return inventoryItems
+        .filter(item => item.barcode.toLowerCase().trim() === product?.barcode.toLowerCase().trim())
+        .reduce((sum, item) => sum + item.quantity, 0);
+  }, [inventoryItems, product]);
 
   useEffect(() => {
     if (product && isOpen) {
@@ -237,7 +293,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent 
-          className="sm:max-w-2xl p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl"
+          className="sm:max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -279,7 +335,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                     </TabsTrigger>
                     <TabsTrigger value="history" className="font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
                         <History className="mr-2 h-3.5 w-3.5" />
-                        Log History
+                        Forensic History
                     </TabsTrigger>
                 </TabsList>
 
@@ -406,57 +462,52 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                     </TabsContent>
 
                     <TabsContent value="history" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="rounded-2xl border bg-background overflow-hidden shadow-inner h-[300px]">
+                        <div className="rounded-2xl border bg-background overflow-hidden shadow-inner h-[400px]">
                             <div className="bg-muted/50 p-3 border-b flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <History className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Log History</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Complete Forensic Audit Trail</span>
                                 </div>
                                 <Badge variant="secondary" className="text-[8px] font-black px-1.5 py-0 border-none bg-primary/10 text-primary">
-                                    {productHistory.length} ENTRIES
+                                    {combinedHistory.length} TOTAL EVENTS
                                 </Badge>
                             </div>
-                            <ScrollArea className="h-[calc(300px-40px)] w-full">
-                                {productHistory.length > 0 ? (
+                            <ScrollArea className="h-[calc(400px-40px)] w-full">
+                                {combinedHistory.length > 0 ? (
                                     <Table>
                                         <TableHeader className="bg-muted/10 sticky top-0 z-10">
                                             <TableRow className="h-10 hover:bg-transparent">
                                                 <TableHead className="text-[9px] uppercase font-black pl-4">Timestamp</TableHead>
-                                                <TableHead className="text-right text-[9px] uppercase font-black">Qty</TableHead>
-                                                <TableHead className="text-[9px] uppercase font-black">Location</TableHead>
-                                                <TableHead className="text-[9px] uppercase font-black">Staff</TableHead>
-                                                <TableHead className="text-[9px] uppercase font-black pr-4">Status</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black">Operation</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black">Personnel</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black pr-4">Event Details</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {productHistory.map((item) => (
-                                                <TableRow key={item.id} className="h-11 group hover:bg-muted/30 transition-colors">
-                                                    <TableCell className="text-[10px] font-mono text-muted-foreground pl-4">
-                                                        {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                            {combinedHistory.map((log) => (
+                                                <TableRow key={`${log.type}-${log.id}`} className="h-auto group hover:bg-muted/30 transition-colors">
+                                                    <TableCell className="text-[10px] font-mono text-muted-foreground pl-4 whitespace-nowrap">
+                                                        {log.timestamp ? format(parseISO(log.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                                     </TableCell>
-                                                    <TableCell className="text-right font-black text-slate-900 dark:text-white text-xs">
-                                                        {item.quantity}
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] font-bold">
-                                                        <div className="flex items-center gap-1">
-                                                            <MapPin className="h-2.5 w-2.5 text-muted-foreground" />
-                                                            {item.location}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                        <div className="flex items-center gap-1">
-                                                            <UserIcon className="h-2.5 w-2.5 opacity-40" />
-                                                            {item.staffName}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="pr-4">
+                                                    <TableCell className="whitespace-nowrap">
                                                         <div className={cn(
-                                                            "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter",
-                                                            item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-green-500/10 text-green-600"
+                                                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shadow-sm",
+                                                            log.action === 'ACTIVE_STOCK' ? "bg-primary text-primary-foreground" : getActionColor(log.action)
                                                         )}>
-                                                            {item.itemType === 'Damage' ? <AlertTriangle className="mr-1 h-2 w-2" /> : <Tag className="mr-1 h-2 w-2" />}
-                                                            {item.itemType}
+                                                            {log.action === 'ACTIVE_STOCK' ? <ShieldCheck className="h-2.5 w-2.5" /> : getActionIcon(log.action)}
+                                                            {log.action === 'ACTIVE_STOCK' ? 'In Stock' : log.action.replace('_INVENTORY', '')}
                                                         </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <UserIcon className="h-2.5 w-2.5 opacity-40" />
+                                                            <span className="truncate max-w-[80px]">{log.user}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="pr-4 py-3">
+                                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                                                            {log.details}
+                                                        </p>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -467,8 +518,8 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
                                         <div className="bg-muted p-4 rounded-full mb-3 opacity-20">
                                             <History className="h-8 w-8" />
                                         </div>
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Zero Historical Logs</p>
-                                        <p className="text-[9px] font-medium max-w-[200px] mt-1">No active stock entries found in the industrial registry for this SKU.</p>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Zero forensic Logs</p>
+                                        <p className="text-[9px] font-medium max-w-[200px] mt-1">No audit traces or active stock found for this SKU in the registry.</p>
                                     </div>
                                 )}
                             </ScrollArea>
