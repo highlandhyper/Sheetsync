@@ -110,31 +110,6 @@ const steps = [
   { id: 4, name: 'Review & Log', icon: FilePlus },
 ];
 
-const playProfessionalBeep = () => {
-  try {
-    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audioCtx = new AudioContextClass();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Standard A5 industrial pitch
-
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-
-    oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + 0.2);
-  } catch (e) {
-    console.warn("Audio feedback failed:", e);
-  }
-};
-
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -155,7 +130,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const submitLockRef = useRef(false);
   const scanProcessedRef = useRef(false);
   
-  // Zero-Latency Industrial Audio Engine
   const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
   const identityAudioRef = useRef<HTMLAudioElement | null>(null);
   const identityAudio1Ref = useRef<HTMLAudioElement | null>(null);
@@ -236,10 +210,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     }
   }, [permissions.isAudioEnabled, permissions.identityAudioType]);
 
+  // INSTANT IDENTITY PROMPT: Triggered immediately when step transitions to staff selection
+  useEffect(() => {
+    if (currentStep === 1) {
+      playIdentityAudio();
+    }
+  }, [currentStep, playIdentityAudio]);
+
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
-    // IMMEDIATE AUDITORY AND VISUAL FEEDBACK (ZERO LATENCY)
     playThankYouAudio();
     setIsSuccessDialogOpen(true);
     
@@ -263,11 +243,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         timestamp: now.toISOString()
     };
 
-    // UI UPDATES INSTANTLY FOR INDUSTRIAL PERFORMANCE
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
     
-    // Success terminal remains for 3 seconds
     setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
 
     const savedStaffName = data.staffName; 
@@ -323,7 +301,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
       try {
         const response = await addInventoryItemAction(undefined, formData);
-        
         if (response.success && response.data) {
           if (activeSession) {
               consumeSpecialEntry(); 
@@ -444,7 +421,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
 
-    playProfessionalBeep(); 
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     
@@ -642,7 +618,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                                   onSelect={() => { 
                                                     setValue("staffName", staff, { shouldValidate: true }); 
                                                     setStaffComboboxOpen(false); 
-                                                    playIdentityAudio();
                                                   }} 
                                                   className="h-12 sm:h-10 text-base sm:text-sm font-medium"
                                                 >
