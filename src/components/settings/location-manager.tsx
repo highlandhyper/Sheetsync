@@ -5,7 +5,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Edit2, Check, X, Loader2, MapPin, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Loader2, MapPin, AlertTriangle, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -17,6 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 export function LocationManager() {
   const { toast } = useToast();
@@ -61,82 +63,98 @@ export function LocationManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="new-location">Add New Storage Zone</Label>
-        <div className="flex gap-2">
-          <Input
-            id="new-location"
-            placeholder="e.g., Cold Storage B..."
-            value={newLocation}
-            onChange={(e) => setNewLocation(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            disabled={isSyncing}
-          />
-          <Button onClick={handleAdd} disabled={!newLocation.trim() || isSyncing}>
-            <Plus className="h-4 w-4 mr-2" /> Add
-          </Button>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* FORM SECTION */}
+      <div className="space-y-6">
+        <div className="space-y-4">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                    <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <Label htmlFor="new-location" className="text-sm font-black uppercase tracking-widest">New Storage Zone</Label>
+            </div>
+            <div className="flex flex-col gap-3">
+                <Input
+                    id="new-location"
+                    placeholder="e.g., Cold Storage B..."
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                    disabled={isSyncing}
+                    className="h-12 font-bold bg-muted/10 border-primary/5"
+                />
+                <Button onClick={handleAdd} disabled={!newLocation.trim() || isSyncing} className="h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20">
+                    {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Create Zone
+                </Button>
+            </div>
+        </div>
+        
+        <div className="p-4 bg-muted/10 border border-primary/5 rounded-2xl">
+            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                Defining zones allows for precise inventory tracking. All terminals in the warehouse will be updated with these new mapping options.
+            </p>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <div className="bg-muted/50 p-2 border-b text-xs font-bold uppercase tracking-wider text-muted-foreground flex justify-between">
-            <span>Location Name</span>
-            <span>Actions</span>
+      {/* LIST SECTION */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Defined Regions</span>
+            <Badge variant="outline" className="text-[8px] font-black">{uniqueLocations.length} Zones</Badge>
         </div>
-        <div className="divide-y max-h-[300px] overflow-y-auto">
-          {uniqueLocations.length > 0 ? (
-            uniqueLocations.map((name, index) => (
-              <div key={name} className="flex items-center justify-between p-3 group hover:bg-muted/30 transition-colors">
-                {editingIndex === index ? (
-                  <div className="flex-1 flex gap-2 mr-2">
-                    <Input
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      className="h-8 text-sm"
-                      autoFocus
-                    />
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => saveEdit(index)}>
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingIndex(null)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+        <div className="rounded-2xl border-2 border-muted overflow-hidden bg-background">
+            <ScrollArea className="h-[300px]">
+                <div className="divide-y divide-muted">
+                {uniqueLocations.length > 0 ? (
+                    uniqueLocations.map((name, index) => (
+                    <div key={name} className="flex items-center justify-between p-3.5 group hover:bg-muted/30 transition-colors">
+                        {editingIndex === index ? (
+                        <div className="flex-1 flex gap-2 mr-2">
+                            <Input
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="h-9 text-sm font-bold bg-background"
+                            autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-9 w-9 text-green-600 hover:bg-green-50" onClick={() => saveEdit(index)}>
+                            <Check className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:bg-destructive/5" onClick={() => setEditingIndex(null)}>
+                            <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        ) : (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <Building className="h-3.5 w-3.5 text-primary/40" />
+                                <span className="font-bold text-sm tracking-tight text-slate-700 dark:text-slate-300">{name}</span>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/5" onClick={() => startEditing(index, name)}>
+                                <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/5" onClick={() => setLocationToDelete(name)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            </div>
+                        </>
+                        )}
+                    </div>
+                    ))
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-medium text-sm">{name}</span>
+                    <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
+                        <MapPin className="h-10 w-10 opacity-10" />
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Zero Zones Defined</p>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEditing(index, name)}>
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setLocationToDelete(name)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </>
                 )}
-              </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-muted-foreground text-sm italic">
-              No custom locations set.
-            </div>
-          )}
+                </div>
+            </ScrollArea>
         </div>
       </div>
-      
-      {isSyncing && (
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground animate-pulse">
-              <Loader2 className="h-3 w-3 animate-spin" /> Updating cloud registry...
-          </div>
-      )}
 
       <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-3xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -149,8 +167,8 @@ export function LocationManager() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest text-[10px]">
               Delete Zone
             </AlertDialogAction>
           </AlertDialogFooter>

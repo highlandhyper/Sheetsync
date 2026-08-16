@@ -119,7 +119,7 @@ function SettingsCard({
           </div>
           <div className="space-y-2">
             <CardTitle className="text-xl font-black uppercase tracking-tight leading-none">{title}</CardTitle>
-            <CardDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed uppercase tracking-tighter">
+            <CardDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed tracking-tighter">
                 {description}
             </CardDescription>
           </div>
@@ -144,7 +144,7 @@ function SettingsCard({
                                     <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
                                         {title}
                                     </DialogTitle>
-                                    <DialogDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground/60">
+                                    <DialogDescription className="font-bold text-xs tracking-widest text-muted-foreground/60">
                                         {description}
                                     </DialogDescription>
                                 </div>
@@ -191,7 +191,7 @@ function NotificationTerminal() {
                 <div className="flex items-center justify-between mb-6">
                     <div className="space-y-1">
                         <h3 className="text-base font-black uppercase tracking-widest">OS System Alerts</h3>
-                        <p className="text-muted-foreground text-xs font-medium leading-relaxed uppercase tracking-tight">Receive OTPs and security alerts directly on your device screen.</p>
+                        <p className="text-muted-foreground text-xs font-medium leading-relaxed tracking-tight">Receive OTPs and security alerts directly on your device screen.</p>
                     </div>
                     <Switch 
                         checked={settings.isBrowserNotificationsEnabled} 
@@ -293,12 +293,12 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
                             <h3 className="text-xs font-black uppercase tracking-widest mb-1.5">Visual Theme</h3>
-                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Sync luminosity with lighting.</p>
+                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed tracking-tight">Sync luminosity with lighting.</p>
                             <ThemeToggle />
                         </div>
                         <div className="rounded-3xl border-2 border-primary/5 p-5 flex flex-col bg-muted/5 shadow-inner">
                             <h3 className="text-xs font-black uppercase tracking-widest mb-1.5">Batch Processing</h3>
-                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Enable high-volume log manipulation.</p>
+                            <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed tracking-tight">Enable high-volume log manipulation.</p>
                             <MultiSelectToggle />
                         </div>
                         {role === 'admin' && (
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                               <h3 className="text-xs font-black uppercase tracking-widest mb-1.5 flex items-center gap-2">
                                 <Volume2 className="h-3.5 w-3.5" /> Audio Feedback
                               </h3>
-                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">Global "Thank You" sounds.</p>
+                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed tracking-tight">Global "Thank You" sounds.</p>
                               <AudioFeedbackToggle />
                           </div>
                         )}
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                               <h3 className="text-xs font-black uppercase tracking-widest mb-1.5 flex items-center gap-2">
                                 <Music className="h-3.5 w-3.5" /> Identity Prompt
                               </h3>
-                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed uppercase tracking-tight">"Who are you?" voice variants.</p>
+                              <p className="text-muted-foreground mb-4 text-[10px] font-medium leading-relaxed tracking-tight">"Who are you?" voice variants.</p>
                               <IdentityAudioSelector />
                           </div>
                         )}
@@ -344,12 +344,12 @@ export default function SettingsPage() {
                         <div className="space-y-6">
                             <div className="rounded-[2rem] border-2 border-destructive/5 p-8 bg-muted/5 shadow-inner">
                                 <h3 className="text-base font-black uppercase tracking-widest mb-2">Greeting Protocol</h3>
-                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Display administrative welcome sequence on session start.</p>
+                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed tracking-tight">Display administrative welcome sequence on session start.</p>
                                 <AdminWelcomeToggle />
                             </div>
                             <div className="rounded-[2rem] border-2 border-destructive/5 p-8 bg-muted/5 shadow-inner">
                                 <h3 className="text-base font-black uppercase tracking-widest mb-2">Auto-Lock Timer</h3>
-                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed uppercase tracking-tight">Terminate active terminal access after idle period.</p>
+                                <p className="text-muted-foreground mb-6 text-xs font-medium leading-relaxed tracking-tight">Terminate active terminal access after idle period.</p>
                                 <InactivityTimeoutInput />
                             </div>
                         </div>
@@ -372,7 +372,7 @@ export default function SettingsPage() {
                         description="Modify the authoritative list of personnel eligible for inventory logging."
                         triggerText="Personnel Database"
                         variant="logic"
-                        dialogClassName="sm:max-w-md"
+                        dialogClassName="sm:max-w-4xl"
                         badge="HR SYNC"
                     >
                         <StaffManager />
@@ -384,7 +384,7 @@ export default function SettingsPage() {
                         description="Define physical storage locations and warehouse regions."
                         triggerText="Zone Mapping"
                         variant="logic"
-                        dialogClassName="sm:max-w-md"
+                        dialogClassName="sm:max-w-4xl"
                         badge="LOC DATA"
                     >
                         <LocationManager />
@@ -447,7 +447,7 @@ export default function SettingsPage() {
                             <AlertTriangle className="h-6 w-6 text-yellow-600 shrink-0 mt-1" />
                             <div className="space-y-1">
                                 <p className="text-sm font-black uppercase text-yellow-800 tracking-tight leading-none">Security Alert</p>
-                                <p className="text-[10px] font-bold text-yellow-700 leading-relaxed uppercase tracking-tighter">
+                                <p className="text-[10px] font-bold text-yellow-700 leading-relaxed tracking-tighter">
                                     These credentials authorize stock deletion and quantity overrides. Guard these keys with extreme prejudice.
                                 </p>
                             </div>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
                             <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-widest text-primary border-primary/20">Authorized Access</Badge>
                         </div>
                     </div>
-                    <DialogDescription className="font-bold text-sm leading-relaxed uppercase tracking-tight text-muted-foreground">
+                    <DialogDescription className="font-bold text-sm leading-relaxed tracking-tight text-muted-foreground">
                         Establishing secure system link to the Google Sheets industrial registry.
                     </DialogDescription>
                 </DialogHeader>
@@ -486,7 +486,7 @@ export default function SettingsPage() {
                       <AlertTriangle className="h-8 w-8 text-yellow-600 shrink-0 mt-1" />
                       <div className="space-y-1">
                           <p className="text-xs font-black uppercase text-yellow-800 tracking-widest">Integrity Protocol</p>
-                          <p className="text-[11px] text-yellow-700/70 font-semibold leading-relaxed uppercase tracking-tighter">
+                          <p className="text-[11px] text-yellow-700/70 font-semibold leading-relaxed tracking-tighter">
                               Manual structural modifications to headers, column order, or tab definitions will disrupt the synchronization engine. Proceed with extreme caution.
                           </p>
                       </div>
