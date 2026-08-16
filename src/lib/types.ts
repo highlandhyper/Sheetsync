@@ -103,6 +103,7 @@ export type Permissions = {
   viewer: string[];
   viewerFeatures?: ViewerFeature[];
   viewerDefaultPath?: string;
+  isAudioEnabled?: boolean;
 };
 
 export interface AuditLogEntry {

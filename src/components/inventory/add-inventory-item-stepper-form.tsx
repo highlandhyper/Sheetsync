@@ -68,6 +68,7 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
+import { useAccessControl } from '@/context/access-control-context';
 import type { InventoryItem } from '@/lib/types';
 
 function SessionTimer({ expiresAt }: { expiresAt: string }) {
@@ -137,6 +138,7 @@ const playProfessionalBeep = () => {
 export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations, uniqueStaffNames }: { uniqueLocations: string[], uniqueStaffNames: string[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { permissions } = useAccessControl();
   const { 
     products: cachedProducts, 
     uniqueLocations: dynamicLocations, 
@@ -211,11 +213,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   }, [activeSession, setValue, allFormValues.staffName]);
 
   const playThankYouAudio = useCallback(() => {
-    if (thankYouAudioRef.current) {
+    if (thankYouAudioRef.current && permissions.isAudioEnabled !== false) {
         thankYouAudioRef.current.currentTime = 0;
         thankYouAudioRef.current.play().catch(e => console.warn("Audio playback inhibited by browser:", e));
     }
-  }, []);
+  }, [permissions.isAudioEnabled]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
