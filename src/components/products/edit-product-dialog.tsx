@@ -1,10 +1,28 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Check, ChevronsUpDown, PlusCircle, DollarSign, Edit, Image as ImageIcon, X } from 'lucide-react';
+import { 
+    Loader2, 
+    Save, 
+    Check, 
+    ChevronsUpDown, 
+    PlusCircle, 
+    DollarSign, 
+    Edit, 
+    Image as ImageIcon, 
+    X, 
+    History, 
+    Info, 
+    MapPin, 
+    User as UserIcon, 
+    Layers,
+    Tag
+} from 'lucide-react';
 import Image from 'next/image';
+import { format, parseISO, isValid } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,11 +45,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Product, Supplier } from '@/lib/types';
+import type { Product, Supplier, InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useAuth } from '@/context/auth-context';
@@ -48,12 +70,11 @@ interface EditProductDialogProps {
 export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange, onSuccess }: EditProductDialogProps) {
   const { toast } = useToast();
   const { user, role } = useAuth();
-  const { updateProduct: updateProductInCache, refreshData } = useDataCache();
+  const { updateProduct: updateProductInCache, refreshData, inventoryItems } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   
-  // Standardized references for focus management
   const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +85,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
   const [isImagePopupOpen, setIsImagePopupOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('details');
 
   const isViewer = role === 'viewer';
 
@@ -86,6 +108,22 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
 
   const supplierNameValue = watch('supplierName');
 
+  // Filter history for this product
+  const productHistory = useMemo(() => {
+    if (!product) return [];
+    return inventoryItems
+        .filter(item => item.barcode === product.barcode && item.quantity > 0)
+        .sort((a, b) => {
+            const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+            const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+            return dateB - dateA;
+        });
+  }, [inventoryItems, product]);
+
+  const totalStockInRegistry = useMemo(() => {
+    return productHistory.reduce((sum, item) => sum + item.quantity, 0);
+  }, [productHistory]);
+
   useEffect(() => {
     if (product && isOpen) {
       reset({
@@ -96,6 +134,7 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
       });
       setSupplierSearch('');
       setExternalData(null);
+      setActiveTab('details');
       if (!isViewer) {
         setTimeout(() => nameInputRef.current?.focus(), 150);
       }
@@ -198,163 +237,271 @@ export function EditProductDialog({ product, allSuppliers, isOpen, onOpenChange,
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent 
-          className="sm:max-w-lg"
+          className="sm:max-w-2xl p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
-                <div>
-                    <DialogTitle>{isViewer ? 'Product Details' : 'Edit Product Catalog'}</DialogTitle>
-                    <DialogDescription>
-                    Information for barcode: <span className="font-mono font-bold text-foreground">{product.barcode}</span>
-                    </DialogDescription>
-                </div>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8 text-[10px] font-black px-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" 
-                    onClick={handleFetchImage}
-                    disabled={isFetchingImage}
-                >
-                    {isFetchingImage ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ImageIcon className="mr-1 h-3 w-3" />}
-                    VIEW IMAGE
-                </Button>
-            </div>
-          </DialogHeader>
-          <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="barcode">Barcode</Label>
-                    <Input id="barcode" {...register('barcode')} readOnly className="bg-muted cursor-not-allowed font-mono h-10" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="productName">Product Name</Label>
-                    <Input
-                        id="productName"
-                        placeholder="e.g., Organic Almond Milk"
-                        {...nameProps}
-                        ref={(e) => {
-                            nameFormRef(e);
-                            (nameInputRef as any).current = e;
-                        }}
-                        readOnly={isViewer}
-                        className={cn("h-10", isViewer && "bg-muted cursor-not-allowed", formErrors.productName && 'border-destructive')}
-                    />
-                    {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between h-8">
-                      <Label htmlFor="supplierName">Supplier</Label>
-                      {!isViewer && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleEditSupplierClick}
-                            disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
-                            className="text-[10px] uppercase font-bold h-7 px-2 hover:bg-primary/10 text-primary"
-                        >
-                            <Edit className="mr-1 h-3 w-3" /> Rename
-                        </Button>
-                      )}
+          <div className="p-8 pb-4 bg-muted/30">
+            <DialogHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight leading-none mb-1">
+                            {product.productName}
+                        </DialogTitle>
+                        <DialogDescription className="flex items-center gap-3">
+                            <span className="font-mono text-xs font-bold text-muted-foreground uppercase tracking-widest bg-background px-2 py-0.5 rounded border border-white/10">
+                                {product.barcode}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                            <span className="text-[10px] font-black uppercase text-primary tracking-widest">
+                                {totalStockInRegistry} UNITS IN REGISTRY
+                            </span>
+                        </DialogDescription>
                     </div>
-                      <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            ref={supplierTriggerRef}
-                            variant="outline"
-                            role="combobox"
-                            disabled={isViewer}
-                            className={cn("w-full h-10 justify-between font-normal", isViewer && "bg-muted cursor-not-allowed", !supplierNameValue && "text-muted-foreground", formErrors.supplierName && 'border-destructive')}
-                          >
-                            <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
-                            {!isViewer && <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                            <CommandInput
-                              placeholder="Search or type new..."
-                              value={supplierSearch}
-                              onValueChange={setSupplierSearch}
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                {supplierSearch ? (
-                                    <Button 
-                                        variant="ghost" 
-                                        className="w-full justify-start text-xs h-8 font-bold"
-                                        onClick={() => {
-                                            setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
-                                            setSupplierComboboxOpen(false);
-                                            setTimeout(() => costInputRef.current?.focus(), 100);
-                                        }}
-                                    >
-                                        <PlusCircle className="mr-2 h-3 w-3" /> Use "{supplierSearch}"
-                                    </Button>
-                                ) : "Type to find vendor..."}
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {sortedSuppliers.map((supplier) => (
-                                  <CommandItem
-                                    key={supplier.id}
-                                    value={supplier.name}
-                                    onSelect={() => { 
-                                        setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
-                                        setSupplierComboboxOpen(false); 
-                                        setTimeout(() => costInputRef.current?.focus(), 100);
-                                    }}
-                                  >
-                                    <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                    {supplier.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    {formErrors.supplierName && <p className="text-xs text-destructive">{formErrors.supplierName.message}</p>}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-9 text-[10px] font-black px-3 bg-white/50 dark:bg-black/50 border-primary/20 text-primary shadow-sm hover:bg-primary/5" 
+                        onClick={handleFetchImage}
+                        disabled={isFetchingImage}
+                    >
+                        {isFetchingImage ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="mr-2 h-3.5 w-3.5" />}
+                        PRODUCT VISUAL
+                    </Button>
                 </div>
+            </DialogHeader>
 
-                <div className="space-y-2">
-                      <Label htmlFor="costPrice" className="h-8 flex items-center">Unit Cost (QAR)</Label>
-                      <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                              id="costPrice"
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...costProps}
-                              ref={(e) => {
-                                  costFormRef(e);
-                                  (costInputRef as any).current = e;
-                              }}
-                              readOnly={isViewer}
-                              className={cn('pl-8 h-10', isViewer && "bg-muted cursor-not-allowed", formErrors.costPrice && 'border-destructive')}
-                          />
-                      </div>
-                      {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
-                  </div>
-            </div>
-            
-            <DialogFooter className="pt-4">
-              <DialogClose asChild>
-                <Button type="button" variant="outline">{isViewer ? 'Close' : 'Cancel'}</Button>
-              </DialogClose>
-              {!isViewer && (
-                <Button type="submit" disabled={isActionPending}>
-                    {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Changes
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
+                <TabsList className="grid w-full grid-cols-2 h-11 bg-background/50 p-1 rounded-xl">
+                    <TabsTrigger value="details" className="font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                        <Info className="mr-2 h-3.5 w-3.5" />
+                        Identity Details
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="font-black uppercase tracking-widest text-[10px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                        <History className="mr-2 h-3.5 w-3.5" />
+                        Log History
+                    </TabsTrigger>
+                </TabsList>
+
+                <div className="py-6">
+                    <TabsContent value="details" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <form id="edit-product-form" onSubmit={handleSubmit(processFormSubmit)} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="productName" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Identification Name</Label>
+                                    <Input
+                                        id="productName"
+                                        placeholder="e.g., Organic Almond Milk"
+                                        {...nameProps}
+                                        ref={(e) => {
+                                            nameFormRef(e);
+                                            (nameInputRef as any).current = e;
+                                        }}
+                                        readOnly={isViewer}
+                                        className={cn("h-12 font-bold bg-background", isViewer && "bg-muted cursor-not-allowed", formErrors.productName && 'border-destructive')}
+                                    />
+                                    {formErrors.productName && <p className="text-xs text-destructive">{formErrors.productName.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="costPrice" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Unit Valuation (QAR)</Label>
+                                    <div className="relative">
+                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                        <Input
+                                            id="costPrice"
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            {...costProps}
+                                            ref={(e) => {
+                                                costFormRef(e);
+                                                (costInputRef as any).current = e;
+                                            }}
+                                            readOnly={isViewer}
+                                            className={cn('pl-9 h-12 font-black bg-background', isViewer && "bg-muted cursor-not-allowed", formErrors.costPrice && 'border-destructive')}
+                                        />
+                                    </div>
+                                    {formErrors.costPrice && <p className="text-xs text-destructive">{formErrors.costPrice.message}</p>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between h-8 mb-1">
+                                    <Label htmlFor="supplierName" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Master Supplier Registry</Label>
+                                    {!isViewer && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleEditSupplierClick}
+                                            disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())}
+                                            className="text-[9px] uppercase font-black h-7 px-2 hover:bg-primary/10 text-primary"
+                                        >
+                                            <Edit className="mr-1.5 h-3 w-3" /> Rename Entry
+                                        </Button>
+                                    )}
+                                </div>
+                                <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            ref={supplierTriggerRef}
+                                            variant="outline"
+                                            role="combobox"
+                                            disabled={isViewer}
+                                            className={cn("w-full h-12 justify-between font-bold bg-background text-sm", isViewer && "bg-muted cursor-not-allowed", !supplierNameValue && "text-muted-foreground", formErrors.supplierName && 'border-destructive')}
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Layers className="h-4 w-4 text-primary/40" />
+                                                <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
+                                            </div>
+                                            {!isViewer && <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl">
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search or type new..."
+                                                value={supplierSearch}
+                                                onValueChange={setSupplierSearch}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    {supplierSearch ? (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            className="w-full justify-start text-xs h-10 font-black uppercase"
+                                                            onClick={() => {
+                                                                setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
+                                                                setSupplierComboboxOpen(false);
+                                                                setTimeout(() => costInputRef.current?.focus(), 100);
+                                                            }}
+                                                        >
+                                                            <PlusCircle className="mr-2 h-4 w-4" /> Use "{supplierSearch}"
+                                                        </Button>
+                                                    ) : "Type to identify vendor..."}
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {sortedSuppliers.map((supplier) => (
+                                                        <CommandItem
+                                                            key={supplier.id}
+                                                            value={supplier.name}
+                                                            onSelect={() => { 
+                                                                setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
+                                                                setSupplierComboboxOpen(false); 
+                                                                setTimeout(() => costInputRef.current?.focus(), 100);
+                                                            }}
+                                                            className="font-bold text-xs h-10"
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                            {supplier.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {formErrors.supplierName && <p className="text-xs text-destructive">{formErrors.supplierName.message}</p>}
+                            </div>
+                        </form>
+                    </TabsContent>
+
+                    <TabsContent value="history" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="rounded-2xl border bg-background overflow-hidden shadow-inner h-[300px]">
+                            <div className="bg-muted/50 p-3 border-b flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <History className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Log History</span>
+                                </div>
+                                <Badge variant="secondary" className="text-[8px] font-black px-1.5 py-0 border-none bg-primary/10 text-primary">
+                                    {productHistory.length} ENTRIES
+                                </Badge>
+                            </div>
+                            <ScrollArea className="h-[calc(300px-40px)] w-full">
+                                {productHistory.length > 0 ? (
+                                    <Table>
+                                        <TableHeader className="bg-muted/10 sticky top-0 z-10">
+                                            <TableRow className="h-10 hover:bg-transparent">
+                                                <TableHead className="text-[9px] uppercase font-black pl-4">Timestamp</TableHead>
+                                                <TableHead className="text-right text-[9px] uppercase font-black">Qty</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black">Location</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black">Staff</TableHead>
+                                                <TableHead className="text-[9px] uppercase font-black pr-4">Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {productHistory.map((item) => (
+                                                <TableRow key={item.id} className="h-11 group hover:bg-muted/30 transition-colors">
+                                                    <TableCell className="text-[10px] font-mono text-muted-foreground pl-4">
+                                                        {item.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-black text-slate-900 dark:text-white text-xs">
+                                                        {item.quantity}
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] font-bold">
+                                                        <div className="flex items-center gap-1">
+                                                            <MapPin className="h-2.5 w-2.5 text-muted-foreground" />
+                                                            {item.location}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">
+                                                        <div className="flex items-center gap-1">
+                                                            <UserIcon className="h-2.5 w-2.5 opacity-40" />
+                                                            {item.staffName}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="pr-4">
+                                                        <div className={cn(
+                                                            "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter",
+                                                            item.itemType === 'Damage' ? "bg-orange-500/10 text-orange-600" : "bg-green-500/10 text-green-600"
+                                                        )}>
+                                                            {item.itemType === 'Damage' ? <AlertTriangle className="mr-1 h-2 w-2" /> : <Tag className="mr-1 h-2 w-2" />}
+                                                            {item.itemType}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+                                        <div className="bg-muted p-4 rounded-full mb-3 opacity-20">
+                                            <History className="h-8 w-8" />
+                                        </div>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Zero Historical Logs</p>
+                                        <p className="text-[9px] font-medium max-w-[200px] mt-1">No active stock entries found in the industrial registry for this SKU.</p>
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </div>
+                    </TabsContent>
+                </div>
+            </Tabs>
+          </div>
+          
+          <DialogFooter className="p-8 pt-2 bg-background shrink-0 flex items-center justify-between border-t border-white/5">
+            <DialogClose asChild>
+                <Button type="button" variant="ghost" className="font-black uppercase tracking-widest text-[9px] opacity-40 hover:opacity-100">
+                    Terminate Session
                 </Button>
-              )}
-            </DialogFooter>
-          </form>
+            </DialogClose>
+            
+            <div className="flex items-center gap-3">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline" className="font-bold rounded-xl h-12 px-6">{isViewer ? 'Close' : 'Cancel'}</Button>
+                </DialogClose>
+                {!isViewer && activeTab === 'details' && (
+                  <Button 
+                    form="edit-product-form"
+                    type="submit" 
+                    disabled={isActionPending}
+                    className="h-12 px-10 font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
+                  >
+                      {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Sync Catalog
+                  </Button>
+                )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
