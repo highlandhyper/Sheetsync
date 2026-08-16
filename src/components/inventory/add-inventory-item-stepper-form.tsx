@@ -153,7 +153,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const submitLockRef = useRef(false);
   const scanProcessedRef = useRef(false);
   
-  // High-performance audio pre-loading
+  // Zero-Latency Industrial Audio Engine
   const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -220,7 +220,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
-    // IMMEDIATE AUDITORY AND VISUAL FEEDBACK
+    // IMMEDIATE AUDITORY AND VISUAL FEEDBACK (ZERO LATENCY)
     playThankYouAudio();
     setIsSuccessDialogOpen(true);
     
@@ -244,9 +244,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         timestamp: now.toISOString()
     };
 
+    // UI UPDATES INSTANTLY FOR INDUSTRIAL PERFORMANCE
     addInventoryItem(optimisticItem);
     setSubmittedStaffName(data.staffName);
     
+    // Success terminal remains for 3 seconds
     setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
 
     const savedStaffName = data.staffName; 
@@ -317,7 +319,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           refreshData(); 
         }
       } catch (err) {
-        console.warn("Background log error:", err);
+        console.warn("Background sync interrupted:", err);
       } finally {
         setIsSubmitting(false);
         submitLockRef.current = false;
@@ -345,7 +347,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       }
 
       if (!navigator.onLine) {
-          setProductLookupError('Working Offline: Only items in local catalog can be verified.');
+          setProductLookupError('Working Offline: Only local catalog items verifiable.');
           setIsFetchingProduct(false);
           return false;
       }
@@ -364,7 +366,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
               setFoundInGlobalRegistry(true);
           }
           
-          setProductLookupError('Product not found in system.');
+          setProductLookupError('Asset not found in Registry.');
           setIsFetchingProduct(false);
           return false;
       }
@@ -380,8 +382,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     );
     setHasRequestedProduct(true);
     toast({
-        title: "Request Sent",
-        description: "Administrators have been notified about this new product.",
+        title: "Request Dispatched",
+        description: "Administrators notified of unregistered barcode.",
     });
   };
 
