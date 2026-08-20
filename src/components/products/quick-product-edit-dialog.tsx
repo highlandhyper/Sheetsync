@@ -16,7 +16,8 @@ import {
     CheckCircle2,
     ChevronsUpDown,
     Check,
-    PlusCircle
+    PlusCircle,
+    Layers
 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -161,7 +162,10 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-3xl p-0 overflow-hidden bg-background">
+            <DialogContent 
+                className="sm:max-w-md rounded-3xl border-none shadow-3xl p-0 overflow-hidden bg-background"
+                onPointerDownOutside={(e) => e.preventDefault()} // CRITICAL: Prevents closure during dropdown interaction
+            >
                 <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/20 p-2 rounded-xl">
@@ -213,7 +217,7 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
 
                                 <div className="space-y-1.5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest ml-1">Master Vendor</Label>
-                                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen} modal={true}>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 ref={supplierTriggerRef}
@@ -246,7 +250,8 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
                                                             <Button 
                                                                 variant="ghost" 
                                                                 className="w-full justify-start text-xs h-10 font-black uppercase"
-                                                                onClick={() => {
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
                                                                     setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
                                                                     setSupplierComboboxOpen(false);
                                                                 }}
