@@ -98,32 +98,19 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           <CommandItem
             onSelect={() =>
               runCommand(() => {
-                setIsMultiSelectEnabled(true);
+                const newState = !isMultiSelectEnabled;
+                setIsMultiSelectEnabled(newState);
                 toast({
-                  title: 'Multi-Select Enabled',
-                  description: 'Checkboxes are now visible on inventory lists for bulk actions.',
+                  title: newState ? 'Multi-Select Enabled' : 'Multi-Select Disabled',
+                  description: newState 
+                    ? 'Checkboxes are now visible on inventory lists for bulk actions.'
+                    : 'Checkboxes are now hidden.',
                 });
               })
             }
-            disabled={isMultiSelectEnabled}
           >
             <ListChecks className="mr-2 h-4 w-4" />
-            <span>Enable Multi-Select Mode</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() =>
-              runCommand(() => {
-                setIsMultiSelectEnabled(false);
-                toast({
-                  title: 'Multi-Select Disabled',
-                  description: 'Checkboxes are now hidden.',
-                });
-              })
-            }
-            disabled={!isMultiSelectEnabled}
-          >
-            <ListChecks className="mr-2 h-4 w-4" />
-            <span>Disable Multi-Select Mode</span>
+            <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Multi-Select Mode</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>
