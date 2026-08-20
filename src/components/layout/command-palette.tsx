@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check } from 'lucide-react';
+import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, Zap } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { cn } from '@/lib/utils';
+import { QuickProductEditDialog } from '@/components/products/quick-product-edit-dialog';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { toast } = useToast();
   
   const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
+  const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
   const [staffName, setStaffName] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
@@ -76,7 +78,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Quick Actions">
+        <CommandGroup heading="Industrial Terminal">
+            <CommandItem
+                onSelect={() => runCommand(() => setIsQuickEditOpen(true))}
+                className="flex items-center gap-2"
+            >
+                <Zap className="mr-2 h-4 w-4 text-primary fill-primary" />
+                <span>Quick Catalog Update (Instant)</span>
+            </CommandItem>
             <CommandItem
                 onSelect={() => runCommand(() => setIsRequestDialogOpen(true))}
             >
@@ -186,6 +195,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <QuickProductEditDialog 
+        isOpen={isQuickEditOpen} 
+        onOpenChange={setIsQuickEditOpen} 
+    />
     </>
   );
 }
