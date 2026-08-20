@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition, useRef } from 'react';
+import { useState, useEffect, useTransition, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -13,13 +13,25 @@ import {
     DollarSign, 
     Save, 
     X,
-    CheckCircle2
+    CheckCircle2,
+    ChevronsUpDown,
+    Check,
+    PlusCircle
 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -36,28 +48,36 @@ interface QuickProductEditDialogProps {
 export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEditDialogProps) {
     const { toast } = useToast();
     const { user } = useAuth();
-    const { products, updateProduct, refreshData } = useDataCache();
+    const { products, suppliers, updateProduct, refreshData } = useDataCache();
     const [isActionPending, startActionTransition] = useTransition();
     
     const [searchTerm, setSearchTerm] = useState('');
     const [matchedProduct, setMatchedProduct] = useState<Product | null>(null);
+    const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
+    const [supplierSearch, setSupplierSearch] = useState('');
+    
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const supplierTriggerRef = useRef<HTMLButtonElement>(null);
 
     const {
         register,
         handleSubmit,
         reset,
         setValue,
+        watch,
         formState: { errors },
     } = useForm<AddProductFormValues>({
         resolver: zodResolver(addProductSchema),
     });
+
+    const supplierNameValue = watch('supplierName');
 
     useEffect(() => {
         if (isOpen) {
             setSearchTerm('');
             setMatchedProduct(null);
             reset();
+            setSupplierSearch('');
             setTimeout(() => searchInputRef.current?.focus(), 150);
         }
     }, [isOpen, reset]);
@@ -87,6 +107,10 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
             setMatchedProduct(null);
         }
     };
+
+    const sortedSuppliers = useMemo(() => {
+        return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
+    }, [suppliers]);
 
     const onFormSubmit = (data: AddProductFormValues) => {
         if (!matchedProduct || !user?.email) return;
@@ -189,13 +213,68 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
 
                                 <div className="space-y-1.5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest ml-1">Master Vendor</Label>
-                                    <div className="relative">
-                                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
-                                        <Input 
-                                            {...register('supplierName')} 
-                                            className={cn("pl-9 h-11 font-bold", errors.supplierName && "border-destructive")} 
-                                        />
-                                    </div>
+                                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                ref={supplierTriggerRef}
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={supplierComboboxOpen}
+                                                className={cn(
+                                                    "w-full h-11 justify-between font-bold text-sm bg-muted/5 border-white/10",
+                                                    !supplierNameValue && "text-muted-foreground",
+                                                    errors.supplierName && "border-destructive"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-2 truncate">
+                                                    <Building className="h-4 w-4 text-primary/40 shrink-0" />
+                                                    <span className="truncate">{supplierNameValue || "Select vendor..."}</span>
+                                                </div>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl">
+                                            <Command>
+                                                <CommandInput
+                                                    placeholder="Search or type new..."
+                                                    value={supplierSearch}
+                                                    onValueChange={setSupplierSearch}
+                                                />
+                                                <CommandList>
+                                                    <CommandEmpty>
+                                                        {supplierSearch ? (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                className="w-full justify-start text-xs h-10 font-black uppercase"
+                                                                onClick={() => {
+                                                                    setValue('supplierName', supplierSearch, { shouldDirty: true, shouldValidate: true });
+                                                                    setSupplierComboboxOpen(false);
+                                                                }}
+                                                            >
+                                                                <PlusCircle className="mr-2 h-4 w-4" /> Use "{supplierSearch}"
+                                                            </Button>
+                                                        ) : "Type to identify vendor..."}
+                                                    </CommandEmpty>
+                                                    <CommandGroup>
+                                                        {sortedSuppliers.map((supplier) => (
+                                                            <CommandItem
+                                                                key={supplier.id}
+                                                                value={supplier.name}
+                                                                onSelect={() => { 
+                                                                    setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); 
+                                                                    setSupplierComboboxOpen(false); 
+                                                                }}
+                                                                className="font-bold text-xs h-10"
+                                                            >
+                                                                <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                                {supplier.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -212,8 +291,9 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full h-14 rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-[0.2em] mt-4">
-                                <Save className="mr-2 h-5 w-5" /> Sync Registry
+                            <Button type="submit" disabled={isActionPending} className="w-full h-14 rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-[0.2em] mt-4">
+                                {isActionPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                                Sync Registry
                             </Button>
                         </form>
                     ) : searchTerm && (
