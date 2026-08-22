@@ -139,6 +139,17 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                 <Button
                     variant="outline"
                     size="icon"
+                    onClick={handleForceSync}
+                    disabled={!isOnline || isSyncing}
+                    className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all"
+                    aria-label="Force registry sync"
+                >
+                    <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                </Button>
+
+                <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => setIsCommandPaletteOpen(true)}
                     className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all"
                     aria-label="Open command palette"

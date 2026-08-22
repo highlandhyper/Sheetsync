@@ -102,12 +102,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <History className="mr-2 h-4 w-4" />
                 <span>View Global Audit History</span>
             </CommandItem>
-            <CommandItem
-                onSelect={() => runCommand(() => { refreshData(); toast({ title: "Registry Refresh", description: "Synchronizing with master core..." }); })}
-            >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                <span>Force Registry Sync</span>
-            </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Inventory Bulk Actions">

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, ChevronsUpDown, Check, DollarSign, Zap, Globe } from 'lucide-react';
+import { PlusCircle, Loader2, ChevronsUpDown, Check, DollarSign, RefreshCw, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -169,7 +169,7 @@ export function AddProductDialog() {
                         disabled={isMagicLoading}
                         className="h-7 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
                     >
-                        {isMagicLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Zap className="mr-1 h-3 w-3 fill-primary" />}
+                        {isMagicLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}
                         Magic Lookup
                     </Button>
                 )}
