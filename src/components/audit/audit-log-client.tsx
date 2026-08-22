@@ -33,7 +33,7 @@ import {
     Fingerprint,
     Terminal,
     BarChart3,
-    ShieldClose,
+    ShieldX,
     Loader2,
     Barcode
 } from 'lucide-react';
@@ -134,7 +134,6 @@ export function AuditLogClient() {
   const [currentPage, setCurrentPage] = useState(1);
   const isMobile = useIsMobile();
 
-  // Metrics calculation
   const metrics = useMemo(() => {
     if (!allLogs) return { total: 0, critical: 0, distinctUsers: 0, recent: 0 };
     const now = new Date();
@@ -308,7 +307,6 @@ export function AuditLogClient() {
   
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-32">
-      {/* INTELLIGENCE METRIC GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard title="Forensic Evidence" value={metrics.total} icon={Database} subValue="TOTAL TRACES" />
           <MetricCard title="High-Risk Removal" value={metrics.critical} icon={ShieldAlert} variant="destructive" subValue="SECURITY" />
@@ -316,7 +314,6 @@ export function AuditLogClient() {
           <MetricCard title="Temporal Activity" value={metrics.recent} icon={Activity} subValue="RECENT 6H" />
       </div>
 
-      {/* FILTER DECK */}
       <Card className="p-2 sm:p-2 border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
         <CardContent className="p-4 sm:p-6 flex flex-col gap-6">
           <div className="relative group">
@@ -377,7 +374,7 @@ export function AuditLogClient() {
                         onClick={handleWipeClick} 
                         className="h-14 px-8 rounded-2xl border-destructive/20 bg-destructive/5 text-destructive font-black uppercase tracking-widest text-[9px] hover:bg-destructive/10 transition-all ml-auto"
                     >
-                        {isWiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldClose className="h-4 w-4 mr-2" />}
+                        {isWiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldX className="h-4 w-4 mr-2" />}
                         FORENSIC WIPE
                     </Button>
                 )}
@@ -386,7 +383,6 @@ export function AuditLogClient() {
         </CardContent>
       </Card>
 
-      {/* FORENSIC TRACE REGISTRY */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
@@ -496,7 +492,6 @@ export function AuditLogClient() {
         </Card>
       </div>
       
-      {/* FORENSIC DETAIL DIALOG */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[3rem] border-none shadow-3xl bg-background">
             <div className="p-10 pb-6 bg-muted/20 border-b border-white/5">
@@ -576,12 +571,11 @@ export function AuditLogClient() {
         </DialogContent>
       </Dialog>
 
-      {/* FORENSIC WIPE DIALOG */}
       <Dialog open={isWipeDialogOpen} onOpenChange={setIsWipeDialogOpen}>
         <DialogContent className="sm:max-w-md p-6 rounded-[2rem] border-none shadow-3xl bg-background">
             <DialogHeader>
                 <div className="mx-auto bg-destructive/10 p-4 rounded-2xl mb-4">
-                    <ShieldClose className="h-8 w-8 text-destructive" strokeWidth={2.5} />
+                    <ShieldX className="h-8 w-8 text-destructive" strokeWidth={2.5} />
                 </div>
                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center">Forensic Purge</DialogTitle>
                 <DialogDescription className="text-center font-medium text-xs">

@@ -25,7 +25,7 @@ import {
     RefreshCw,
     Activity,
     Layers,
-    History as HistoryIcon,
+    History,
     Fingerprint,
     Image as ImageIcon,
     Box,
@@ -330,7 +330,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         "grid grid-cols-1 xl:grid-cols-12 gap-10 items-start relative z-10",
         showForm && "xl:h-[calc(100vh-12rem)]"
     )}>
-        {/* IDENTITY MANAGEMENT PANEL */}
         <div className={cn(
             "xl:col-span-6 space-y-6 flex flex-col h-full", 
             !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full"
@@ -351,7 +350,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </CardHeader>
                 
                 <CardContent className={cn("px-12 py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto custom-scrollbar" : "")}>
-                    {/* REDESIGNED IDENTIFICATION TERMINAL */}
                     <div className="space-y-6 mb-12 shrink-0">
                         <div className="flex items-center justify-between px-1">
                             <Label className="text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
@@ -560,7 +558,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             </Card>
         </div>
 
-        {/* HIGH-DENSITY FORENSIC SIDEBAR */}
         {showForm && (
             <div className="xl:col-span-6 space-y-6 animate-in fade-in slide-in-from-right-8 duration-1000 flex flex-col h-full overflow-hidden">
                 <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl rounded-[3rem] overflow-hidden flex flex-col h-full">
@@ -568,7 +565,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-primary/10 p-4 rounded-[1.5rem]">
-                                    <HistoryIcon className="h-7 w-7 text-primary" strokeWidth={3} />
+                                    <History className="h-7 w-7 text-primary" strokeWidth={3} />
                                 </div>
                                 <div>
                                     <CardTitle className="text-2xl font-black uppercase tracking-tighter">Forensic Stream</CardTitle>
@@ -640,7 +637,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             <EditSupplierDialog isOpen={isSupplierEditDialogOpen} onOpenChange={setIsSupplierEditDialogOpen} supplier={supplierToEdit} />
         )}
 
-        {/* DYNAMIC ATMOSPHERIC ENGINE */}
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
             <div className={cn(
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1400px] h-[1400px] rounded-full blur-[200px] transition-all duration-[2000ms]",

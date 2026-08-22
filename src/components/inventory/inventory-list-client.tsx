@@ -149,7 +149,6 @@ export function InventoryListClient() {
   const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
   const [barcodeToCreate, setBarcodeToCreate] = useState<string | null>(null);
 
-  // Scanner State
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
   const scanProcessedRef = useRef(false);
@@ -430,7 +429,6 @@ export function InventoryListClient() {
     generateInventoryPDF('Current Inventory Summary', groupedItems, cols, (g) => dataMapper(g, groupedItems.indexOf(g)), totalVal, orientation);
   };
 
-  // Scanner Implementation
   const onScanSuccess = useCallback((decodedText: string) => {
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
@@ -690,7 +688,7 @@ export function InventoryListClient() {
                     )}
                     <TableHead>Product Name</TableHead>
                     <TableHead>Barcode</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">In Stock</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
@@ -849,7 +847,6 @@ export function InventoryListClient() {
       <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
       <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
 
-      {/* SEARCH SCANNER MODAL */}
       <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
             <DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
