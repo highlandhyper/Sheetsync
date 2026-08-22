@@ -115,6 +115,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
@@ -129,7 +130,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if (!searchedBarcode) return [];
     const bc = searchedBarcode.toLowerCase().trim();
 
-    // PURIFIED STREAM: Audit Traces Only
     const auditTraces = auditLogs
         .filter(log => {
             const d = log.details.toLowerCase();
@@ -191,8 +191,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         const res = await fetchProductExternalDataAction(barcode);
         if (res.success && res.data) {
             setExternalData(res.data);
-            
-            // ONLY OVERWRITE IF SKU IS NEW
             if (!skipFieldOverwrite) {
                 if (res.data.name) setValue('productName', res.data.name, { shouldValidate: true, shouldDirty: true });
                 if (res.data.brand) setValue('supplierName', res.data.brand, { shouldValidate: true, shouldDirty: true });
@@ -221,7 +219,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       const cachedProduct = barcodeMap.get(barcodeToUse);
       
       if (cachedProduct) {
-        // PRIORITY: Registry Values
         setValue('barcode', cachedProduct.barcode);
         setValue('productName', cachedProduct.productName);
         setValue('supplierName', cachedProduct.supplierName || '');
@@ -229,10 +226,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setEditMode('edit');
         setProductNotFound(false);
         setShowForm(true);
-        
-        // FETCH IMAGE SILENTLY (No Field Overwrite)
         handleMagicLookup(barcodeToUse, true);
-        
         setTimeout(() => nameInputRef.current?.focus(), 150);
         return;
       }
@@ -253,7 +247,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('costPrice', undefined);
         setEditMode('create');
         setProductNotFound(true);
-        // ALLOW OVERWRITE FOR NEW SKU
         handleMagicLookup(barcodeToUse, false);
       }
       setShowForm(true); 
@@ -358,28 +351,54 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </CardHeader>
                 
                 <CardContent className={cn("px-12 py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto custom-scrollbar" : "")}>
-                    <div className="space-y-4 mb-10 shrink-0">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Identity Selection Terminal</Label>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="relative flex-grow">
-                                <Barcode className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-primary/20" />
-                                <Input
-                                    placeholder="SCAN OR IDENTIFY SKU..."
-                                    value={barcodeToSearch}
-                                    onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                                    className="pl-16 font-black h-16 text-2xl tracking-tighter bg-muted/10 border-white/5 rounded-2xl placeholder:text-muted-foreground/10 shadow-inner"
-                                />
+                    {/* REDESIGNED IDENTIFICATION TERMINAL */}
+                    <div className="space-y-6 mb-12 shrink-0">
+                        <div className="flex items-center justify-between px-1">
+                            <Label className="text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
+                            <Badge variant="outline" className="text-[8px] font-black tracking-widest bg-primary/5 border-primary/10 text-primary px-3 py-1 rounded-full uppercase">
+                                SKU Mode
+                            </Badge>
+                        </div>
+                        
+                        <div className="relative group p-1 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 rounded-[2rem] transition-all duration-700 hover:from-primary/40 hover:to-primary/40">
+                            <div className="flex flex-col sm:flex-row gap-0 bg-background/80 backdrop-blur-xl rounded-[1.9rem] overflow-hidden border border-white/10 shadow-2xl">
+                                <div className="relative flex-grow">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/10 transition-transform duration-500 group-focus-within:rotate-[15deg]">
+                                            <Barcode className="h-5 w-5 text-primary" />
+                                        </div>
+                                    </div>
+                                    <Input
+                                        ref={searchInputRef}
+                                        placeholder="IDENTIFY ASSET OR SCAN BARCODE..."
+                                        value={barcodeToSearch}
+                                        onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
+                                        className="pl-20 border-none bg-transparent h-20 text-xl sm:text-2xl font-black tracking-tighter placeholder:text-muted-foreground/10 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                    />
+                                </div>
+                                <div className="p-2 shrink-0 flex items-center">
+                                    <Button 
+                                        onClick={() => handleSearchBarcode()} 
+                                        disabled={isFetchPending || !barcodeToSearch.trim()} 
+                                        className="h-16 px-12 font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white border-none"
+                                    >
+                                        {isFetchPending ? (
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : (
+                                            <div className="flex items-center gap-3">
+                                                <Search className="h-5 w-5" strokeWidth={3} />
+                                                <span>Initialize</span>
+                                            </div>
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
-                            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="h-16 px-10 font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white">
-                                {isFetchPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <Search className="h-6 w-6" />}
-                            </Button>
                         </div>
                     </div>
 
                     {showForm && (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {/* VISUAL VERIFICATION UNIT - COMPACTED */}
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                                 <div className="md:col-span-4">
                                     <div className="aspect-[4/3] relative rounded-[2rem] bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden group shadow-inner">
