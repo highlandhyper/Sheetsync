@@ -26,7 +26,11 @@ import {
     Info,
     ArrowRight,
     X,
-    RefreshCw
+    RefreshCw,
+    Activity,
+    Layers,
+    History as HistoryIcon,
+    Fingerprint
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -156,6 +160,13 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         return dateB - dateA;
     });
   }, [inventoryItems, auditLogs, searchedBarcode]);
+
+  const totalStockForSku = useMemo(() => {
+    if (!searchedBarcode) return 0;
+    return inventoryItems
+        .filter(item => item.barcode.toLowerCase().trim() === searchedBarcode.toLowerCase().trim())
+        .reduce((sum, item) => sum + item.quantity, 0);
+  }, [inventoryItems, searchedBarcode]);
 
   const {
     register,
@@ -314,18 +325,18 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start relative z-10">
         {/* MANAGEMENT FORM PANEL */}
         <div className={cn("xl:col-span-5 space-y-6", !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full")}>
-            <Card className="shadow-2xl border-primary/10 overflow-hidden rounded-[2.5rem]">
-                <CardHeader className="bg-muted/30 pb-8 pt-10 px-10">
+            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
+                <CardHeader className="bg-muted/10 pb-8 pt-10 px-10 border-b border-white/5">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <CardTitle className="text-3xl font-black uppercase tracking-tight text-primary">Catalog Hub</CardTitle>
-                            <CardDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground/60">Define and regulate product SKU identities.</CardDescription>
+                            <CardTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Catalog Hub</CardTitle>
+                            <CardDescription className="font-bold text-[10px] uppercase tracking-[0.3em] text-muted-foreground/40">Identity and Authority Node</CardDescription>
                         </div>
                         {showForm && (
-                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-10 w-10 rounded-full hover:bg-destructive/10 text-destructive/40 hover:text-destructive">
+                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-10 w-10 rounded-full hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
                                 <X className="h-5 w-5" />
                             </Button>
                         )}
@@ -333,126 +344,133 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </CardHeader>
                 <CardContent className="space-y-8 p-10">
                     <div className="space-y-3">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em] ml-1">Identify Terminal</Label>
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-1 opacity-40">Identify SKU Terminal</Label>
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative flex-grow">
-                                <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
+                                <Barcode className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-primary/30" />
                                 <Input
                                     placeholder="SCAN OR ENTER BARCODE..."
                                     value={barcodeToSearch}
                                     onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                                    className="pl-12 font-black h-14 text-xl tracking-tight bg-muted/10 border-primary/5 rounded-2xl placeholder:text-muted-foreground/10"
+                                    className="pl-14 font-black h-16 text-2xl tracking-tighter bg-muted/10 border-white/5 rounded-2xl placeholder:text-muted-foreground/10 shadow-inner"
                                 />
                             </div>
-                            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="h-14 px-8 font-black uppercase tracking-[0.1em] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+                            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="h-16 px-10 font-black uppercase tracking-[0.1em] rounded-2xl shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white">
                                 {isFetchPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <Search className="h-6 w-6" />}
-                                <span className="ml-2 hidden sm:inline">Identify</span>
                             </Button>
                         </div>
                     </div>
 
                     {showForm && (
-                        <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
                             <div className="flex items-center justify-between gap-4">
-                                {productNotFound ? (
-                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-2 text-[10px] uppercase tracking-widest rounded-xl">
-                                        <PlusCircle className="mr-2 h-3.5 w-3.5" /> Unregistered SKU
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="bg-accent/5 text-accent-foreground border-accent/20 font-black px-4 py-2 text-[10px] uppercase tracking-widest rounded-xl">
-                                        <Edit className="mr-2 h-3.5 w-3.5" /> Global Entry Match
-                                    </Badge>
-                                )}
-                                <Button type="button" variant="ghost" size="sm" onClick={handleMagicLookup} disabled={isMagicLoading} className="h-10 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 rounded-xl px-4">
+                                <div className="flex flex-col gap-2">
+                                    {productNotFound ? (
+                                        <Badge variant="outline" className="w-fit bg-primary/5 text-primary border-primary/20 font-black px-4 py-2 text-[9px] uppercase tracking-[0.2em] rounded-xl">
+                                            <PlusCircle className="mr-2 h-3.5 w-3.5" /> Unregistered SKU
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="w-fit bg-accent/5 text-accent-foreground border-accent/20 font-black px-4 py-2 text-[9px] uppercase tracking-[0.2em] rounded-xl">
+                                            <Edit className="mr-2 h-3.5 w-3.5" /> Registry Match
+                                        </Badge>
+                                    )}
+                                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 ml-1">
+                                        <Layers className="h-3 w-3" />
+                                        Consolidated Stock: <span className="text-primary">{totalStockForSku} Units</span>
+                                    </div>
+                                </div>
+                                <Button type="button" variant="ghost" size="sm" onClick={handleMagicLookup} disabled={isMagicLoading} className="h-11 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 hover:bg-primary/10 rounded-xl px-5 border border-primary/10 transition-all">
                                     {isMagicLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                                     Magic Lookup
                                 </Button>
                             </div>
 
-                            <Separator className="bg-primary/5" />
+                            <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-8">
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-1 opacity-40">Asset Designation</Label>
+                                        <div className="relative">
+                                            <Package className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/20" />
+                                            <Input
+                                                id="productName"
+                                                placeholder="e.g., ORGANIC ALMOND MILK"
+                                                {...nameProps}
+                                                ref={(e) => { nameFormRef(e); (nameInputRef as any).current = e; }}
+                                                onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
+                                                className={cn("h-16 pl-14 text-xl font-black tracking-tight rounded-2xl bg-background border-white/5 shadow-sm", formErrors.productName && 'border-destructive')}
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Asset Identity</Label>
-                                    <div className="relative">
-                                        <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
-                                        <Input
-                                            id="productName"
-                                            placeholder="e.g., ORGANIC ALMOND MILK"
-                                            {...nameProps}
-                                            ref={(e) => { nameFormRef(e); (nameInputRef as any).current = e; }}
-                                            onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
-                                            className={cn("h-14 pl-12 text-lg font-black tracking-tight rounded-2xl", formErrors.productName && 'border-destructive')}
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between h-5 mb-1 ml-1">
+                                                <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.4em] opacity-40">Master Vendor</Label>
+                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())} className="text-[8px] uppercase font-black h-5 px-1.5 text-primary hover:bg-primary/5 rounded-md opacity-40 hover:opacity-100 transition-opacity">
+                                                    <Edit className="mr-1 h-2.5 w-2.5" /> Rename
+                                                </Button>
+                                            </div>
+                                            <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-14 justify-between font-black text-xs bg-muted/10 border-white/5 rounded-2xl pl-12", !supplierNameValue && "text-muted-foreground")}>
+                                                        <Building className="absolute left-5 h-4 w-4 text-primary/30" />
+                                                        <span className="truncate uppercase tracking-wider">{supplierNameValue || "SELECT VENDOR..."}</span>
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-3xl border-white/10">
+                                                    <Command className="bg-background/95 backdrop-blur-3xl">
+                                                        <CommandInput placeholder="Search or type new..." value={supplierSearchTerm} onValueChange={setSupplierSearchTerm} onKeyDown={(e) => { if (e.key === 'Enter' && supplierSearchTerm) { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); } }} />
+                                                        <CommandList>
+                                                            <CommandEmpty>
+                                                                {supplierSearchTerm ? (
+                                                                    <Button variant="ghost" className="w-full justify-start text-[10px] h-12 font-black uppercase rounded-none px-6" onClick={() => { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }}>
+                                                                        <PlusCircle className="mr-3 h-4 w-4" /> Use "{supplierSearchTerm}"
+                                                                    </Button>
+                                                                ) : <p className="p-4 text-[10px] font-black uppercase text-muted-foreground/40 text-center tracking-widest">Registry Search...</p>}
+                                                            </CommandEmpty>
+                                                            <CommandGroup className="px-2 pb-2">
+                                                                {sortedSuppliers.map((supplier) => (
+                                                                    <CommandItem key={supplier.id} value={supplier.name} onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }} className="font-bold text-xs h-11 px-4 rounded-xl">
+                                                                        <Check className={cn("mr-3 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                                        {supplier.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-1 opacity-40">Unit Valuation</Label>
+                                            <div className="relative">
+                                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-primary/40 uppercase tracking-tighter">QAR</div>
+                                                <Input
+                                                    id="costPrice"
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0.00"
+                                                    {...costProps}
+                                                    ref={(e) => { costFormRef(e); (costInputRef as any).current = e; }}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
+                                                    className={cn('h-14 pl-14 font-black text-xl bg-muted/10 border-white/5 rounded-2xl text-right pr-6', formErrors.costPrice && 'border-destructive')}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between mb-1 ml-1">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Master Vendor</Label>
-                                        <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())} className="text-[9px] uppercase font-black h-6 px-2 text-primary hover:bg-primary/5 rounded-lg">
-                                            <Edit className="mr-1.5 h-3 w-3" /> Rename Registry
-                                        </Button>
-                                    </div>
-                                    <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-14 justify-between font-black text-sm bg-muted/10 border-primary/5 rounded-2xl pl-12", !supplierNameValue && "text-muted-foreground")}>
-                                                <Building className="absolute left-4 h-5 w-5 text-primary/30" />
-                                                <span className="truncate">{supplierNameValue || "SELECT VENDOR..."}</span>
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-3xl">
-                                            <Command>
-                                                <CommandInput placeholder="Search or type new..." value={supplierSearchTerm} onValueChange={setSupplierSearchTerm} onKeyDown={(e) => { if (e.key === 'Enter' && supplierSearchTerm) { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); } }} />
-                                                <CommandList>
-                                                    <CommandEmpty>
-                                                        {supplierSearchTerm ? (
-                                                            <Button variant="ghost" className="w-full justify-start text-xs h-12 font-black uppercase rounded-none" onClick={() => { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }}>
-                                                                <PlusCircle className="mr-3 h-4 w-4" /> Use "{supplierSearchTerm}"
-                                                            </Button>
-                                                        ) : "Search Registry..."}
-                                                    </CommandEmpty>
-                                                    <CommandGroup>
-                                                        {sortedSuppliers.map((supplier) => (
-                                                            <CommandItem key={supplier.id} value={supplier.name} onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }} className="font-bold text-xs h-11">
-                                                                <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                                {supplier.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                <div className="pt-4">
+                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.3em] text-xs shadow-2xl shadow-primary/30 rounded-[1.5rem] transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
+                                        {isSavePending ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Save className="mr-3 h-5 w-5" />}
+                                        {editMode === 'create' ? 'REGISTER NEW SKU' : 'SYNC GLOBAL REGISTRY'}
+                                    </Button>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Unit Valuation (QAR)</Label>
-                                    <div className="relative">
-                                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-                                        <Input
-                                            id="costPrice"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            {...costProps}
-                                            ref={(e) => { costFormRef(e); (costInputRef as any).current = e; }}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
-                                            className={cn('h-14 pl-12 font-black text-xl bg-muted/10 border-primary/5 rounded-2xl', formErrors.costPrice && 'border-destructive')}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-8">
-                                <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 rounded-2xl transition-all hover:scale-[1.02] active:scale-0.98">
-                                    {isSavePending ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Save className="mr-3 h-6 w-6" />}
-                                    {editMode === 'create' ? 'Register New SKU' : 'Sync Global Registry'}
-                                </Button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -460,34 +478,34 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
         {/* FORENSIC HISTORY PANEL */}
         {showForm && (
-            <div className="xl:col-span-7 space-y-6 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className="xl:col-span-7 space-y-6 animate-in fade-in slide-in-from-right-8 duration-1000">
                 <Card className="shadow-2xl border-white/5 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex flex-col h-[750px]">
                     <CardHeader className="bg-muted/10 p-8 border-b border-white/5 shrink-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-primary/10 p-3 rounded-2xl">
-                                    <History className="h-6 w-6 text-primary" strokeWidth={3} />
+                                    <HistoryIcon className="h-6 w-6 text-primary" strokeWidth={3} />
                                 </div>
                                 <div>
                                     <CardTitle className="text-xl font-black uppercase tracking-tighter">Forensic Trail</CardTitle>
-                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mt-1">Complete SKU Lifecycle Analytics</p>
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mt-1">Lifecycle Analytics</p>
                                 </div>
                             </div>
                             <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 font-black px-3 py-1 text-[10px] uppercase tracking-widest">
-                                {currentHistory.length} EVENTS
+                                {currentHistory.length} SECURITY EVENTS
                             </Badge>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 flex-grow overflow-hidden">
+                    <CardContent className="p-0 flex-grow overflow-hidden bg-slate-900/[0.02]">
                         <ScrollArea className="h-full">
                             {currentHistory.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {currentHistory.map((log) => (
-                                        <div key={`${log.type}-${log.id}`} className="group p-6 hover:bg-primary/[0.02] transition-colors relative">
+                                        <div key={`${log.type}-${log.id}`} className="group p-6 hover:bg-primary/[0.03] transition-all duration-300 relative">
                                             <div className="flex items-start justify-between gap-6">
                                                 <div className="flex items-start gap-4 flex-grow min-w-0">
                                                     <div className={cn(
-                                                        "mt-1 p-2 rounded-lg border shrink-0 transition-transform group-hover:scale-110 duration-500",
+                                                        "mt-1 p-2 rounded-lg border shrink-0 transition-all group-hover:scale-110 duration-500 shadow-sm",
                                                         log.action === 'ACTIVE_STOCK' ? "bg-primary text-primary-foreground border-primary/20" : getActionColor(log.action)
                                                     )}>
                                                         {log.action === 'ACTIVE_STOCK' ? <ShieldCheck className="h-4 w-4" /> : getActionIcon(log.action)}
@@ -495,22 +513,22 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                     <div className="space-y-2 min-w-0">
                                                         <div className="flex items-center gap-3">
                                                             <span className="text-sm font-black uppercase tracking-tight">
-                                                                {log.action === 'ACTIVE_STOCK' ? 'Live Inventory' : log.action.replace('_INVENTORY', ' OP')}
+                                                                {log.action === 'ACTIVE_STOCK' ? 'Live Registry' : log.action.replace('_INVENTORY', ' Node')}
                                                             </span>
-                                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase">
-                                                                <UserIcon className="h-3 w-3" /> {log.user}
+                                                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                                                                <Fingerprint className="h-3 w-3" /> {log.user}
                                                             </div>
                                                         </div>
-                                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed break-words">
+                                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed break-words opacity-80">
                                                             {log.details}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right shrink-0">
                                                     <p className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground/40">
-                                                        {log.timestamp ? format(parseISO(log.timestamp), 'dd/MM/yy') : '---'}
+                                                        {log.timestamp ? format(parseISO(log.timestamp), 'dd MMM yy') : '---'}
                                                     </p>
-                                                    <p className="text-[9px] font-mono text-muted-foreground/20 mt-1 uppercase">
+                                                    <p className="text-[9px] font-mono text-primary/30 mt-1 uppercase tracking-tighter">
                                                         {log.timestamp ? format(parseISO(log.timestamp), 'HH:mm:ss') : '---'}
                                                     </p>
                                                 </div>
@@ -519,12 +537,12 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                     ))}
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30">
-                                    <div className="p-8 bg-muted rounded-[3rem] mb-6 border-4 border-dashed border-white/5">
-                                        <AlertTriangle className="h-16 w-16" strokeWidth={1} />
+                                <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-40 grayscale">
+                                    <div className="p-10 bg-muted rounded-[3rem] mb-6 border-2 border-dashed border-white/5">
+                                        <Activity className="h-16 w-16" strokeWidth={1} />
                                     </div>
                                     <h4 className="text-2xl font-black uppercase tracking-tighter">Zero Forensic Data</h4>
-                                    <p className="text-sm font-medium max-w-[280px] mt-2">No historical traces or active stock identified for this barcode.</p>
+                                    <p className="text-xs font-medium max-w-[280px] mt-2 leading-relaxed">No historical traces or active stock identified for this barcode identity.</p>
                                 </div>
                             )}
                         </ScrollArea>
@@ -537,13 +555,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             <EditSupplierDialog isOpen={isSupplierEditDialogOpen} onOpenChange={setIsSupplierEditDialogOpen} supplier={supplierToEdit} />
         )}
 
-        {/* BACKGROUND AMBIANCE */}
-        {!showForm && (
-            <div className="fixed inset-0 pointer-events-none z-[-1] opacity-20 overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-accent/10 rounded-full blur-[100px]" />
-            </div>
-        )}
+        {/* ATMOSPHERIC LAYER */}
+        <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+            <div className={cn(
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] rounded-full blur-[160px] transition-all duration-1000",
+                showForm ? (productNotFound ? "bg-orange-500/5" : "bg-primary/5") : "bg-primary/3"
+            )} />
+            <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-accent/5 rounded-full blur-[120px]" />
+        </div>
     </div>
   );
 }
