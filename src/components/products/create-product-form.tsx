@@ -52,7 +52,7 @@ import { Separator } from "@/components/ui/separator";
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Product, Supplier, InventoryItem, AuditLogEntry } from '@/lib/types';
+import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
@@ -120,7 +120,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     return map;
   }, [cachedProducts]);
 
-  // DERIVE CURRENT PRODUCT HISTORY
   const currentHistory = useMemo(() => {
     if (!searchedBarcode) return [];
     const bc = searchedBarcode.toLowerCase().trim();
@@ -275,7 +274,10 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if (editMode === 'create') addProductToCache(optimisticProduct);
     else updateProductInCache(optimisticProduct);
 
-    toast({ title: 'Update Applied', description: 'Instant registry update complete. Syncing with cloud...' });
+    toast({ 
+        title: 'Update Applied', 
+        description: 'Instant registry update complete. Syncing with cloud...' 
+    });
 
     startSaveTransition(async () => {
       try {
