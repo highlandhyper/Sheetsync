@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
  * INDUSTRIAL SYNC INDICATOR
  * Provides real-time visual feedback for registry handshakes.
  * Automatically dismisses after 2.5s on completion.
+ * RESTRICTED: Only visible on mobile devices (hidden on md+ screens).
  */
 export function SyncStatusIndicator() {
   const { isSyncing, isOnline, pendingActions } = useDataCache();
@@ -53,7 +54,7 @@ export function SyncStatusIndicator() {
   if (!visible) return null;
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none px-4 w-full max-w-sm">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none px-4 w-full max-w-sm md:hidden">
         <div className={cn(
             "flex items-center justify-between gap-4 px-6 py-4 rounded-[2rem] border shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] backdrop-blur-3xl transition-all duration-700 animate-in fade-in slide-in-from-top-8 zoom-in-95",
             status === 'syncing' && "bg-white/80 dark:bg-zinc-900/80 border-primary/20 text-primary",
