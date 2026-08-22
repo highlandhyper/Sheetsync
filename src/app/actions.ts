@@ -31,7 +31,8 @@ import {
   getInventoryLogEntriesByBarcode,
   clearProductDatabase,
   appendProductBatch,
-  updateProductBatch
+  updateProductBatch,
+  deleteAuditLogsByBarcode as dbDeleteAuditLogsByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
@@ -422,6 +423,17 @@ export async function fetchInventoryLogEntriesByBarcodeAction(b: string) {
     try {
         const data = await getInventoryLogEntriesByBarcode(b);
         return { success: true, data: sanitizeForJSON(data) }; 
+    } catch (e) {
+        return { success: false };
+    }
+}
+
+export async function deleteAuditLogsByBarcodeAction(email: string, barcode: string) {
+    try {
+        if (getRoleByEmail(email) !== 'admin') return { success: false, message: "Unauthorized." };
+        const success = await dbDeleteAuditLogsByBarcode(email, barcode);
+        revalidatePath('/audit-log');
+        return { success };
     } catch (e) {
         return { success: false };
     }
