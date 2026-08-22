@@ -131,11 +131,11 @@ export default function SystemHubPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                         <Badge variant="outline" className={cn(
-                            "font-black text-[9px] uppercase tracking-widest px-2 py-0.5 border-none",
+                            "font-black text-[9px] tracking-widest px-2 py-0.5 border-none",
                             isOnline ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
                         )}>
                             {isOnline ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <Network className="h-2.5 w-2.5 mr-1" />}
-                            {isOnline ? "Link: Stable" : "Offline Mode"}
+                            {isOnline ? "System Online" : "Working Offline"}
                         </Badge>
                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest">v4.1.0</Badge>
                     </div>
