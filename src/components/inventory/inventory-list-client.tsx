@@ -66,6 +66,8 @@ import {
 } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Html5Qrcode } from 'html5-qrcode';
+import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 const ALL_LOCATIONS_VALUE = "___ALL_LOCATIONS___";
@@ -109,6 +111,7 @@ export function InventoryListClient() {
   const { toast } = useToast();
   const { role } = useAuth();
   const { isMultiSelectEnabled } = useMultiSelect();
+  const isMobile = useIsMobile();
   const { 
       inventoryItems: cachedItems,
       products: cachedProducts,
