@@ -34,7 +34,8 @@ import {
     Terminal,
     BarChart3,
     ShieldClose,
-    Loader2
+    Loader2,
+    Barcode
 } from 'lucide-react';
 import { parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
