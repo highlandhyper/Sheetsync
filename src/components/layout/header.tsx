@@ -56,12 +56,6 @@ function LastSyncStatus() {
 
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2">
-                <span className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
-                <span className="text-[10px] font-black tracking-[0.15em] text-slate-900 dark:text-white leading-none">
-                    {isOnline ? 'System Online' : 'Working Offline'}
-                </span>
-            </div>
             <span className="text-[8px] opacity-30 font-black uppercase tracking-widest hidden xs:inline mt-1">
               SYNCED {lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : 'NEVER'}
             </span>
@@ -140,16 +134,34 @@ export function Header({ className, onManualLock }: { className?: string; onManu
             <div className="h-6 w-px bg-white/10 mx-1 hidden xs:block" />
 
             <div className="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleForceSync}
-                    disabled={!isOnline || isSyncing}
-                    className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all"
-                    aria-label="Force registry sync"
-                >
-                    <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={handleForceSync}
+                                disabled={!isOnline || isSyncing}
+                                className={cn(
+                                    "h-9 w-9 rounded-xl border transition-all",
+                                    isSyncing 
+                                        ? "bg-amber-500/20 text-amber-600 border-amber-500/30 animate-pulse" 
+                                        : !isOnline 
+                                            ? "bg-destructive/20 text-destructive border-destructive/30" 
+                                            : "bg-green-500/20 text-green-600 border-green-500/30"
+                                )}
+                                aria-label="Force registry sync"
+                            >
+                                <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="font-bold">
+                                {isSyncing ? "Syncing..." : !isOnline ? "Working Offline" : "System Online (Force Sync)"}
+                            </p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
 
                 <Button
                     variant="outline"
