@@ -12,6 +12,7 @@ import { useAccessControl } from '@/context/access-control-context';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { InactivityLockScreen } from '@/components/auth/inactivity-lock-screen';
+import { SyncStatusIndicator } from '@/components/layout/sync-status-indicator';
 import { cn } from '@/lib/utils';
 
 const LOCK_STORAGE_KEY = 'sheetSync_isLocked';
@@ -141,6 +142,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
             <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
           </div>
 
+          <SyncStatusIndicator />
           <Header className="noprint relative z-10" onManualLock={handleLock} />
           
           <main className={cn(
