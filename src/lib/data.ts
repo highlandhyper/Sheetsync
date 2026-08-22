@@ -190,6 +190,32 @@ export async function pruneAuditLogs() {
     }
 }
 
+export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
+    const data = await readSheetData(AUDIT_LOG_READ_RANGE);
+    if (!data || data.length === 0) return false;
+
+    const lowerBarcode = barcode.toLowerCase().trim();
+    const rowsToDelete: number[] = [];
+
+    data.forEach((row, i) => {
+        const target = String(row[AUDIT_COL_TARGET] || '').toLowerCase();
+        const details = String(row[AUDIT_COL_DETAILS] || '').toLowerCase();
+        
+        if (target.includes(lowerBarcode) || details.includes(lowerBarcode)) {
+            rowsToDelete.push(i + 2); // A2 is row 2
+        }
+    });
+
+    if (rowsToDelete.length > 0) {
+        const success = await deleteSheetRowsBatch(AUDIT_LOG_SHEET_NAME, rowsToDelete);
+        if (success) {
+            await logAuditEvent(email, 'FORENSIC_WIPE', barcode, `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`);
+        }
+        return success;
+    }
+    return true;
+}
+
 export async function logAuditEvent(user: string, action: string, target: string, details: string) {
   const ts = format(new Date(), "yyyy-MM-dd HH:mm:ss");
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);

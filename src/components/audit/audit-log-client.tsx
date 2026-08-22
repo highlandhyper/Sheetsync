@@ -32,7 +32,9 @@ import {
     Database,
     Fingerprint,
     Terminal,
-    BarChart3
+    BarChart3,
+    ShieldClose,
+    Loader2
 } from 'lucide-react';
 import { parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -41,16 +43,20 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Badge } from '../ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDataCache } from '@/context/data-cache-context';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
 import { Calendar } from '../ui/calendar';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
+import { deleteAuditLogsByBarcodeAction } from '@/app/actions';
+import { AuthorizeActionDialog } from '../inventory/authorize-action-dialog';
 
 const ALL_USERS_VALUE = "___ALL_USERS___";
 const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
 const ITEMS_PER_PAGE = 50;
 
 const getActionIcon = (action: string) => {
-    if (action.includes('DELETE') || action.includes('WIPE')) return <Trash2 className="h-3 w-3" />;
+    if (action.includes('DELETE') || action.includes('WIPE') || action.includes('FORENSIC')) return <Trash2 className="h-3 w-3" />;
     if (action.includes('UPDATE') || action.includes('EDIT')) return <Edit className="h-3 w-3" />;
     if (action.includes('CREATE') || action.includes('LOG') || action.includes('REGISTER')) return <PlusCircle className="h-3 w-3" />;
     if (action.includes('RETURN')) return <Undo2 className="h-3 w-3" />;
@@ -58,7 +64,7 @@ const getActionIcon = (action: string) => {
 };
 
 const getActionColor = (action: string) => {
-    if (action.includes('DELETE') || action.includes('WIPE')) return "bg-red-500/10 text-red-600 border-red-500/20";
+    if (action.includes('DELETE') || action.includes('WIPE') || action.includes('FORENSIC')) return "bg-red-500/10 text-red-600 border-red-500/20";
     if (action.includes('UPDATE') || action.includes('EDIT')) return "bg-blue-500/10 text-blue-600 border-blue-500/20";
     if (action.includes('CREATE') || action.includes('LOG') || action.includes('REGISTER')) return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
     if (action.includes('RETURN')) return "bg-amber-500/10 text-amber-600 border-amber-500/20";
@@ -106,7 +112,9 @@ function MetricCard({ title, value, subValue, icon: Icon, variant = 'default' }:
 }
 
 export function AuditLogClient() {
-  const { auditLogs: allLogs } = useDataCache();
+  const { auditLogs: allLogs, refreshData } = useDataCache();
+  const { user, role } = useAuth();
+  const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<string>(ALL_USERS_VALUE);
@@ -116,6 +124,11 @@ export function AuditLogClient() {
   
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  
+  const [isWipeDialogOpen, setIsWipeDialogOpen] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [wipeBarcode, setWipeBarcode] = useState('');
+  const [isWiping, setIsWiping] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
   const isMobile = useIsMobile();
@@ -128,7 +141,7 @@ export function AuditLogClient() {
     
     return {
         total: allLogs.length,
-        critical: allLogs.filter(l => l.action.includes('DELETE') || l.action.includes('WIPE')).length,
+        critical: allLogs.filter(l => l.action.includes('DELETE') || l.action.includes('WIPE') || l.action.includes('FORENSIC')).length,
         distinctUsers: new Set(allLogs.map(l => l.user)).size,
         recent: allLogs.filter(l => parseISO(l.timestamp) > sixHoursAgo).length
     };
@@ -206,6 +219,39 @@ export function AuditLogClient() {
   const handleOpenDetails = (log: AuditLogEntry) => {
     setSelectedLog(log);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleWipeClick = () => {
+    if (role !== 'admin') return;
+    setIsWipeDialogOpen(true);
+  };
+
+  const initiateWipe = () => {
+      if (!wipeBarcode.trim()) return;
+      setIsWipeDialogOpen(false);
+      setIsAuthDialogOpen(true);
+  };
+
+  const handleAuthorizationSuccess = async () => {
+      setIsAuthDialogOpen(false);
+      setIsWiping(true);
+      
+      toast({ title: "Forensic Wipe Initiated", description: `Purging registry traces for barcode ${wipeBarcode}...` });
+
+      try {
+          const res = await deleteAuditLogsByBarcodeAction(user?.email || 'Admin', wipeBarcode);
+          if (res.success) {
+              toast({ title: "Registry Purged", description: "All historical traces for the target SKU have been removed." });
+              setWipeBarcode('');
+              refreshData();
+          } else {
+              toast({ variant: "destructive", title: "Wipe Failed", description: "Could not finalize security purge on server." });
+          }
+      } catch (e) {
+          toast({ variant: "destructive", title: "Error", description: "Communication failure with security core." });
+      } finally {
+          setIsWiping(false);
+      }
   };
 
   const PaginationControls = () => {
@@ -319,9 +365,22 @@ export function AuditLogClient() {
               </PopoverContent>
             </Popover>
 
-            {(searchTerm || selectedUser !== ALL_USERS_VALUE || selectedAction !== ALL_ACTIONS_VALUE || selectedDateRange) && (
-              <Button variant="ghost" onClick={clearFilters} className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[9px] text-red-500 hover:bg-red-500/5 transition-all"><FilterX className="mr-2 h-4 w-4" /> RESET TERMINAL</Button>
-            )}
+            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                {(searchTerm || selectedUser !== ALL_USERS_VALUE || selectedAction !== ALL_ACTIONS_VALUE || selectedDateRange) && (
+                    <Button variant="ghost" onClick={clearFilters} className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[9px] text-red-500 hover:bg-red-500/5 transition-all"><FilterX className="mr-2 h-4 w-4" /> RESET TERMINAL</Button>
+                )}
+                
+                {role === 'admin' && (
+                    <Button 
+                        variant="outline" 
+                        onClick={handleWipeClick} 
+                        className="h-14 px-8 rounded-2xl border-destructive/20 bg-destructive/5 text-destructive font-black uppercase tracking-widest text-[9px] hover:bg-destructive/10 transition-all ml-auto"
+                    >
+                        {isWiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldClose className="h-4 w-4 mr-2" />}
+                        FORENSIC WIPE
+                    </Button>
+                )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -515,6 +574,59 @@ export function AuditLogClient() {
             </div>
         </DialogContent>
       </Dialog>
+
+      {/* FORENSIC WIPE DIALOG */}
+      <Dialog open={isWipeDialogOpen} onOpenChange={setIsWipeDialogOpen}>
+        <DialogContent className="sm:max-w-md p-6 rounded-[2rem] border-none shadow-3xl bg-background">
+            <DialogHeader>
+                <div className="mx-auto bg-destructive/10 p-4 rounded-2xl mb-4">
+                    <ShieldClose className="h-8 w-8 text-destructive" strokeWidth={2.5} />
+                </div>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center">Forensic Purge</DialogTitle>
+                <DialogDescription className="text-center font-medium text-xs">
+                    Initiating permanent removal of security traces for a specific target. This action bypasses standard archiving.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-6 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="wipe-barcode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Target SKU / Barcode</Label>
+                    <div className="relative">
+                        <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                        <Input 
+                            id="wipe-barcode"
+                            placeholder="IDENTIFY SKU FOR PURGE..."
+                            value={wipeBarcode}
+                            onChange={(e) => setWipeBarcode(e.target.value.toUpperCase())}
+                            className="pl-12 h-14 rounded-2xl bg-muted/10 font-black border-destructive/20 focus:border-destructive"
+                        />
+                    </div>
+                </div>
+                <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl flex items-start gap-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-red-700/80 font-bold leading-relaxed">
+                        CRITICAL: This will erase ALL historical logs mentioning this barcode. This process is cryptographic and irreversible.
+                    </p>
+                </div>
+            </div>
+            <DialogFooter className="grid grid-cols-2 gap-3">
+                <Button variant="outline" onClick={() => setIsWipeDialogOpen(false)} className="rounded-xl font-bold h-12">Abort</Button>
+                <Button 
+                    onClick={initiateWipe} 
+                    disabled={!wipeBarcode.trim()}
+                    className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-destructive/20 h-12"
+                >
+                    Initialize Purge
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AuthorizeActionDialog 
+          isOpen={isAuthDialogOpen}
+          onOpenChange={setIsAuthDialogOpen}
+          onAuthorizationSuccess={handleAuthorizationSuccess}
+          actionDescription={`Authorized Forensic Wipe for barcode: ${wipeBarcode}. Administrator clearance required.`}
+      />
     </div>
   );
 }
