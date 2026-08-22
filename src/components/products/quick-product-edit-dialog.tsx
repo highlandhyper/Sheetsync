@@ -4,7 +4,6 @@ import { useState, useEffect, useTransition, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
-    Zap, 
     Search, 
     Loader2, 
     Barcode, 
@@ -168,9 +167,6 @@ export function QuickProductEditDialog({ isOpen, onOpenChange }: QuickProductEdi
             >
                 <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="bg-white/20 p-2 rounded-xl">
-                            <Zap className="h-6 w-6 fill-current" />
-                        </div>
                         <div>
                             <DialogTitle className="text-xl font-black uppercase tracking-tight leading-none">Quick Registry Update</DialogTitle>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">High-Speed Catalog Sync</p>

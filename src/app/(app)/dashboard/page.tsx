@@ -2,7 +2,7 @@
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw, Layers, Globe, Zap, History, Fingerprint, Edit, Trash2 } from 'lucide-react';
+import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, Users, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw, Layers, Globe, History, Fingerprint, Edit, Trash2 } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -167,71 +167,6 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
         <Link href={href} className="col-span-2 lg:col-span-1 h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[2.5rem]">
             <Card className={className}>{cardContent}</Card>
         </Link>
-    );
-}
-
-function SecurityPulseStream() {
-    const { auditLogs } = useDataCache();
-    const recentLogs = useMemo(() => auditLogs.slice(0, 5), [auditLogs]);
-
-    const getActionIcon = (action: string) => {
-        if (action.includes('DELETE')) return <Trash2 className="h-3 w-3 text-destructive" />;
-        if (action.includes('LOG')) return <Plus className="h-3 w-3 text-green-500" />;
-        if (action.includes('UPDATE')) return <Edit className="h-3 w-3 text-primary" />;
-        return <Activity className="h-3 w-3 text-muted-foreground" />;
-    };
-
-    return (
-        <Card className="shadow-none rounded-[2.5rem] border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden flex flex-col group">
-            <CardHeader className="p-8 pb-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-2xl group-hover:scale-110 transition-all duration-500">
-                        <History className="h-6 w-6 text-primary" strokeWidth={3} />
-                    </div>
-                    <div>
-                        <CardTitle className="text-xl font-black uppercase tracking-tighter">Security Pulse</CardTitle>
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mt-1">Live Event Stream</p>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-8 pt-0 space-y-4">
-                {recentLogs.length > 0 ? (
-                    recentLogs.map((log, idx) => (
-                        <div key={log.id} className={cn(
-                            "flex items-start gap-4 p-3 rounded-2xl border border-transparent hover:bg-primary/5 transition-all duration-300",
-                            idx === 0 && "bg-primary/[0.03] border-primary/10"
-                        )}>
-                            <div className="mt-1 p-1.5 rounded-lg bg-background border border-white/10 shrink-0">
-                                {getActionIcon(log.action)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-1">
-                                    <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
-                                        {log.user.split('@')[0]}
-                                    </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/40 whitespace-nowrap">
-                                        {formatDistanceToNow(parseISO(log.timestamp), { addSuffix: true })}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground font-medium truncate opacity-60">
-                                    {log.details}
-                                </p>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <div className="py-12 flex flex-col items-center justify-center text-center opacity-20">
-                        <History className="h-10 w-10 mb-2" />
-                        <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Uplink</p>
-                    </div>
-                )}
-                <Button asChild variant="ghost" className="w-full h-11 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5">
-                    <Link href="/audit-log">
-                        View Full Forensic Trail <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Link>
-                </Button>
-            </CardContent>
-        </Card>
     );
 }
 
@@ -527,6 +462,11 @@ function QuickAuthorizeCard() {
         setGrantParams(null);
     };
 
+    const handleActionClick = () => {
+        if (!selectedStaff) return;
+        handleOpenGrant();
+    };
+
     return (
         <>
         <Card className="shadow-none rounded-[2.5rem] border-white/5 bg-primary/5 dark:bg-primary/[0.02] h-full flex flex-col group overflow-hidden transition-all hover:bg-primary/[0.08] relative">
@@ -595,9 +535,8 @@ function QuickAuthorizeCard() {
                 <Button 
                     className="w-full h-14 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all active:scale-95 bg-primary hover:bg-primary/90 text-white" 
                     disabled={!selectedStaff}
-                    onClick={handleOpenGrant}
+                    onClick={handleActionClick}
                 >
-                    <Zap className="mr-2 h-4 w-4 fill-white" />
                     AUTHORIZE
                 </Button>
             </CardContent>
@@ -773,7 +712,6 @@ function ProactiveGrantDialog({
                                 onClick={() => setSelectedDuration('single')}
                                 className="h-24 flex flex-col gap-2 rounded-3xl border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
                             >
-                                <Zap className={cn("h-6 w-6 mb-1", selectedDuration === 'single' ? "fill-white" : "text-primary/40")} />
                                 <span className="text-[10px]">Single</span>
                             </Button>
                             <Button 
@@ -916,7 +854,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8 pt-4">
          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none px-2">
-          MISSION <span className="text-primary">CONTROL</span>
+          MISSION CONTROL
         </h1>
         <DashboardSkeleton />
       </div>
@@ -938,7 +876,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-3 px-2">
             <div className="flex items-center justify-between">
                 <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
-                    MISSION <span className="text-primary">CONTROL</span>
+                    MISSION CONTROL
                 </h1>
                 <div className="flex flex-col items-end gap-1">
                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{mountedDate}</span>
@@ -1000,7 +938,7 @@ export default function DashboardPage() {
         <ActiveAuthorizations />
 
         {/* ANALYTICS PANEL */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 pt-8">
             <Card className="shadow-none rounded-[3rem] border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden group">
                 <CardHeader className="p-8 pb-4">
                     <div className="flex items-center gap-4">
@@ -1014,13 +952,11 @@ export default function DashboardPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-8 pt-0">
-                    <div className="h-[300px] w-full">
+                    <div className="h-[400px] w-full">
                         <StockBySupplierChart data={metrics.stockBySupplier} />
                     </div>
                 </CardContent>
             </Card>
-
-            <SecurityPulseStream />
         </div>
 
         {metrics.stockTrend && (

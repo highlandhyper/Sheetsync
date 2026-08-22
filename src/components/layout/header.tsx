@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff, Zap, ShieldCheck as ShieldIcon } from 'lucide-react';
+import { LogOut, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff, ShieldCheck as ShieldIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { CreateProductFromInventoryDialog } from '../products/create-product-fro
 import { useSpecialEntry } from '@/context/special-entry-context';
 
 function LastSyncStatus() {
-  const { lastSync, isSyncing, refreshData, pendingActions, isOnline } = useDataCache();
+  const { lastSync, isSyncing, pendingActions, isOnline } = useDataCache();
   const [_, setForceUpdate] = useState(0);
 
   useEffect(() => {
@@ -59,35 +59,13 @@ function LastSyncStatus() {
             <div className="flex items-center gap-2">
                 <span className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white leading-none">
-                    {isOnline ? 'Uplink Stable' : 'System Offline'}
+                    {isOnline ? 'System Online' : 'Working Offline'}
                 </span>
             </div>
             <span className="text-[8px] opacity-30 font-black uppercase tracking-widest hidden xs:inline mt-1">
               SYNCED {lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : 'NEVER'}
             </span>
         </div>
-        
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={refreshData}
-                        disabled={isSyncing || !isOnline}
-                        className={cn(
-                            "h-9 w-9 rounded-xl transition-all border-white/5 bg-muted/10 shadow-none",
-                            isSyncing ? "text-primary border-primary/20" : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
-                        )}
-                    >
-                        <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Initialize Registry Sync</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
       </div>
     </div>
   );
@@ -97,7 +75,7 @@ function LastSyncStatus() {
 export function Header({ className, onManualLock }: { className?: string; onManualLock?: () => void; }) {
   const { user, logout, loading, role } = useAuth();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const { isSyncing, suppliers, addProduct, refreshData } = useDataCache();
+  const { isSyncing, suppliers, addProduct, refreshData, isOnline } = useDataCache();
   const { approveRequest, activeSessions } = useSpecialEntry();
   
   const [isRequestProductDialogOpen, setIsRequestProductDialogOpen] = useState(false);
@@ -130,6 +108,12 @@ export function Header({ className, onManualLock }: { className?: string; onManu
     refreshData();
   };
 
+  const handleForceSync = () => {
+    if (isOnline && !isSyncing) {
+        refreshData();
+    }
+  };
+
   return (
     <>
       <header className={cn(
@@ -137,7 +121,6 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         className
       )}>
         <div className="flex items-center gap-4">
-            <Zap className="h-5 w-5 text-primary fill-primary hidden sm:block" />
         </div>
         
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-6">
@@ -231,6 +214,11 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                         )}
                     </div>
                     </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem onClick={handleForceSync} disabled={!isOnline || isSyncing} className="rounded-xl p-3 text-primary focus:text-primary focus:bg-primary/10 font-black uppercase tracking-widest text-[9px] cursor-pointer">
+                    <RefreshCw className={cn("mr-3 h-4 w-4", isSyncing && "animate-spin")} />
+                    <span>Force Registry Sync</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/5" />
                     <DropdownMenuItem onClick={logout} className="rounded-xl p-3 text-destructive focus:text-destructive focus:bg-destructive/10 font-black uppercase tracking-widest text-[9px] cursor-pointer">
                     <LogOut className="mr-3 h-4 w-4" />

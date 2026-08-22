@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, Zap, History, RefreshCw, PackageSearch } from 'lucide-react';
+import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, History, RefreshCw, PackageSearch } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -85,7 +85,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 onSelect={() => runCommand(() => setIsQuickEditOpen(true))}
                 className="flex items-center gap-2"
             >
-                <Zap className="mr-2 h-4 w-4 text-primary fill-primary" />
                 <span>Quick Catalog Update (Instant)</span>
             </CommandItem>
             <CommandItem

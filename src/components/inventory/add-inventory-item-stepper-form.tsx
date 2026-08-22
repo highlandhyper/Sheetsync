@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
@@ -30,8 +29,7 @@ import {
     MessageSquare,
     PackageSearch,
     SendHorizontal,
-    Globe,
-    Zap
+    Globe
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
