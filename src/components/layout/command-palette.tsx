@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Command,
   CommandDialog,
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, Zap } from 'lucide-react';
+import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, Zap, History, RefreshCw, PackageSearch } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -30,9 +31,10 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+  const router = useRouter();
   const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useMultiSelect();
   const { requestSpecialEntry } = useSpecialEntry();
-  const { uniqueStaffNames } = useDataCache();
+  const { uniqueStaffNames, refreshData } = useDataCache();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -75,9 +77,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   return (
     <>
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput placeholder="Search records or type a command..." />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>No matching terminal commands.</CommandEmpty>
         <CommandGroup heading="Industrial Terminal">
             <CommandItem
                 onSelect={() => runCommand(() => setIsQuickEditOpen(true))}
@@ -91,6 +93,21 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 <span>Request Special Entry (Silent Log)</span>
+            </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Security & Audit">
+            <CommandItem
+                onSelect={() => runCommand(() => router.push('/audit-log'))}
+            >
+                <History className="mr-2 h-4 w-4" />
+                <span>View Global Audit History</span>
+            </CommandItem>
+            <CommandItem
+                onSelect={() => runCommand(() => { refreshData(); toast({ title: "Registry Refresh", description: "Synchronizing with master core..." }); })}
+            >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                <span>Force Registry Sync</span>
             </CommandItem>
         </CommandGroup>
         <CommandSeparator />
@@ -112,12 +129,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <ListChecks className="mr-2 h-4 w-4" />
             <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Multi-Select Mode</span>
           </CommandItem>
+          <CommandItem
+                onSelect={() => runCommand(() => router.push('/products/manage'))}
+            >
+                <PackageSearch className="mr-2 h-4 w-4" />
+                <span>Advanced Product Management</span>
+            </CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>
 
     <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent className="sm:max-w-[380px] p-6">
+        <DialogContent className="sm:max-w-[380px] p-6 rounded-3xl">
             <DialogHeader>
                 <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-primary" />
@@ -129,14 +152,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identify Personnel</Label>
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Identify Personnel</Label>
                     <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                         <PopoverTrigger asChild>
                             <Button 
                                 variant="outline" 
                                 role="combobox" 
                                 aria-expanded={staffPopoverOpen}
-                                className="w-full h-12 justify-between font-bold bg-muted/20 border-primary/10 px-4"
+                                className="w-full h-12 justify-between font-bold bg-muted/20 border-primary/10 px-4 rounded-xl"
                             >
                                 <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-primary" />
@@ -145,7 +168,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl" align="start">
                             <Command>
                                 <CommandInput placeholder="Search personnel..." />
                                 <CommandList>
@@ -159,7 +182,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     setStaffName(name);
                                                     setStaffPopoverOpen(false);
                                                 }}
-                                                className="font-bold"
+                                                className="font-bold h-11"
                                             >
                                                 <Check className={cn("mr-2 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
                                                 {name}
@@ -176,7 +199,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <Button variant="outline" size="lg" onClick={() => setIsRequestDialogOpen(false)} className="font-bold rounded-xl">
                     Cancel
                 </Button>
-                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20">
+                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-white">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Request"}
                 </Button>
             </DialogFooter>

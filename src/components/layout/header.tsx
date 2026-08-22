@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogOut, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff } from 'lucide-react';
+import { LogOut, Command, RefreshCw, Lock, CloudOff, Wifi, WifiOff, BellOff, Zap, ShieldCheck as ShieldIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -37,57 +37,58 @@ function LastSyncStatus() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 sm:gap-4">
+    <div className="flex items-center gap-2 sm:gap-6">
       {pendingActions.length > 0 && (
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-2 py-0.5 font-black text-[9px] uppercase tracking-widest rounded-2xl transition-all duration-500", isOnline ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-muted-foreground/10")}>
+                    <Badge variant="secondary" className={cn("flex items-center gap-1.5 cursor-help px-2.5 py-1 font-black text-[9px] uppercase tracking-widest rounded-full transition-all duration-500", isOnline ? "bg-primary/10 text-primary border-primary/20 animate-pulse" : "bg-destructive/10 text-destructive border-destructive/20")}>
                         <CloudOff className="h-3 w-3" />
-                        {pendingActions.length} <span className="hidden xs:inline">Pending</span>
+                        {pendingActions.length} PENDING
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>{pendingActions.length} records waiting to sync.</p>
+                    <p className="font-bold">{pendingActions.length} records in transmission queue.</p>
                 </TooltipContent>
             </Tooltip>
           </TooltipProvider>
       )}
 
-      <div className="flex items-center gap-2 mr-1">
-        {isSyncing ? (
-            <RefreshCw className="h-4 w-4 text-primary animate-spin" />
-        ) : isOnline ? (
-            <Wifi className="h-4 w-4 text-green-500/50" />
-        ) : (
-            <WifiOff className="h-4 w-4 text-destructive/50" />
-        )}
-        <span className="text-[9px] opacity-30 font-black uppercase tracking-widest hidden xs:inline whitespace-nowrap">
-          {lastSync ? `${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}` : 'OFFLINE'}
-        </span>
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col items-end">
+            <div className="flex items-center gap-2">
+                <span className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white leading-none">
+                    {isOnline ? 'Uplink Stable' : 'System Offline'}
+                </span>
+            </div>
+            <span className="text-[8px] opacity-30 font-black uppercase tracking-widest hidden xs:inline mt-1">
+              SYNCED {lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : 'NEVER'}
+            </span>
+        </div>
+        
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={refreshData}
+                        disabled={isSyncing || !isOnline}
+                        className={cn(
+                            "h-9 w-9 rounded-xl transition-all border-white/5 bg-muted/10 shadow-none",
+                            isSyncing ? "text-primary border-primary/20" : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                        )}
+                    >
+                        <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Initialize Registry Sync</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
       </div>
-      
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={refreshData}
-              disabled={isSyncing || !isOnline}
-              className={cn(
-                "h-8 w-8 sm:h-9 sm:w-9 rounded-xl transition-all border-white/5 shadow-none",
-                isSyncing ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
-              )}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Force Sync</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
     </div>
   );
 }
@@ -136,89 +137,91 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         className
       )}>
         <div className="flex items-center gap-4">
-            {/* Redundant hamburger button removed for cleaner desktop look */}
+            <Zap className="h-5 w-5 text-primary fill-primary hidden sm:block" />
         </div>
         
-        <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">
+        <div className="flex flex-1 items-center justify-end gap-2 sm:gap-6">
           <div className="hidden md:flex flex-1 justify-center px-4 max-w-xl">
              <div className="w-full">
                 <HeaderBarcodeLookup />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
             <LastSyncStatus />
             
-            <div className="h-6 w-px bg-white/5 mx-1 hidden xs:block" />
+            <div className="h-6 w-px bg-white/10 mx-1 hidden xs:block" />
 
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsCommandPaletteOpen(true)}
-                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground rounded-xl border-white/5 hover:bg-primary/5 transition-all"
-                aria-label="Open command palette"
-            >
-                <Command className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCommandPaletteOpen(true)}
+                    className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all"
+                    aria-label="Open command palette"
+                >
+                    <Command className="h-4 w-4" />
+                </Button>
 
-            {role === 'admin' && activeSessions.length > 0 && (
+                {role === 'admin' && activeSessions.length > 0 && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link href="/dashboard">
+                                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl text-green-600 bg-green-500/5 border-green-500/10 relative group transition-colors">
+                                        <BellOff className="h-4 w-4" />
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                            <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 text-[8px] text-white items-center justify-center font-black">
+                                                {activeSessions.length}
+                                            </span>
+                                        </span>
+                                    </Button>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="font-bold">{activeSessions.length} active silent grants</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+
+                <NotificationCenter onOpenProductRequest={handleOpenProductRequest} />
+
+                {role === 'admin' && onManualLock && (
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Link href="/dashboard">
-                                <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-green-600 bg-green-500/5 border-green-500/10 relative group transition-colors">
-                                    <BellOff className="h-3.5 w-3.5" />
-                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 text-[7px] text-white items-center justify-center font-black">
-                                            {activeSessions.length}
-                                        </span>
-                                    </span>
-                                </Button>
-                            </Link>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{activeSessions.length} active silent grants</p>
-                        </TooltipContent>
+                    <TooltipTrigger asChild>
+                        <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onManualLock}
+                        className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:text-destructive transition-all"
+                        >
+                        <Lock className="h-4 w-4" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p className="font-bold">Lock Registry Terminal</p></TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-            )}
-
-            <NotificationCenter onOpenProductRequest={handleOpenProductRequest} />
-
-            {role === 'admin' && onManualLock && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={onManualLock}
-                      className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground rounded-xl border-white/5 hover:text-destructive transition-all"
-                    >
-                      <Lock className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Lock Registry</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+                )}
+            </div>
             
             {loading ? (
-                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl animate-pulse bg-muted/20" />
+                <div className="h-9 w-9 rounded-xl animate-pulse bg-muted/20" />
             ) : user ? (
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-xl p-0 hover:bg-transparent">
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9 shadow-none rounded-xl border border-white/5">
+                    <Button variant="ghost" className="relative h-9 w-9 rounded-xl p-0 hover:bg-transparent">
+                    <Avatar className="h-9 w-9 shadow-none rounded-xl border border-white/10 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
                         <AvatarImage src={`https://placehold.co/80x80.png?text=${getInitials(user.email)}`} alt={user.email || "User"} className="rounded-xl" />
                         <AvatarFallback className="rounded-xl bg-primary/10 text-primary font-black uppercase text-[10px]">{getInitials(user.email)}</AvatarFallback>
                     </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 rounded-2xl border-white/5 shadow-2xl p-2" align="end" forceMount>
+                <DropdownMenuContent className="w-64 rounded-2xl border-white/10 shadow-2xl p-2 bg-background/95 backdrop-blur-2xl" align="end" forceMount>
                     <DropdownMenuLabel className="p-4">
                     <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-black uppercase tracking-tight leading-none">
+                        <p className="text-sm font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white">
                         {user.displayName || user.email?.split('@')[0] || "User"}
                         </p>
                         {user.email && (
@@ -229,7 +232,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                     </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/5" />
-                    <DropdownMenuItem onClick={logout} className="rounded-xl p-3 text-destructive focus:text-destructive focus:bg-destructive/10 font-black uppercase tracking-widest text-[9px]">
+                    <DropdownMenuItem onClick={logout} className="rounded-xl p-3 text-destructive focus:text-destructive focus:bg-destructive/10 font-black uppercase tracking-widest text-[9px] cursor-pointer">
                     <LogOut className="mr-3 h-4 w-4" />
                     <span>Terminate Session</span>
                     </DropdownMenuItem>
