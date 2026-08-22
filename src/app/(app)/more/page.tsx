@@ -3,10 +3,14 @@
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
 import { useDataCache } from '@/context/data-cache-context';
-import { Card, CardContent } from '@/components/ui/card';
+import { useSpecialEntry } from '@/context/special-entry-context';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { NotificationCenter } from '@/components/layout/notification-center';
+import { CommandPalette } from '@/components/layout/command-palette';
 import { 
     ShieldCheck, 
     Undo, 
@@ -26,10 +30,18 @@ import {
     Network,
     Cpu,
     LogOut,
-    Wifi
+    Wifi,
+    RefreshCw,
+    Command,
+    Lock,
+    CloudOff,
+    Clock,
+    BellOff
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { useState, useEffect } from 'react';
 
 interface HubItem {
     href: string;
@@ -105,7 +117,17 @@ function HubCard({ item }: { item: HubItem }) {
 export default function SystemHubPage() {
     const { role, user, logout } = useAuth();
     const { isAllowed } = useAccessControl();
-    const { isOnline } = useDataCache();
+    const { isOnline, isSyncing, lastSync, pendingActions, refreshData } = useDataCache();
+    const { activeSessions } = useSpecialEntry();
+    
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [_, setForceUpdate] = useState(0);
+
+    // Update time readouts every 30s
+    useEffect(() => {
+        const timer = setInterval(() => setForceUpdate(Date.now()), 30000);
+        return () => clearInterval(timer);
+    }, []);
 
     if (!role || !user) return null;
 
@@ -116,30 +138,121 @@ export default function SystemHubPage() {
         return email.substring(0, 2).toUpperCase();
     };
 
+    const handleManualLock = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('sheetSync_isLocked', 'true');
+            window.location.reload();
+        }
+    };
+
     return (
-        <div className="max-w-2xl mx-auto space-y-12 pb-32 pt-2 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+        <div className="max-w-2xl mx-auto space-y-10 pb-32 pt-2 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             {/* SYSTEM STATUS HEADER */}
-            <div className="px-1 space-y-8">
+            <div className="px-1 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
                             System <span className="text-primary">Hub</span>
                         </h1>
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40 mt-2">
-                            Operational Access Terminal
+                            Operational Command Terminal
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                        <Badge variant="outline" className={cn(
-                            "font-black text-[9px] tracking-widest px-2 py-0.5 border-none",
-                            isOnline ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
-                        )}>
-                            {isOnline ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <Network className="h-2.5 w-2.5 mr-1" />}
-                            {isOnline ? "System Online" : "Working Offline"}
-                        </Badge>
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest">v4.1.0</Badge>
+                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest">v4.1.0</Badge>
                     </div>
                 </div>
+
+                {/* MOBILE CONTROL CENTER */}
+                <Card className="border-white/5 bg-primary/5 dark:bg-primary/[0.02] rounded-[2rem] overflow-hidden shadow-none">
+                    <CardHeader className="pb-2 pt-6 px-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Terminal className="h-4 w-4 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Command Terminal</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[8px] font-black uppercase text-muted-foreground/40 tracking-tighter">
+                                    SYNCED {lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : 'NEVER'}
+                                </span>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        {/* PRIMARY ACTIONS GRID */}
+                        <div className="grid grid-cols-4 gap-3">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => isOnline && !isSyncing && refreshData()}
+                                            disabled={!isOnline || isSyncing}
+                                            className={cn(
+                                                "h-14 w-full rounded-2xl border transition-all",
+                                                isSyncing 
+                                                    ? "bg-amber-500/20 text-amber-600 border-amber-500/30 animate-pulse" 
+                                                    : !isOnline 
+                                                        ? "bg-destructive/20 text-destructive border-destructive/30" 
+                                                        : "bg-green-500/20 text-green-600 border-green-500/30"
+                                            )}
+                                        >
+                                            <RefreshCw className={cn("h-6 w-6", isSyncing && "animate-spin")} strokeWidth={2.5} />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="rounded-xl font-bold">
+                                        {isSyncing ? "Transmission in progress..." : !isOnline ? "Registry Link Offline" : "Force Master Sync"}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsCommandPaletteOpen(true)}
+                                className="h-14 w-full text-muted-foreground rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 hover:bg-primary/5 transition-all"
+                            >
+                                <Command className="h-6 w-6" strokeWidth={2.5} />
+                            </Button>
+
+                            <div className="h-14 w-full flex items-center justify-center bg-white/40 dark:bg-zinc-900/40 rounded-2xl border border-white/5 relative">
+                                <NotificationCenter />
+                            </div>
+
+                            {role === 'admin' && (
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleManualLock}
+                                    className="h-14 w-full text-muted-foreground rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 hover:text-destructive transition-all"
+                                >
+                                    <Lock className="h-6 w-6" strokeWidth={2.5} />
+                                </Button>
+                            )}
+                        </div>
+
+                        {/* SECONDARY TELEMETRY */}
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 p-3 rounded-xl bg-white/40 dark:bg-zinc-900/40 border border-white/5 flex items-center gap-3">
+                                <div className={cn(
+                                    "h-2 w-2 rounded-full",
+                                    isOnline ? "bg-green-500 animate-pulse" : "bg-destructive"
+                                )} />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                    {isOnline ? "Industrial Link Active" : "Registry Disconnected"}
+                                </span>
+                            </div>
+                            
+                            {pendingActions.length > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 animate-pulse">
+                                    <CloudOff className="h-3.5 w-3.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{pendingActions.length} PENDING TRANMISSION</span>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* OPERATIONAL IDENTITY BLOCK */}
                 <div className="p-6 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-zinc-900 dark:to-black text-white shadow-2xl shadow-black/10 relative overflow-hidden group">
@@ -217,6 +330,9 @@ export default function SystemHubPage() {
                     </div>
                 </div>
             </div>
+
+            <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
         </div>
     );
 }
+
