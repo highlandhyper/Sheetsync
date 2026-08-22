@@ -879,9 +879,20 @@ export default function DashboardPage() {
                     MISSION CONTROL
                 </h1>
                 <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{mountedDate}</span>
+                    {/* Desktop Date Display */}
+                    <span className="hidden md:inline text-[10px] font-black text-primary uppercase tracking-[0.4em]">{mountedDate}</span>
+                    
+                    {/* Mobile Sync Status Display */}
+                    <div className="md:hidden flex flex-col items-end">
+                        {isSyncing ? (
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] animate-pulse">Syncing...</span>
+                        ) : (
+                            <span className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Synced</span>
+                        )}
+                    </div>
+
                     {isSyncing && (
-                        <Badge variant="outline" className="border-none bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest px-2 animate-pulse">
+                        <Badge variant="outline" className="hidden md:flex border-none bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest px-2 animate-pulse">
                             SYNCING SYSTEM CORE
                         </Badge>
                     )}
