@@ -743,7 +743,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
