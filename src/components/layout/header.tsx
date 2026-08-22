@@ -111,7 +111,7 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   return (
     <>
       <header className={cn(
-        "sticky top-0 z-30 flex h-16 sm:h-20 items-center border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 sm:px-8 transition-all duration-300",
+        "sticky top-0 z-30 hidden md:flex h-16 sm:h-20 items-center border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 sm:px-8 transition-all duration-300",
         className
       )}>
         {/* LEFT: Placeholder to balance the centered search */}
