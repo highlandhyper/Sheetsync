@@ -13,7 +13,6 @@ import {
     ChevronsUpDown, 
     DollarSign, 
     Edit, 
-    Zap, 
     History, 
     Package, 
     Building, 
@@ -365,7 +364,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                     </Badge>
                                 )}
                                 <Button type="button" variant="ghost" size="sm" onClick={handleMagicLookup} disabled={isMagicLoading} className="h-10 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 rounded-xl px-4">
-                                    {isMagicLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 fill-primary" />}
+                                    {isMagicLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                                     Magic Lookup
                                 </Button>
                             </div>
@@ -447,7 +446,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             </div>
 
                             <div className="pt-8">
-                                <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 rounded-2xl transition-all hover:scale-[1.02] active:scale-0.98">
                                     {isSavePending ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Save className="mr-3 h-6 w-6" />}
                                     {editMode === 'create' ? 'Register New SKU' : 'Sync Global Registry'}
                                 </Button>

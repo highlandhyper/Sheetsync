@@ -20,6 +20,7 @@ import { AuthorizeActionDialog } from '../inventory/authorize-action-dialog';
 import { bulkDeleteProductsAction, deleteProductAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const MAX_ITEMS_TO_DISPLAY = 150;
 
@@ -324,7 +325,3 @@ export function ProductListClient() {
     </div>
   );
 }
-
-import { CheckSquare, Square } from 'lucide-react';
-import { Checkbox } from '../ui/checkbox';
-import { formatDistanceToNow } from 'date-fns';

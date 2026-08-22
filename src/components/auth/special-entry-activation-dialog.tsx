@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, Zap } from 'lucide-react';
+import { ShieldCheck, KeyRound } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
@@ -62,7 +62,6 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">Personnel Authorization Required</p>
                 </div>
             </div>
-            <Zap className="h-5 w-5 opacity-40 animate-pulse" />
         </div>
 
         <div className="p-6 space-y-6">
@@ -83,7 +82,7 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
                 <div className="relative max-w-[220px] mx-auto">
                     <Input 
                         type="text" 
-                        inputMode="numeric"
+                        inputMode="numeric" 
                         autoComplete="off"
                         maxLength={4} 
                         value={otp}
@@ -103,7 +102,6 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
 
         <div className="p-6 pt-0">
           <Button onClick={handleActivate} className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20" disabled={otp.length < 4}>
-            <Zap className="mr-2 h-5 w-5 fill-primary-foreground" />
             Initialize Session
           </Button>
         </div>
