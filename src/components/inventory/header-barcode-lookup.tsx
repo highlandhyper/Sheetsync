@@ -230,7 +230,7 @@ export function HeaderBarcodeLookup() {
       </button>
       
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:duration-300 transition-all ease-out">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden border-none shadow-none bg-transparent rounded-none data-[state=open]:animate-dynamic-island-in data-[state=closed]:animate-dynamic-island-out transition-all">
           <DialogHeader className="sr-only">
             <DialogTitle>Command Hub</DialogTitle>
             <DialogDescription>Industrial search interface for real-time inventory lookup.</DialogDescription>
@@ -273,7 +273,7 @@ export function HeaderBarcodeLookup() {
               showResults ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
             )}>
               <div className="overflow-hidden">
-                <Card className="max-h-[50vh] overflow-y-auto bg-background/90 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl p-2 sm:p-4">
+                <Card className="max-h-[50vh] overflow-y-auto bg-background/90 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl p-2 sm:p-4 mt-2">
                   {results.length > 0 ? (
                       <div className="space-y-2">
                           {results.map((item) => (

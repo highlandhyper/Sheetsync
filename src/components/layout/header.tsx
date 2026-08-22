@@ -58,7 +58,7 @@ function LastSyncStatus() {
         <div className="flex flex-col items-end">
             <div className="flex items-center gap-2">
                 <span className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white leading-none">
+                <span className="text-[10px] font-black tracking-[0.15em] text-slate-900 dark:text-white leading-none">
                     {isOnline ? 'System Online' : 'Working Offline'}
                 </span>
             </div>
@@ -117,19 +117,23 @@ export function Header({ className, onManualLock }: { className?: string; onManu
   return (
     <>
       <header className={cn(
-        "sticky top-0 z-30 flex h-16 sm:h-20 items-center justify-between border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 sm:px-8 gap-4 transition-all duration-300",
+        "sticky top-0 z-30 flex h-16 sm:h-20 items-center border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 sm:px-8 transition-all duration-300",
         className
       )}>
-        <div className="flex items-center gap-4">
+        {/* LEFT: Placeholder to balance the centered search */}
+        <div className="flex-1 hidden md:flex items-center">
+            {/* Optional sidebar trigger or breadcrumbs could go here */}
         </div>
         
-        <div className="flex flex-1 items-center justify-end gap-2 sm:gap-6">
-          <div className="hidden md:flex flex-1 justify-center px-4 max-w-xl">
-             <div className="w-full">
+        {/* CENTER: SEARCH TERMINAL */}
+        <div className="flex-1 flex justify-center max-w-xl px-4">
+            <div className="w-full">
                 <HeaderBarcodeLookup />
             </div>
-          </div>
+        </div>
 
+        {/* RIGHT: SYSTEM ACTIONS */}
+        <div className="flex-1 flex items-center justify-end gap-2 sm:gap-6">
           <div className="flex items-center gap-2 sm:gap-4">
             <LastSyncStatus />
             
