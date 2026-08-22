@@ -209,7 +209,25 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
     if (rowsToDelete.length > 0) {
         const success = await deleteSheetRowsBatch(AUDIT_LOG_SHEET_NAME, rowsToDelete);
         if (success) {
-            await logAuditEvent(email, 'FORENSIC_WIPE', barcode, `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`);
+            const wipeDetails = `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`;
+            await logAuditEvent(email, 'FORENSIC_WIPE', barcode, wipeDetails);
+            
+            // TRIGGER EMAIL PROTOCOL: Append a special notification record to Form responses 2
+            // This triggers the AppsScript email logic to inform administrators that the process is done.
+            const ts = format(new Date(), "d/M/yyyy HH:mm:ss");
+            const notificationRow = [
+                ts, 
+                barcode, 
+                0, // Quantity 0 for notification record
+                '', 
+                'SECURITY CORE', 
+                'SYSTEM ALERT', 
+                '!!! FORENSIC WIPE COMPLETED !!!', 
+                'SECURITY PURGE', 
+                'SECURITY_ALERT', 
+                `wipe_${Date.now()}`
+            ];
+            await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [notificationRow]);
         }
         return success;
     }
