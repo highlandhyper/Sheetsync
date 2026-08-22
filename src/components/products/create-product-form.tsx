@@ -13,7 +13,6 @@ import {
     ChevronsUpDown, 
     DollarSign, 
     Edit, 
-    History, 
     Package, 
     Building, 
     Barcode, 
@@ -21,10 +20,7 @@ import {
     Tag,
     Trash2,
     Undo2,
-    User as UserIcon,
     AlertTriangle,
-    Info,
-    ArrowRight,
     X,
     RefreshCw,
     Activity,
@@ -32,19 +28,17 @@ import {
     History as HistoryIcon,
     Fingerprint,
     Image as ImageIcon,
-    ExternalLink,
     Box,
     Clock,
     ArrowUpRight
 } from 'lucide-react';
 import Image from 'next/image';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -55,9 +49,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
@@ -236,8 +228,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
     startFetchTransition(async () => {
       setSearchedBarcode(barcodeToUse);
-      
-      // Auto-trigger visual lookup for physical verification
       handleMagicLookup(barcodeToUse);
 
       const cachedProduct = barcodeMap.get(barcodeToUse);
@@ -294,7 +284,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     const existing = barcodeMap.get(searchedBarcode);
     if (editMode === 'edit' && existing?.uniqueId) formData.append('uniqueId', existing.uniqueId);
 
-    // --- INSTANT OPTIMISTIC SYNC ---
     const optimisticProduct: Product = {
         id: existing?.uniqueId || searchedBarcode,
         barcode: searchedBarcode,
@@ -348,45 +337,52 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start relative z-10">
+    <div className={cn(
+        "grid grid-cols-1 xl:grid-cols-12 gap-8 items-start relative z-10",
+        showForm && "xl:h-[calc(100vh-12rem)]"
+    )}>
         {/* IDENTITY MANAGEMENT PANEL */}
-        <div className={cn("xl:col-span-6 space-y-6", !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full")}>
-            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
-                <CardHeader className="bg-muted/10 pb-8 pt-10 px-10 border-b border-white/5">
+        <div className={cn(
+            "xl:col-span-6 space-y-6 flex flex-col h-full", 
+            !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full"
+        )}>
+            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[2.5rem] flex flex-col h-full">
+                <CardHeader className="bg-muted/10 pb-6 pt-8 px-10 border-b border-white/5 shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <CardTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Catalog Identity Node</CardTitle>
-                            <CardDescription className="font-bold text-[10px] uppercase tracking-[0.3em] text-muted-foreground/40">Secure SKU Authority Terminal</CardDescription>
+                            <CardTitle className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Catalog Identity Node</CardTitle>
+                            <CardDescription className="font-bold text-[9px] uppercase tracking-[0.3em] text-muted-foreground/40">Secure SKU Authority Terminal</CardDescription>
                         </div>
                         {showForm && (
-                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-12 w-12 rounded-2xl hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
-                                <X className="h-6 w-6" />
+                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-10 w-10 rounded-xl hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
+                                <X className="h-5 w-5" />
                             </Button>
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-10 p-10">
-                    <div className="space-y-4">
+                
+                <CardContent className={cn("p-10 flex flex-col flex-grow", showForm ? "overflow-y-auto custom-scrollbar" : "")}>
+                    <div className="space-y-4 mb-8 shrink-0">
                         <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-1 opacity-40">Identity Selection Terminal</Label>
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative flex-grow">
-                                <Barcode className="absolute left-6 top-1/2 -translate-y-1/2 h-7 w-7 text-primary/30" />
+                                <Barcode className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-primary/30" />
                                 <Input
                                     placeholder="SCAN OR IDENTIFY SKU..."
                                     value={barcodeToSearch}
                                     onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                                    className="pl-16 font-black h-20 text-3xl tracking-tighter bg-muted/10 border-white/5 rounded-3xl placeholder:text-muted-foreground/10 shadow-inner"
+                                    className="pl-16 font-black h-16 text-2xl tracking-tighter bg-muted/10 border-white/5 rounded-2xl placeholder:text-muted-foreground/10 shadow-inner"
                                 />
                             </div>
-                            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="h-20 px-12 font-black uppercase tracking-[0.1em] rounded-3xl shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white">
-                                {isFetchPending ? <Loader2 className="h-8 w-8 animate-spin" /> : <Search className="h-8 w-8" />}
+                            <Button onClick={() => handleSearchBarcode()} disabled={isFetchPending || !barcodeToSearch.trim()} className="h-16 px-10 font-black uppercase tracking-[0.1em] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white">
+                                {isFetchPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <Search className="h-6 w-6" />}
                             </Button>
                         </div>
                     </div>
 
                     {showForm && (
-                        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* VISUAL VERIFICATION UNIT */}
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                                 <div className="md:col-span-5">
@@ -418,21 +414,21 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                     </div>
                                 </div>
                                 
-                                <div className="md:col-span-7 flex flex-col justify-between py-2">
+                                <div className="md:col-span-7 flex flex-col justify-between py-1">
                                     <div className="space-y-6">
-                                        <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col gap-1.5">
                                             <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className={cn("px-4 py-2 font-black text-[9px] uppercase tracking-widest rounded-xl border-none shadow-sm", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
+                                                <Badge variant="outline" className={cn("px-4 py-1.5 font-black text-[9px] uppercase tracking-widest rounded-xl border-none shadow-sm", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
                                                     {productNotFound ? <PlusCircle className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                                                     {productNotFound ? 'Unregistered Identity' : 'Identity Verified'}
                                                 </Badge>
                                                 {externalData?.brand && (
-                                                    <Badge variant="secondary" className="px-3 py-2 font-black text-[9px] uppercase tracking-widest border-none bg-muted/40">
+                                                    <Badge variant="secondary" className="px-3 py-1.5 font-black text-[9px] uppercase tracking-widest border-none bg-muted/40">
                                                         {externalData.brand}
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <h4 className="text-sm font-black text-muted-foreground/30 uppercase tracking-[0.4em] ml-1 mt-2">SKU DATA CLASSIFICATION</h4>
+                                            <h4 className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.4em] ml-1 mt-1">SKU DATA CLASSIFICATION</h4>
                                         </div>
                                         
                                         <div className="grid grid-cols-2 gap-4">
@@ -453,7 +449,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                         </div>
                                     </div>
 
-                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup()} disabled={isMagicLoading} className="h-12 w-full text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-2xl border border-primary/10 transition-all mt-6">
+                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup()} disabled={isMagicLoading} className="h-11 w-full text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-xl border border-primary/10 transition-all mt-4">
                                         <RefreshCw className={cn("mr-2 h-4 w-4", isMagicLoading && "animate-spin")} />
                                         Refresh Visual Match
                                     </Button>
@@ -472,12 +468,12 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                 {...nameProps}
                                                 ref={(e) => { nameFormRef(e); (nameInputRef as any).current = e; }}
                                                 onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
-                                                className={cn("h-20 pl-16 text-2xl font-black tracking-tighter rounded-[1.5rem] bg-background border-white/5 shadow-inner", formErrors.productName && 'border-destructive')}
+                                                className={cn("h-16 pl-16 text-xl font-black tracking-tighter rounded-2xl bg-background border-white/5 shadow-inner", formErrors.productName && 'border-destructive')}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between h-5 ml-1">
                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em] opacity-40">Primary Vendor</Label>
@@ -487,26 +483,26 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                             </div>
                                             <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                                                 <PopoverTrigger asChild>
-                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-16 justify-between font-black text-sm bg-muted/10 border-white/5 rounded-2xl pl-14 shadow-sm", !supplierNameValue && "text-muted-foreground")}>
+                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-14 justify-between font-black text-sm bg-muted/10 border-white/5 rounded-2xl pl-14 shadow-sm", !supplierNameValue && "text-muted-foreground")}>
                                                         <Building className="absolute left-6 h-5 w-5 text-primary/30" />
                                                         <span className="truncate uppercase tracking-wider">{supplierNameValue || "SELECT VENDOR..."}</span>
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-3xl overflow-hidden shadow-3xl border-white/10">
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-3xl border-white/10">
                                                     <Command className="bg-background/95 backdrop-blur-3xl">
                                                         <CommandInput placeholder="Search Registry..." value={supplierSearchTerm} onValueChange={setSupplierSearchTerm} />
                                                         <CommandList>
                                                             <CommandEmpty>
                                                                 {supplierSearchTerm ? (
-                                                                    <Button variant="ghost" className="w-full justify-start text-[10px] h-14 font-black uppercase rounded-none px-6" onClick={() => { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }}>
+                                                                    <Button variant="ghost" className="w-full justify-start text-[10px] h-12 font-black uppercase rounded-none px-6" onClick={() => { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }}>
                                                                         <PlusCircle className="mr-3 h-4 w-4" /> Create "{supplierSearchTerm}"
                                                                     </Button>
                                                                 ) : <p className="p-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center tracking-widest">Searching Master List...</p>}
                                                             </CommandEmpty>
                                                             <CommandGroup className="px-3 pb-3">
                                                                 {sortedSuppliers.map((supplier) => (
-                                                                    <CommandItem key={supplier.id} value={supplier.name} onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }} className="font-bold text-sm h-12 px-5 rounded-2xl">
+                                                                    <CommandItem key={supplier.id} value={supplier.name} onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }} className="font-bold text-sm h-11 px-5 rounded-xl">
                                                                         <Check className={cn("mr-3 h-5 w-5", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
                                                                         {supplier.name}
                                                                     </CommandItem>
@@ -530,16 +526,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                     {...costProps}
                                                     ref={(e) => { costFormRef(e); (costInputRef as any).current = e; }}
                                                     onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
-                                                    className={cn('h-16 pl-16 font-black text-2xl bg-muted/10 border-white/5 rounded-2xl text-right pr-8 shadow-sm', formErrors.costPrice && 'border-destructive')}
+                                                    className={cn('h-14 pl-16 font-black text-xl bg-muted/10 border-white/5 rounded-2xl text-right pr-8 shadow-sm', formErrors.costPrice && 'border-destructive')}
                                                 />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="pt-6">
-                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-20 font-black uppercase tracking-[0.4em] text-sm shadow-2xl shadow-primary/30 rounded-[2rem] transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
-                                        {isSavePending ? <Loader2 className="mr-4 h-6 w-6 animate-spin" /> : <Save className="mr-4 h-6 w-6" />}
+                                <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-background/95 to-transparent py-4 shrink-0">
+                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.4em] text-xs shadow-2xl shadow-primary/30 rounded-[1.5rem] transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
+                                        {isSavePending ? <Loader2 className="mr-4 h-5 w-5 animate-spin" /> : <Save className="mr-4 h-5 w-5" />}
                                         {editMode === 'create' ? 'SYNCHRONIZE IDENTITY' : 'UPDATE MASTER CATALOG'}
                                     </Button>
                                 </div>
@@ -552,8 +548,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
         {/* HIGH-DENSITY FORENSIC SIDEBAR */}
         {showForm && (
-            <div className="xl:col-span-6 space-y-6 animate-in fade-in slide-in-from-right-8 duration-1000">
-                <Card className="shadow-2xl border-white/5 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex flex-col h-[850px]">
+            <div className="xl:col-span-6 space-y-6 animate-in fade-in slide-in-from-right-8 duration-1000 flex flex-col h-full overflow-hidden">
+                <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex flex-col h-full">
                     <CardHeader className="bg-muted/10 p-8 border-b border-white/5 shrink-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
