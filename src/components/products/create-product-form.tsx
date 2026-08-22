@@ -25,7 +25,8 @@ import {
     User as UserIcon,
     AlertTriangle,
     Info,
-    ArrowRight
+    ArrowRight,
+    X
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -544,4 +545,3 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     </div>
   );
 }
-
