@@ -27,7 +27,8 @@ import {
     Check, 
     MapPin,
     ScanBarcode,
-    X
+    X,
+    AlertTriangle
 } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
@@ -694,6 +695,7 @@ export function InventoryListClient() {
                     <TableHead className="text-right font-semibold">Total Value</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Expiry</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="w-[160px] text-right noprint">Last Logged</TableHead>
                 </TableRow>
                 </TableHeader>
@@ -704,6 +706,7 @@ export function InventoryListClient() {
                     const cost = product?.costPrice;
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
                     const hasMultipleLocs = new Set(individualItems.map(i => i.location)).size > 1;
+                    const hasMultipleTypes = new Set(individualItems.map(i => i.itemType)).size > 1;
 
                     return (
                     <TableRow key={`row-${mainItem.barcode}`} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
@@ -732,10 +735,15 @@ export function InventoryListClient() {
                         <TableCell className={cn("text-xs", mainItem.expiryDate && isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) ? "text-destructive font-bold" : "")}>
                             {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
+                        <TableCell className={cn("text-xs font-bold", !hasMultipleTypes && mainItem.itemType === 'Damage' ? "text-orange-500" : "text-primary/60")}>
+                            {hasMultipleTypes ? (
+                                <Badge variant="outline" className="text-[8px] font-black uppercase bg-muted/30">Multiple</Badge>
+                            ) : mainItem.itemType}
+                        </TableCell>
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
