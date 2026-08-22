@@ -1,2 +1,1 @@
-// This component is no longer used and has been replaced by AddInventoryItemStepperForm.
-// It can be safely deleted.
+// This file has been purged. Log functionality is now exclusively handled by src/components/inventory/add-inventory-item-stepper-form.tsx.
