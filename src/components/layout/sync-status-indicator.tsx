@@ -1,35 +1,56 @@
 'use client';
 
 import { useDataCache } from '@/context/data-cache-context';
-import { RefreshCw, CheckCircle2, AlertCircle, WifiOff } from 'lucide-react';
+import { RefreshCw, CheckCircle2, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
+/**
+ * INDUSTRIAL SYNC INDICATOR
+ * Provides real-time visual feedback for registry handshakes.
+ * Automatically dismisses after 2.5s on completion.
+ */
 export function SyncStatusIndicator() {
   const { isSyncing, isOnline, pendingActions } = useDataCache();
-  const [show, setShow] = useState(false);
-  const [status, setStatus] = useState<'syncing' | 'complete' | 'offline'>('syncing');
+  const [visible, setVisible] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'syncing' | 'complete' | 'offline'>('idle');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // 1. HANDLE ACTIVE SYNCING
     if (isSyncing) {
-      setShow(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setVisible(true);
       setStatus('syncing');
-    } else if (show && status === 'syncing') {
+    } 
+    // 2. TRANSITION TO COMPLETE
+    else if (status === 'syncing') {
       setStatus('complete');
-      const timer = setTimeout(() => setShow(false), 3000);
-      return () => clearTimeout(timer);
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+        setStatus('idle');
+      }, 2500); // AUTO-CLOSE AFTER 2.5 SECONDS
     }
-    
-    if (!isOnline) {
-      setShow(true);
-      setStatus('offline');
-    } else if (status === 'offline' && isOnline) {
-       setStatus('complete');
-       setTimeout(() => setShow(false), 3000);
-    }
-  }, [isSyncing, isOnline, show, status]);
+  }, [isSyncing, status]);
 
-  if (!show) return null;
+  useEffect(() => {
+    // 3. HANDLE OFFLINE STATE
+    if (!isOnline) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setVisible(true);
+      setStatus('offline');
+    } 
+    // 4. TRANSITION BACK FROM OFFLINE
+    else if (status === 'offline') {
+      setStatus('complete');
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+        setStatus('idle');
+      }, 2500);
+    }
+  }, [isOnline, status]);
+
+  if (!visible) return null;
 
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none px-4 w-full max-w-sm">

@@ -116,6 +116,7 @@ export function InventoryListClient() {
       inventoryItems: cachedItems,
       products: cachedProducts,
       suppliers,
+      uniqueLocations,
       uniqueLocations: uniqueDbLocations,
       addProduct: addProductToCache, 
       refreshData: onDataNeeded,
