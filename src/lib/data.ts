@@ -46,6 +46,7 @@ const LOCATION_LIST_KEY = 'locationList';
 
 // PRIMARY LOGGING ENDPOINT
 const APPSCRIPT_API_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+const APPSCRIPT_PASS = "0438"; // Matches ADMIN_PASSWORD in Code.gs
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -213,16 +214,19 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
             const wipeDetails = `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`;
             await logAuditEvent(email, 'FORENSIC_WIPE', barcode, wipeDetails);
             
-            // NEW: Dispatch forensicWipe action to AppsScript for Email Notification
+            // DISPATCH FORENSIC WIPE ALERT TO APPSCRIPT
             try {
               await fetch(APPSCRIPT_API_URL, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                       action: 'forensicWipe',
+                      password: APPSCRIPT_PASS, // MANDATORY HANDSHAKE
                       barcode: barcode,
                       adminEmail: email,
-                      timestamp: format(new Date(), 'PPp')
+                      timestamp: new Date().toISOString(),
+                      reason: "Administrator initiated permanent purge of historical SKU traces.",
+                      device: typeof navigator !== 'undefined' ? navigator.userAgent : 'Registry Terminal'
                   }),
                   redirect: 'follow'
               });
@@ -431,7 +435,7 @@ export async function addInventoryItemToSheet(item: any) {
       type: item.itemType,        
       timestamp: item.timestamp || new Date().toISOString(),
       disableNotification: item.disableNotification === true,
-      isSpecial: false 
+      isSpecial: item.isSpecial === true 
     };
 
     const response = await fetch(APPSCRIPT_API_URL, {
