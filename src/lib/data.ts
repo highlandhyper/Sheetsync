@@ -17,6 +17,7 @@ const INV_COL_PRODUCT_NAME = 6;
 const INV_COL_SUPPLIER_NAME = 7;
 const INV_COL_TYPE = 8;
 const INV_COL_UNIQUE_ID = 9;
+const INV_COL_SILENT = 10; // Column K
 
 const DB_COL_BARCODE_A = 0;
 const DB_COL_BARCODE_B = 1;
@@ -35,7 +36,7 @@ const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
-const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
+const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:K`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
@@ -402,14 +403,43 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
 export async function addInventoryItemToSheet(item: any) {
   try {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
+    
+    // INDUSTRIAL DATE FORMATTING: Ensure AppsScript can parse the date for comparison
+    let formattedExpiry = '';
+    if (item.expiryDate) {
+        try {
+            const parsedExp = parseISO(item.expiryDate);
+            if (isValid(parsedExp)) {
+                formattedExpiry = format(parsedExp, "d/M/yyyy");
+            } else {
+                formattedExpiry = item.expiryDate;
+            }
+        } catch {
+            formattedExpiry = item.expiryDate;
+        }
+    }
+
+    // SUPPRESSION LOGIC: Explicit Column K for Silent Mode to trigger AppsScript Logic
+    const silentModeValue = item.disableNotification ? 'TRUE' : 'FALSE';
+
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
-      item.barcode, item.quantity, item.expiryDate, item.location, item.staffName, 
-      item.productName, item.supplierName || '', item.itemType, item.id
+      item.barcode, 
+      item.quantity, 
+      formattedExpiry, 
+      item.location, 
+      item.staffName, 
+      item.productName, 
+      item.supplierName || '', 
+      item.itemType, 
+      item.id,
+      silentModeValue // COLUMN K
     ];
-    const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
+    
+    const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:K`, [sdkRowData]);
     return sdkWriteSuccess;
   } catch (error) {
+    console.error("Critical Registry Append Failure:", error);
     return false;
   }
 }
