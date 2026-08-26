@@ -17,7 +17,6 @@ const INV_COL_PRODUCT_NAME = 6;
 const INV_COL_SUPPLIER_NAME = 7;
 const INV_COL_TYPE = 8;
 const INV_COL_UNIQUE_ID = 9;
-const INV_COL_SILENT = 10; // Column K
 
 const DB_COL_BARCODE_A = 0;
 const DB_COL_BARCODE_B = 1;
@@ -36,7 +35,7 @@ const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
-const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:K`;
+const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 
@@ -213,13 +212,11 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
             const wipeDetails = `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`;
             await logAuditEvent(email, 'FORENSIC_WIPE', barcode, wipeDetails);
             
-            // TRIGGER EMAIL PROTOCOL: Append a special notification record to Form responses 2
-            // This triggers the AppsScript email logic to inform administrators that the process is done.
             const ts = format(new Date(), "d/M/yyyy HH:mm:ss");
             const notificationRow = [
                 ts, 
                 barcode, 
-                0, // Quantity 0 for notification record
+                0, 
                 '', 
                 'SECURITY CORE', 
                 'SYSTEM ALERT', 
@@ -400,27 +397,52 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
   return true;
 }
 
+/**
+ * INDUSTRIAL NOTIFICATION DISPATCHER
+ * Performs a secure POST to the AppsScript Web App to trigger email alerts for expired items.
+ */
 export async function addInventoryItemToSheet(item: any) {
+  const SCRIPT_URL = process.env.GOOGLE_APPSCRIPT_API;
+
+  if (SCRIPT_URL && SCRIPT_URL.startsWith('http')) {
+    try {
+      const payload = {
+        barcode: item.barcode,
+        quantity: item.quantity,
+        expiryDate: item.expiryDate, 
+        location: item.location,
+        identity: item.staffName,   
+        productName: item.productName,
+        type: item.itemType,        
+        timestamp: item.timestamp || new Date().toISOString(),
+        disableNotification: item.disableNotification === true,
+        isSpecial: false 
+      };
+
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000) 
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') return true;
+      }
+    } catch (error) {
+      console.error("AppsScript Dispatch Failure:", error);
+    }
+  }
+
+  // FALLBACK: DIRECT SDK WRITE (Prevents data loss if script fails)
   try {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
-    
-    // INDUSTRIAL DATE FORMATTING: Ensure AppsScript can parse the date for comparison
-    let formattedExpiry = '';
-    if (item.expiryDate) {
-        try {
-            const parsedExp = parseISO(item.expiryDate);
-            if (isValid(parsedExp)) {
-                formattedExpiry = format(parsedExp, "d/M/yyyy");
-            } else {
-                formattedExpiry = item.expiryDate;
-            }
-        } catch {
-            formattedExpiry = item.expiryDate;
-        }
-    }
-
-    // SUPPRESSION LOGIC: Explicit Column K for Silent Mode to trigger AppsScript Logic
-    const silentModeValue = item.disableNotification ? 'TRUE' : 'FALSE';
+    let formattedExpiry = item.expiryDate;
+    try {
+      const d = parseISO(item.expiryDate);
+      if (isValid(d)) formattedExpiry = format(d, "d/M/yyyy");
+    } catch {}
 
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
@@ -430,16 +452,13 @@ export async function addInventoryItemToSheet(item: any) {
       item.location, 
       item.staffName, 
       item.productName, 
-      item.supplierName || '', 
+      '', 
       item.itemType, 
-      item.id,
-      silentModeValue // COLUMN K
+      item.id
     ];
     
-    const sdkWriteSuccess = await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:K`, [sdkRowData]);
-    return sdkWriteSuccess;
+    return await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
   } catch (error) {
-    console.error("Critical Registry Append Failure:", error);
     return false;
   }
 }
