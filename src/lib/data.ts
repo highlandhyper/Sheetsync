@@ -213,6 +213,23 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
             const wipeDetails = `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`;
             await logAuditEvent(email, 'FORENSIC_WIPE', barcode, wipeDetails);
             
+            // NEW: Dispatch forensicWipe action to AppsScript for Email Notification
+            try {
+              await fetch(APPSCRIPT_API_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      action: 'forensicWipe',
+                      barcode: barcode,
+                      adminEmail: email,
+                      timestamp: format(new Date(), 'PPp')
+                  }),
+                  redirect: 'follow'
+              });
+            } catch (e) {
+                console.error("Forensic wipe notification trigger failed:", e);
+            }
+
             const ts = format(new Date(), "d/M/yyyy HH:mm:ss");
             const notificationRow = [
                 ts, 
