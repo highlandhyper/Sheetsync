@@ -44,7 +44,8 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-const SCRIPT_URL = process.env.GOOGLE_APPSCRIPT_API || "";
+// PRIMARY LOGGING ENDPOINT
+const APPSCRIPT_API_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -398,44 +399,41 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
 }
 
 /**
- * INDUSTRIAL NOTIFICATION DISPATCHER
- * Performs a secure POST to the AppsScript Web App to trigger email alerts for expired items.
+ * INDUSTRIAL APPSCRIPT DISPATCHER
+ * Performs a secure POST to the AppsScript Web App for email triggers and logging.
  */
 export async function addInventoryItemToSheet(item: any) {
-  const SCRIPT_URL = process.env.GOOGLE_APPSCRIPT_API;
+  try {
+    const payload = {
+      barcode: item.barcode,
+      quantity: item.quantity,
+      expiryDate: item.expiryDate, 
+      location: item.location,
+      identity: item.staffName,   
+      productName: item.productName,
+      type: item.itemType,        
+      timestamp: item.timestamp || new Date().toISOString(),
+      disableNotification: item.disableNotification === true,
+      isSpecial: false 
+    };
 
-  if (SCRIPT_URL && SCRIPT_URL.startsWith('http')) {
-    try {
-      const payload = {
-        barcode: item.barcode,
-        quantity: item.quantity,
-        expiryDate: item.expiryDate, 
-        location: item.location,
-        identity: item.staffName,   
-        productName: item.productName,
-        type: item.itemType,        
-        timestamp: item.timestamp || new Date().toISOString(),
-        disableNotification: item.disableNotification === true,
-        isSpecial: false 
-      };
+    const response = await fetch(APPSCRIPT_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      redirect: 'follow', // MANDATORY FOR APPSCRIPT 302 REDIRECTS
+      signal: AbortSignal.timeout(15000) 
+    });
 
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000) 
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.status === 'success') return true;
-      }
-    } catch (error) {
-      console.error("AppsScript Dispatch Failure:", error);
+    if (response.ok) {
+      const result = await response.json();
+      if (result.status === 'success') return true;
     }
+  } catch (error) {
+    console.error("AppsScript Dispatch Failure:", error);
   }
 
-  // FALLBACK: DIRECT SDK WRITE (Prevents data loss if script fails)
+  // FALLBACK: DIRECT SDK WRITE (Only if API fails)
   try {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
     let formattedExpiry = item.expiryDate;
