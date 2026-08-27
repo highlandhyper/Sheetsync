@@ -114,19 +114,15 @@ export function Header({ className, onManualLock }: { className?: string; onManu
         "sticky top-0 z-30 hidden md:flex h-16 sm:h-20 items-center border-b border-white/5 bg-background/60 backdrop-blur-2xl px-4 sm:px-8 transition-all duration-300",
         className
       )}>
-        {/* LEFT: Placeholder to balance the centered search */}
         <div className="flex-1 hidden md:flex items-center">
-            {/* Optional sidebar trigger or breadcrumbs could go here */}
         </div>
         
-        {/* CENTER: SEARCH TERMINAL */}
         <div className="flex-1 flex justify-center max-w-xl px-4">
             <div className="w-full">
                 <HeaderBarcodeLookup />
             </div>
         </div>
 
-        {/* RIGHT: SYSTEM ACTIONS */}
         <div className="flex-1 flex items-center justify-end gap-2 sm:gap-6">
           <div className="flex items-center gap-2 sm:gap-4">
             <LastSyncStatus />
@@ -163,15 +159,27 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                     </Tooltip>
                 </TooltipProvider>
 
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsCommandPaletteOpen(true)}
-                    className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all"
-                    aria-label="Open command palette"
-                >
-                    <Command className="h-4 w-4" />
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsCommandPaletteOpen(true)}
+                                className="h-9 w-9 text-muted-foreground rounded-xl border-white/5 bg-muted/10 hover:bg-primary/5 transition-all relative group"
+                                aria-label="Open command palette"
+                            >
+                                <Command className="h-4 w-4" />
+                                <kbd className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[9px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity sm:flex shadow-xl border-primary/10 text-primary">
+                                    <span className="text-[7px]">CTRL</span> K
+                                </kbd>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="font-bold">Command Terminal (CTRL+K)</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
 
                 {role === 'admin' && activeSessions.length > 0 && (
                     <TooltipProvider>

@@ -212,14 +212,19 @@ export default function SystemHubPage() {
                                 </Tooltip>
                             </TooltipProvider>
 
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => setIsCommandPaletteOpen(true)}
-                                className="h-14 w-full text-muted-foreground rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 hover:bg-primary/5 transition-all"
-                            >
-                                <Command className="h-6 w-6" strokeWidth={2.5} />
-                            </Button>
+                            <div className="relative group">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setIsCommandPaletteOpen(true)}
+                                    className="h-14 w-full text-muted-foreground rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 hover:bg-primary/5 transition-all"
+                                >
+                                    <Command className="h-6 w-6" strokeWidth={2.5} />
+                                </Button>
+                                <kbd className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 hidden h-4 select-none items-center gap-1 rounded bg-background px-1 font-mono text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity sm:flex shadow-sm border-primary/10 text-primary">
+                                    <span className="text-[6px]">CTRL</span> K
+                                </kbd>
+                            </div>
 
                             <div className="h-14 w-full flex items-center justify-center bg-white/40 dark:bg-zinc-900/40 rounded-2xl border border-white/5 relative">
                                 <NotificationCenter />

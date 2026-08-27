@@ -11,6 +11,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
@@ -44,9 +45,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
 
+  // UNIVERSAL TERMINAL SHORTCUT: CTRL+K
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || e.key === 'K' && (e.metaKey || e.ctrlKey)) {
+      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         onOpenChange(!open);
       }
@@ -77,34 +79,46 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   return (
     <>
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search records or type a command..." />
+      <CommandInput placeholder="Type a terminal command or search SKU..." />
       <CommandList>
-        <CommandEmpty>No matching terminal commands.</CommandEmpty>
+        <CommandEmpty>Zero registry matches identified.</CommandEmpty>
         <CommandGroup heading="Industrial Terminal">
             <CommandItem
                 onSelect={() => runCommand(() => setIsQuickEditOpen(true))}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 cursor-pointer"
             >
+                <Edit className="mr-2 h-4 w-4 text-primary" />
                 <span>Quick Catalog Update (Instant)</span>
+                <CommandShortcut>CTRL E</CommandShortcut>
             </CommandItem>
             <CommandItem
                 onSelect={() => runCommand(() => setIsRequestDialogOpen(true))}
+                className="cursor-pointer"
             >
-                <MessageSquare className="mr-2 h-4 w-4" />
+                <MessageSquare className="mr-2 h-4 w-4 text-primary" />
                 <span>Request Special Entry (Silent Log)</span>
+                <CommandShortcut>CTRL S</CommandShortcut>
             </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Security & Audit">
             <CommandItem
                 onSelect={() => runCommand(() => router.push('/audit-log'))}
+                className="cursor-pointer"
             >
                 <History className="mr-2 h-4 w-4" />
                 <span>View Global Audit History</span>
             </CommandItem>
+            <CommandItem
+                onSelect={() => runCommand(() => refreshData())}
+                className="cursor-pointer"
+            >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                <span>Force Registry Handshake</span>
+            </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Inventory Bulk Actions">
+        <CommandGroup heading="Inventory Configuration">
           <CommandItem
             onSelect={() =>
               runCommand(() => {
@@ -113,17 +127,20 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 toast({
                   title: newState ? 'Multi-Select Enabled' : 'Multi-Select Disabled',
                   description: newState 
-                    ? 'Checkboxes are now visible on inventory lists for bulk actions.'
-                    : 'Checkboxes are now hidden.',
+                    ? 'Log checkboxes active for bulk operations.'
+                    : 'Checkboxes retracted.',
                 });
               })
             }
+            className="cursor-pointer"
           >
             <ListChecks className="mr-2 h-4 w-4" />
-            <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Multi-Select Mode</span>
+            <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Bulk Selection Mode</span>
+            <CommandShortcut>CTRL M</CommandShortcut>
           </CommandItem>
           <CommandItem
                 onSelect={() => runCommand(() => router.push('/products/manage'))}
+                className="cursor-pointer"
             >
                 <PackageSearch className="mr-2 h-4 w-4" />
                 <span>Advanced Product Management</span>
@@ -140,7 +157,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     Special Entry
                 </DialogTitle>
                 <DialogDescription className="text-xs font-medium">
-                    Request permission to log an item without triggering an email alert.
+                    Authorize logging without triggering automated email alerts.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -163,9 +180,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl" align="start">
                             <Command>
-                                <CommandInput placeholder="Search personnel..." />
+                                <CommandInput placeholder="Search personnel registry..." />
                                 <CommandList>
-                                    <CommandEmpty>No personnel found.</CommandEmpty>
+                                    <CommandEmpty>No matching personnel identified.</CommandEmpty>
                                     <CommandGroup>
                                         {uniqueStaffNames.map(name => (
                                             <CommandItem 
@@ -175,7 +192,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     setStaffName(name);
                                                     setStaffPopoverOpen(false);
                                                 }}
-                                                className="font-bold h-11"
+                                                className="font-bold h-11 cursor-pointer"
                                             >
                                                 <Check className={cn("mr-2 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
                                                 {name}
@@ -189,10 +206,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 </div>
             </div>
             <DialogFooter className="grid grid-cols-2 gap-3 pt-2">
-                <Button variant="outline" size="lg" onClick={() => setIsRequestDialogOpen(false)} className="font-bold rounded-xl">
+                <Button variant="outline" size="lg" onClick={() => setIsRequestDialogOpen(false)} className="font-bold rounded-xl h-12">
                     Cancel
                 </Button>
-                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-white">
+                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-12">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Request"}
                 </Button>
             </DialogFooter>
