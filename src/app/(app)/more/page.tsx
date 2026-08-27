@@ -37,7 +37,8 @@ import {
     CloudOff,
     Clock,
     BellOff,
-    Zap
+    Zap,
+    ShieldAlert
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -158,7 +159,7 @@ export default function SystemHubPage() {
                         <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
                             System <span className="text-primary">Hub</span>
                         </h1>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40 mt-2">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-2">
                             Operational Command Terminal
                         </p>
                     </div>

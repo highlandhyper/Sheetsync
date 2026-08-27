@@ -19,7 +19,8 @@ import {
     X,
     Eye,
     ChevronRight,
-    ScanBarcode
+    ScanBarcode,
+    Zap
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -96,7 +97,6 @@ export function VoucherReturnTerminal() {
         setIsExecuting(true);
 
         const validReturns = stagedItems.filter(i => i.matchedItemId);
-        const itemIds = validReturns.map(i => i.matchedItemId!);
         const staffName = user.email.split('@')[0].toUpperCase();
 
         try {
@@ -147,7 +147,7 @@ export function VoucherReturnTerminal() {
                 <div className="lg:col-span-4 space-y-4">
                     <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Voucher Evidence</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Voucher Evidence</CardTitle>
                         </CardHeader>
                         <CardContent className="p-6">
                             <div className="aspect-[3/4] relative rounded-2xl bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden">
