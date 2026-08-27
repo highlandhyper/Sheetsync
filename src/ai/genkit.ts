@@ -12,7 +12,8 @@ export const ai = genkit({
     googleAI(),
   ],
   // Optimized for industrial document and multimodal processing
-  model: googleAI.model('gemini-1.5-flash'),
+  // Using the authoritative latest alias to ensure stable API resolution
+  model: googleAI.model('gemini-flash-latest'),
 });
 
 export { z };
