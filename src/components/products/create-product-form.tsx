@@ -639,7 +639,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
             <div className={cn(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1400px] h-[1400px] rounded-full blur-[200px] transition-all duration-[2000ms]",
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1400px] h-[1400px] rounded-full blur-[200px] transition-all duration-[2s]",
                 showForm ? (productNotFound ? "bg-orange-500/[0.08]" : "bg-primary/[0.08]") : "bg-primary/[0.04]"
             )} />
             <div className="absolute bottom-[-15%] right-[-15%] w-[1000px] h-[1000px] bg-accent/[0.05] rounded-full blur-[160px]" />
