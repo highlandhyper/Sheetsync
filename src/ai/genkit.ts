@@ -11,7 +11,7 @@ export const ai = genkit({
   plugins: [
     googleAI(),
   ],
-  // Optimized for industrial document and image processing
+  // Optimized for industrial document and multimodal processing
   model: googleAI.model('gemini-1.5-flash'),
 });
 

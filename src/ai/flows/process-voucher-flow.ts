@@ -17,11 +17,11 @@ export type ProcessVoucherInput = z.infer<typeof ProcessVoucherInputSchema>;
 
 const ProcessVoucherOutputSchema = z.object({
   items: z.array(z.object({
-    barcode: z.string().describe("The barcode or SKU identifier."),
-    quantity: z.number().describe("The quantity to be returned."),
-    productName: z.string().describe("The identified product name."),
+    barcode: z.string().describe("The barcode or SKU identifier. Extract exactly as printed."),
+    quantity: z.number().describe("The quantity to be returned. Extract as a raw integer."),
+    productName: z.string().describe("The identified product name or description from the document."),
     confidence: z.number().describe("Confidence level of extraction 0-1."),
-  })).describe("List of items identified for return.")
+  })).describe("List of items identified for return processing.")
 });
 export type ProcessVoucherOutput = z.infer<typeof ProcessVoucherOutputSchema>;
 
@@ -33,12 +33,16 @@ const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
   input: { schema: ProcessVoucherInputSchema },
   output: { schema: ProcessVoucherOutputSchema },
-  prompt: `You are an industrial data entry specialist. Analyze this return voucher/invoice document (Image or PDF) carefully.
+  prompt: `You are an industrial data entry specialist. Analyze this return voucher or invoice document carefully. 
+The document is provided as a multimodal input (Image or PDF).
 
-Extract all items listed for return. Focus on SKU/Barcode and the Quantity. 
-- If a barcode is not explicitly listed, try to identify the product name clearly.
-- For PDF documents, analyze all pages if present.
-- Quantities should be extracted as numbers.
+Extract all items listed for return. Focus exclusively on identifying the SKU/Barcode and the corresponding Quantity.
+
+Industrial Protocol:
+- Barcodes/SKUs: Search for columns labeled "Barcode", "SKU", "Item Code", or "EAN".
+- Quantities: Extract the numerical quantity designated for return.
+- Unregistered Items: If a barcode is missing but a product name is clear, extract the name and leave barcode empty.
+- Document Structure: If this is a multi-page PDF, process all visible pages and consolidate the list.
 
 Input Document: {{media url=photoDataUri}}`,
 });
@@ -51,6 +55,9 @@ const processVoucherFlow = ai.defineFlow(
   },
   async input => {
     const { output } = await prompt(input);
-    return output!;
+    if (!output) {
+        throw new Error("AI extraction node returned zero payload.");
+    }
+    return output;
   }
 );
