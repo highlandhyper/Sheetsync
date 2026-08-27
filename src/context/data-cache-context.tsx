@@ -38,11 +38,12 @@ interface DataCacheContextType extends AppData {
   updateLocationList: (locations: string[]) => Promise<void>;
   refreshData: () => Promise<void>;
   queueAction: (action: Omit<OfflineAction, 'id' | 'timestamp'>) => void;
+  updateOfflineAction: (id: string, data: any) => void;
+  removeOfflineAction: (id: string) => void;
 }
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-// INDUSTRIAL SYNC PROTOCOL: 15s interval for near real-time authorization delivery
 const SYNC_INTERVAL_MS = 15000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
@@ -264,6 +265,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       if (navigator.onLine) setTimeout(processSyncQueue, 100);
   }, [processSyncQueue]);
 
+  const updateOfflineAction = useCallback((id: string, updatedData: any) => {
+    setPendingActions(prev => prev.map(a => a.id === id ? { ...a, data: { ...a.data, ...updatedData } } : a));
+    toast({ title: "Action Updated", description: "The pending log has been modified." });
+  }, [toast]);
+
+  const removeOfflineAction = useCallback((id: string) => {
+    setPendingActions(prev => prev.filter(a => a.id !== id));
+    toast({ title: "Action Purged", description: "Transmission canceled." });
+  }, [toast]);
+
   const contextValue = useMemo(() => ({
     ...data,
     isCacheReady,
@@ -275,6 +286,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     updateStaffList,
     updateLocationList,
     queueAction,
+    updateOfflineAction,
+    removeOfflineAction,
     updateInventoryItem: (i: any) => setData(p => ({ 
         ...p, 
         inventoryItems: p.inventoryItems.map(x => x.id === i.id ? { ...x, ...i } : x) 
@@ -316,7 +329,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         ...p, 
         products: p.products.filter(x => !barcodes.includes(x.barcode)) 
     })),
-  }), [data, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction]);
+  }), [data, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction]);
 
   return (
     <DataCacheContext.Provider value={contextValue}>

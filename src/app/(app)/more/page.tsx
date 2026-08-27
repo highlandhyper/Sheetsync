@@ -36,12 +36,15 @@ import {
     Lock,
     CloudOff,
     Clock,
-    BellOff
+    BellOff,
+    Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { OfflineQueueTerminal } from '@/components/inventory/offline-queue-terminal';
 
 interface HubItem {
     href: string;
@@ -121,6 +124,7 @@ export default function SystemHubPage() {
     const { activeSessions } = useSpecialEntry();
     
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [isQueueOpen, setIsQueueOpen] = useState(false);
     const [_, setForceUpdate] = useState(0);
 
     // Update time readouts every 30s
@@ -159,7 +163,7 @@ export default function SystemHubPage() {
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest">v4.1.0</Badge>
+                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest">v5.0.0</Badge>
                     </div>
                 </div>
 
@@ -220,7 +224,7 @@ export default function SystemHubPage() {
                                 <NotificationCenter />
                             </div>
 
-                            {role === 'admin' && (
+                            {role === 'admin' ? (
                                 <Button
                                     variant="outline"
                                     size="icon"
@@ -229,6 +233,8 @@ export default function SystemHubPage() {
                                 >
                                     <Lock className="h-6 w-6" strokeWidth={2.5} />
                                 </Button>
+                            ) : (
+                                <div className="h-14 w-full flex items-center justify-center bg-white/40 dark:bg-zinc-900/40 rounded-2xl border border-white/5" />
                             )}
                         </div>
 
@@ -245,10 +251,14 @@ export default function SystemHubPage() {
                             </div>
                             
                             {pendingActions.length > 0 && (
-                                <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 animate-pulse">
-                                    <CloudOff className="h-3.5 w-3.5" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest">{pendingActions.length} PENDING TRANMISSION</span>
-                                </div>
+                                <Button 
+                                    onClick={() => setIsQueueOpen(true)}
+                                    variant="outline"
+                                    className="h-11 px-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 animate-pulse hover:bg-destructive/20"
+                                >
+                                    <CloudOff className="h-3.5 w-3.5 mr-2" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{pendingActions.length} CONFLICTS</span>
+                                </Button>
                             )}
                         </div>
                     </CardContent>
@@ -332,7 +342,25 @@ export default function SystemHubPage() {
             </div>
 
             <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
+
+            <Dialog open={isQueueOpen} onOpenChange={setIsQueueOpen}>
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
+                    <DialogHeader className="p-8 pb-4 bg-muted/20 border-b border-white/5">
+                        <div className="flex items-center gap-4 mb-1">
+                            <div className="p-3 bg-destructive/10 rounded-2xl">
+                                <ShieldAlert className="h-6 w-6 text-destructive" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-destructive">Conflict Resolution</DialogTitle>
+                                <DialogDescription className="font-bold text-[9px] uppercase tracking-[0.3em] text-muted-foreground/60">Registry Integrity Protocol</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-8 pt-4">
+                        <OfflineQueueTerminal />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
-
