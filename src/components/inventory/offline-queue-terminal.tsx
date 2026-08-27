@@ -9,7 +9,6 @@ import {
     CloudOff, 
     Trash2, 
     Edit, 
-    Zap, 
     Clock, 
     Barcode, 
     Hash, 
@@ -19,7 +18,8 @@ import {
     Database,
     ShieldAlert,
     Wifi,
-    RefreshCw
+    RefreshCw,
+    CheckCircle2
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
