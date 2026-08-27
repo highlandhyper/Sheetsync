@@ -1,3 +1,4 @@
+
 'use client';
 import { ReturnableInventoryBySupplierClient } from '@/components/inventory/returnable-inventory-by-supplier-client';
 import { Suspense, useState } from 'react';
@@ -9,6 +10,11 @@ import { Button } from '@/components/ui/button';
 import { ScanBarcode, Sparkles, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VoucherReturnTerminal } from '@/components/inventory/voucher-return-terminal';
+
+/**
+ * Industrial Configuration: Extend execution window for multimodal AI analysis
+ */
+export const maxDuration = 60;
 
 function ReturnableInventorySkeleton() {
   return (

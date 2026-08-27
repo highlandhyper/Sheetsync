@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -6,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
     FileText, 
-    Camera, 
     Upload, 
     Loader2, 
     CheckCircle2, 
@@ -17,11 +17,8 @@ import {
     Layers,
     ArrowRight,
     X,
-    Eye,
-    ChevronRight,
-    ScanBarcode,
-    Zap,
-    FileType
+    FileType,
+    Zap
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +27,6 @@ import { useAuth } from '@/context/auth-context';
 import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 
 interface StagedReturn {
     barcode: string;
@@ -77,6 +73,10 @@ export function VoucherReturnTerminal() {
         try {
             const result = await processVoucher({ photoDataUri: dataUri });
             
+            if (!result || !result.items) {
+                throw new Error("No data extracted from document.");
+            }
+
             const processed = result.items.map(aiItem => {
                 const matches = inventoryItems.filter(i => i.barcode === aiItem.barcode && i.quantity > 0);
                 
@@ -91,8 +91,13 @@ export function VoucherReturnTerminal() {
 
             setStagedItems(processed);
             toast({ title: "Extraction Complete", description: `Identified ${processed.length} items from document.` });
-        } catch (e) {
-            toast({ variant: "destructive", title: "AI Error", description: "Voucher analysis failed." });
+        } catch (e: any) {
+            console.error("Voucher Analysis Error:", e);
+            toast({ 
+                variant: "destructive", 
+                title: "Analysis Failure", 
+                description: e.message || "Voucher analysis failed. Check console for details." 
+            });
         } finally {
             setIsProcessing(false);
         }

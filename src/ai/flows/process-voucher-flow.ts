@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Return voucher data extraction AI flow.
@@ -40,9 +41,11 @@ Extract all items listed for return. Focus exclusively on identifying the SKU/Ba
 
 Industrial Protocol:
 - Barcodes/SKUs: Search for columns labeled "Barcode", "SKU", "Item Code", or "EAN".
-- Quantities: Extract the numerical quantity designated for return.
+- Quantities: Extract the numerical quantity designated for return. Look for "Qty", "Return Qty", or "Amount".
 - Unregistered Items: If a barcode is missing but a product name is clear, extract the name and leave barcode empty.
-- Document Structure: If this is a multi-page PDF, process all visible pages and consolidate the list.
+- Multi-page Processing: If this is a multi-page PDF, process all visible pages and consolidate the results into a single array.
+
+Data Integrity: Only extract numerical quantities. If "2 cases" is written, and you know a case is 12, multiply it if possible, otherwise just return 2.
 
 Input Document: {{media url=photoDataUri}}`,
 });
@@ -54,10 +57,17 @@ const processVoucherFlow = ai.defineFlow(
     outputSchema: ProcessVoucherOutputSchema,
   },
   async input => {
-    const { output } = await prompt(input);
-    if (!output) {
-        throw new Error("AI extraction node returned zero payload.");
+    try {
+        console.log("AI Terminal: Initializing multimodal extraction...");
+        const { output } = await prompt(input);
+        if (!output || !output.items) {
+            throw new Error("AI extraction node returned zero payload. Check document visibility.");
+        }
+        console.log(`AI Terminal: Successfully extracted ${output.items.length} items.`);
+        return output;
+    } catch (error: any) {
+        console.error("Genkit Flow Error:", error);
+        throw new Error(`Registry AI Node Failure: ${error.message}`);
     }
-    return output;
   }
 );
