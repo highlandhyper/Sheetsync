@@ -325,9 +325,9 @@ export function EditInventoryItemDialog({ item, isOpen, onOpenChange, onSuccess,
                         }} 
                         initialFocus 
                         defaultMonth={watchedExpiryDate || undefined}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2020}
-                        toYear={2045}
+                        captionLayout="dropdown"
+                        startMonth={new Date(2020, 0)}
+                        endMonth={new Date(2045, 11)}
                     />
                     </PopoverContent>
                 </Popover>

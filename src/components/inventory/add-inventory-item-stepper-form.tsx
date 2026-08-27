@@ -553,7 +553,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                             type="button" 
                                             variant="default"
                                             className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl"
-                                            onClick={handleRequestProductAdd}
+                                            onClick={handleRequestSpecialAdd}
                                         >
                                             <SendHorizontal className="mr-2 h-4 w-4" />
                                             {suggestedProductName ? (
@@ -665,9 +665,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     selected={allFormValues.expiryDate} 
                                     onSelect={(date) => { setValue('expiryDate', date || new Date()); }} 
                                     initialFocus 
-                                    captionLayout="dropdown-buttons"
-                                    fromYear={2020}
-                                    toYear={2045}
+                                    captionLayout="dropdown"
+                                    startMonth={new Date(2020, 0)}
+                                    endMonth={new Date(2045, 11)}
                                   />
                                 </PopoverContent>
                               </Popover>
