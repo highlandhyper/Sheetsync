@@ -20,7 +20,8 @@ import {
     Eye,
     ChevronRight,
     ScanBarcode,
-    Zap
+    Zap,
+    FileType
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -48,12 +49,17 @@ export function VoucherReturnTerminal() {
     const [isExecuting, setIsExecuting] = useState(false);
     const [stagedItems, setStagedItems] = useState<StagedReturn[]>([]);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [fileName, setFileName] = useState<string | null>(null);
+    const [isPdf, setIsPdf] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        setFileName(file.name);
+        setIsPdf(file.type === 'application/pdf');
 
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -84,7 +90,7 @@ export function VoucherReturnTerminal() {
             });
 
             setStagedItems(processed);
-            toast({ title: "Extraction Complete", description: `Identified ${processed.length} items from voucher.` });
+            toast({ title: "Extraction Complete", description: `Identified ${processed.length} items from document.` });
         } catch (e) {
             toast({ variant: "destructive", title: "AI Error", description: "Voucher analysis failed." });
         } finally {
@@ -100,7 +106,6 @@ export function VoucherReturnTerminal() {
         const staffName = user.email.split('@')[0].toUpperCase();
 
         try {
-            // Using a simplified loop for the AI staged items
             for (const item of validReturns) {
                 await bulkReturnInventoryItemsAction(user.email, [item.matchedItemId!], staffName, 'specific', item.quantity);
             }
@@ -108,6 +113,7 @@ export function VoucherReturnTerminal() {
             toast({ title: "Bulk Returns Commited", description: "Successfully processed verified voucher items." });
             setStagedItems([]);
             setPreviewImage(null);
+            setFileName(null);
             refreshData();
         } catch (e) {
             toast({ variant: "destructive", title: "Process Error", description: "One or more returns failed to sync." });
@@ -121,23 +127,29 @@ export function VoucherReturnTerminal() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <div className="bg-primary p-4 rounded-[1.5rem] shadow-xl shadow-primary/20">
-                        <ScanBarcode className="h-8 w-8 text-white" />
+                        <FileType className="h-8 w-8 text-white" />
                     </div>
                     <div>
                         <h3 className="text-2xl font-black uppercase tracking-tighter">Voucher AI Processor</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.4em] opacity-40">Optical Returns Sync</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.4em] opacity-40">Industrial Document Sync</p>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*,application/pdf" 
+                        onChange={handleFileUpload} 
+                    />
                     <Button 
                         onClick={() => fileInputRef.current?.click()} 
                         disabled={isProcessing}
                         className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
                     >
-                        {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
-                        Load Return Voucher
+                        {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Upload className="mr-2 h-5 w-5" />}
+                        Upload Voucher / PDF
                     </Button>
                 </div>
             </div>
@@ -147,22 +159,34 @@ export function VoucherReturnTerminal() {
                 <div className="lg:col-span-4 space-y-4">
                     <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Voucher Evidence</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Evidence Source</CardTitle>
                         </CardHeader>
                         <CardContent className="p-6">
                             <div className="aspect-[3/4] relative rounded-2xl bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden">
                                 {previewImage ? (
-                                    <img src={previewImage} alt="Voucher" className="object-cover w-full h-full" />
+                                    isPdf ? (
+                                        <div className="flex flex-col items-center gap-4 text-center px-4">
+                                            <div className="bg-red-500/10 p-6 rounded-3xl">
+                                                <FileText className="h-16 w-16 text-red-500" strokeWidth={1.5} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-black uppercase truncate max-w-[200px] text-slate-900 dark:text-white">{fileName}</p>
+                                                <Badge variant="secondary" className="bg-red-500/10 text-red-600 border-none font-black text-[9px]">PDF DOCUMENT</Badge>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <img src={previewImage} alt="Voucher" className="object-cover w-full h-full" />
+                                    )
                                 ) : (
                                     <div className="flex flex-col items-center gap-4 opacity-20">
-                                        <FileText className="h-16 w-16" strokeWidth={1} />
+                                        <Upload className="h-16 w-16" strokeWidth={1} />
                                         <p className="text-[9px] font-black uppercase tracking-widest">Awaiting Capture</p>
                                     </div>
                                 )}
                                 {isProcessing && (
                                     <div className="absolute inset-0 bg-primary/20 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
                                         <Loader2 className="h-10 w-10 text-white animate-spin" />
-                                        <Badge className="bg-white text-primary font-black animate-pulse">ANALYZING REGISTRY...</Badge>
+                                        <Badge className="bg-white text-primary font-black animate-pulse">ANALYZING DOCUMENT...</Badge>
                                     </div>
                                 )}
                             </div>
@@ -221,7 +245,7 @@ export function VoucherReturnTerminal() {
                                     <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30 py-32">
                                         <Layers className="h-16 w-16 mb-4" strokeWidth={1} />
                                         <h5 className="text-xl font-black uppercase tracking-tighter">Empty Staging Area</h5>
-                                        <p className="text-xs font-medium max-w-[240px] mt-2">Upload a voucher to begin AI-powered extraction and registry matching.</p>
+                                        <p className="text-xs font-medium max-w-[240px] mt-2">Upload a document or PDF to begin AI-powered extraction and registry matching.</p>
                                     </div>
                                 )}
                             </ScrollArea>

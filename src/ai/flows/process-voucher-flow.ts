@@ -2,8 +2,8 @@
 /**
  * @fileOverview Return voucher data extraction AI flow.
  *
- * - processVoucher - Handles extraction of return details from images.
- * - ProcessVoucherInput - Base64 image data URI.
+ * - processVoucher - Handles extraction of return details from images and PDF documents.
+ * - ProcessVoucherInput - Base64 document data URI (Image or PDF).
  * - ProcessVoucherOutput - Array of identified return items.
  */
 
@@ -11,7 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ProcessVoucherInputSchema = z.object({
-  photoDataUri: z.string().describe("Base64 encoded image of the return voucher/invoice."),
+  photoDataUri: z.string().describe("Base64 encoded document (Image or PDF) of the return voucher/invoice. Format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type ProcessVoucherInput = z.infer<typeof ProcessVoucherInputSchema>;
 
@@ -33,11 +33,14 @@ const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
   input: { schema: ProcessVoucherInputSchema },
   output: { schema: ProcessVoucherOutputSchema },
-  prompt: `You are an industrial data entry specialist. Analyze this return voucher/invoice image carefully.
+  prompt: `You are an industrial data entry specialist. Analyze this return voucher/invoice document (Image or PDF) carefully.
 
-Extract all items listed for return. Focus on SKU/Barcode and the Quantity. If a barcode is not explicitly listed, try to identify the product name clearly.
+Extract all items listed for return. Focus on SKU/Barcode and the Quantity. 
+- If a barcode is not explicitly listed, try to identify the product name clearly.
+- For PDF documents, analyze all pages if present.
+- Quantities should be extracted as numbers.
 
-Input Image: {{media url=photoDataUri}}`,
+Input Document: {{media url=photoDataUri}}`,
 });
 
 const processVoucherFlow = ai.defineFlow(
