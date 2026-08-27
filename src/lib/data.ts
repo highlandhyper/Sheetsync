@@ -432,6 +432,7 @@ export async function addInventoryItemToSheet(item: any) {
       location: item.location,
       identity: item.staffName,   
       productName: item.productName,
+      supplierName: item.supplierName || '', // INCLUDED TO POPULATE COLUMN H DIRECTLY
       type: item.itemType,        
       timestamp: item.timestamp || new Date().toISOString(),
       disableNotification: item.disableNotification === true,
@@ -471,7 +472,7 @@ export async function addInventoryItemToSheet(item: any) {
       item.location, 
       item.staffName, 
       item.productName, 
-      '', 
+      item.supplierName || '', // INDEX 7: POPULATES COLUMN H
       item.itemType, 
       item.id
     ];
@@ -583,7 +584,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     const day = subDays(today, d);
     const curr = inv.reduce((s, x) => s + x.quantity, 0);
     const post = inv.filter(x => x.timestamp && isAfter(parseISO(x.timestamp), endOfDay(day))).reduce((s, x) => s + x.quantity, 0);
-    trend.push({ date: format(day, 'MMM dd'), totalStock: Math.max(0, curr - post) });
+    trend.push({ date: format(day, 'MMM d'), totalStock: Math.max(0, curr - post) });
   }
   return {
     totalProducts: prods.length, totalStockQuantity: inv.reduce((s, x) => s + x.quantity, 0),
