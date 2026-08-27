@@ -15,7 +15,21 @@ import {
 } from '@/components/ui/command';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useToast } from '@/hooks/use-toast';
-import { ListChecks, MessageSquare, Loader2, User, ChevronsUpDown, Check, Edit, History, RefreshCw, PackageSearch } from 'lucide-react';
+import { 
+    ListChecks, 
+    MessageSquare, 
+    Loader2, 
+    User, 
+    ChevronsUpDown, 
+    Check, 
+    Edit, 
+    History, 
+    RefreshCw, 
+    PackageSearch,
+    Sparkles,
+    X,
+    FileType
+} from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -25,6 +39,7 @@ import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { cn } from '@/lib/utils';
 import { QuickProductEditDialog } from '@/components/products/quick-product-edit-dialog';
+import { VoucherReturnTerminal } from '@/components/inventory/voucher-return-terminal';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -36,14 +51,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { isMultiSelectEnabled, setIsMultiSelectEnabled } = useMultiSelect();
   const { requestSpecialEntry } = useSpecialEntry();
   const { uniqueStaffNames, refreshData } = useDataCache();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
   
   const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
+  const [isVoucherTerminalOpen, setIsVoucherTerminalOpen] = React.useState(false);
   const [staffName, setStaffName] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
+
+  const isAdmin = role === 'admin';
 
   // UNIVERSAL TERMINAL SHORTCUT: CTRL+K
   React.useEffect(() => {
@@ -83,6 +101,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <CommandList>
         <CommandEmpty>Zero registry matches identified.</CommandEmpty>
         <CommandGroup heading="Industrial Terminal">
+            {isAdmin && (
+                <CommandItem
+                    onSelect={() => runCommand(() => setIsVoucherTerminalOpen(true))}
+                    className="flex items-center gap-2 cursor-pointer"
+                >
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                    <span>AI Voucher Recognition (OCR)</span>
+                    <CommandShortcut>CTRL V</CommandShortcut>
+                </CommandItem>
+            )}
             <CommandItem
                 onSelect={() => runCommand(() => setIsQuickEditOpen(true))}
                 className="flex items-center gap-2 cursor-pointer"
@@ -102,13 +130,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Security & Audit">
-            <CommandItem
-                onSelect={() => runCommand(() => router.push('/audit-log'))}
-                className="cursor-pointer"
-            >
-                <History className="mr-2 h-4 w-4" />
-                <span>View Global Audit History</span>
-            </CommandItem>
+            {isAdmin && (
+                <CommandItem
+                    onSelect={() => runCommand(() => router.push('/audit-log'))}
+                    className="cursor-pointer"
+                >
+                    <History className="mr-2 h-4 w-4" />
+                    <span>View Global Audit History</span>
+                </CommandItem>
+            )}
             <CommandItem
                 onSelect={() => runCommand(() => refreshData())}
                 className="cursor-pointer"
@@ -138,13 +168,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Bulk Selection Mode</span>
             <CommandShortcut>CTRL M</CommandShortcut>
           </CommandItem>
-          <CommandItem
-                onSelect={() => runCommand(() => router.push('/products/manage'))}
-                className="cursor-pointer"
-            >
-                <PackageSearch className="mr-2 h-4 w-4" />
-                <span>Advanced Product Management</span>
-            </CommandItem>
+          {isAdmin && (
+            <CommandItem
+                    onSelect={() => runCommand(() => router.push('/products/manage'))}
+                    className="cursor-pointer"
+                >
+                    <PackageSearch className="mr-2 h-4 w-4" />
+                    <span>Advanced Product Management</span>
+                </CommandItem>
+          )}
         </CommandGroup>
       </CommandList>
     </CommandDialog>
@@ -220,6 +252,30 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         isOpen={isQuickEditOpen} 
         onOpenChange={setIsQuickEditOpen} 
     />
+
+    <Dialog open={isVoucherTerminalOpen} onOpenChange={setIsVoucherTerminalOpen}>
+        <DialogContent className="sm:max-w-5xl p-0 overflow-hidden rounded-[3rem] border-none shadow-3xl bg-background h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-4 bg-muted/20 border-b border-white/5 shrink-0">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary/10 rounded-2xl">
+                            <Sparkles className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-3xl font-black uppercase tracking-tighter">AI Bulk Return Processing</DialogTitle>
+                            <DialogDescription className="font-bold text-[9px] uppercase tracking-[0.3em] text-muted-foreground/60">Global Voucher Recognition Terminal</DialogDescription>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setIsVoucherTerminalOpen(false)} className="rounded-full">
+                        <X className="h-5 w-5" />
+                    </Button>
+                </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto p-8 pt-4">
+                <VoucherReturnTerminal />
+            </div>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }
