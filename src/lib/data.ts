@@ -425,15 +425,24 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
  */
 export async function addInventoryItemToSheet(item: any) {
   try {
+    // Robust payload with aliases for maximum compatibility with varying Apps Script implementations
     const payload = {
       barcode: item.barcode,
+      sku: item.barcode,
       quantity: item.quantity,
+      qty: item.quantity,
       expiryDate: item.expiryDate, 
       location: item.location,
-      identity: item.staffName,   
+      zone: item.location,
+      identity: item.staffName,
+      staff: item.staffName,
       productName: item.productName,
-      supplierName: item.supplierName || '', // INCLUDED TO POPULATE COLUMN H DIRECTLY
+      product: item.productName,
+      supplierName: item.supplierName || '', 
+      supplier: item.supplierName || '', 
+      vendor: item.supplierName || '', 
       type: item.itemType,        
+      itemType: item.itemType,        
       timestamp: item.timestamp || new Date().toISOString(),
       disableNotification: item.disableNotification === true,
       isSpecial: item.isSpecial === true 
