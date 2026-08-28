@@ -63,17 +63,59 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   const isAdmin = role === 'admin';
 
-  // UNIVERSAL TERMINAL SHORTCUT: CTRL+K
+  // INDUSTRIAL SHORTCUT ENGINE
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      const isCtrl = e.metaKey || e.ctrlKey;
+      
+      // Toggle Terminal: CTRL+K
+      if ((e.key === 'k' || e.key === 'K') && isCtrl) {
         e.preventDefault();
         onOpenChange(!open);
+        return;
+      }
+
+      // Handle Terminal Actions: V, E, S, M
+      if (isCtrl) {
+        const key = e.key.toLowerCase();
+        
+        // Block common browser defaults that conflict with industrial shortcuts
+        if (['s', 'e', 'v'].includes(key)) {
+            // Check if user is in an input field before blocking V (Paste)
+            const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+            if (key === 'v' && isInput) return; // Allow normal paste in inputs
+
+            e.preventDefault();
+            
+            if (key === 'v' && isAdmin) {
+                onOpenChange(false);
+                setIsVoucherTerminalOpen(true);
+            }
+            if (key === 'e') {
+                onOpenChange(false);
+                setIsQuickEditOpen(true);
+            }
+            if (key === 's') {
+                onOpenChange(false);
+                setIsRequestDialogOpen(true);
+            }
+            if (key === 'm') {
+                e.preventDefault();
+                onOpenChange(false);
+                const newState = !isMultiSelectEnabled;
+                setIsMultiSelectEnabled(newState);
+                toast({
+                  title: newState ? 'Multi-Select Enabled' : 'Multi-Select Disabled',
+                  description: newState ? 'Log checkboxes active.' : 'Checkboxes retracted.',
+                });
+            }
+        }
       }
     };
+
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, isAdmin, isMultiSelectEnabled, setIsMultiSelectEnabled, toast]);
 
   const runCommand = (command: () => void) => {
     onOpenChange(false);
