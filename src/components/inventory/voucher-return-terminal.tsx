@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { 
     FileText, 
     Upload, 
@@ -20,7 +21,10 @@ import {
     Zap,
     Camera,
     RefreshCw,
-    Scan
+    Scan,
+    ZapOff,
+    Maximize2,
+    Minimize2
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -51,12 +55,18 @@ export function VoucherReturnTerminal() {
     const [fileName, setFileName] = useState<string | null>(null);
     const [isPdf, setIsPdf] = useState(false);
     
-    // Camera States
+    // Camera Advanced States
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isCameraStarting, setIsCameraStarting] = useState(false);
+    const [hasTorch, setHasTorch] = useState(false);
+    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [zoomRange, setZoomRange] = useState<{ min: number, max: number, step: number } | null>(null);
+    const [currentZoom, setCurrentZoom] = useState(1);
+    
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const trackRef = useRef<MediaStreamTrack | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,13 +89,43 @@ export function VoucherReturnTerminal() {
     const startCamera = async () => {
         setIsCameraStarting(true);
         setIsCameraOpen(true);
+        setHasTorch(false);
+        setIsTorchOn(false);
+        setZoomRange(null);
+        setCurrentZoom(1);
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
+                video: { 
+                    facingMode: 'environment', 
+                    width: { ideal: 1920 }, 
+                    height: { ideal: 1080 },
+                    focusMode: 'continuous' as any
+                } 
             });
+            
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 streamRef.current = stream;
+                
+                const track = stream.getVideoTracks()[0];
+                trackRef.current = track;
+
+                // Detect Capabilities (Handheld Specific)
+                const capabilities = (track as any).getCapabilities?.() || {};
+                
+                if (capabilities.torch) {
+                    setHasTorch(true);
+                }
+                
+                if (capabilities.zoom) {
+                    setZoomRange({
+                        min: capabilities.zoom.min || 1,
+                        max: capabilities.zoom.max || 5,
+                        step: capabilities.zoom.step || 0.1
+                    });
+                    setCurrentZoom(capabilities.zoom.min || 1);
+                }
             }
         } catch (err) {
             console.error("Camera Access Error:", err);
@@ -96,24 +136,57 @@ export function VoucherReturnTerminal() {
         }
     };
 
+    const toggleTorch = async () => {
+        if (!trackRef.current || !hasTorch) return;
+        
+        try {
+            const newState = !isTorchOn;
+            await (trackRef.current as any).applyConstraints({
+                advanced: [{ torch: newState }]
+            });
+            setIsTorchOn(newState);
+        } catch (e) {
+            console.warn("Torch control failed:", e);
+        }
+    };
+
+    const handleZoomChange = async (values: number[]) => {
+        const value = values[0];
+        setCurrentZoom(value);
+        if (!trackRef.current || !zoomRange) return;
+        
+        try {
+            await (trackRef.current as any).applyConstraints({
+                advanced: [{ zoom: value }]
+            });
+        } catch (e) {
+            console.warn("Zoom control failed:", e);
+        }
+    };
+
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
+            trackRef.current = null;
         }
         setIsCameraOpen(false);
+        setIsTorchOn(false);
     }, []);
 
     const capturePhoto = () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
+            
+            // Industrial Precision: Capture at natural resolution
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            
             const context = canvas.getContext('2d');
             if (context) {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const dataUri = canvas.toDataURL('image/jpeg', 0.9);
+                const dataUri = canvas.toDataURL('image/jpeg', 0.95);
                 setPreviewImage(dataUri);
                 setFileName(`invoice_capture_${Date.now()}.jpg`);
                 setIsPdf(false);
@@ -169,7 +242,7 @@ export function VoucherReturnTerminal() {
 
         try {
             for (const item of validReturns) {
-                await bulkReturnInventoryItemsAction(user.email, [item.matchedItemId!], staffName, 'specific', item.quantity);
+                await bulkReturnInventoryItemsAction(user.email, item.matchedItemId!, item.quantity, staffName);
             }
             
             toast({ title: "Bulk Returns Commited", description: "Successfully processed verified voucher items." });
@@ -337,7 +410,7 @@ export function VoucherReturnTerminal() {
                 </div>
             </div>
 
-            {/* CAMERA CAPTURE DIALOG */}
+            {/* ENHANCED CAMERA CAPTURE DIALOG */}
             <Dialog open={isCameraOpen} onOpenChange={(open) => !open && stopCamera()}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-black">
                     <DialogHeader className="p-8 pb-4 bg-zinc-900/80 backdrop-blur-md border-b border-white/10 shrink-0">
@@ -351,9 +424,24 @@ export function VoucherReturnTerminal() {
                                     <DialogDescription className="text-zinc-400 font-bold text-[9px] uppercase tracking-[0.3em]">Align invoice with the frame</DialogDescription>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={stopCamera} className="text-white hover:bg-white/10">
-                                <X className="h-6 w-6" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                {hasTorch && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={toggleTorch} 
+                                        className={cn(
+                                            "h-10 w-10 rounded-xl transition-all",
+                                            isTorchOn ? "bg-yellow-500 text-black" : "text-white hover:bg-white/10"
+                                        )}
+                                    >
+                                        {isTorchOn ? <Zap className="h-5 w-5" /> : <ZapOff className="h-5 w-5" />}
+                                    </Button>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={stopCamera} className="text-white hover:bg-white/10">
+                                    <X className="h-6 w-6" />
+                                </Button>
+                            </div>
                         </div>
                     </DialogHeader>
                     
@@ -368,28 +456,68 @@ export function VoucherReturnTerminal() {
                             ref={videoRef} 
                             autoPlay 
                             playsInline 
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover transition-all duration-300"
+                            style={{ transform: `scale(${currentZoom})` }}
                         />
+                        
+                        {/* INDUSTRIAL HUD OVERLAY */}
                         <div className="absolute inset-0 pointer-events-none border-[30px] border-black/40">
-                             <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl" />
+                             <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl relative">
+                                <div className="absolute top-1/2 left-0 right-0 h-px bg-primary/20 shadow-[0_0_10px_rgba(41,171,226,0.5)]" />
+                                <div className="absolute top-0 bottom-0 left-1/2 w-px bg-primary/20" />
+                                
+                                {/* Corner Guides */}
+                                <div className="absolute top-4 left-4 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-xl" />
+                                <div className="absolute top-4 right-4 w-10 h-10 border-t-4 border-r-4 border-primary rounded-tr-xl" />
+                                <div className="absolute bottom-4 left-4 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-xl" />
+                                <div className="absolute bottom-4 right-4 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-xl" />
+                             </div>
                         </div>
+
+                        {/* ZOOM INDICATOR */}
+                        {zoomRange && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
+                                <Minimize2 className="h-3 w-3 text-white/40" />
+                                <span className="text-[10px] font-black text-primary min-w-[30px] text-center">{currentZoom.toFixed(1)}x</span>
+                                <Maximize2 className="h-3 w-3 text-white/40" />
+                            </div>
+                        )}
                     </div>
 
                     <canvas ref={canvasRef} className="hidden" />
 
-                    <DialogFooter className="p-8 bg-zinc-900/80 backdrop-blur-md border-t border-white/10 shrink-0 flex flex-row items-center justify-center gap-6">
-                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 hover:text-white font-black uppercase text-[10px] tracking-widest">
-                            Abort
-                        </Button>
-                        <Button 
-                            onClick={capturePhoto}
-                            className="h-20 w-20 rounded-full bg-white hover:bg-zinc-200 border-[6px] border-primary p-0 flex items-center justify-center group shadow-2xl transition-all active:scale-90"
-                        >
-                            <div className="h-12 w-12 rounded-full border-4 border-zinc-900 group-hover:scale-110 transition-transform flex items-center justify-center">
-                                <Scan className="h-5 w-5 text-zinc-900" />
+                    <DialogFooter className="p-8 bg-zinc-900/80 backdrop-blur-md border-t border-white/10 shrink-0 flex flex-col gap-6">
+                        {zoomRange && (
+                            <div className="px-10 space-y-3">
+                                <div className="flex justify-between items-center text-[8px] font-black uppercase text-white/40 tracking-widest">
+                                    <span>Precision Zoom</span>
+                                    <span>Scale {currentZoom.toFixed(1)}</span>
+                                </div>
+                                <Slider 
+                                    value={[currentZoom]}
+                                    min={zoomRange.min}
+                                    max={zoomRange.max}
+                                    step={zoomRange.step}
+                                    onValueChange={handleZoomChange}
+                                    className="w-full"
+                                />
                             </div>
-                        </Button>
-                        <div className="w-20" /> {/* Spacer */}
+                        )}
+
+                        <div className="flex flex-row items-center justify-center gap-12">
+                            <Button variant="ghost" onClick={stopCamera} className="text-white/60 hover:text-white font-black uppercase text-[10px] tracking-widest h-12">
+                                Terminate
+                            </Button>
+                            <Button 
+                                onClick={capturePhoto}
+                                className="h-20 w-20 rounded-full bg-white hover:bg-zinc-200 border-[6px] border-primary p-0 flex items-center justify-center group shadow-2xl transition-all active:scale-90"
+                            >
+                                <div className="h-12 w-12 rounded-full border-4 border-zinc-900 group-hover:scale-110 transition-transform flex items-center justify-center">
+                                    <Scan className="h-5 w-5 text-zinc-900" />
+                                </div>
+                            </Button>
+                            <div className="w-20" /> {/* Spacer */}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
