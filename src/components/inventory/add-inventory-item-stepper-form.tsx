@@ -173,6 +173,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     handleSubmit,
     reset,
     watch,
+    getValues,
     setValue,
     trigger,
     formState: { errors },
@@ -256,7 +257,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           setIsFetchingProduct(false);
           return false;
       }
-  }, [cachedProducts, fetchProductAction, fetchProductExternalDataAction]);
+  }, [cachedProducts]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
@@ -376,11 +377,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   };
 
   const handleRequestProductAdd = () => {
-    if (!allFormValues.barcode) return;
+    const currentBarcode = getValues('barcode');
+    if (!currentBarcode) return;
     requestSpecialEntry(
         allFormValues.staffName || 'Viewer', 
         'product_add', 
-        allFormValues.barcode,
+        currentBarcode,
         suggestedProductName
     );
     setHasRequestedProduct(true);
@@ -401,12 +403,15 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       return;
     }
 
+    // CRITICAL: Trigger validation for current step fields to ensure state is committed
     const output = fields ? await trigger(fields as FieldName[], { shouldFocus: true }) : true;
 
     if (!output) return;
 
     if (currentStep === 0) {
-        const barcodeOk = await handleBarcodeLookup(allFormValues.barcode);
+        // INDUSTRIAL FIX: Use getValues() for immediate, synchronous data access from scanner input
+        const currentBarcode = getValues('barcode');
+        const barcodeOk = await handleBarcodeLookup(currentBarcode);
         if(!barcodeOk) return;
     }
 
@@ -440,7 +445,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         nextStep();
         scanProcessedRef.current = false;
     }, 1000); 
-  }, [setValue, nextStep]);
+  }, []);
 
   useEffect(() => {
     if (isScannerDialogOpen) {
@@ -558,6 +563,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
+                                        // INDUSTRIAL SYNC: Force immediate value update from the DOM event before nextStep
+                                        const immediateValue = e.currentTarget.value;
+                                        setValue('barcode', immediateValue, { shouldValidate: true });
                                         nextStep();
                                     }
                                 }}
@@ -617,7 +625,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
                         <h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p>
-                        <p className="text-xs font-mono text-muted-foreground mt-1">SKU: {allFormValues.barcode}</p>
+                        <p className="text-xs font-mono text-muted-foreground mt-1">SKU: {getValues('barcode')}</p>
                     </div>
 
                     <div className="space-y-2">
