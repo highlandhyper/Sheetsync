@@ -129,7 +129,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const submitLockRef = useRef(false);
   const scanProcessedRef = useRef(false);
   
-  const [isHidModeEnabled, setIsHidModeEnabled] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -290,9 +289,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     
     setTimeout(() => {
         setIsSuccessDialogOpen(false);
-        if (isHidModeEnabled) {
-            barcodeInputRef.current?.focus();
-        }
+        barcodeInputRef.current?.focus();
     }, 3000); 
 
     const savedStaffName = data.staffName; 
@@ -403,13 +400,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       return;
     }
 
-    // CRITICAL: Trigger validation for current step fields to ensure state is committed
     const output = fields ? await trigger(fields as FieldName[], { shouldFocus: true }) : true;
 
     if (!output) return;
 
     if (currentStep === 0) {
-        // INDUSTRIAL FIX: Use getValues() for immediate, synchronous data access from scanner input
         const currentBarcode = getValues('barcode');
         const barcodeOk = await handleBarcodeLookup(currentBarcode);
         if(!barcodeOk) return;
@@ -492,20 +487,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 </div>
             )}
             <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                {currentStep === 0 && (
-                    <div className="flex items-center gap-2 mb-2 p-1.5 bg-muted/20 rounded-xl border border-white/5 group transition-all hover:bg-muted/40">
-                        <Label htmlFor="hid-mode" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2 cursor-pointer flex items-center gap-1.5">
-                            <Zap className={cn("h-3 w-3 transition-colors", isHidModeEnabled ? "text-primary" : "text-muted-foreground/30")} />
-                            HID Scanner Mode
-                        </Label>
-                        <Switch 
-                            id="hid-mode" 
-                            checked={isHidModeEnabled} 
-                            onCheckedChange={setIsHidModeEnabled}
-                            className="scale-75"
-                        />
-                    </div>
-                )}
                 {activeSession && (
                     <div className="flex items-center gap-2">
                         {activeSession.type === 'timed' && activeSession.expiresAt && (
@@ -558,19 +539,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     register('barcode').ref(e);
                                     (barcodeInputRef as any).current = e;
                                 }}
-                                placeholder={isHidModeEnabled ? "SCAN BARCODE NOW..." : "Enter barcode"}
+                                placeholder="Scan or enter barcode"
                                 {...register('barcode')}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
-                                        // INDUSTRIAL SYNC: Force immediate value update from the DOM event before nextStep
                                         const immediateValue = e.currentTarget.value;
                                         setValue('barcode', immediateValue, { shouldValidate: true });
                                         nextStep();
                                     }
                                 }}
-                                autoFocus={isHidModeEnabled}
-                                className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive', isHidModeEnabled && "border-primary/40 bg-primary/5 focus:border-primary")}
+                                autoFocus
+                                className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')}
                             />
                             {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
                         </div>
