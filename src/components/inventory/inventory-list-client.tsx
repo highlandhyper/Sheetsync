@@ -68,6 +68,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Html5Qrcode } from 'html5-qrcode';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import Fuse from 'fuse.js';
 
 const ALL_SUPPLIERS_VALUE = "___ALL_SUPPLIERS___";
 const ALL_LOCATIONS_VALUE = "___ALL_LOCATIONS___";
@@ -75,7 +76,7 @@ const SCANNER_REGION_ID = "inventory-list-filter-scanner";
 
 const playProfessionalBeep = () => {
   try {
-    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAppleContext;
     if (!AudioContextClass) return;
     const audioCtx = new AudioContextClass();
     const oscillator = audioCtx.createOscillator();
@@ -168,8 +169,21 @@ export function InventoryListClient() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
+  // FUZZY SEARCH ENGINE
+  const fuse = useMemo(() => new Fuse(cachedItems, {
+    keys: ['productName', 'barcode', 'staffName', 'location', 'supplierName'],
+    threshold: 0.35,
+    distance: 100,
+    minMatchCharLength: 2
+  }), [cachedItems]);
+
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
+
+    if (debouncedSearch) {
+        // Use fuzzy search for the term
+        items = fuse.search(debouncedSearch).map(r => r.item);
+    }
 
     if (activeDashboardFilter) {
        switch(activeDashboardFilter.type) {
@@ -218,17 +232,6 @@ export function InventoryListClient() {
        }
     }
 
-    if (debouncedSearch) {
-        const lowerSearchTerm = debouncedSearch.toLowerCase();
-        items = items.filter(item =>
-            item.productName.toLowerCase().includes(lowerSearchTerm) ||
-            item.barcode.toLowerCase().includes(lowerSearchTerm) ||
-            item.staffName.toLowerCase().includes(lowerSearchTerm) ||
-            item.location.toLowerCase().includes(lowerSearchTerm) ||
-            (item.supplierName && item.supplierName.toLowerCase().includes(lowerSearchTerm))
-        );
-    }
-
     if (selectedSupplier) {
         items = items.filter(item => item.supplierName === selectedSupplier);
     }
@@ -239,7 +242,7 @@ export function InventoryListClient() {
 
     if (selectedDateRange?.from && selectedDateRange.to) {
         const fromDate = startOfDay(selectedDateRange.from);
-        const toDate = startOfDay(selectedDateRange.to);
+        const toDate = endOfDay(selectedDateRange.to);
         items = items.filter(item => {
             if (item.itemType === 'Expiry' && item.expiryDate) {
                 try {
@@ -268,7 +271,7 @@ export function InventoryListClient() {
     }
 
     return items;
-  }, [cachedItems, activeDashboardFilter, debouncedSearch, selectedSupplier, selectedLocation, selectedDateRange, typeFilter]);
+  }, [cachedItems, activeDashboardFilter, debouncedSearch, selectedSupplier, selectedLocation, selectedDateRange, typeFilter, fuse]);
   
   const groupedItems = useMemo(() => {
     const groups = new Map<string, { individualItems: InventoryItem[]; totalQuantity: number }>();

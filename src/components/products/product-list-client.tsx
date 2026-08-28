@@ -21,6 +21,7 @@ import { bulkDeleteProductsAction, deleteProductAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import Fuse from 'fuse.js';
 
 const MAX_ITEMS_TO_DISPLAY = 150;
 
@@ -35,23 +36,26 @@ export function ProductListClient() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditDialogOpen] = useState(false); // Controlled by EditProductDialog's isOpen
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
+  // FUZZY ENGINE: Optimized for 80k+ records
+  const fuse = useMemo(() => new Fuse(allProducts, {
+    keys: ['productName', 'barcode', 'supplierName'],
+    threshold: 0.35,
+    distance: 100,
+    minMatchCharLength: 2
+  }), [allProducts]);
+
   const filteredAndSortedProducts = useMemo(() => {
     let items = [...allProducts];
 
     if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      items = items.filter(
-        (product) =>
-          product.productName.toLowerCase().includes(lower) ||
-          product.barcode.toLowerCase().includes(lower) ||
-          (product.supplierName && product.supplierName.toLowerCase().includes(lower))
-      );
+        items = fuse.search(searchTerm).map(r => r.item);
     }
 
     items.sort((a, b) => {
@@ -69,7 +73,7 @@ export function ProductListClient() {
       }
     });
     return items;
-  }, [allProducts, searchTerm, sortOrder]);
+  }, [allProducts, searchTerm, sortOrder, fuse]);
 
   const itemsToRender = useMemo(() => {
     if (filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY) {
@@ -84,12 +88,12 @@ export function ProductListClient() {
         return;
     }
     setEditingProduct(product);
-    setIsEditDialogOpen(true);
+    setIsEditModalVisible(true);
   };
   
   const handleEditSuccess = useCallback((updatedProduct: Product) => {
     updateProduct(updatedProduct);
-    setIsEditDialogOpen(false);
+    setIsEditModalVisible(false);
   }, [updateProduct]);
 
   const handleToggleSelect = (id: string) => {
@@ -119,7 +123,6 @@ export function ProductListClient() {
     setIsAuthDialogOpen(false);
     if (pendingDeleteIds.length === 0) return;
 
-    // --- OPTIMISTIC UI UPDATE ---
     const idsToRemove = [...pendingDeleteIds];
     removeProducts(idsToRemove);
     setSelectedIds(new Set());
@@ -311,8 +314,8 @@ export function ProductListClient() {
       <EditProductDialog
         product={editingProduct}
         allSuppliers={suppliers}
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
+        isOpen={isEditModalVisible}
+        onOpenChange={setIsEditModalVisible}
         onSuccess={handleEditSuccess}
       />
 

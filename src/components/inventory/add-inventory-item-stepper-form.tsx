@@ -29,7 +29,8 @@ import {
     MessageSquare,
     PackageSearch,
     SendHorizontal,
-    Globe
+    Globe,
+    Zap
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -128,6 +129,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const submitLockRef = useRef(false);
   const scanProcessedRef = useRef(false);
   
+  const [isHidModeEnabled, setIsHidModeEnabled] = useState(false);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+
   const thankYouAudioRef = useRef<HTMLAudioElement | null>(null);
   const identityAudioRef = useRef<HTMLAudioElement | null>(null);
   const identityAudio1Ref = useRef<HTMLAudioElement | null>(null);
@@ -200,7 +204,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   }, [permissions.isAudioEnabled]);
 
   const playIdentityAudio = useCallback(() => {
-    // DUAL-CHECK: Global settings AND specific Identity Prompt setting
     if (!permissions.isAudioEnabled || permissions.isIdentityAudioEnabled === false) return;
     
     const audio = permissions.identityAudioType === 'whoareyou1' ? identityAudio1Ref.current : identityAudioRef.current;
@@ -209,112 +212,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         audio.play().catch(e => console.warn("Identity audio inhibited:", e));
     }
   }, [permissions.isAudioEnabled, permissions.isIdentityAudioEnabled, permissions.identityAudioType]);
-
-  const onSubmit = async (data: AddInventoryItemFormValues) => {
-    if (isSubmitting || submitLockRef.current) return;
-    
-    playThankYouAudio();
-    setIsSuccessDialogOpen(true);
-    
-    setIsSubmitting(true);
-    submitLockRef.current = true;
-
-    const now = new Date();
-    const tempId = `log_${now.getTime()}`;
-    const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
-
-    const optimisticItem: InventoryItem = {
-        id: tempId,
-        barcode: data.barcode,
-        quantity: data.quantity,
-        expiryDate: formattedExpiry,
-        location: data.location,
-        staffName: data.staffName,
-        productName: productName || 'Syncing...',
-        supplierName: productSupplier || '...',
-        itemType: data.itemType,
-        timestamp: now.toISOString()
-    };
-
-    addInventoryItem(optimisticItem);
-    setSubmittedStaffName(data.staffName);
-    
-    setTimeout(() => setIsSuccessDialogOpen(false), 3000); 
-
-    const savedStaffName = data.staffName; 
-    reset();
-    setValue('staffName', savedStaffName); 
-    setProductName('');
-    setProductSupplier('');
-    setProductLookupError('');
-    setSuggestedProductName('');
-    setHasRequestedProduct(false);
-    setFoundInGlobalRegistry(false);
-    setCurrentStep(0);
-
-    if (!navigator.onLine) {
-        queueAction({
-            type: 'LOG_INVENTORY',
-            data: {
-                barcode: data.barcode,
-                staffName: data.staffName,
-                itemType: data.itemType,
-                quantity: data.quantity,
-                location: data.location,
-                expiryDate: formattedExpiry,
-                userEmail: user?.email,
-                disableNotification: activeSession ? 'true' : 'false'
-            }
-        });
-        if (activeSession) consumeSpecialEntry();
-        setIsSubmitting(false);
-        submitLockRef.current = false;
-        return;
-    }
-
-    startTransition(async () => {
-      const formData = new FormData();
-      formData.append('barcode', data.barcode);
-      formData.append('staffName', data.staffName);
-      formData.append('itemType', data.itemType);
-      formData.append('quantity', data.quantity.toString());
-      formData.append('location', data.location);
-      
-      if (user?.email) {
-          formData.append('userEmail', user.email);
-      }
-
-      if (activeSession) {
-          formData.append('disableNotification', 'true');
-      }
-
-      if (data.expiryDate) {
-        formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
-      }
-
-      try {
-        const response = await addInventoryItemAction(undefined, formData);
-        if (response.success && response.data) {
-          if (activeSession) {
-              consumeSpecialEntry(); 
-          }
-          refreshData(); 
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Sync Error',
-            description: response.message || 'Background log failed. Re-syncing...'
-          });
-          refreshData(); 
-        }
-      } catch (err) {
-        console.warn("Background sync interrupted:", err);
-      } finally {
-        setIsSubmitting(false);
-        submitLockRef.current = false;
-      }
-    });
-  };
 
   const handleBarcodeLookup = useCallback(async (barcode: string) => {
       if (!barcode || !barcode.trim()) return false;
@@ -360,6 +257,123 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           return false;
       }
   }, [cachedProducts, fetchProductAction, fetchProductExternalDataAction]);
+
+  const onSubmit = async (data: AddInventoryItemFormValues) => {
+    if (isSubmitting || submitLockRef.current) return;
+    
+    playThankYouAudio();
+    setIsSuccessDialogOpen(true);
+    
+    setIsSubmitting(true);
+    submitLockRef.current = true;
+
+    const now = new Date();
+    const tempId = `log_${now.getTime()}`;
+    const formattedExpiry = data.expiryDate ? format(data.expiryDate, 'yyyy-MM-dd') : '';
+
+    const optimisticItem: InventoryItem = {
+        id: tempId,
+        barcode: data.barcode,
+        quantity: data.quantity,
+        expiryDate: formattedExpiry,
+        location: data.location,
+        staffName: data.staffName,
+        productName: productName || 'Syncing...',
+        supplierName: productSupplier || '...',
+        itemType: data.itemType,
+        timestamp: now.toISOString()
+    };
+
+    addInventoryItem(optimisticItem);
+    setSubmittedStaffName(data.staffName);
+    
+    setTimeout(() => {
+        setIsSuccessDialogOpen(false);
+        if (isHidModeEnabled) {
+            barcodeInputRef.current?.focus();
+        }
+    }, 3000); 
+
+    const savedStaffName = data.staffName; 
+    reset({
+        ...data,
+        barcode: '',
+        quantity: 1,
+    });
+    setValue('staffName', savedStaffName); 
+    setProductName('');
+    setProductSupplier('');
+    setProductLookupError('');
+    setSuggestedProductName('');
+    setHasRequestedProduct(false);
+    setFoundInGlobalRegistry(false);
+    setCurrentStep(0);
+
+    if (!navigator.onLine) {
+        queueAction({
+            type: 'LOG_INVENTORY',
+            data: {
+                barcode: data.barcode,
+                staffName: data.staffName,
+                itemType: data.itemType,
+                quantity: data.quantity,
+                location: data.location,
+                expiryDate: formattedExpiry,
+                userEmail: user?.email,
+                disableNotification: activeSession ? 'true' : 'false',
+                supplier: productSupplier
+            }
+        });
+        if (activeSession) consumeSpecialEntry();
+        setIsSubmitting(false);
+        submitLockRef.current = false;
+        return;
+    }
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append('barcode', data.barcode);
+      formData.append('staffName', data.staffName);
+      formData.append('itemType', data.itemType);
+      formData.append('quantity', data.quantity.toString());
+      formData.append('location', data.location);
+      formData.append('supplier', productSupplier);
+      
+      if (user?.email) {
+          formData.append('userEmail', user.email);
+      }
+
+      if (activeSession) {
+          formData.append('disableNotification', 'true');
+      }
+
+      if (data.expiryDate) {
+        formData.append('expiryDate', format(data.expiryDate, 'yyyy-MM-dd'));
+      }
+
+      try {
+        const response = await addInventoryItemAction(undefined, formData);
+        if (response.success && response.data) {
+          if (activeSession) {
+              consumeSpecialEntry(); 
+          }
+          refreshData(); 
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Sync Error',
+            description: response.message || 'Background log failed. Re-syncing...'
+          });
+          refreshData(); 
+        }
+      } catch (err) {
+        console.warn("Background sync interrupted:", err);
+      } finally {
+        setIsSubmitting(false);
+        submitLockRef.current = false;
+      }
+    });
+  };
 
   const handleRequestProductAdd = () => {
     if (!allFormValues.barcode) return;
@@ -462,7 +476,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 ? "pb-1 pt-4" : "pb-4")}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {currentStep === 0 && (
-                <div>
+                <div className="flex-1">
                     <CardTitle className="text-2xl flex items-center gap-2">
                         Log New Inventory Item
                         {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}
@@ -472,7 +486,21 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </CardDescription>
                 </div>
             )}
-            <div className="flex flex-col sm:items-end gap-2">
+            <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                {currentStep === 0 && (
+                    <div className="flex items-center gap-2 mb-2 p-1.5 bg-muted/20 rounded-xl border border-white/5 group transition-all hover:bg-muted/40">
+                        <Label htmlFor="hid-mode" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2 cursor-pointer flex items-center gap-1.5">
+                            <Zap className={cn("h-3 w-3 transition-colors", isHidModeEnabled ? "text-primary" : "text-muted-foreground/30")} />
+                            HID Scanner Mode
+                        </Label>
+                        <Switch 
+                            id="hid-mode" 
+                            checked={isHidModeEnabled} 
+                            onCheckedChange={setIsHidModeEnabled}
+                            className="scale-75"
+                        />
+                    </div>
+                )}
                 {activeSession && (
                     <div className="flex items-center gap-2">
                         {activeSession.type === 'timed' && activeSession.expiresAt && (
@@ -521,7 +549,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         <div className="flex-grow">
                             <Input
                                 id="barcode"
-                                placeholder="Enter barcode"
+                                ref={(e) => {
+                                    register('barcode').ref(e);
+                                    (barcodeInputRef as any).current = e;
+                                }}
+                                placeholder={isHidModeEnabled ? "SCAN BARCODE NOW..." : "Enter barcode"}
                                 {...register('barcode')}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -529,7 +561,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         nextStep();
                                     }
                                 }}
-                                className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')}
+                                autoFocus={isHidModeEnabled}
+                                className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive', isHidModeEnabled && "border-primary/40 bg-primary/5 focus:border-primary")}
                             />
                             {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
                         </div>
@@ -553,7 +586,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                             type="button" 
                                             variant="default"
                                             className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl"
-                                            onClick={handleRequestSpecialAdd}
+                                            onClick={handleRequestProductAdd}
                                         >
                                             <SendHorizontal className="mr-2 h-4 w-4" />
                                             {suggestedProductName ? (

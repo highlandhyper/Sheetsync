@@ -22,6 +22,7 @@ import { EditInventoryItemDialog } from './edit-inventory-item-dialog';
 import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventory-item-dialog';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Separator } from '../ui/separator';
+import Fuse from 'fuse.js';
 
 const SCANNER_REGION_ID = "header-barcode-scanner-region";
 
@@ -73,21 +74,26 @@ export function HeaderBarcodeLookup() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // DERIVE SEARCH RESULTS: Ensures instant updates when items are returned or deleted
+  // FUZZY ENGINE: Optimized for 80k+ records
+  const fuse = useMemo(() => new Fuse(inventoryItems.filter(i => i.quantity > 0), {
+    keys: ['barcode', 'productName', 'supplierName'],
+    threshold: 0.3,
+    distance: 100,
+    minMatchCharLength: 2,
+    useExtendedSearch: true
+  }), [inventoryItems]);
+
   const results = useMemo(() => {
     if (!lastSearchedBarcode.trim()) return [];
-    const lowerSearch = lastSearchedBarcode.trim().toLowerCase();
+    const term = lastSearchedBarcode.trim();
     
-    return inventoryItems.filter(
-      item => (item.barcode.toLowerCase() === lowerSearch || 
-               item.productName.toLowerCase().includes(lowerSearch)) && 
-               item.quantity > 0
-    ).sort((a, b) => {
-        const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
-        const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
-        return dateB - dateA;
-    });
-  }, [inventoryItems, lastSearchedBarcode]);
+    // Attempt exact match first for performance
+    const exact = inventoryItems.filter(i => i.barcode === term && i.quantity > 0);
+    if (exact.length > 0) return exact;
+
+    // Fallback to fuzzy search
+    return fuse.search(term).map(r => r.item);
+  }, [inventoryItems, lastSearchedBarcode, fuse]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -120,24 +126,9 @@ export function HeaderBarcodeLookup() {
       startSearchTransition(() => {
         setHasSearched(true);
         setLastSearchedBarcode(cleanBarcode);
-        
-        // Perform a quick check for feedback
-        const matches = inventoryItems.some(
-          item => (item.barcode.toLowerCase() === cleanBarcode.toLowerCase() || 
-                   item.productName.toLowerCase().includes(cleanBarcode.toLowerCase())) && 
-                   item.quantity > 0
-        );
-
-        if (!matches) {
-            toast({
-                variant: 'destructive',
-                title: 'Registry Zero',
-                description: `No active logs found for: ${cleanBarcode}`,
-            });
-        }
       });
     },
-    [inventoryItems, toast]
+    []
   );
 
   const onScanSuccess = useCallback((decodedText: string) => {
@@ -347,7 +338,7 @@ export function HeaderBarcodeLookup() {
                   <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
                       <ScanBarcode className="h-8 w-8" /> Visual Capture
                   </DialogTitle>
-                  <DialogDescription className="text-xs font-medium text-zinc-400">Position barcode within the identification frame.</DialogDescription>
+                  <DialogDescription className="text-zinc-400 text-xs">Position barcode within the identification frame.</DialogDescription>
               </DialogHeader>
 
               <div className="relative scanner-container h-[400px] w-full">
@@ -363,7 +354,7 @@ export function HeaderBarcodeLookup() {
                   </div>
               </div>
 
-              <div className="p-6 bg-zinc-900/50 border-t border-white/10 relative z-20">
+              <div className="p-6 bg-zinc-900/50 border-t border-white/10 flex justify-center relative z-20">
                   <Button variant="outline" onClick={() => setIsScannerOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all active:scale-95">
                     Abort Scan
                   </Button>
