@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,10 @@ import {
     ArrowRight,
     X,
     FileType,
-    Zap
+    Zap,
+    Camera,
+    RefreshCw,
+    Scan
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +29,7 @@ import { useAuth } from '@/context/auth-context';
 import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface StagedReturn {
     barcode: string;
@@ -47,6 +51,13 @@ export function VoucherReturnTerminal() {
     const [fileName, setFileName] = useState<string | null>(null);
     const [isPdf, setIsPdf] = useState(false);
     
+    // Camera States
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [isCameraStarting, setIsCameraStarting] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,6 +74,53 @@ export function VoucherReturnTerminal() {
             processWithAI(dataUri);
         };
         reader.readAsDataURL(file);
+    };
+
+    const startCamera = async () => {
+        setIsCameraStarting(true);
+        setIsCameraOpen(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                streamRef.current = stream;
+            }
+        } catch (err) {
+            console.error("Camera Access Error:", err);
+            toast({ variant: "destructive", title: "Camera Error", description: "Could not access visual capture hardware." });
+            setIsCameraOpen(false);
+        } finally {
+            setIsCameraStarting(false);
+        }
+    };
+
+    const stopCamera = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setIsCameraOpen(false);
+    }, []);
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            if (context) {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUri = canvas.toDataURL('image/jpeg', 0.9);
+                setPreviewImage(dataUri);
+                setFileName(`invoice_capture_${Date.now()}.jpg`);
+                setIsPdf(false);
+                stopCamera();
+                processWithAI(dataUri);
+            }
+        }
     };
 
     const processWithAI = async (dataUri: string) => {
@@ -139,7 +197,7 @@ export function VoucherReturnTerminal() {
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <input 
                         type="file" 
                         ref={fileInputRef} 
@@ -147,6 +205,15 @@ export function VoucherReturnTerminal() {
                         accept="image/*,application/pdf" 
                         onChange={handleFileUpload} 
                     />
+                    <Button 
+                        variant="outline"
+                        onClick={startCamera}
+                        disabled={isProcessing}
+                        className="h-14 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] border-primary/20 hover:bg-primary/5"
+                    >
+                        <Camera className="mr-2 h-5 w-5 text-primary" />
+                        Take Photo
+                    </Button>
                     <Button 
                         onClick={() => fileInputRef.current?.click()} 
                         disabled={isProcessing}
@@ -190,7 +257,7 @@ export function VoucherReturnTerminal() {
                                 {isProcessing && (
                                     <div className="absolute inset-0 bg-primary/20 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
                                         <Loader2 className="h-10 w-10 text-white animate-spin" />
-                                        <Badge className="bg-white text-primary font-black animate-pulse">ANALYZING DOCUMENT...</Badge>
+                                        <Badge className="bg-white text-primary font-black animate-pulse uppercase tracking-widest text-[10px] py-1 px-4 rounded-full">ANALYZING DOCUMENT...</Badge>
                                     </div>
                                 )}
                             </div>
@@ -249,7 +316,7 @@ export function VoucherReturnTerminal() {
                                     <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30 py-32">
                                         <Layers className="h-16 w-16 mb-4" strokeWidth={1} />
                                         <h5 className="text-xl font-black uppercase tracking-tighter">Empty Staging Area</h5>
-                                        <p className="text-xs font-medium max-w-[240px] mt-2">Upload a document or PDF to begin AI-powered extraction and registry matching.</p>
+                                        <p className="text-xs font-medium max-w-[240px] mt-2 leading-relaxed">Upload a document, take a photo, or scan a PDF to begin AI-powered extraction and registry matching.</p>
                                     </div>
                                 )}
                             </ScrollArea>
@@ -269,6 +336,63 @@ export function VoucherReturnTerminal() {
                     </Card>
                 </div>
             </div>
+
+            {/* CAMERA CAPTURE DIALOG */}
+            <Dialog open={isCameraOpen} onOpenChange={(open) => !open && stopCamera()}>
+                <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-black">
+                    <DialogHeader className="p-8 pb-4 bg-zinc-900/80 backdrop-blur-md border-b border-white/10 shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 rounded-2xl">
+                                    <Camera className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">Visual Evidence Capture</DialogTitle>
+                                    <DialogDescription className="text-zinc-400 font-bold text-[9px] uppercase tracking-[0.3em]">Align invoice with the frame</DialogDescription>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={stopCamera} className="text-white hover:bg-white/10">
+                                <X className="h-6 w-6" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    
+                    <div className="relative aspect-video sm:aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
+                        {isCameraStarting && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10 bg-black">
+                                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                                <span className="text-[10px] font-black uppercase text-primary tracking-widest animate-pulse">Initializing Lens...</span>
+                            </div>
+                        )}
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            playsInline 
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 pointer-events-none border-[30px] border-black/40">
+                             <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl" />
+                        </div>
+                    </div>
+
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    <DialogFooter className="p-8 bg-zinc-900/80 backdrop-blur-md border-t border-white/10 shrink-0 flex flex-row items-center justify-center gap-6">
+                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 hover:text-white font-black uppercase text-[10px] tracking-widest">
+                            Abort
+                        </Button>
+                        <Button 
+                            onClick={capturePhoto}
+                            className="h-20 w-20 rounded-full bg-white hover:bg-zinc-200 border-[6px] border-primary p-0 flex items-center justify-center group shadow-2xl transition-all active:scale-90"
+                        >
+                            <div className="h-12 w-12 rounded-full border-4 border-zinc-900 group-hover:scale-110 transition-transform flex items-center justify-center">
+                                <Scan className="h-5 w-5 text-zinc-900" />
+                            </div>
+                        </Button>
+                        <div className="w-20" /> {/* Spacer */}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
