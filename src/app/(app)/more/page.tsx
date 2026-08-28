@@ -222,7 +222,7 @@ export default function SystemHubPage() {
                                     <Command className="h-6 w-6" strokeWidth={2.5} />
                                 </Button>
                                 <kbd className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 hidden h-4 select-none items-center gap-1 rounded bg-background px-1 font-mono text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity sm:flex shadow-sm border-primary/10 text-primary">
-                                    <span className="text-[6px]">CTRL</span> K
+                                    <span className="text-[6px]">ALT</span> K
                                 </kbd>
                             </div>
 

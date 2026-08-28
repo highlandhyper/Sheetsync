@@ -171,12 +171,12 @@ export function Header({ className, onManualLock }: { className?: string; onManu
                             >
                                 <Command className="h-4 w-4" />
                                 <kbd className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[9px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity sm:flex shadow-xl border-primary/10 text-primary">
-                                    <span className="text-[7px]">CTRL</span> K
+                                    <span className="text-[7px]">ALT</span> K
                                 </kbd>
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p className="font-bold">Command Terminal (CTRL+K)</p>
+                            <p className="font-bold">Command Terminal (ALT+K)</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>

@@ -63,28 +63,23 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   const isAdmin = role === 'admin';
 
-  // INDUSTRIAL SHORTCUT ENGINE
+  // INDUSTRIAL SHORTCUT ENGINE: Migrated to ALT to avoid OS conflicts
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      const isCtrl = e.metaKey || e.ctrlKey;
+      const isAlt = e.altKey;
       
-      // Toggle Terminal: CTRL+K
-      if ((e.key === 'k' || e.key === 'K') && isCtrl) {
+      // Toggle Terminal: ALT+K
+      if ((e.key === 'k' || e.key === 'K') && isAlt) {
         e.preventDefault();
         onOpenChange(!open);
         return;
       }
 
       // Handle Terminal Actions: V, E, S, M
-      if (isCtrl) {
+      if (isAlt) {
         const key = e.key.toLowerCase();
         
-        // Block common browser defaults that conflict with industrial shortcuts
-        if (['s', 'e', 'v'].includes(key)) {
-            // Check if user is in an input field before blocking V (Paste)
-            const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-            if (key === 'v' && isInput) return; // Allow normal paste in inputs
-
+        if (['s', 'e', 'v', 'm'].includes(key)) {
             e.preventDefault();
             
             if (key === 'v' && isAdmin) {
@@ -100,7 +95,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 setIsRequestDialogOpen(true);
             }
             if (key === 'm') {
-                e.preventDefault();
                 onOpenChange(false);
                 const newState = !isMultiSelectEnabled;
                 setIsMultiSelectEnabled(newState);
@@ -150,7 +144,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 >
                     <Sparkles className="mr-2 h-4 w-4 text-primary" />
                     <span>AI Voucher Recognition (OCR)</span>
-                    <CommandShortcut>CTRL V</CommandShortcut>
+                    <CommandShortcut>ALT V</CommandShortcut>
                 </CommandItem>
             )}
             <CommandItem
@@ -159,7 +153,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             >
                 <Edit className="mr-2 h-4 w-4 text-primary" />
                 <span>Quick Catalog Update (Instant)</span>
-                <CommandShortcut>CTRL E</CommandShortcut>
+                <CommandShortcut>ALT E</CommandShortcut>
             </CommandItem>
             <CommandItem
                 onSelect={() => runCommand(() => setIsRequestDialogOpen(true))}
@@ -167,7 +161,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             >
                 <MessageSquare className="mr-2 h-4 w-4 text-primary" />
                 <span>Request Special Entry (Silent Log)</span>
-                <CommandShortcut>CTRL S</CommandShortcut>
+                <CommandShortcut>ALT S</CommandShortcut>
             </CommandItem>
         </CommandGroup>
         <CommandSeparator />
@@ -208,7 +202,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           >
             <ListChecks className="mr-2 h-4 w-4" />
             <span>{isMultiSelectEnabled ? 'Disable' : 'Enable'} Bulk Selection Mode</span>
-            <CommandShortcut>CTRL M</CommandShortcut>
+            <CommandShortcut>ALT M</CommandShortcut>
           </CommandItem>
           {isAdmin && (
             <CommandItem
