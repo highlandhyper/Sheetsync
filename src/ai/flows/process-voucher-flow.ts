@@ -1,96 +1,107 @@
 'use server';
 /**
- * @fileOverview Return voucher data extraction AI flow.
- *
- * - processVoucher - Handles extraction of return details from images and PDF documents.
- * - ProcessVoucherInput - Base64 document data URI (Image or PDF).
- * - ProcessVoucherOutput - Array of identified return items.
+ * @fileOverview Industrial Return Voucher AI Processor.
+ * Uses Tesseract.js for primary character extraction and Gemini for spatial reasoning.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import Tesseract from 'tesseract.js';
 
 const ProcessVoucherInputSchema = z.object({
-  photoDataUri: z.string().describe("Base64 encoded document (Image or PDF) of the return voucher/invoice. Format: 'data:<mimetype>;base64,<encoded_data>'."),
+  photoDataUri: z.string().describe("Base64 document data URI (Image or PDF)."),
 });
 export type ProcessVoucherInput = z.infer<typeof ProcessVoucherInputSchema>;
 
 const ProcessVoucherOutputSchema = z.object({
-  success: z.boolean().default(true),
+  success: z.boolean(),
   error: z.string().optional(),
   items: z.array(z.object({
-    barcode: z.string().describe("The barcode or SKU identifier. Extract exactly as printed."),
-    quantity: z.number().describe("The quantity to be returned. Extract as a raw integer."),
-    productName: z.string().describe("The identified product name or description from the document."),
-    confidence: z.number().describe("Confidence level of extraction 0-1."),
-  })).optional().describe("List of items identified for return processing.")
+    barcode: z.string().describe("The barcode or SKU identifier."),
+    quantity: z.number().describe("The numerical quantity to return."),
+    productName: z.string().describe("Product name as listed on document."),
+    confidence: z.number().describe("Confidence score (0-1)."),
+  })).optional()
 });
 export type ProcessVoucherOutput = z.infer<typeof ProcessVoucherOutputSchema>;
 
 /**
- * Industrial AI Processor
- * Analyzes returns vouchers via multimodal Gemini 1.5 Flash.
- * Optimized for high-speed industrial data entry.
+ * Local Character Recognition Node
+ * Optimized for English alphanumeric industrial documents.
  */
-export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
-  try {
-    const result = await processVoucherFlow(input);
-    return result;
-  } catch (error: any) {
-    console.error("Critical Flow Exception:", error);
-    return {
-        success: false,
-        error: error.message || "An unexpected error occurred during AI analysis."
-    };
-  }
+async function performLocalOCR(dataUri: string): Promise<string> {
+    try {
+        console.log("AI Terminal: Initializing Tesseract Node...");
+        const { data: { text } } = await Tesseract.recognize(dataUri, 'eng', {
+            logger: m => console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
+        });
+        return text || "";
+    } catch (e) {
+        console.error("Local OCR Node Failure:", e);
+        return "";
+    }
 }
 
 const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
-  input: { schema: ProcessVoucherInputSchema },
+  input: { schema: ProcessVoucherInputSchema.extend({ ocrText: z.string().optional() }) },
   output: { schema: ProcessVoucherOutputSchema },
-  prompt: `You are an industrial data entry specialist. Analyze this return voucher or invoice document carefully. 
-The document is provided as a multimodal input (Image or PDF).
+  prompt: `You are an industrial data entry specialist. Analyze this return voucher document.
 
-Extract all items listed for return. Focus exclusively on identifying the SKU/Barcode and the corresponding Quantity.
+MULTIMODAL FUSION PROTOCOL:
+1. **Primary Text Layer**: Use the provided OCR text as the authoritative source for numeric characters (SKUs and Quantities).
+2. **Visual Spatial Layer**: Use the image to verify which quantity belongs to which barcode by looking at row alignment.
 
-Industrial Protocol:
-- Barcodes/SKUs: Search for columns labeled "Barcode", "SKU", "Item Code", or "EAN".
-- Quantities: Extract the numerical quantity designated for return. Look for "Qty", "Return Qty", or "Amount".
-- Unregistered Items: If a barcode is missing but a product name is clear, extract the name and leave barcode empty.
-- Multi-page Processing: If this is a multi-page PDF, process all visible pages and consolidate the results into a single array.
+OCR Text Found:
+{{{ocrText}}}
 
-Data Integrity: Only extract numerical quantities. If "2 cases" is written, and you know a case is 12, multiply it if possible, otherwise just return 2.
+Input Image: {{media url=photoDataUri}}
 
-Input Document: {{media url=photoDataUri}}`,
+GOAL: Extract all SKU/Barcode entries and their corresponding Return Quantities.
+- If a barcode is missing, provide the product name.
+- If a quantity is written as "1 case of 12", return 12.
+- Only return valid JSON matching the schema.`,
 });
 
-const processVoucherFlow = ai.defineFlow(
-  {
-    name: 'processVoucherFlow',
-    inputSchema: ProcessVoucherInputSchema,
-    outputSchema: ProcessVoucherOutputSchema,
-  },
-  async input => {
+/**
+ * Industrial AI Processor with Multi-Layer Extraction & Retry Logic
+ */
+export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
+  const MAX_RETRIES = 3;
+  let lastError = "";
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-        console.log("AI Terminal: Initializing multimodal extraction...");
-        const { output } = await prompt(input);
+        console.log(`AI Terminal: Extraction Attempt ${attempt}/${MAX_RETRIES}...`);
         
-        if (!output) {
-            return { success: false, error: "AI extraction node returned zero payload. Check document visibility." };
-        }
+        // Tier 1: Local Character Extraction
+        const ocrText = await performLocalOCR(input.photoDataUri);
         
-        console.log(`AI Terminal: Successfully extracted ${output.items?.length || 0} items.`);
-        return {
+        // Tier 2: AI Spatial Reasoning
+        const { output } = await prompt({ ...input, ocrText });
+        
+        if (!output) throw new Error("AI Node returned zero payload.");
+
+        // ENSURE STRICT SERIALIZATION (POJO)
+        return JSON.parse(JSON.stringify({
             ...output,
             success: true
-        };
+        }));
+
     } catch (error: any) {
-        console.error("Genkit Flow Error:", error);
-        return {
-            success: false,
-            error: `Registry AI Node Failure: ${error.message}`
-        };
+        lastError = error.message;
+        console.warn(`AI Terminal: Attempt ${attempt} failed: ${lastError}`);
+        
+        if (attempt < MAX_RETRIES) {
+            const delay = Math.pow(2, attempt) * 1000;
+            await new Promise(r => setTimeout(r, delay));
+        }
     }
   }
-);
+
+  return {
+    success: false,
+    error: `Registry AI Node Failure after ${MAX_RETRIES} attempts: ${lastError}`,
+    items: []
+  };
+}

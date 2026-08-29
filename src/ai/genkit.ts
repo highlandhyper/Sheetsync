@@ -2,18 +2,17 @@ import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * Industrial AI Registry Initialization
- * 
- * Configures Genkit to use Google AI (Gemini) for document extraction.
- * Requires GOOGLE_GENAI_API_KEY in the environment.
+ * Industrial AI Registry Configuration
+ * Explicitly binds to GEMINI_API_KEY for cloud identity verification.
  */
 export const ai = genkit({
   plugins: [
-    googleAI(),
+    googleAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    }),
   ],
   // Optimized for industrial document and multimodal processing
-  // Using the authoritative latest alias to ensure stable API resolution
-  model: googleAI.model('gemini-flash-latest'),
+  model: googleAI.model('gemini-1.5-flash'),
 });
 
 export { z };

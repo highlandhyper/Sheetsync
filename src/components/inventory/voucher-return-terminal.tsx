@@ -271,11 +271,18 @@ export function VoucherReturnTerminal() {
         setIsExecuting(true);
 
         const validReturns = stagedItems.filter(i => i.matchedItemId);
+        if (validReturns.length === 0) {
+            toast({ variant: "destructive", title: "Process Aborted", description: "No valid registry matches identified to return." });
+            setIsExecuting(false);
+            return;
+        }
+
         const staffName = user.email.split('@')[0].toUpperCase();
 
         try {
             for (const item of validReturns) {
-                await bulkReturnInventoryItemsAction(user.email, item.matchedItemId!, item.quantity, staffName);
+                const res = await bulkReturnInventoryItemsAction(user.email, [item.matchedItemId!], staffName, 'specific', item.quantity);
+                if (!res.success) throw new Error("Sync failed for item " + item.barcode);
             }
             toast({ title: "Bulk Returns Committed", description: "Voucher items processed successfully." });
             setStagedItems([]);
@@ -283,7 +290,7 @@ export function VoucherReturnTerminal() {
             setFileName(null);
             refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Process Error", description: "One or more returns failed to sync." });
+            toast({ variant: "destructive", title: "Process Error", description: "One or more returns failed to sync with the registry." });
         } finally {
             setIsExecuting(false);
         }
@@ -395,7 +402,7 @@ export function VoucherReturnTerminal() {
                         {stagedItems.length > 0 && (
                             <div className="p-8 border-t border-white/5 bg-muted/10">
                                 <Button onClick={commitReturns} disabled={isExecuting || stagedItems.every(i => !i.matchedItemId)} className="w-full h-16 rounded-2xl font-black uppercase tracking-[0.3em] text-[11px] shadow-2xl shadow-primary/20 transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white">
-                                    {isExecuting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Undo2 className="mr-3 h-5 w-5" />} Finalize Bulk return
+                                    {isExecuting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Undo2 className="mr-3 h-5 w-5" />} Finalize Bulk Return
                                 </Button>
                             </div>
                         )}
