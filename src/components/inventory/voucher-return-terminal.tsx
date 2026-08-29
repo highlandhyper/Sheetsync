@@ -27,7 +27,14 @@ import { useAuth } from '@/context/auth-context';
 import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription, 
+    DialogFooter 
+} from '@/components/ui/dialog';
 
 interface StagedReturn {
     barcode: string;
@@ -38,32 +45,20 @@ interface StagedReturn {
     totalAvailable: number;
 }
 
-/**
- * High-Speed Industrial Image Pre-processor
- */
 async function optimizeImageForRegistry(dataUri: string): Promise<string> {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
-            const MAX_DIMENSION = 2000; // Increased for Gemini 3.7 precision
+            const MAX_DIMENSION = 2000; 
             let width = img.width;
             let height = img.height;
-
             if (width > height) {
-                if (width > MAX_DIMENSION) {
-                    height *= MAX_DIMENSION / width;
-                    width = MAX_DIMENSION;
-                }
+                if (width > MAX_DIMENSION) { height *= MAX_DIMENSION / width; width = MAX_DIMENSION; }
             } else {
-                if (height > MAX_DIMENSION) {
-                    width *= MAX_DIMENSION / height;
-                    height = MAX_DIMENSION;
-                }
+                if (height > MAX_DIMENSION) { width *= MAX_DIMENSION / height; height = MAX_DIMENSION; }
             }
-
             const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = width; canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', 0.85));
@@ -94,7 +89,6 @@ export function VoucherReturnTerminal() {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setFileName(file.name);
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -135,13 +129,12 @@ export function VoucherReturnTerminal() {
 
     const capturePhoto = async () => {
         if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
             const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
             const context = canvas.getContext('2d');
             if (context) {
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
                 const dataUri = canvas.toDataURL('image/jpeg', 0.95);
                 setPreviewImage(dataUri);
                 setFileName(`capture_${Date.now()}.jpg`);
@@ -152,22 +145,15 @@ export function VoucherReturnTerminal() {
         }
     };
 
-    /**
-     * Intelligent Distributed Allocation Engine
-     * Resolves return quantities across multiple logs for the same SKU.
-     */
     const allocateQuantityToLogs = (barcode: string, requestedQty: number) => {
-        // Strip leading zeros and normalize for matching
         const normalizedTarget = barcode.replace(/^0+/, '').trim().toLowerCase();
-        
         const relevantLogs = inventoryItems
             .filter(i => {
                 if (i.quantity <= 0) return false;
-                const normalizedLogBarcode = i.barcode.replace(/^0+/, '').trim().toLowerCase();
-                return i.barcode.trim().toLowerCase() === barcode.trim().toLowerCase() || 
-                       normalizedLogBarcode === normalizedTarget;
+                const logBarcode = i.barcode.replace(/^0+/, '').trim().toLowerCase();
+                return i.barcode.trim().toLowerCase() === barcode.trim().toLowerCase() || logBarcode === normalizedTarget;
             })
-            .sort((a, b) => (a.quantity - b.quantity)); // Smallest logs first to prune the sheet efficiently
+            .sort((a, b) => a.quantity - b.quantity);
 
         let remaining = requestedQty;
         const allocation: { itemId: string; qty: number; location: string }[] = [];
@@ -191,14 +177,12 @@ export function VoucherReturnTerminal() {
     const processWithAI = async (dataUri: string) => {
         setIsProcessing(true);
         setStagedItems([]);
-        
         try {
             const result = await processVoucher({ photoDataUri: dataUri });
-            if (!result.success || !result.items) throw new Error(result.error || "Zero registry matches identified.");
+            if (!result.success || !result.items) throw new Error(result.error || "Analysis failed.");
 
             const processed = result.items.map(aiItem => {
                 const { allocation, totalAvailable, status } = allocateQuantityToLogs(aiItem.barcode, aiItem.quantity);
-                
                 return {
                     barcode: aiItem.barcode,
                     productName: aiItem.productName,
@@ -208,11 +192,10 @@ export function VoucherReturnTerminal() {
                     status
                 } as StagedReturn;
             });
-
             setStagedItems(processed);
-            toast({ title: "Analysis Complete", description: `Gemini 3.7 identified ${processed.length} items.` });
+            toast({ title: "Analysis Complete", description: `Found ${processed.length} items for processing.` });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "AI Error", description: e.message || "Failed to parse document." });
+            toast({ variant: "destructive", title: "AI Error", description: e.message || "Failed to process voucher." });
         } finally {
             setIsProcessing(false);
         }
@@ -221,47 +204,40 @@ export function VoucherReturnTerminal() {
     const commitReturns = async () => {
         if (!user?.email || stagedItems.length === 0) return;
         setIsExecuting(true);
-
         const staffName = user.email.split('@')[0].toUpperCase();
-        let totalLogsAffected = 0;
+        let successCount = 0;
 
         try {
             for (const staged of stagedItems) {
-                if (staged.allocation.length === 0) continue;
-                
-                // SERIALIZED REGISTRY WRITE: Process each allocation node sequentially to avoid row locks
                 for (const node of staged.allocation) {
                     const res = await bulkReturnInventoryItemsAction(user.email, [node.itemId], staffName, 'specific', node.qty);
-                    if (res.success) totalLogsAffected++;
+                    if (res.success) successCount++;
                 }
             }
-            
-            toast({ title: "Registry Synchronized", description: `Successfully processed ${totalLogsAffected} inventory nodes.` });
-            setStagedItems([]);
-            setPreviewImage(null);
-            setFileName(null);
+            toast({ title: "Returns Committed", description: `Processed ${successCount} registry nodes.` });
+            setStagedItems([]); setPreviewImage(null); setFileName(null);
             refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Commit Failure", description: "Communication with sheet registry interrupted." });
+            toast({ variant: "destructive", title: "Sync Error", description: "Registry update interrupted." });
         } finally {
             setIsExecuting(false);
         }
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
-                    <div className="bg-primary p-4 rounded-3xl shadow-xl shadow-primary/20"><Zap className="h-8 w-8 text-white fill-current" /></div>
+                    <div className="bg-primary p-4 rounded-3xl"><Zap className="h-8 w-8 text-white fill-current" /></div>
                     <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">Gemini 3.7 Terminal</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-40">High-Velocity Visual Processing</p>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter">AI Voucher Terminal</h3>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-40">Native Multimodal Processing</p>
                     </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                    <Button variant="outline" onClick={startCamera} disabled={isProcessing} className="h-14 px-6 rounded-2xl font-black uppercase text-[10px]"><Camera className="mr-2 h-5 w-5" /> Live Scan</Button>
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="h-14 px-8 rounded-2xl font-black uppercase shadow-xl bg-primary text-white">
+                    <Button variant="outline" onClick={startCamera} disabled={isProcessing} className="h-14 px-6 rounded-2xl"><Camera className="mr-2 h-5 w-5" /> Live Scan</Button>
+                    <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="h-14 px-8 rounded-2xl font-black uppercase bg-primary text-white">
                         {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                         Import Voucher
                     </Button>
@@ -270,25 +246,15 @@ export function VoucherReturnTerminal() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-4">
-                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-3xl overflow-hidden h-full min-h-[400px] shadow-none">
+                    <Card className="bg-card/60 backdrop-blur-3xl rounded-3xl overflow-hidden h-full min-h-[400px]">
                         <CardContent className="p-6 h-full flex flex-col">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Visual Source</span>
-                                {previewImage && <Badge variant="outline" className="bg-primary/5 text-primary text-[8px] font-black">{fileName}</Badge>}
-                            </div>
-                            <div className="flex-1 relative rounded-2xl bg-muted/10 border-2 border-dashed border-white/5 flex items-center justify-center overflow-hidden">
+                            <div className="flex-1 relative rounded-2xl bg-muted/10 border-2 border-dashed flex items-center justify-center overflow-hidden">
                                 {previewImage ? (
-                                    <img src={previewImage} className="object-contain w-full h-full" alt="Voucher Preview" />
+                                    <img src={previewImage} className="object-contain w-full h-full" alt="Preview" />
                                 ) : (
                                     <div className="opacity-20 text-center">
                                         <FileType className="h-16 w-16 mx-auto mb-2" />
-                                        <p className="text-[10px] font-black uppercase">Awaiting Document</p>
-                                    </div>
-                                )}
-                                {isProcessing && (
-                                    <div className="absolute inset-0 bg-primary/20 backdrop-blur-md flex flex-col items-center justify-center">
-                                        <RefreshCw className="h-12 w-12 text-white animate-spin mb-4" />
-                                        <span className="text-white font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Scanning Registry...</span>
+                                        <p className="text-[10px] font-black uppercase">Awaiting Image</p>
                                     </div>
                                 )}
                             </div>
@@ -296,84 +262,51 @@ export function VoucherReturnTerminal() {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-8 flex flex-col">
-                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex-grow flex flex-col shadow-none">
-                        <CardHeader className="bg-muted/10 p-8 border-b border-white/5 flex flex-row items-center justify-between">
+                <div className="lg:col-span-8">
+                    <Card className="bg-card/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden">
+                        <CardHeader className="bg-muted/10 p-8 border-b">
                             <div className="flex items-center gap-3">
                                 <Layers className="h-5 w-5 text-primary" strokeWidth={3} />
                                 <h4 className="text-xl font-black uppercase tracking-tighter">Return Mapping</h4>
                             </div>
-                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black">{stagedItems.length} SKUS</Badge>
                         </CardHeader>
-                        <CardContent className="p-0 flex-grow">
+                        <CardContent className="p-0">
                             <ScrollArea className="h-[450px]">
                                 {stagedItems.length > 0 ? (
-                                    <div className="divide-y divide-white/5">
+                                    <div className="divide-y">
                                         {stagedItems.map((item, idx) => (
-                                            <div key={idx} className="p-8 group hover:bg-primary/[0.03] transition-all flex items-center justify-between">
+                                            <div key={idx} className="p-8 group hover:bg-primary/[0.03] flex items-center justify-between">
                                                 <div className="flex items-start gap-6">
                                                     <div className={cn(
-                                                        "p-4 rounded-xl border shadow-sm transition-all", 
-                                                        item.status === 'matched' ? "bg-green-500/10 text-green-600 border-green-500/20" : 
-                                                        item.status === 'partial' ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" : 
-                                                        "bg-destructive/10 text-destructive border-destructive/20"
+                                                        "p-4 rounded-xl border", 
+                                                        item.status === 'matched' ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
                                                     )}>
-                                                        {item.status === 'matched' ? <CheckCircle2 className="h-6 w-6" /> : 
-                                                         item.status === 'partial' ? <AlertTriangle className="h-6 w-6" /> : 
-                                                         <X className="h-6 w-6" />}
+                                                        {item.status === 'matched' ? <CheckCircle2 className="h-6 w-6" /> : <X className="h-6 w-6" />}
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">{item.productName}</p>
-                                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-2">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Barcode className="h-3 w-3" /> {item.barcode}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 text-primary">
-                                                                <Hash className="h-3 w-3" /> {item.quantity} UNITS
-                                                            </div>
+                                                    <div>
+                                                        <p className="text-lg font-black">{item.productName}</p>
+                                                        <div className="flex items-center gap-4 text-[10px] uppercase font-black opacity-40 mt-2">
+                                                            <div className="flex items-center gap-1.5"><Barcode className="h-3 w-3" /> {item.barcode}</div>
+                                                            <div className="flex items-center gap-1.5"><Hash className="h-3 w-3" /> {item.quantity} UNITS</div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    {item.status === 'matched' ? (
-                                                        <div className="flex flex-col items-end gap-1">
-                                                            <Badge className="bg-green-500 text-white font-black text-[8px] uppercase px-3 py-1">Synced</Badge>
-                                                            <span className="text-[9px] font-bold text-muted-foreground/40">{item.allocation.length} registry nodes</span>
-                                                        </div>
-                                                    ) : item.status === 'partial' ? (
-                                                        <div className="flex flex-col items-end gap-1">
-                                                            <Badge className="bg-yellow-500 text-black font-black text-[8px] uppercase px-3 py-1">Partial</Badge>
-                                                            <span className="text-[9px] font-bold text-yellow-600">Avail: {item.totalAvailable}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col items-end gap-1">
-                                                            <Badge className="bg-destructive text-white font-black text-[8px] uppercase px-3 py-1">Registry Missing</Badge>
-                                                            <span className="text-[9px] font-bold text-destructive/40 italic">Check barcode</span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="py-32 flex flex-col items-center justify-center opacity-30 text-center space-y-4">
-                                        <div className="p-8 bg-muted/20 rounded-[3rem] border-4 border-dashed border-white/5">
-                                            <Search className="h-16 w-16" strokeWidth={1} />
-                                        </div>
-                                        <p className="text-sm font-black uppercase tracking-widest">Awaiting Transmission</p>
+                                    <div className="py-32 text-center opacity-30">
+                                        <Search className="h-16 w-16 mx-auto mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">Awaiting Analysis</p>
                                     </div>
                                 )}
                             </ScrollArea>
                         </CardContent>
                         {stagedItems.length > 0 && (
-                            <div className="p-8 border-t border-white/5 bg-muted/10">
-                                <Button 
-                                    onClick={commitReturns} 
-                                    disabled={isExecuting || stagedItems.every(i => i.allocation.length === 0)} 
-                                    className="w-full h-16 rounded-2xl font-black uppercase tracking-[0.3em] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/40 bg-primary text-white active:scale-95 transition-all border-none"
-                                >
-                                    {isExecuting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Undo2 className="mr-3 h-6 w-6" strokeWidth={3} />}
-                                    Commit Bulk Returns
+                            <div className="p-8 border-t bg-muted/10">
+                                <Button onClick={commitReturns} disabled={isExecuting} className="w-full h-16 rounded-2xl font-black uppercase tracking-[0.3em] bg-primary text-white">
+                                    {isExecuting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Undo2 className="mr-3 h-6 w-6" />}
+                                    Commit Returns
                                 </Button>
                             </div>
                         )}
@@ -383,20 +316,15 @@ export function VoucherReturnTerminal() {
 
             <Dialog open={isCameraOpen} onOpenChange={(open) => !open && stopCamera()}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-black">
-                    <div className="relative aspect-video sm:aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
+                    <div className="relative aspect-video sm:aspect-square bg-zinc-950 flex items-center justify-center">
                         {isCameraStarting && <div className="absolute inset-0 flex items-center justify-center bg-black z-10"><Loader2 className="h-10 w-10 text-primary animate-spin" /></div>}
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 pointer-events-none border-[60px] border-black/60">
-                            <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl" />
-                        </div>
                     </div>
                     <canvas ref={canvasRef} className="hidden" />
-                    <DialogFooter className="p-8 bg-zinc-900 border-t border-white/10 flex flex-row items-center justify-center gap-12">
-                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 font-black uppercase text-[10px] tracking-widest">Abort</Button>
-                        <Button onClick={capturePhoto} className="h-24 w-24 rounded-full bg-white border-[8px] border-primary p-0 flex items-center justify-center active:scale-90 shadow-2xl transition-all">
-                            <div className="h-10 w-10 bg-zinc-900 rounded-full flex items-center justify-center">
-                                <Camera className="h-5 w-5 text-white" />
-                            </div>
+                    <DialogFooter className="p-8 bg-zinc-900 border-t flex flex-row items-center justify-center gap-12">
+                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 font-black uppercase text-[10px]">Abort</Button>
+                        <Button onClick={capturePhoto} className="h-24 w-24 rounded-full bg-white border-[8px] border-primary p-0 flex items-center justify-center active:scale-90">
+                            <Camera className="h-8 w-8 text-zinc-900" />
                         </Button>
                         <div className="w-20" />
                     </DialogFooter>

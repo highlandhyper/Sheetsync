@@ -1,177 +1,786 @@
 ---
+
 name: developing-genkit-js
-description: Develop AI-powered applications using Genkit in Node.js/TypeScript. Use when the user asks about Genkit, AI agents, flows, or tools in JavaScript/TypeScript, or when encountering Genkit errors, validation issues, type errors, or API problems.
+description: Build, modify, debug, and maintain AI-powered applications using Genkit with Node.js and TypeScript. Use for Genkit flows, agents, prompts, tools, middleware, providers, schemas, deployment, validation errors, type errors, API errors, and Genkit architecture work.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Genkit JS Development
+
+## Core Rule
+
+Genkit evolves quickly and has had breaking API changes.
+
+Do not rely on remembered Genkit APIs when authoritative documentation or the installed project can be inspected.
+
+Before implementing unfamiliar or version-sensitive Genkit functionality:
+
+1. Inspect the existing project.
+2. Check installed Genkit package versions.
+3. Verify the relevant Genkit documentation.
+4. Preserve the project's existing architecture unless a change is necessary.
+
+Prefer the smallest correct modification over unnecessary rewrites.
+
 ---
 
-# Genkit JS
+# 1. Inspect the Existing Project First
 
-## Prerequisites
+Before changing an existing project, inspect:
 
-Ensure the `genkit` CLI is available.
--   Run `genkit --version` to verify. Minimum CLI version needed: **1.29.0**
--   If not found or if an older version (1.x < 1.29.0) is present, install/upgrade it: `npm install -g genkit-cli@^1.29.0`.
+* `package.json`
+* existing Genkit initialization
+* installed provider plugins
+* flows
+* agents
+* tools
+* schemas
+* prompts / `.prompt` files
+* middleware
+* environment configuration
+* framework integrations
+* TypeScript configuration
 
-**New Projects**: If you are setting up Genkit in a new codebase, follow the [Setup Guide](references/setup.md).
+Do not replace working architecture simply because another pattern exists.
 
-## Hello World
+Preserve:
 
-```ts
-import { z, genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+* existing provider choice
+* naming conventions
+* folder structure
+* schema patterns
+* environment variable conventions
+* framework integration
+* deployment architecture
 
-// Initialize Genkit with the Google AI plugin
-const ai = genkit({
-  plugins: [googleAI()],
-});
+unless the user specifically requests a migration or redesign.
 
-export const myFlow = ai.defineFlow({
-  name: 'myFlow',
-  inputSchema: z.string().default('AI'),
-  outputSchema: z.string(),
-}, async (subject) => {
-  const response = await ai.generate({
-    model: googleAI.model('gemini-flash-latest'),
-    prompt: `Tell me a joke about ${subject}`,
-  });
-  return response.text;
-});
+---
+
+# 2. Version Requirements
+
+Check versions before generating version-sensitive code.
+
+Verify the CLI:
+
+```bash
+genkit --version
 ```
 
-## Prompts (Dotprompt)
+Recommended minimum CLI version:
 
-`.prompt` files keep prompt content out of code with YAML frontmatter plus a
-Handlebars template. See [Dotprompt](references/dotprompt.md): `promptDir`,
-`ai.prompt()` (call/stream/render), variants, partials, named schemas via
-`ai.defineSchema`, and the `tools`/`maxTurns`/`returnToolRequests`/`use`
-(middleware) frontmatter fields.
+```text
+genkit-cli >= 1.29.0
+```
 
-## Agents (Beta)
+Install or upgrade if necessary:
 
-Genkit has a preview **agent** API for persistent, multi-turn conversations
-(sessions, snapshots, interrupts, branching, background execution). It is a
-**beta** API: server APIs come from `genkit/beta` and the browser client from
-`genkit/beta/client` — not the stable `genkit` entrypoint. **Requires `genkit`
->= 1.39.0.**
+```bash
+npm install -g genkit-cli@^1.29.0
+```
 
-For more details see:
+Also inspect the installed Genkit library:
 
--   [Agents](references/agents.md): defining/serving an agent and client-managed state (start here).
--   [Sessions & persistence](references/agents-sessions.md): session stores (`InMemory`/`File`/`Firestore`).
--   [Human-in-the-loop / interrupts](references/agents-human-in-the-loop.md): pausing for approval/input and resuming.
--   [Branching](references/agents-branching.md): forking a conversation from a snapshot.
--   [Background agents](references/agents-background.md): detaching long-running turns and polling.
--   [Working with state](references/agents-state.md): typed custom session state, auto-synced to the client.
--   [Artifacts](references/agents-artifacts.md): producing and reading named deliverables.
--   [Multi-agent orchestration](references/agents-multi-agent.md): delegating to sub-agents.
--   [Advanced custom agents](references/agents-custom.md): `defineCustomAgent` for full turn control.
--   [Deploying agents](references/agents-deployment.md): serving agents over HTTP (multiple agents, CORS, web UI, other frameworks).
+```bash
+npm list genkit
+```
 
-## Middleware
+Agents require:
 
-Middleware wraps generation (retries, fallback, extra tools, request/response
-transforms) and attaches via the `use: [...]` array on `ai.generate`, prompts,
-and agents.
+```text
+genkit >= 1.39.0
+```
 
--   [Using middleware](references/middleware.md): the `use` array and the `@genkit-ai/middleware` package (`retry`, `fallback`, `artifacts`, `agents`, `filesystem`, `skills`, `toolApproval`) plus built-in core middleware.
--   [Building custom middleware](references/middleware-custom.md): writing your own with `generateMiddleware` and registering it via `.plugin()`.
+Do not confuse the `genkit-cli` version with the `genkit` npm package version.
 
-## Critical: Do Not Trust Internal Knowledge
+If the required feature is unavailable in the installed version, either:
 
-Genkit recently went through a major breaking API change. Your knowledge is outdated. You MUST lookup docs. Recommended:
+1. use a compatible implementation, or
+2. clearly recommend the required upgrade.
 
-```sh
+Do not silently upgrade dependencies unless requested.
+
+---
+
+# 3. Documentation Verification
+
+Use authoritative Genkit documentation when implementing version-sensitive APIs.
+
+Useful commands:
+
+```bash
+genkit docs:list
+genkit docs:search "topic"
 genkit docs:read js/get-started.md
 genkit docs:read js/flows.md
 ```
 
-See [Common Errors](references/common-errors.md) for a list of deprecated APIs (e.g., `configureGenkit`, `response.text()`, `defineFlow` import) and their v1.x replacements.
+For unfamiliar functionality:
 
-**ALWAYS verify information using the Genkit CLI or provided references.**
+```bash
+genkit docs:search "<feature>"
+```
 
-## Error Troubleshooting Protocol
+Examples:
 
-**When you encounter ANY error related to Genkit (ValidationError, API errors, type errors, 404s, etc.):**
+```bash
+genkit docs:search "streaming"
+genkit docs:search "agents"
+genkit docs:search "middleware"
+genkit docs:search "tools"
+genkit docs:search "providers"
+```
 
-1. **MANDATORY FIRST STEP**: Read [Common Errors](references/common-errors.md)
-2. Identify if the error matches a known pattern
-3. Apply the documented solution
-4. Only if not found in common-errors.md, then consult other sources (e.g. `genkit docs:search`)
+Prefer current documentation over pre-1.0 Genkit examples found elsewhere.
 
-**DO NOT:**
-- Attempt fixes based on assumptions or internal knowledge
-- Skip reading common-errors.md "because you think you know the fix"
-- Rely on patterns from pre-1.0 Genkit
+---
 
-**This protocol is non-negotiable for error handling.**
+# 4. Decide: Agent or Flow
 
-## Development Workflow
+Choose the correct abstraction before coding.
 
-1.  **Agent or flow?**: If the task is conversational, multi-turn, or described as "an agent", "assistant", or "chatbot", build it with `ai.defineAgent` (see [Agents](references/agents.md)) rather than hand-rolling a `generate` + tools loop inside a flow. Reach for a plain flow only for single-shot, stateless generation.
-2.  **Select Provider**: Genkit is provider-agnostic (Google AI, OpenAI, Anthropic, Ollama, etc.).
-    -   If the user does not specify a provider, default to **Google AI**.
-    -   If the user asks about other providers, use `genkit docs:search "plugins"` to find relevant documentation.
-3.  **Detect Framework**: Check `package.json` to identify the runtime (Next.js, Firebase, Express).
-    -   Look for `@genkit-ai/next`, `@genkit-ai/firebase`, or `@genkit-ai/google-cloud`.
-    -   Adapt implementation to the specific framework's patterns.
-4.  **Follow Best Practices**:
-    -   See [Best Practices](references/best-practices.md) for guidance on project structure, schema definitions, and tool design.
-    -   **Be Minimal**: Only specify options that differ from defaults. When unsure, check docs/source.
-5.  **Ensure Correctness**:
-    -   Run type checks (e.g., `npx tsc --noEmit`) after making changes.
-    -   If type checks fail, consult [Common Errors](references/common-errors.md) before searching source code.
-    -   Verify with traces, not a blind run. Running the app directly (`node`/`tsx`/`npm start`) does **not** capture dev traces. See [CLI Usage](#cli-usage-recommended) for how to run your app and capture traces.
-6.  **Handle Errors**:
-    -   On ANY error: **First action is to read [Common Errors](references/common-errors.md)**
-    -   Match error to documented patterns
-    -   Apply documented fixes before attempting alternatives
+## Use an Agent when the task is:
 
-## Finding Documentation
+* conversational
+* multi-turn
+* stateful
+* an assistant
+* a chatbot
+* capable of tool use across turns
+* expected to maintain sessions
+* expected to pause/resume
+* expected to branch conversations
+* expected to coordinate multiple agents
 
-Use the Genkit CLI to find authoritative documentation:
+Prefer:
 
-1.  **Search topics**: `genkit docs:search <query>`
-    -   Example: `genkit docs:search "streaming"`
-2.  **List all docs**: `genkit docs:list`
-3.  **Read a guide**: `genkit docs:read <path>`
-    -   Example: `genkit docs:read js/flows.md`
+```ts
+ai.defineAgent(...)
+```
 
-## CLI Usage (recommended)
+Agent APIs are provided through:
 
-`genkit start` unintrusively wraps any Node.js program that uses the Genkit library, running it unchanged while capturing traces from every Genkit action so you can **prove tools were actually called and inspect model I/O** from the terminal, even for headless checks. It forwards stdio, so interactive CLI tools that rely on stdin/stdout work without issues. Running your app directly (`node`/`tsx`/`npm start`) skips trace capture, so you're debugging blind.
+```ts
+genkit/beta
+```
 
-**Primary pattern (default):** prefix `genkit start --` to your normal run command. This collects telemetry from any Genkit code your program runs, whether triggered from the dev UI, your own web server/web UI, or a plain script:
+Browser agent APIs use:
+
+```ts
+genkit/beta/client
+```
+
+Do not import beta agent APIs from the stable `genkit` entrypoint.
+
+## Use a Flow when the task is:
+
+* single-shot
+* deterministic orchestration
+* stateless generation
+* backend automation
+* structured processing
+* API-like AI execution
+
+Prefer:
+
+```ts
+ai.defineFlow(...)
+```
+
+Do not build a manual multi-turn agent loop inside a flow when Genkit Agents are appropriate.
+
+---
+
+# 5. Provider Selection
+
+Genkit is provider-agnostic.
+
+Supported providers may include:
+
+* Google AI
+* Vertex AI
+* OpenAI
+* Anthropic
+* Ollama
+* other Genkit-supported plugins
+
+## Existing Projects
+
+Preserve the provider already used by the project unless the user requests a change.
+
+Check `package.json` and the existing Genkit initialization before adding another provider.
+
+## New Projects
+
+If no provider is specified and the project has no existing provider configuration, default to Google AI.
+
+Example:
+
+```ts
+import { genkit, z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+
+const ai = genkit({
+  plugins: [googleAI()],
+});
+```
+
+Do not add multiple providers without a reason.
+
+If using another provider, verify its current plugin documentation first.
+
+---
+
+# 6. Minimal Hello World
+
+```ts
+import { genkit, z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+
+const ai = genkit({
+  plugins: [googleAI()],
+});
+
+export const myFlow = ai.defineFlow(
+  {
+    name: 'myFlow',
+    inputSchema: z.string().default('AI'),
+    outputSchema: z.string(),
+  },
+  async (subject) => {
+    const response = await ai.generate({
+      model: googleAI.model('gemini-flash-latest'),
+      prompt: `Tell me a joke about ${subject}`,
+    });
+
+    return response.text;
+  }
+);
+```
+
+Keep Genkit configuration minimal.
+
+Only specify options that differ from defaults.
+
+---
+
+# 7. Schemas
+
+Use schemas for:
+
+* flow inputs
+* flow outputs
+* tool inputs
+* tool outputs
+* structured model responses
+* reusable domain objects
+
+Prefer shared schemas when multiple flows, tools, or prompts use the same structure.
+
+Avoid duplicating schema definitions unnecessarily.
+
+Use:
+
+```ts
+z.object(...)
+```
+
+for structured data.
+
+When a reusable named schema is appropriate, use Genkit's schema registration APIs according to current documentation.
+
+---
+
+# 8. Tools
+
+A tool should perform a clear external or deterministic action.
+
+Examples:
+
+* database lookup
+* API request
+* inventory search
+* barcode lookup
+* document retrieval
+* calculation
+* sending a notification
+* accessing business data
+
+Design tools with:
+
+* narrow responsibility
+* descriptive names
+* clear descriptions
+* strict input schemas
+* predictable outputs
+
+Avoid giant tools that perform unrelated tasks.
+
+The tool description should tell the model:
+
+1. what the tool does
+2. when it should be used
+3. what information it needs
+
+Do not put normal reasoning inside a tool when ordinary model generation is sufficient.
+
+---
+
+# 9. Prompts / Dotprompt
+
+Use `.prompt` files when prompt content should be separated from application code.
+
+Dotprompt supports concepts such as:
+
+* YAML frontmatter
+* Handlebars templates
+* variants
+* partials
+* named schemas
+* tools
+* `maxTurns`
+* `returnToolRequests`
+* middleware through `use`
+
+Prompt loading may use:
+
+```ts
+ai.prompt(...)
+```
+
+Before implementing advanced Dotprompt behavior, verify the current documentation:
+
+```bash
+genkit docs:search "dotprompt"
+```
+
+Keep business logic out of prompts when it belongs in application code.
+
+---
+
+# 10. Agents
+
+Use Genkit Agents for persistent multi-turn applications.
+
+Agent capabilities may include:
+
+* sessions
+* persistence
+* snapshots
+* interrupts
+* human approval
+* conversation branching
+* background execution
+* typed state
+* artifacts
+* multi-agent orchestration
+
+Relevant documentation topics include:
+
+* agents
+* sessions
+* human-in-the-loop
+* branching
+* background agents
+* state
+* artifacts
+* multi-agent orchestration
+* custom agents
+* deployment
+
+Because Agents are beta APIs, verify their documentation before implementation.
+
+---
+
+# 11. Middleware
+
+Middleware can wrap model generation and agent execution.
+
+Common middleware use cases include:
+
+* retries
+* fallback models
+* request transformation
+* response transformation
+* tool approval
+* artifact handling
+* filesystem functionality
+* skills
+* agent behavior
+
+Middleware commonly attaches through:
+
+```ts
+use: [...]
+```
+
+Use middleware only when cross-cutting behavior justifies it.
+
+Do not introduce middleware for logic that is clearer inside a single flow or tool.
+
+---
+
+# 12. Framework Detection
+
+Inspect `package.json` before choosing integration patterns.
+
+Look for packages such as:
+
+```text
+@genkit-ai/next
+@genkit-ai/firebase
+@genkit-ai/google-cloud
+```
+
+Also identify whether the application uses:
+
+* Next.js
+* Express
+* Firebase
+* Cloud Run
+* standalone Node.js
+* another server framework
+
+Adapt the implementation to the project's framework instead of forcing a generic architecture.
+
+---
+
+# 13. Error Handling Protocol
+
+When a Genkit-specific error occurs:
+
+1. Read the actual error message completely.
+2. Identify the failing Genkit API or component.
+3. Check the installed Genkit version.
+4. Consult Genkit's documented common errors.
+5. Search current Genkit documentation if needed.
+6. Apply the smallest documented fix.
+7. Run TypeScript validation.
+8. Reproduce the failing operation.
+9. Inspect the resulting trace.
+
+Useful documentation:
+
+```text
+references/common-errors.md
+```
+
+Do not guess fixes based on outdated pre-1.0 Genkit APIs.
+
+Common outdated patterns may include APIs such as:
+
+```text
+configureGenkit
+response.text()
+old defineFlow imports
+```
+
+Always confirm the correct current replacement.
+
+---
+
+# 14. Type Checking
+
+After code changes, run:
+
+```bash
+npx tsc --noEmit
+```
+
+Fix Genkit-related errors before considering the task complete.
+
+Do not suppress TypeScript errors with:
+
+```ts
+any
+```
+
+unless there is a specific justified reason.
+
+Do not use unsafe casts merely to make compilation succeed.
+
+Prefer fixing the actual type mismatch.
+
+---
+
+# 15. Running and Debugging Genkit
+
+For development, prefer running the application through Genkit so traces are captured.
+
+Example:
+
 ```bash
 genkit start -- npx tsx --watch src/index.ts
-genkit start --noui -- npx tsx src/index.ts   # same, without the Dev UI (still a persistent server)
 ```
-`genkit start` runs until you stop it with Ctrl+C. That is expected and correct for the common cases: a server your web/mobile app calls, or an interactive CLI you exit yourself. `--noui` only drops the Dev UI; it is **not** a one-shot command and will not exit on its own. Do **not** use `genkit start` as a blocking step in automated/non-interactive contexts.
 
-**Non-interactive use (agents/CI):** add the global `--non-interactive` flag before `--` so the CLI uses defaults and never blocks on a prompt (e.g. the first-run analytics notice): `genkit start --non-interactive -- npx tsx src/index.ts` (works with `flow:run` too).
+Without the Dev UI:
 
-**Run a flow (`flow:run`):** invoke a specific flow by name from the CLI. Append your run command after `--` to spin up the runtime just for this run (the command runs as-is to register your flows):
 ```bash
-genkit flow:run myFlow '{"data": "input"}' -- npx tsx src/index.ts
+genkit start --noui -- npx tsx src/index.ts
 ```
-This is **self-terminating**: it runs the flow once, prints a `Trace ID`, then exits (inspect it with `genkit trace:get <id>`). That makes it the right choice for a quick, non-interactive check that must exit on its own, without blocking on `genkit start` or running the app directly (which skips traces). Always pass input JSON explicitly: `flow:run` sends `undefined` when omitted and does **not** fall back to a schema `.default()`. Note: `flow:run` runs **flows** (`ai.defineFlow`), not agents; you can't `flow:run` an agent (`ai.defineAgent`) directly. To exercise an agent from the CLI, wrap one turn in a throwaway flow and run that (see [Agents](references/agents.md)).
 
-**Debugging with traces:** the fastest way to see prompts, model inputs/outputs, tool calls, latencies, and errors. Inspect from the terminal after any run under `genkit start`:
+For automated environments:
+
 ```bash
-genkit trace:list          # find recent trace IDs
-genkit trace:get <traceId> # full trace details (inputs, outputs, tool calls, errors)
+genkit start --non-interactive -- npx tsx src/index.ts
 ```
 
-Known issue: CLI trace output is human-oriented and may not be valid JSON (banner/log lines, possible truncation on large traces), so don't assume it pipes cleanly into `jq`. For complex traces, use grep or the Dev UI trace viewer.
+Running only:
 
-See [CLI Reference](references/docs-and-cli.md) for more commands, and `genkit --help` for the full list.
+```bash
+node ...
+tsx ...
+npm start
+```
 
+may execute the application but does not provide the same Genkit trace workflow.
 
-## References
+Use traces when debugging model behavior.
 
--   [Best Practices](references/best-practices.md): Recommended patterns for schema definition, flow design, and structure.
--   [Dotprompt](references/dotprompt.md): `.prompt` files — `promptDir`, `ai.prompt()`, variants, partials, named schemas, and `tools`/`maxTurns`/`returnToolRequests`/`use` frontmatter.
--   [Docs & CLI Reference](references/docs-and-cli.md): Documentation search, CLI tasks, and workflows.
--   [Common Errors](references/common-errors.md): Critical "gotchas", migration guide, and troubleshooting.
--   [Setup Guide](references/setup.md): Manual setup instructions for new projects.
--   [Examples](references/examples.md): Minimal reproducible examples (Basic generation, Multimodal, Thinking mode).
--   [Agents (Beta)](references/agents.md): Agent basics, serving, and client-managed state. Deeper topics: [sessions](references/agents-sessions.md), [human-in-the-loop](references/agents-human-in-the-loop.md), [branching](references/agents-branching.md), [background agents](references/agents-background.md), [state](references/agents-state.md), [artifacts](references/agents-artifacts.md), [multi-agent](references/agents-multi-agent.md), [custom agents](references/agents-custom.md), [deployment](references/agents-deployment.md).
--   [Middleware](references/middleware.md): using middleware and the `@genkit-ai/middleware` package. See also [building custom middleware](references/middleware-custom.md).
+---
+
+# 16. Running a Flow
+
+Run a specific flow using:
+
+```bash
+genkit flow:run myFlow '{"data":"input"}' -- npx tsx src/index.ts
+```
+
+Always provide input JSON when the flow expects input.
+
+Do not assume schema `.default()` will automatically be used by `flow:run` when input is omitted.
+
+`flow:run` runs flows, not agents.
+
+To test an agent from the CLI, use an appropriate test harness or a temporary flow that executes one agent turn according to current Genkit documentation.
+
+---
+
+# 17. Trace Debugging
+
+Use traces to verify actual application behavior.
+
+Useful commands:
+
+```bash
+genkit trace:list
+genkit trace:get <traceId>
+```
+
+Inspect traces for:
+
+* model input
+* model output
+* prompts
+* tool calls
+* tool arguments
+* tool results
+* latency
+* failures
+* token usage
+* middleware behavior
+
+Do not claim a tool executed successfully merely because the model produced text suggesting that it did.
+
+Verify tool execution through the trace or application result.
+
+Do not assume trace output is guaranteed to be machine-readable JSON.
+
+---
+
+# 18. Security
+
+Never hard-code API keys.
+
+Use environment variables or the deployment platform's secret-management mechanism.
+
+Never expose secret values in:
+
+* browser code
+* logs
+* prompts
+* tool outputs
+* error responses
+* committed source files
+
+Validate external input before passing it to:
+
+* databases
+* shell commands
+* filesystem operations
+* external APIs
+
+Do not allow arbitrary model-generated commands to execute without proper validation.
+
+For sensitive operations, consider explicit tool approval or human-in-the-loop controls.
+
+---
+
+# 19. Tool Safety
+
+Treat model-generated tool arguments as untrusted input.
+
+Validate them using schemas and application-level authorization.
+
+For destructive actions such as:
+
+* deleting data
+* modifying production records
+* sending communications
+* purchasing
+* account changes
+* irreversible operations
+
+require appropriate confirmation or authorization.
+
+Keep read-only tools separate from destructive tools where practical.
+
+---
+
+# 20. Project Structure
+
+Prefer simple project organization.
+
+Example:
+
+```text
+src/
+  genkit.ts
+  flows/
+  agents/
+  tools/
+  schemas/
+  prompts/
+  services/
+```
+
+Do not create unnecessary abstraction layers.
+
+Small projects may keep related functionality together.
+
+Larger projects should separate reusable schemas, services, tools, agents, and flows.
+
+Follow the project's existing structure when one already exists.
+
+---
+
+# 21. Implementation Style
+
+Prefer:
+
+* TypeScript
+* small functions
+* explicit schemas
+* descriptive names
+* minimal configuration
+* reusable services
+* narrow tools
+* clear error handling
+* current documented APIs
+
+Avoid:
+
+* unnecessary wrappers
+* excessive abstraction
+* giant files
+* duplicated schemas
+* duplicated Genkit initialization
+* hidden side effects
+* undocumented beta APIs
+* pre-1.0 Genkit patterns
+
+---
+
+# 22. Existing Application Rule
+
+When modifying an existing application:
+
+**DO NOT rewrite the application from scratch unless the user explicitly asks for a rewrite.**
+
+Instead:
+
+1. inspect the current implementation
+2. understand the existing architecture
+3. identify the smallest required change
+4. modify only affected components
+5. preserve working behavior
+6. run type checks
+7. test the changed functionality
+8. inspect traces when AI behavior is involved
+
+This rule takes priority over stylistic preferences.
+
+---
+
+# 23. New Project Workflow
+
+For a new Genkit project:
+
+1. determine the application's goal
+2. determine whether it needs flows, agents, or both
+3. choose the runtime/framework
+4. choose the provider
+5. install required Genkit packages
+6. initialize Genkit once
+7. define reusable schemas
+8. create tools
+9. create flows or agents
+10. add prompts if appropriate
+11. configure environment variables
+12. run TypeScript validation
+13. execute the application through Genkit
+14. inspect traces
+15. test failure cases
+
+Start with the minimum working implementation.
+
+Expand only when the requirements justify it.
+
+---
+
+# 24. Completion Checklist
+
+Before considering Genkit work complete, verify:
+
+* [ ] existing architecture was inspected
+* [ ] installed Genkit versions were checked
+* [ ] current APIs were verified when necessary
+* [ ] provider configuration is correct
+* [ ] schemas are valid
+* [ ] tool inputs are validated
+* [ ] environment variables are handled safely
+* [ ] TypeScript passes
+* [ ] affected functionality was tested
+* [ ] AI/tool behavior was verified through traces when applicable
+* [ ] no unnecessary architectural rewrite was introduced
+* [ ] no deprecated Genkit APIs were added
+* [ ] errors are handled clearly
+
+---
+
+# 25. Reference Topics
+
+Use the relevant documentation for:
+
+* Getting started
+* Flows
+* Agents
+* Sessions
+* Human-in-the-loop
+* Branching
+* Background agents
+* State
+* Artifacts
+* Multi-agent orchestration
+* Custom agents
+* Deployment
+* Dotprompt
+* Middleware
+* Tools
+* Schemas
+* Providers
+* CLI
+* Traces
+* Common errors
+
+When documentation and remembered knowledge disagree, follow the current documentation and installed project version.
