@@ -1,12 +1,11 @@
 'use server';
 /**
  * @fileOverview Industrial Return Voucher AI Processor.
- * Uses Tesseract.js for primary character extraction and Gemini for spatial reasoning.
+ * Relies exclusively on Gemini Multimodal Vision for high-fidelity extraction.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import Tesseract from 'tesseract.js';
 
 const ProcessVoucherInputSchema = z.object({
   photoDataUri: z.string().describe("Base64 document data URI (Image or PDF)."),
@@ -25,88 +24,38 @@ const ProcessVoucherOutputSchema = z.object({
 });
 export type ProcessVoucherOutput = z.infer<typeof ProcessVoucherOutputSchema>;
 
-/**
- * Local Character Recognition Node
- * Optimized for English alphanumeric industrial documents.
- */
-async function performLocalOCR(dataUri: string): Promise<string> {
-    try {
-        console.log("AI Terminal: Initializing Tesseract Node...");
-        const { data: { text } } = await Tesseract.recognize(dataUri, 'eng');
-        return text || "";
-    } catch (e) {
-        console.error("Local OCR Node Failure:", e);
-        return "";
-    }
-}
-
-async function extractWithOcrSpace(dataUri: string): Promise<string> {
-    const apiKey = process.env.OCR_SPACE_API_KEY;
-    if (!apiKey) return "";
-
-    try {
-        const formData = new URLSearchParams();
-        formData.append('base64Image', dataUri);
-        formData.append('apikey', apiKey);
-        formData.append('isTable', 'true');
-        formData.append('OCREngine', '2');
-
-        const response = await fetch('https://api.ocr.space/parse/image', {
-            method: 'POST',
-            body: formData,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        const result = await response.json();
-        return result.ParsedResults?.[0]?.ParsedText || "";
-    } catch (e) {
-        return "";
-    }
-}
-
 const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
-  input: { schema: ProcessVoucherInputSchema.extend({ ocrText: z.string().optional(), ocrSpaceText: z.string().optional() }) },
+  input: { schema: ProcessVoucherInputSchema },
   output: { schema: ProcessVoucherOutputSchema },
   prompt: `You are an industrial data entry specialist. Analyze this return voucher document.
 
-MULTIMODAL FUSION PROTOCOL:
-1. **Primary Text Layer**: Use the provided OCR text as the authoritative source for numeric characters (SKUs and Quantities).
-2. **Visual Spatial Layer**: Use the image to verify which quantity belongs to which barcode by looking at row alignment.
-
-Tesseract OCR Found:
-{{{ocrText}}}
-
-Supplemental Cloud OCR Found:
-{{{ocrSpaceText}}}
+EXTRACTION PROTOCOL:
+1. **Visual Scan**: Identify the table structure or list layout in the provided image.
+2. **SKU Identification**: Extract the Barcode/SKU and the corresponding Return Quantity for each item.
+3. **Spatial Alignment**: Ensure that the quantity you extract belongs to the correct barcode by looking at row alignment.
 
 Input Image: {{media url=photoDataUri}}
 
 GOAL: Extract all SKU/Barcode entries and their corresponding Return Quantities.
-- If a barcode is missing, provide the product name.
-- If a quantity is written as "1 case of 12", return 12.
-- Only return valid JSON matching the schema.`,
+- If a quantity is written as a case (e.g. "1 case of 12"), calculate the total units (12).
+- Return only valid JSON matching the schema.
+- If the image is blurry or unreadable, set success to false and provide an error message.`,
 });
 
 /**
- * Industrial AI Processor with Multi-Layer Extraction & Retry Logic
+ * Industrial AI Processor with Native Multimodal Extraction
  */
 export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
   const MAX_RETRIES = 2;
   let lastError = "";
 
-  // Tier 1: Local Character Extraction (Fast)
-  const ocrText = await performLocalOCR(input.photoDataUri);
-  
-  // Tier 2: Cloud Supplemental Extraction (High-Fidelity)
-  const ocrSpaceText = await extractWithOcrSpace(input.photoDataUri);
-
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-        console.log(`AI Terminal: Extraction Attempt ${attempt}/${MAX_RETRIES}...`);
+        console.log(`AI Terminal: Visual Analysis Attempt ${attempt}/${MAX_RETRIES}...`);
         
-        // Tier 3: AI Spatial Reasoning
-        const { output } = await prompt({ ...input, ocrText, ocrSpaceText });
+        // Native Gemini Multimodal Call
+        const { output } = await prompt(input);
         
         if (!output) throw new Error("AI Node returned zero payload.");
 

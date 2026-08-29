@@ -18,8 +18,7 @@ const nextConfig: NextConfig = {
     '@genkit-ai/google-genai', 
     '@genkit-ai/next', 
     '@genkit-ai/core', 
-    '@genkit-ai/flow',
-    'tesseract.js'
+    '@genkit-ai/flow'
   ],
   images: {
     remotePatterns: [
