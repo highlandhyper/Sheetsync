@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
     FileText, 
     Upload, 
@@ -25,7 +27,9 @@ import {
     ZapOff,
     Maximize2,
     Minimize2,
-    AlertCircle
+    AlertCircle,
+    Pencil,
+    Save
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +45,7 @@ interface StagedReturn {
     productName: string;
     quantity: number;
     matchedItemId?: string;
+    availableStock?: number;
     status: 'matched' | 'unmatched' | 'multiple';
 }
 
@@ -98,6 +103,9 @@ export function VoucherReturnTerminal() {
     const [zoomRange, setZoomRange] = useState<{ min: number, max: number, step: number } | null>(null);
     const [currentZoom, setCurrentZoom] = useState(1);
     
+    const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+    const [editQuantity, setEditQuantity] = useState<string>('');
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -216,7 +224,6 @@ export function VoucherReturnTerminal() {
             if (!result.success || !result.items) throw new Error(result.error || "No data extracted.");
 
             const processed = result.items.map(aiItem => {
-                // NORMALIZED MATCHING: Treat '0123' and '123' as same to handle Google Sheets leading-zero removal
                 const normalizedAiBarcode = aiItem.barcode.replace(/^0+/, '');
                 
                 const matches = inventoryItems.filter(i => {
@@ -230,6 +237,7 @@ export function VoucherReturnTerminal() {
                     productName: aiItem.productName,
                     quantity: aiItem.quantity,
                     matchedItemId: matches.length === 1 ? matches[0].id : undefined,
+                    availableStock: matches.length === 1 ? matches[0].quantity : undefined,
                     status: matches.length === 1 ? 'matched' : matches.length > 1 ? 'multiple' : 'unmatched'
                 } as StagedReturn;
             });
@@ -241,6 +249,21 @@ export function VoucherReturnTerminal() {
         } finally {
             setIsProcessing(false);
         }
+    };
+
+    const handleUpdateQuantity = () => {
+        if (editingItemIndex === null) return;
+        const newQty = parseInt(editQuantity);
+        if (isNaN(newQty) || newQty < 1) {
+            toast({ variant: "destructive", title: "Invalid Input", description: "Quantity must be at least 1." });
+            return;
+        }
+
+        setStagedItems(prev => prev.map((item, idx) => 
+            idx === editingItemIndex ? { ...item, quantity: newQty } : item
+        ));
+        setEditingItemIndex(null);
+        toast({ title: "Quantity Adjusted", description: "Staged return payload updated." });
     };
 
     const commitReturns = async () => {
@@ -342,12 +365,24 @@ export function VoucherReturnTerminal() {
                                                         <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">{item.productName}</p>
                                                         <div className="flex items-center gap-4">
                                                             <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground"><Barcode className="h-3 w-3" /> {item.barcode}</div>
-                                                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary"><Hash className="h-3 w-3" /> {item.quantity} Units</div>
+                                                            <button 
+                                                                onClick={() => { setEditingItemIndex(idx); setEditQuantity(item.quantity.toString()); }}
+                                                                className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary hover:bg-primary/10 px-2 py-0.5 rounded transition-all"
+                                                            >
+                                                                <Hash className="h-3 w-3" /> {item.quantity} Units <Pencil className="h-2.5 w-2.5 ml-1 opacity-40" />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    {item.status === 'matched' ? <Badge variant="outline" className="bg-green-500/10 text-green-600 border-none font-black text-[8px] uppercase px-3 py-1">Registry Verified</Badge> : <Badge variant="outline" className="bg-destructive/10 text-destructive border-none font-black text-[8px] uppercase px-3 py-1">Target Not Found</Badge>}
+                                                    {item.status === 'matched' ? (
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-none font-black text-[8px] uppercase px-3 py-1">Registry Verified</Badge>
+                                                            <span className="text-[9px] font-bold text-muted-foreground/40 uppercase">Stock: {item.availableStock}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <Badge variant="outline" className="bg-destructive/10 text-destructive border-none font-black text-[8px] uppercase px-3 py-1">Target Not Found</Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -367,6 +402,48 @@ export function VoucherReturnTerminal() {
                     </Card>
                 </div>
             </div>
+
+            {/* QUANTITY CALIBRATION DIALOG */}
+            <Dialog open={editingItemIndex !== null} onOpenChange={(open) => !open && setEditingItemIndex(null)}>
+                <DialogContent className="sm:max-w-md p-6 rounded-[2rem] border-none shadow-3xl bg-background">
+                    <DialogHeader>
+                        <div className="bg-primary/10 p-4 rounded-2xl w-fit mb-4">
+                            <Hash className="h-6 w-6 text-primary" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Adjust Quantity</DialogTitle>
+                        <DialogDescription className="font-medium text-xs">
+                            Manually override the extracted quantity for <strong>{editingItemIndex !== null && stagedItems[editingItemIndex]?.productName}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6">
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center px-1">
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Return Quantity</Label>
+                                {editingItemIndex !== null && stagedItems[editingItemIndex]?.availableStock !== undefined && (
+                                    <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase">Stock Limit: {stagedItems[editingItemIndex].availableStock}</span>
+                                )}
+                            </div>
+                            <div className="relative">
+                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
+                                <Input 
+                                    type="number" 
+                                    value={editQuantity} 
+                                    onChange={(e) => setEditQuantity(e.target.value)}
+                                    className="pl-12 h-14 rounded-2xl bg-muted/10 font-black text-2xl border-primary/10 focus:border-primary transition-all"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateQuantity()}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="grid grid-cols-2 gap-3">
+                        <Button variant="outline" onClick={() => setEditingItemIndex(null)} className="rounded-xl font-bold h-12">Cancel</Button>
+                        <Button onClick={handleUpdateQuantity} className="bg-primary hover:bg-primary/90 text-white rounded-xl font-black uppercase tracking-widest text-[10px] h-12 shadow-lg shadow-primary/20">
+                            <Save className="mr-2 h-4 w-4" /> Save Override
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isCameraOpen} onOpenChange={(open) => !open && stopCamera()}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-black">
