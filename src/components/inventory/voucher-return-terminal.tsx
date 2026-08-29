@@ -17,9 +17,8 @@ import {
     FileType,
     Zap,
     Camera,
-    FileType as FileIcon,
-    AlertCircle,
-    Search
+    Search,
+    RefreshCw
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +27,6 @@ import { useAuth } from '@/context/auth-context';
 import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface StagedReturn {
     barcode: string;
@@ -46,7 +44,7 @@ async function optimizeImageForRegistry(dataUri: string): Promise<string> {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
-            const MAX_DIMENSION = 1800; // Increased for Gemini 2.0 precision
+            const MAX_DIMENSION = 2000; // Increased for Gemini 3.7 precision
             let width = img.width;
             let height = img.height;
 
@@ -158,6 +156,7 @@ export function VoucherReturnTerminal() {
      * Resolves return quantities across multiple logs for the same SKU.
      */
     const allocateQuantityToLogs = (barcode: string, requestedQty: number) => {
+        // Strip leading zeros and normalize for matching
         const normalizedTarget = barcode.replace(/^0+/, '').trim().toLowerCase();
         
         const relevantLogs = inventoryItems
@@ -167,7 +166,7 @@ export function VoucherReturnTerminal() {
                 return i.barcode.trim().toLowerCase() === barcode.trim().toLowerCase() || 
                        normalizedLogBarcode === normalizedTarget;
             })
-            .sort((a, b) => (a.quantity - b.quantity)); // Smallest logs first to prune the sheet
+            .sort((a, b) => (a.quantity - b.quantity)); // Smallest logs first to prune the sheet efficiently
 
         let remaining = requestedQty;
         const allocation: { itemId: string; qty: number; location: string }[] = [];
@@ -185,7 +184,7 @@ export function VoucherReturnTerminal() {
             remaining,
             totalAvailable,
             status: (remaining <= 0) ? 'matched' : (totalAvailable > 0 ? 'partial' : 'unmatched')
-        };
+        } as const;
     };
 
     const processWithAI = async (dataUri: string) => {
@@ -194,7 +193,7 @@ export function VoucherReturnTerminal() {
         
         try {
             const result = await processVoucher({ photoDataUri: dataUri });
-            if (!result.success || !result.items) throw new Error(result.error || "No data identified.");
+            if (!result.success || !result.items) throw new Error(result.error || "Zero registry matches identified.");
 
             const processed = result.items.map(aiItem => {
                 const { allocation, totalAvailable, status } = allocateQuantityToLogs(aiItem.barcode, aiItem.quantity);
@@ -210,9 +209,9 @@ export function VoucherReturnTerminal() {
             });
 
             setStagedItems(processed);
-            toast({ title: "Scan Successful", description: `Identified ${processed.length} items for return.` });
+            toast({ title: "Analysis Complete", description: `Gemini 3.7 identified ${processed.length} items.` });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "AI Sync Error", description: e.message || "Failed to parse document." });
+            toast({ variant: "destructive", title: "AI Error", description: e.message || "Failed to parse document." });
         } finally {
             setIsProcessing(false);
         }
@@ -229,20 +228,20 @@ export function VoucherReturnTerminal() {
             for (const staged of stagedItems) {
                 if (staged.allocation.length === 0) continue;
                 
-                // SERIALIZED REGISTRY WRITE
+                // SERIALIZED REGISTRY WRITE: Process each allocation node sequentially to avoid row locks
                 for (const node of staged.allocation) {
                     const res = await bulkReturnInventoryItemsAction(user.email, [node.itemId], staffName, 'specific', node.qty);
                     if (res.success) totalLogsAffected++;
                 }
             }
             
-            toast({ title: "Registry Updated", description: `Successfully processed ${totalLogsAffected} inventory updates.` });
+            toast({ title: "Registry Synchronized", description: `Successfully processed ${totalLogsAffected} inventory nodes.` });
             setStagedItems([]);
             setPreviewImage(null);
             setFileName(null);
             refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Write Error", description: "Communication with sheet interrupted." });
+            toast({ variant: "destructive", title: "Commit Failure", description: "Communication with sheet registry interrupted." });
         } finally {
             setIsExecuting(false);
         }
@@ -254,25 +253,29 @@ export function VoucherReturnTerminal() {
                 <div className="flex items-center gap-4">
                     <div className="bg-primary p-4 rounded-3xl shadow-xl shadow-primary/20"><Zap className="h-8 w-8 text-white fill-current" /></div>
                     <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">Gemini 2.0 Terminal</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-40">High-Velocity Visual Return Engine</p>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">Gemini 3.7 Terminal</h3>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-40">High-Velocity Visual Processing</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                    <Button variant="outline" onClick={startCamera} disabled={isProcessing} className="h-14 px-6 rounded-2xl font-black uppercase text-[10px]"><Camera className="mr-2 h-5 w-5" /> Quick Capture</Button>
+                    <Button variant="outline" onClick={startCamera} disabled={isProcessing} className="h-14 px-6 rounded-2xl font-black uppercase text-[10px]"><Camera className="mr-2 h-5 w-5" /> Live Scan</Button>
                     <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="h-14 px-8 rounded-2xl font-black uppercase shadow-xl bg-primary text-white">
                         {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                        Sync Voucher
+                        Import Voucher
                     </Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-4">
-                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-3xl overflow-hidden h-full min-h-[400px]">
-                        <CardContent className="p-6 h-full">
-                            <div className="aspect-[3/4] h-full relative rounded-2xl bg-muted/10 border-2 border-dashed border-white/5 flex items-center justify-center overflow-hidden">
+                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-3xl overflow-hidden h-full min-h-[400px] shadow-none">
+                        <CardContent className="p-6 h-full flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Visual Source</span>
+                                {previewImage && <Badge variant="outline" className="bg-primary/5 text-primary text-[8px] font-black">{fileName}</Badge>}
+                            </div>
+                            <div className="flex-1 relative rounded-2xl bg-muted/10 border-2 border-dashed border-white/5 flex items-center justify-center overflow-hidden">
                                 {previewImage ? (
                                     <img src={previewImage} className="object-contain w-full h-full" alt="Voucher Preview" />
                                 ) : (
@@ -283,8 +286,8 @@ export function VoucherReturnTerminal() {
                                 )}
                                 {isProcessing && (
                                     <div className="absolute inset-0 bg-primary/20 backdrop-blur-md flex flex-col items-center justify-center">
-                                        <Loader2 className="h-12 w-12 text-white animate-spin mb-4" />
-                                        <span className="text-white font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Analyzing Space...</span>
+                                        <RefreshCw className="h-12 w-12 text-white animate-spin mb-4" />
+                                        <span className="text-white font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Scanning Registry...</span>
                                     </div>
                                 )}
                             </div>
@@ -293,13 +296,13 @@ export function VoucherReturnTerminal() {
                 </div>
 
                 <div className="lg:col-span-8 flex flex-col">
-                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex-grow flex flex-col">
+                    <Card className="border-white/10 bg-card/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden flex-grow flex flex-col shadow-none">
                         <CardHeader className="bg-muted/10 p-8 border-b border-white/5 flex flex-row items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <Layers className="h-5 w-5 text-primary" />
-                                <h4 className="text-xl font-black uppercase tracking-tighter">Fulfillment Pipeline</h4>
+                                <Layers className="h-5 w-5 text-primary" strokeWidth={3} />
+                                <h4 className="text-xl font-black uppercase tracking-tighter">Return Mapping</h4>
                             </div>
-                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">{stagedItems.length} MAPPINGS</Badge>
+                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black">{stagedItems.length} SKUS</Badge>
                         </CardHeader>
                         <CardContent className="p-0 flex-grow">
                             <ScrollArea className="h-[450px]">
@@ -320,7 +323,7 @@ export function VoucherReturnTerminal() {
                                                     </div>
                                                     <div className="space-y-1">
                                                         <p className="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">{item.productName}</p>
-                                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase font-black tracking-tight">
+                                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-2">
                                                             <div className="flex items-center gap-1.5">
                                                                 <Barcode className="h-3 w-3" /> {item.barcode}
                                                             </div>
@@ -333,25 +336,30 @@ export function VoucherReturnTerminal() {
                                                 <div className="text-right">
                                                     {item.status === 'matched' ? (
                                                         <div className="flex flex-col items-end gap-1">
-                                                            <Badge className="bg-green-500 text-white font-black text-[8px] uppercase px-3 py-1">Ready</Badge>
-                                                            <span className="text-[9px] font-bold text-muted-foreground/40">{item.allocation.length} logs targeted</span>
+                                                            <Badge className="bg-green-500 text-white font-black text-[8px] uppercase px-3 py-1">Synced</Badge>
+                                                            <span className="text-[9px] font-bold text-muted-foreground/40">{item.allocation.length} registry nodes</span>
                                                         </div>
                                                     ) : item.status === 'partial' ? (
                                                         <div className="flex flex-col items-end gap-1">
                                                             <Badge className="bg-yellow-500 text-black font-black text-[8px] uppercase px-3 py-1">Partial</Badge>
-                                                            <span className="text-[9px] font-bold text-yellow-600">Available: {item.totalAvailable}</span>
+                                                            <span className="text-[9px] font-bold text-yellow-600">Avail: {item.totalAvailable}</span>
                                                         </div>
                                                     ) : (
-                                                        <Badge className="bg-destructive text-white font-black text-[8px] uppercase px-3 py-1">Not Found</Badge>
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <Badge className="bg-destructive text-white font-black text-[8px] uppercase px-3 py-1">Registry Missing</Badge>
+                                                            <span className="text-[9px] font-bold text-destructive/40 italic">Check barcode</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="py-32 flex flex-col items-center justify-center opacity-30 text-center">
-                                        <Search className="h-16 w-16 mb-4" />
-                                        <p className="text-sm font-medium">Upload industrial voucher to initialize return pipeline.</p>
+                                    <div className="py-32 flex flex-col items-center justify-center opacity-30 text-center space-y-4">
+                                        <div className="p-8 bg-muted/20 rounded-[3rem] border-4 border-dashed border-white/5">
+                                            <Search className="h-16 w-16" strokeWidth={1} />
+                                        </div>
+                                        <p className="text-sm font-black uppercase tracking-widest">Awaiting Transmission</p>
                                     </div>
                                 )}
                             </ScrollArea>
@@ -361,10 +369,10 @@ export function VoucherReturnTerminal() {
                                 <Button 
                                     onClick={commitReturns} 
                                     disabled={isExecuting || stagedItems.every(i => i.allocation.length === 0)} 
-                                    className="w-full h-16 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl bg-primary text-white active:scale-95 transition-all"
+                                    className="w-full h-16 rounded-2xl font-black uppercase tracking-[0.3em] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/40 bg-primary text-white active:scale-95 transition-all border-none"
                                 >
-                                    {isExecuting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Undo2 className="mr-3 h-5 w-5" />}
-                                    Finalize Distributed Returns
+                                    {isExecuting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Undo2 className="mr-3 h-6 w-6" strokeWidth={3} />}
+                                    Commit Bulk Returns
                                 </Button>
                             </div>
                         )}
@@ -377,15 +385,17 @@ export function VoucherReturnTerminal() {
                     <div className="relative aspect-video sm:aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
                         {isCameraStarting && <div className="absolute inset-0 flex items-center justify-center bg-black z-10"><Loader2 className="h-10 w-10 text-primary animate-spin" /></div>}
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 pointer-events-none border-[40px] border-black/40">
+                        <div className="absolute inset-0 pointer-events-none border-[60px] border-black/60">
                             <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl" />
                         </div>
                     </div>
                     <canvas ref={canvasRef} className="hidden" />
                     <DialogFooter className="p-8 bg-zinc-900 border-t border-white/10 flex flex-row items-center justify-center gap-12">
-                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 font-black uppercase text-[10px]">Abort</Button>
-                        <Button onClick={capturePhoto} className="h-20 w-20 rounded-full bg-white border-[6px] border-primary p-0 flex items-center justify-center active:scale-90 shadow-2xl transition-all">
-                            <Camera className="h-8 w-8 text-zinc-900" />
+                        <Button variant="ghost" onClick={stopCamera} className="text-white/60 font-black uppercase text-[10px] tracking-widest">Abort</Button>
+                        <Button onClick={capturePhoto} className="h-24 w-24 rounded-full bg-white border-[8px] border-primary p-0 flex items-center justify-center active:scale-90 shadow-2xl transition-all">
+                            <div className="h-10 w-10 bg-zinc-900 rounded-full flex items-center justify-center">
+                                <Camera className="h-5 w-5 text-white" />
+                            </div>
                         </Button>
                         <div className="w-20" />
                     </DialogFooter>
