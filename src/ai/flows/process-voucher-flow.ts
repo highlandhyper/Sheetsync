@@ -7,9 +7,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Increase execution window for heavy visual analysis
-export const maxDuration = 60;
-
 const ProcessVoucherInputSchema = z.object({
   photoDataUri: z.string().describe("Base64 document data URI."),
 });

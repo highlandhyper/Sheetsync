@@ -13,7 +13,7 @@ export const ai = genkit({
     }),
   ],
   // Establish Gemini 2.0 Flash as the primary industrial analysis node.
-  // Note: 3.7 is not a valid model ID; 2.0 Flash is the state-of-the-art fast model.
+  // Note: 2.0 Flash is currently the state-of-the-art fast multimodal model.
   model: googleAI.model('gemini-2.0-flash'),
 });
 
