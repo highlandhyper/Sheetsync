@@ -3,7 +3,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Industrial AI Registry Configuration
- * Explicitly binds to GEMINI_API_KEY for cloud identity verification.
+ * Optimized for high-velocity multimodal processing using Gemini 2.0 Flash.
  */
 export const ai = genkit({
   plugins: [
@@ -11,8 +11,8 @@ export const ai = genkit({
       apiKey: process.env.GEMINI_API_KEY,
     }),
   ],
-  // Optimized for industrial document and multimodal processing
-  model: googleAI.model('gemini-1.5-flash'),
+  // Establish Gemini 2.0 Flash as the primary industrial analysis node
+  model: googleAI.model('gemini-2.0-flash'),
 });
 
 export { z };

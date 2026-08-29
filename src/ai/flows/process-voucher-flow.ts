@@ -1,14 +1,14 @@
 'use server';
 /**
- * @fileOverview Industrial Return Voucher AI Processor.
- * Relies exclusively on Gemini Multimodal Vision for high-fidelity extraction.
+ * @fileOverview High-Velocity Voucher AI Processor.
+ * Utilizes Gemini 2.0 Flash for pure visual extraction without external OCR overhead.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ProcessVoucherInputSchema = z.object({
-  photoDataUri: z.string().describe("Base64 document data URI (Image or PDF)."),
+  photoDataUri: z.string().describe("Base64 document data URI."),
 });
 export type ProcessVoucherInput = z.infer<typeof ProcessVoucherInputSchema>;
 
@@ -28,23 +28,23 @@ const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
   input: { schema: ProcessVoucherInputSchema },
   output: { schema: ProcessVoucherOutputSchema },
-  prompt: `You are an industrial data entry specialist. Analyze this return voucher document.
+  prompt: `You are an industrial data entry specialist. Analyze this return voucher document using your advanced visual reasoning.
 
 EXTRACTION PROTOCOL:
-1. **Visual Scan**: Identify the table structure or list layout in the provided image.
-2. **SKU Identification**: Extract the Barcode/SKU and the corresponding Return Quantity for each item.
-3. **Spatial Alignment**: Ensure that the quantity you extract belongs to the correct barcode by looking at row alignment.
+1. **Spatial Scan**: Identify the table or list structure in the image.
+2. **SKU Recognition**: Extract every Barcode/SKU and its associated Return Quantity. 
+3. **Data Cleaning**: Remove leading single quotes or whitespace from barcodes.
+4. **Calculations**: If a quantity is specified as a pack (e.g., "1 box of 10"), calculate the total units (10).
 
-Input Image: {{media url=photoDataUri}}
+Input Document: {{media url=photoDataUri}}
 
-GOAL: Extract all SKU/Barcode entries and their corresponding Return Quantities.
-- If a quantity is written as a case (e.g. "1 case of 12"), calculate the total units (12).
-- Return only valid JSON matching the schema.
-- If the image is blurry or unreadable, set success to false and provide an error message.`,
+GOAL: Provide a JSON array of all SKU/Barcode entries and their specific Return Quantities.
+- If the document is unreadable or irrelevant, set success to false.
+- Ensure strict adherence to the output schema.`,
 });
 
 /**
- * Industrial AI Processor with Native Multimodal Extraction
+ * Native Multimodal Processor - Gemini 2.0 Flash Edition
  */
 export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
   const MAX_RETRIES = 2;
@@ -52,14 +52,13 @@ export async function processVoucher(input: ProcessVoucherInput): Promise<Proces
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-        console.log(`AI Terminal: Visual Analysis Attempt ${attempt}/${MAX_RETRIES}...`);
+        console.log(`Registry Node: Initializing Visual Analysis (Attempt ${attempt})...`);
         
-        // Native Gemini Multimodal Call
         const { output } = await prompt(input);
         
         if (!output) throw new Error("AI Node returned zero payload.");
 
-        // ENSURE STRICT SERIALIZATION (POJO)
+        // STRIP NON-POJO METADATA FOR SERVER ACTIONS
         return JSON.parse(JSON.stringify({
             ...output,
             success: true
@@ -67,18 +66,17 @@ export async function processVoucher(input: ProcessVoucherInput): Promise<Proces
 
     } catch (error: any) {
         lastError = error.message;
-        console.warn(`AI Terminal: Attempt ${attempt} failed: ${lastError}`);
+        console.warn(`Registry Node: Error in attempt ${attempt}: ${lastError}`);
         
         if (attempt < MAX_RETRIES) {
-            const delay = Math.pow(2, attempt) * 1000;
-            await new Promise(r => setTimeout(r, delay));
+            await new Promise(r => setTimeout(r, 1000 * attempt));
         }
     }
   }
 
   return {
     success: false,
-    error: `Registry AI Node Failure: ${lastError}`,
+    error: `Registry Hub Failure: ${lastError}`,
     items: []
   };
 }
