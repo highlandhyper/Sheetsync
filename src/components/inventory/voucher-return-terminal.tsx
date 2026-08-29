@@ -24,7 +24,8 @@ import {
     Scan,
     ZapOff,
     Maximize2,
-    Minimize2
+    Minimize2,
+    AlertCircle
 } from 'lucide-react';
 import { processVoucher } from '@/ai/flows/process-voucher-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,42 @@ interface StagedReturn {
     quantity: number;
     matchedItemId?: string;
     status: 'matched' | 'unmatched' | 'multiple';
+}
+
+/**
+ * Industrial Image Optimization
+ * Reduces high-res camera captures to ~1MB for reliable transmission.
+ */
+async function optimizeImageForRegistry(dataUri: string): Promise<string> {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX_DIMENSION = 1600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_DIMENSION) {
+                    height *= MAX_DIMENSION / width;
+                    width = MAX_DIMENSION;
+                }
+            } else {
+                if (height > MAX_DIMENSION) {
+                    width *= MAX_DIMENSION / height;
+                    height = MAX_DIMENSION;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            // 0.8 quality is optimal for Gemini Multimodal OCR
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = dataUri;
+    });
 }
 
 export function VoucherReturnTerminal() {
@@ -75,13 +112,17 @@ export function VoucherReturnTerminal() {
         if (!file) return;
 
         setFileName(file.name);
-        setIsPdf(file.type === 'application/pdf');
+        const isPdfFile = file.type === 'application/pdf';
+        setIsPdf(isPdfFile);
 
         const reader = new FileReader();
         reader.onload = async (event) => {
             const dataUri = event.target?.result as string;
             setPreviewImage(dataUri);
-            processWithAI(dataUri);
+            
+            // Optimize image only (PDFs handled directly by Genkit)
+            const finalDataUri = isPdfFile ? dataUri : await optimizeImageForRegistry(dataUri);
+            processWithAI(finalDataUri);
         };
         reader.readAsDataURL(file);
     };
@@ -100,7 +141,6 @@ export function VoucherReturnTerminal() {
                     facingMode: 'environment', 
                     width: { ideal: 1920 }, 
                     height: { ideal: 1080 },
-                    focusMode: 'continuous' as any
                 } 
             });
             
@@ -111,7 +151,6 @@ export function VoucherReturnTerminal() {
                 const track = stream.getVideoTracks()[0];
                 trackRef.current = track;
 
-                // Detect Capabilities (Handheld Specific)
                 const capabilities = (track as any).getCapabilities?.() || {};
                 
                 if (capabilities.torch) {
@@ -174,12 +213,11 @@ export function VoucherReturnTerminal() {
         setIsTorchOn(false);
     }, []);
 
-    const capturePhoto = () => {
+    const capturePhoto = async () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
-            // Industrial Precision: Capture at natural resolution
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             
@@ -191,7 +229,10 @@ export function VoucherReturnTerminal() {
                 setFileName(`invoice_capture_${Date.now()}.jpg`);
                 setIsPdf(false);
                 stopCamera();
-                processWithAI(dataUri);
+                
+                // Optimize before processing
+                const optimizedUri = await optimizeImageForRegistry(dataUri);
+                processWithAI(optimizedUri);
             }
         }
     };
@@ -203,8 +244,8 @@ export function VoucherReturnTerminal() {
         try {
             const result = await processVoucher({ photoDataUri: dataUri });
             
-            if (!result || !result.items) {
-                throw new Error("No data extracted from document.");
+            if (!result.success || !result.items) {
+                throw new Error(result.error || "No data extracted from document.");
             }
 
             const processed = result.items.map(aiItem => {
@@ -226,7 +267,7 @@ export function VoucherReturnTerminal() {
             toast({ 
                 variant: "destructive", 
                 title: "Analysis Failure", 
-                description: e.message || "Voucher analysis failed. Check console for details." 
+                description: e.message || "Registry AI Node timed out or returned an invalid payload." 
             });
         } finally {
             setIsProcessing(false);
@@ -460,13 +501,11 @@ export function VoucherReturnTerminal() {
                             style={{ transform: `scale(${currentZoom})` }}
                         />
                         
-                        {/* INDUSTRIAL HUD OVERLAY */}
                         <div className="absolute inset-0 pointer-events-none border-[30px] border-black/40">
                              <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-3xl relative">
                                 <div className="absolute top-1/2 left-0 right-0 h-px bg-primary/20 shadow-[0_0_10px_rgba(41,171,226,0.5)]" />
                                 <div className="absolute top-0 bottom-0 left-1/2 w-px bg-primary/20" />
                                 
-                                {/* Corner Guides */}
                                 <div className="absolute top-4 left-4 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-xl" />
                                 <div className="absolute top-4 right-4 w-10 h-10 border-t-4 border-r-4 border-primary rounded-tr-xl" />
                                 <div className="absolute bottom-4 left-4 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-xl" />
@@ -474,7 +513,6 @@ export function VoucherReturnTerminal() {
                              </div>
                         </div>
 
-                        {/* ZOOM INDICATOR */}
                         {zoomRange && (
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
                                 <Minimize2 className="h-3 w-3 text-white/40" />
@@ -516,7 +554,7 @@ export function VoucherReturnTerminal() {
                                     <Scan className="h-5 w-5 text-zinc-900" />
                                 </div>
                             </Button>
-                            <div className="w-20" /> {/* Spacer */}
+                            <div className="w-20" /> 
                         </div>
                     </DialogFooter>
                 </DialogContent>

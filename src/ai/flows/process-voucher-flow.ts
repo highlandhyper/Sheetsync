@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Return voucher data extraction AI flow.
@@ -17,17 +16,33 @@ const ProcessVoucherInputSchema = z.object({
 export type ProcessVoucherInput = z.infer<typeof ProcessVoucherInputSchema>;
 
 const ProcessVoucherOutputSchema = z.object({
+  success: z.boolean().default(true),
+  error: z.string().optional(),
   items: z.array(z.object({
     barcode: z.string().describe("The barcode or SKU identifier. Extract exactly as printed."),
     quantity: z.number().describe("The quantity to be returned. Extract as a raw integer."),
     productName: z.string().describe("The identified product name or description from the document."),
     confidence: z.number().describe("Confidence level of extraction 0-1."),
-  })).describe("List of items identified for return processing.")
+  })).optional().describe("List of items identified for return processing.")
 });
 export type ProcessVoucherOutput = z.infer<typeof ProcessVoucherOutputSchema>;
 
+/**
+ * Industrial AI Processor
+ * Analyzes returns vouchers via multimodal Gemini 1.5 Flash.
+ * Optimized for high-speed industrial data entry.
+ */
 export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
-  return processVoucherFlow(input);
+  try {
+    const result = await processVoucherFlow(input);
+    return result;
+  } catch (error: any) {
+    console.error("Critical Flow Exception:", error);
+    return {
+        success: false,
+        error: error.message || "An unexpected error occurred during AI analysis."
+    };
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -60,14 +75,22 @@ const processVoucherFlow = ai.defineFlow(
     try {
         console.log("AI Terminal: Initializing multimodal extraction...");
         const { output } = await prompt(input);
-        if (!output || !output.items) {
-            throw new Error("AI extraction node returned zero payload. Check document visibility.");
+        
+        if (!output) {
+            return { success: false, error: "AI extraction node returned zero payload. Check document visibility." };
         }
-        console.log(`AI Terminal: Successfully extracted ${output.items.length} items.`);
-        return output;
+        
+        console.log(`AI Terminal: Successfully extracted ${output.items?.length || 0} items.`);
+        return {
+            ...output,
+            success: true
+        };
     } catch (error: any) {
         console.error("Genkit Flow Error:", error);
-        throw new Error(`Registry AI Node Failure: ${error.message}`);
+        return {
+            success: false,
+            error: `Registry AI Node Failure: ${error.message}`
+        };
     }
   }
 );
