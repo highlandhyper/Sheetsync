@@ -32,9 +32,7 @@ export type ProcessVoucherOutput = z.infer<typeof ProcessVoucherOutputSchema>;
 async function performLocalOCR(dataUri: string): Promise<string> {
     try {
         console.log("AI Terminal: Initializing Tesseract Node...");
-        const { data: { text } } = await Tesseract.recognize(dataUri, 'eng', {
-            logger: m => console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
-        });
+        const { data: { text } } = await Tesseract.recognize(dataUri, 'eng');
         return text || "";
     } catch (e) {
         console.error("Local OCR Node Failure:", e);
@@ -42,9 +40,33 @@ async function performLocalOCR(dataUri: string): Promise<string> {
     }
 }
 
+async function extractWithOcrSpace(dataUri: string): Promise<string> {
+    const apiKey = process.env.OCR_SPACE_API_KEY;
+    if (!apiKey) return "";
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append('base64Image', dataUri);
+        formData.append('apikey', apiKey);
+        formData.append('isTable', 'true');
+        formData.append('OCREngine', '2');
+
+        const response = await fetch('https://api.ocr.space/parse/image', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        const result = await response.json();
+        return result.ParsedResults?.[0]?.ParsedText || "";
+    } catch (e) {
+        return "";
+    }
+}
+
 const prompt = ai.definePrompt({
   name: 'processVoucherPrompt',
-  input: { schema: ProcessVoucherInputSchema.extend({ ocrText: z.string().optional() }) },
+  input: { schema: ProcessVoucherInputSchema.extend({ ocrText: z.string().optional(), ocrSpaceText: z.string().optional() }) },
   output: { schema: ProcessVoucherOutputSchema },
   prompt: `You are an industrial data entry specialist. Analyze this return voucher document.
 
@@ -52,8 +74,11 @@ MULTIMODAL FUSION PROTOCOL:
 1. **Primary Text Layer**: Use the provided OCR text as the authoritative source for numeric characters (SKUs and Quantities).
 2. **Visual Spatial Layer**: Use the image to verify which quantity belongs to which barcode by looking at row alignment.
 
-OCR Text Found:
+Tesseract OCR Found:
 {{{ocrText}}}
+
+Supplemental Cloud OCR Found:
+{{{ocrSpaceText}}}
 
 Input Image: {{media url=photoDataUri}}
 
@@ -67,18 +92,21 @@ GOAL: Extract all SKU/Barcode entries and their corresponding Return Quantities.
  * Industrial AI Processor with Multi-Layer Extraction & Retry Logic
  */
 export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 2;
   let lastError = "";
+
+  // Tier 1: Local Character Extraction (Fast)
+  const ocrText = await performLocalOCR(input.photoDataUri);
+  
+  // Tier 2: Cloud Supplemental Extraction (High-Fidelity)
+  const ocrSpaceText = await extractWithOcrSpace(input.photoDataUri);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
         console.log(`AI Terminal: Extraction Attempt ${attempt}/${MAX_RETRIES}...`);
         
-        // Tier 1: Local Character Extraction
-        const ocrText = await performLocalOCR(input.photoDataUri);
-        
-        // Tier 2: AI Spatial Reasoning
-        const { output } = await prompt({ ...input, ocrText });
+        // Tier 3: AI Spatial Reasoning
+        const { output } = await prompt({ ...input, ocrText, ocrSpaceText });
         
         if (!output) throw new Error("AI Node returned zero payload.");
 
@@ -101,7 +129,7 @@ export async function processVoucher(input: ProcessVoucherInput): Promise<Proces
 
   return {
     success: false,
-    error: `Registry AI Node Failure after ${MAX_RETRIES} attempts: ${lastError}`,
+    error: `Registry AI Node Failure: ${lastError}`,
     items: []
   };
 }
