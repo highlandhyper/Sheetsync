@@ -1,11 +1,14 @@
 'use server';
 /**
  * @fileOverview High-Velocity Voucher AI Processor.
- * Utilizes Gemini 3.7 Flash for pure visual extraction without external OCR overhead.
+ * Utilizes Gemini 2.0 Flash for pure visual extraction.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+
+// Increase execution window for heavy visual analysis
+export const maxDuration = 60;
 
 const ProcessVoucherInputSchema = z.object({
   photoDataUri: z.string().describe("Base64 document data URI."),
@@ -44,7 +47,7 @@ GOAL: Provide a JSON array of all SKU/Barcode entries and their specific Return 
 });
 
 /**
- * Native Multimodal Processor - Gemini 3.7 Flash Edition
+ * Native Multimodal Processor - Gemini 2.0 Flash Edition
  */
 export async function processVoucher(input: ProcessVoucherInput): Promise<ProcessVoucherOutput> {
   const MAX_RETRIES = 2;
@@ -52,7 +55,7 @@ export async function processVoucher(input: ProcessVoucherInput): Promise<Proces
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-        console.log(`Registry Node: Initializing Visual Analysis with Gemini 3.7 Flash (Attempt ${attempt})...`);
+        console.log(`Registry Node: Initializing Visual Analysis (Attempt ${attempt})...`);
         
         const { output } = await prompt(input);
         
