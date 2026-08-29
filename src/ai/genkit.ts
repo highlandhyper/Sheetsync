@@ -4,6 +4,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 /**
  * Industrial AI Registry Configuration
  * Optimized for high-velocity multimodal processing using Gemini 2.0 Flash.
+ * This model provides superior visual reasoning for industrial documents.
  */
 export const ai = genkit({
   plugins: [
