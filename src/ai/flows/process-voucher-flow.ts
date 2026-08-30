@@ -4,7 +4,7 @@
  * Voucher Document Processor
  *
  * Extracts barcode/SKU, product name, and return quantity
- * from voucher images or PDF documents using Genkit + Gemini.
+ * from voucher images or PDF documents using Genkit + Gemini 3.7 Flash.
  */
 
 import { ai, z } from '@/ai/genkit';
@@ -109,7 +109,12 @@ const processVoucherPrompt = ai.definePrompt({
   output: { schema: VoucherExtractionSchema },
   config: { 
     temperature: 0.1,
-  },
+    // Thinking mode is enabled for maximum extraction precision on 3.7 Flash
+    thinkingConfig: {
+        includeThoughts: true,
+        thinkingLevel: 'MEDIUM'
+    }
+  } as any,
   prompt: `
 You are a highly accurate retail voucher data-extraction system.
 
@@ -146,12 +151,12 @@ export async function processVoucher(
       return { success: false, error: output.warning || 'Voucher not readable.', items: [] };
     }
 
-    // Return plain object for Next.js serialization
-    return {
+    // Return deeply serialized plain object for Next.js 15 stability
+    return JSON.parse(JSON.stringify({
       success: true,
       warning: output.warning,
       items: output.items,
-    };
+    }));
   } catch (error: any) {
     console.error('[Voucher AI] Error:', error);
     return { 
