@@ -471,12 +471,33 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10"><h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3><p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p><p className="text-xs font-mono text-muted-foreground mt-1">SKU: {getValues('barcode')}</p></div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
-                        <Popover open={staffComboboxOpen} onValueChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }}>
+                        <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }} modal={true}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}><div className="flex items-center gap-2"><User className="h-5 w-5 sm:h-4 sm:w-4 text-primary" /><span>{allFormValues.staffName || "Select Staff Member..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command><CommandList><CommandEmpty>No staff member found.</CommandEmpty><CommandGroup>{(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (<CommandItem key={staff} value={staff} onSelect={() => { setValue("staffName", staff, { shouldValidate: true }); setStaffComboboxOpen(false); }} className="h-12 sm:h-10 text-base sm:text-sm font-medium"><Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>{staff}</CommandItem>))}</CommandGroup></CommandList></Command>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <Command>
+                                    <CommandInput placeholder="Search personnel registry..." className="h-10" />
+                                    <CommandList>
+                                        <CommandEmpty>No staff member found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
+                                                <CommandItem 
+                                                    key={staff} 
+                                                    value={staff} 
+                                                    onSelect={() => { 
+                                                        setValue("staffName", staff, { shouldValidate: true }); 
+                                                        setStaffComboboxOpen(false); 
+                                                    }} 
+                                                    className="h-12 sm:h-10 text-base sm:text-sm font-medium"
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>
+                                                    {staff}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
                             </PopoverContent>
                         </Popover>
                         {errors.staffName && <p className="text-sm text-destructive mt-1 font-medium">{errors.staffName.message}</p>}
