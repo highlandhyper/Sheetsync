@@ -76,7 +76,7 @@ const SCANNER_REGION_ID = "inventory-list-filter-scanner";
 
 const playProfessionalBeep = () => {
   try {
-    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAppleContext;
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const audioCtx = new AudioContextClass();
     const oscillator = audioCtx.createOscillator();
@@ -169,20 +169,34 @@ export function InventoryListClient() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // FUZZY SEARCH ENGINE
+  // FUZZY SEARCH ENGINE: Optimized only for Product Name per directive
   const fuse = useMemo(() => new Fuse(cachedItems, {
-    keys: ['productName', 'barcode', 'staffName', 'location', 'supplierName'],
-    threshold: 0.35,
+    keys: ['productName'],
+    threshold: 0.4,
     distance: 100,
-    minMatchCharLength: 2
+    minMatchCharLength: 2,
+    useExtendedSearch: true
   }), [cachedItems]);
 
   const filteredItemsBySearchAndSupplierAndDate = useMemo(() => {
     let items = cachedItems;
 
     if (debouncedSearch) {
-        // Use fuzzy search for the term
-        items = fuse.search(debouncedSearch).map(r => r.item);
+        const term = debouncedSearch.trim();
+        const normalizedTerm = term.replace(/^0+/, '');
+        
+        // 1. Check for exact barcode match first (Priority)
+        const exactBarcodeItems = items.filter(item => {
+            const itemBc = item.barcode.trim();
+            return itemBc === term || itemBc.replace(/^0+/, '') === normalizedTerm;
+        });
+        
+        if (exactBarcodeItems.length > 0) {
+            items = exactBarcodeItems;
+        } else {
+            // 2. Fallback to fuzzy product name search
+            items = fuse.search(term).map(r => r.item);
+        }
     }
 
     if (activeDashboardFilter) {
@@ -341,40 +355,6 @@ export function InventoryListClient() {
     });
     return itemIds;
   };
-
-  useEffect(() => {
-    const filterTypeFromQuery = searchParams.get('filterType');
-    const suppliersFromQuery = searchParams.get('suppliers');
-    const fromDateQuery = searchParams.get('from');
-    const toDateQuery = searchParams.get('to');
-
-    let newPotentialFilter: DashboardFilterType = null;
-    if (filterTypeFromQuery === 'specificSupplier' && suppliersFromQuery) {
-      newPotentialFilter = { type: 'specificSupplier', suppliers: [decodeURIComponent(suppliersFromQuery)] };
-    } else if (filterTypeFromQuery === 'customExpiry' && fromDateQuery && toDateQuery) {
-      newPotentialFilter = { type: 'customExpiry', customExpiryFrom: fromDateQuery, customExpiryTo: toDateQuery };
-    } else if (filterTypeFromQuery === 'damaged') {
-      newPotentialFilter = { type: 'damaged' };
-    } else if (filterTypeFromQuery === 'expiringSoon') {
-      newPotentialFilter = { type: 'expiringSoon' };
-    } else if (filterTypeFromQuery === 'otherSuppliers' && suppliersFromQuery) {
-      newPotentialFilter = { type: 'otherSuppliers', suppliers: decodeURIComponent(suppliersFromQuery).split(',') };
-    }
-
-    if (JSON.stringify(newPotentialFilter) !== JSON.stringify(activeDashboardFilter)) {
-      setActiveDashboardFilter(newPotentialFilter);
-      if (newPotentialFilter) {
-        setSearchTerm(''); setSelectedSupplier(''); setSelectedLocation(''); setSelectedDateRange(undefined);
-        if (newPotentialFilter.type === 'specificSupplier' && newPotentialFilter.suppliers?.length) {
-            setSelectedSupplier(newPotentialFilter.suppliers[0]);
-        }
-      }
-    } 
-  }, [searchParams, activeDashboardFilter]);
-
-  useEffect(() => {
-    if (!isMultiSelectEnabled) setSelectedBarcodes(new Set());
-  }, [isMultiSelectEnabled]);
 
   const clearFilters = () => {
     setSearchTerm(''); setSelectedSupplier(''); setSelectedLocation(''); setSelectedDateRange(undefined); setIsDatePopoverOpen(false); setTypeFilter('all');

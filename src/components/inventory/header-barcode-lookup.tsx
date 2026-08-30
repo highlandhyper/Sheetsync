@@ -74,9 +74,9 @@ export function HeaderBarcodeLookup() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // FUZZY ENGINE: Optimized for 80k+ records
+  // FUZZY ENGINE: Optimized only for Product Name per industrial directive
   const fuse = useMemo(() => new Fuse(inventoryItems.filter(i => i.quantity > 0), {
-    keys: ['barcode', 'productName', 'supplierName'],
+    keys: ['productName'],
     threshold: 0.3,
     distance: 100,
     minMatchCharLength: 2,
@@ -87,11 +87,16 @@ export function HeaderBarcodeLookup() {
     if (!lastSearchedBarcode.trim()) return [];
     const term = lastSearchedBarcode.trim();
     
-    // Attempt exact match first for performance
-    const exact = inventoryItems.filter(i => i.barcode === term && i.quantity > 0);
+    // 1. PRIMARY: Exact Barcode Identification (Normalized)
+    const normalizedTerm = term.replace(/^0+/, '');
+    const exact = inventoryItems.filter(i => {
+        const itemBc = i.barcode.trim();
+        return (itemBc === term || itemBc.replace(/^0+/, '') === normalizedTerm) && i.quantity > 0;
+    });
+    
     if (exact.length > 0) return exact;
 
-    // Fallback to fuzzy search
+    // 2. FALLBACK: Fuzzy Product Name Search
     return fuse.search(term).map(r => r.item);
   }, [inventoryItems, lastSearchedBarcode, fuse]);
   
@@ -320,7 +325,7 @@ export function HeaderBarcodeLookup() {
                           </div>
                           <h3 className="text-xl font-black text-muted-foreground/40 uppercase tracking-tighter">No Active Logs</h3>
                           <p className="text-[10px] text-muted-foreground/60 mt-1 max-w-xs mx-auto">
-                              The registry system could not locate identified stock for barcode: <span className="text-primary font-black">{lastSearchedBarcode}</span>
+                              The registry system could not locate identified stock for term: <span className="text-primary font-black">{lastSearchedBarcode}</span>
                           </p>
                       </div>
                   )}

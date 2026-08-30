@@ -42,12 +42,12 @@ export function BottomNav() {
             <Icon 
                 className={cn(
                     "h-[22px] w-[22px] transition-all duration-300",
-                    isActive ? "text-[#008CFF] scale-110" : "text-gray-400 dark:text-gray-500"
+                    isActive ? "text-primary scale-110" : "text-muted-foreground/40"
                 )} 
                 strokeWidth={isActive ? 2.5 : 2}
             />
             {isActive && (
-                <div className="absolute bottom-1 h-1 w-1 rounded-full bg-[#008CFF] animate-in fade-in zoom-in duration-300" />
+                <div className="absolute bottom-1 h-1 w-1 rounded-full bg-primary animate-in fade-in zoom-in duration-300" />
             )}
         </div>
         <span className="sr-only">{label}</span>
@@ -59,9 +59,9 @@ export function BottomNav() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 z-50 w-full flex justify-center pointer-events-auto pb-safe">
-      <div className="relative flex items-center h-[58px] w-full bg-white dark:bg-zinc-950 border-t border-black/[0.05] dark:border-white/[0.05] shadow-[0_-4px_10px_rgba(0,0,0,0.03)] backdrop-blur-xl">
+      <div className="relative flex items-center h-[64px] w-full bg-background/80 dark:bg-zinc-950/80 border-t border-white/10 shadow-[0_-4px_30px_rgba(0,0,0,0.1)] backdrop-blur-3xl">
         
-        {/* SLOT 1: DYNAMIC HOME (Admin -> Dashboard [Home], Viewer -> Return by Staff [UserCheck]) */}
+        {/* SLOT 1: DYNAMIC HOME */}
         <NavItem 
           href={isAdmin ? '/dashboard' : '/products'} 
           icon={isAdmin ? Home : UserCheck} 
@@ -69,15 +69,15 @@ export function BottomNav() {
           isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
         />
         
-        {/* SLOT 2: CATALOG (Admin) or SEARCH (Viewer) */}
+        {/* SLOT 2: CATALOG */}
         <NavItem 
-            href={isAdmin ? "/products/list" : "/inventory/lookup"} 
-            icon={isAdmin ? Package : Search} 
-            label={isAdmin ? "Catalog" : "Lookup"} 
-            isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
+            href="/products/list" 
+            icon={Package} 
+            label="Catalog" 
+            isActive={pathname === '/products/list'}
         />
 
-        {/* SLOT 3: PRIMARY ACTION (PLUS) - NOW INLINE */}
+        {/* SLOT 3: PRIMARY LOG ACTION */}
         <NavItem 
           href="/inventory/add" 
           icon={Plus} 
@@ -85,7 +85,7 @@ export function BottomNav() {
           isActive={pathname === '/inventory/add'}
         />
 
-        {/* SLOT 4: SEARCH (Admin) or SETTINGS (Viewer) */}
+        {/* SLOT 4: SEARCH / SETTINGS */}
         <NavItem 
           href={isAdmin ? "/inventory/lookup" : "/settings"} 
           icon={isAdmin ? Search : Settings} 
@@ -93,7 +93,7 @@ export function BottomNav() {
           isActive={isAdmin ? pathname === '/inventory/lookup' : pathname === '/settings'}
         />
 
-        {/* SLOT 5: MENU (MORE) */}
+        {/* SLOT 5: NAVIGATION HUB */}
         <NavItem 
           href="/more" 
           icon={Menu} 

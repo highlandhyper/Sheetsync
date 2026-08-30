@@ -93,7 +93,7 @@ export function InventoryBarcodeLookupClient() {
     setLastSearchedBarcode(cleanBarcode);
     
     startSearchTransition(async () => {
-      // NORMALIZED SEARCH: Compare both exact and stripped leading zeros
+      // STRICT BARCODE MATCHING: Non-fuzzy identification per directive
       const normalizedInput = cleanBarcode.replace(/^0+/, '');
       const filtered = inventoryItems.filter(i => {
           if (i.quantity <= 0) return false;
@@ -140,9 +140,9 @@ export function InventoryBarcodeLookupClient() {
   }, [isScannerDialogOpen, onScanSuccess]);
 
   const handleActionSuccess = useCallback(() => {
-    setIsReturnDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-    setIsEditDialogOpen(false);
+    setIsReturnDialogOpen(false); 
+    setIsDeleteDialogOpen(false); 
+    setIsEditDialogOpen(false); 
     setIsDetailsDialogOpen(false);
   }, []);
 
