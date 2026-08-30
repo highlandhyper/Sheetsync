@@ -30,7 +30,7 @@ import {
     X,
     AlertTriangle
 } from 'lucide-react';
-import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay } from 'date-fns';
+import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -118,7 +118,6 @@ export function InventoryListClient() {
       products: cachedProducts,
       suppliers,
       uniqueLocations,
-      uniqueLocations: uniqueDbLocations,
       addProduct: addProductToCache, 
       refreshData: onDataNeeded,
   } = useDataCache();
@@ -169,7 +168,7 @@ export function InventoryListClient() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // FUZZY SEARCH ENGINE: Optimized only for Product Name per industrial directive
+  // FUZZY SEARCH ENGINE: Optimized strictly for Product Name per industrial directive
   const fuse = useMemo(() => new Fuse(cachedItems, {
     keys: ['productName'],
     threshold: 0.4,
@@ -593,7 +592,7 @@ export function InventoryListClient() {
                           />
                           All Locations
                         </CommandItem>
-                        {uniqueDbLocations.map((loc) => (
+                        {uniqueLocations.map((loc) => (
                           <CommandItem
                             key={loc}
                             value={loc}
@@ -728,7 +727,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
@@ -811,7 +810,7 @@ export function InventoryListClient() {
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSuccess={handleActionSuccess}
-        uniqueLocationsFromDb={uniqueDbLocations}
+        uniqueLocationsFromDb={uniqueLocations}
       />
       <DeleteConfirmationDialog
         key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-none'}
