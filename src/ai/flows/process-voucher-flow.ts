@@ -159,9 +159,11 @@ export async function processVoucher(
     }));
   } catch (error: any) {
     console.error('[Voucher AI] Error:', error);
+    // Surface the actual error message for industrial debugging
+    const errorMessage = error?.message || 'Registry analysis failed. Internal processing error.';
     return { 
       success: false, 
-      error: 'Registry analysis failed. Ensure API key is valid.', 
+      error: errorMessage, 
       items: [] 
     };
   }
