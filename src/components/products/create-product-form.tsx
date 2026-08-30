@@ -29,8 +29,7 @@ import {
     Fingerprint,
     Image as ImageIcon,
     Box,
-    Clock,
-    ArrowUpRight
+    Clock
 } from 'lucide-react';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
@@ -50,6 +49,7 @@ import {
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
@@ -349,7 +349,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </div>
                 </CardHeader>
                 
-                <CardContent className={cn("px-12 py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto custom-scrollbar" : "")}>
+                <CardContent className={cn("px-12 py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto" : "")}>
                     <div className="space-y-6 mb-12 shrink-0">
                         <div className="flex items-center justify-between px-1">
                             <Label className="text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
@@ -489,7 +489,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between h-4 ml-1">
                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] opacity-30">Primary Vendor</Label>
-                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !allSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())} className="text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
+                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !allSortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())} className="text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
                                                     Master Edit
                                                 </Button>
                                             </div>
@@ -550,401 +550,86 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                         {isSavePending ? <Loader2 className="mr-4 h-5 w-5 animate-spin" /> : <Save className="mr-4 h-5 w-5" />}
                                         {editMode === 'create' ? 'SYNCHRONIZE IDENTITY' : 'UPDATE MASTER CATALOG'}
                                     </Button>
-                                0.03 transition-all group" onClick={() => handleOpenDetails(log)}>
-                    <div className="flex items-center justify-between">
-                        <Badge variant="outline" className={cn("font-black uppercase tracking-[0.1em] text-[8px] px-3 py-1 rounded-lg border-none shadow-sm", getActionColor(log.action))}>
-                            {getActionIcon(log.action)}
-                            <span className="ml-2">{formatActionString(log.action)}</span>
-                        </Badge>
-                        <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">{format(parseISO(log.timestamp), 'PPp')}</span>
-                    </div>
-                    <div className="flex items-center gap-5">
-                        <div className="p-3 bg-background rounded-2xl border border-white/5 shadow-inner transition-transform group-hover:scale-110">
-                            <Fingerprint className="h-6 w-6 text-primary/40" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 leading-none mb-1.5">PERSONNEL ID</p>
-                            <p className="text-base font-black truncate text-slate-900 dark:text-white uppercase tracking-tight">{log.user}</p>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5">
-                        <p className="text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
-                            "{log.details}"
-                        </p>
-                    </div>
-                    </div>
-                ))
-                ) : (
-                <div className="py-32 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground/20">Zero Traces Match Identification</p>
-                </div>
-                )}
-            </div>
-            ) : (
-            <Table>
-                <TableHeader className="bg-muted/10 border-b border-white/5">
-                <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] pl-10 h-16 text-muted-foreground/40">Timestamp</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Identity Node</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Operation</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Impact Details</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 pr-10 text-right text-muted-foreground/40">Action</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {paginatedLogs.length > 0 ? (
-                    paginatedLogs.map(log => (
-                    <TableRow key={log.id} className="group hover:bg-primary/[0.02] transition-colors h-20 border-white/5">
-                        <TableCell className="text-[10px] font-mono font-black text-muted-foreground/40 pl-10 tracking-tighter">
-                            {format(parseISO(log.timestamp), 'dd/MM/yy HH:mm:ss')}
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-muted/40 rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500 group-hover:rotate-[15deg]">
-                                    <Fingerprint className="h-5 w-5" />
                                 </div>
-                                <span className="font-black text-sm tracking-tight uppercase text-slate-800 dark:text-slate-200">{log.user}</span>
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.1em] border shadow-sm", getActionColor(log.action))}>
-                                {getActionIcon(log.action)}
-                                {formatActionString(log.action)}
-                            </div>
-                        </TableCell>
-                        <TableCell className="max-w-[400px]">
-                            <p className="text-[11px] font-bold text-muted-foreground/60 truncate group-hover:text-foreground transition-colors leading-relaxed">
-                                {log.details}
-                            </p>
-                        </TableCell>
-                        <TableCell className="text-right pr-10">
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetails(log)} className="h-10 w-10 rounded-2xl opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground">
-                                <Info className="h-5 w-5" />
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                    <TableCell colSpan={5} className="h-96 text-center">
-                        <div className="flex flex-col items-center gap-4 opacity-10 grayscale">
-                            <BarChart3 className="h-16 w-16" strokeWidth={1} />
-                            <p className="text-[11px] font-black uppercase tracking-[0.6em]">Zero Forensic Matches Identified</p>
+                            </form>
                         </div>
-                    </TableCell>
-                    </TableRow>
-                )}
-                </TableBody>
-            </Table>
-            )}
-            <PaginationControls />
-        </Card>
-      </div>
-      
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[3rem] border-none shadow-3xl bg-background">
-            <div className="p-10 pb-6 bg-muted/20 border-b border-white/5">
-                <DialogHeader>
-                    <div className="flex items-center gap-6 mb-6">
-                        <div className={cn("p-6 rounded-[1.5rem] shadow-xl transition-transform duration-700", selectedLog ? getActionColor(selectedLog.action) : "bg-muted")}>
-                            {selectedLog && React.cloneElement(getActionIcon(selectedLog.action) as React.ReactElement, { className: "h-8 w-8" })}
-                        </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-4xl font-black uppercase tracking-tighter leading-none">
-                                Forensic Node
-                            </DialogTitle>
-                            <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-background border-white/10 text-primary">
-                                    TRACE ID: {selectedLog?.id.toUpperCase()}
-                                </Badge>
-                                <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest border-none">
-                                    VERIFIED LOG
-                                </Badge>
-                            </div>
-                        </div>
-                    </div>
-                    <DialogDescription className="font-bold text-sm leading-relaxed tracking-tight text-muted-foreground/60 pr-8">
-                        Secure breakdown of selected security event. All timestamps and personnel identities are cryptographically synced with the master registry.
-                    </DialogDescription>
-                </DialogHeader>
-            </div>
-            
-            {selectedLog && (
-                <div className="p-10 pt-6 space-y-10">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="p-6 rounded-3xl bg-muted/10 border border-white/5 space-y-2 shadow-inner">
-                            <div className="flex items-center gap-2">
-                                <Fingerprint className="h-3 w-3 text-primary" />
-                                <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-[0.2em]">Personnel Identity</p>
-                            </div>
-                            <p className="text-xl font-black uppercase truncate text-slate-900 dark:text-white">{selectedLog.user}</p>
-                        </div>
-                        <div className="p-6 rounded-3xl bg-muted/10 border border-white/5 space-y-2 shadow-inner">
-                            <div className="flex items-center gap-2">
-                                <Activity className="h-3 w-3 text-primary" />
-                                <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-[0.2em]">Registry Timestamp</p>
-                            </div>
-                            <p className="text-xl font-black uppercase text-slate-900 dark:text-white">{format(parseISO(selectedLog.timestamp), 'dd MMM yy • HH:mm')}</p>
-                        </div>
-                    </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
 
-                    <div className="p-8 bg-primary/5 border border-primary/20 rounded-[2rem] flex items-center gap-6 shadow-sm relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-tech-grid opacity-20" />
-                        <Crosshair className="h-10 w-10 text-primary/60 shrink-0 relative z-10 transition-transform group-hover:scale-110 duration-700" strokeWidth={3} />
-                        <div className="relative z-10 min-w-0">
-                            <p className="text-[9px] font-black uppercase text-primary tracking-[0.3em] leading-none mb-2">Impact Target ID</p>
-                            <p className="text-lg font-mono font-black text-primary tracking-tighter truncate">{selectedLog.target}</p>
+        {showForm && (
+            <div className="xl:col-span-6 space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-700">
+                <Card className="border-white/5 bg-card/40 backdrop-blur-3xl rounded-[3rem] overflow-hidden shadow-2xl flex flex-col h-full">
+                    <CardHeader className="bg-muted/10 p-10 border-b border-white/5 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-2xl">
+                                <History className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-xl font-black uppercase tracking-tighter">Forensic Node History</CardTitle>
+                                <CardDescription className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/30">SKU Trace Logs & Forensic Audit</CardDescription>
+                            </div>
                         </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-grow overflow-hidden">
+                        <ScrollArea className="h-full w-full">
+                            {currentHistory.length > 0 ? (
+                                <div className="divide-y divide-white/5">
+                                    {currentHistory.map((log, index) => (
+                                        <div key={`${log.id}-${index}`} className="p-8 hover:bg-primary/[0.02] transition-colors group">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <Badge variant="outline" className={cn("px-3 py-1 font-black text-[8px] uppercase tracking-[0.1em] rounded-lg border-none shadow-sm", getActionColor(log.action))}>
+                                                    {getActionIcon(log.action)}
+                                                    <span className="ml-2">{log.action.replace('_', ' ')}</span>
+                                                </Badge>
+                                                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">
+                                                    <Clock className="h-3 w-3" />
+                                                    {format(parseISO(log.timestamp), 'dd MMM yy • HH:mm')}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-5">
+                                                <div className="p-2.5 bg-muted/40 rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500">
+                                                    <Fingerprint className="h-4 w-4" />
+                                                </div>
+                                                <div className="space-y-1.5 flex-1 min-w-0">
+                                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Operating Personnel</p>
+                                                    <p className="text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
+                                                    <div className="mt-3 p-4 bg-muted/20 rounded-2xl border border-white/5">
+                                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
+                                                            "{log.details}"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-[500px] text-center opacity-20 grayscale">
+                                    <div className="p-8 bg-muted/20 rounded-[3rem] mb-6 border-4 border-dashed border-white/5">
+                                        <Layers className="h-16 w-16" />
+                                    </div>
+                                    <h4 className="text-2xl font-black uppercase tracking-tighter">Zero Traces</h4>
+                                    <p className="text-sm font-medium mt-2 max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </CardContent>
+                    <div className="p-8 bg-muted/5 border-t border-white/5 shrink-0 text-center">
+                        <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/20">Secure Registry Tunnel • AES-256 Protocol</p>
                     </div>
-                    
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 ml-2">
-                            <Info className="h-4 w-4 text-muted-foreground/40" />
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em]">Event Breakdown</Label>
-                        </div>
-                        <div className="p-8 bg-background rounded-[2.5rem] border-2 border-muted shadow-2xl shadow-black/[0.01] relative">
-                            <p className="text-sm font-bold leading-relaxed italic text-slate-700 dark:text-slate-300 relative z-10">
-                                "{selectedLog.details}"
-                            </p>
-                            <History className="absolute bottom-6 right-8 h-16 w-16 text-muted-foreground/5 pointer-events-none" />
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <div className="p-8 bg-muted/20 border-t border-white/5 flex justify-center">
-                <Button variant="ghost" onClick={() => setIsDetailsDialogOpen(false)} className="h-12 px-12 text-[10px] font-black uppercase tracking-[0.4em] opacity-40 hover:opacity-100 hover:bg-transparent transition-all">
-                    TERMINATE INVESTIGATION SESSION
-                </Button>
+                </Card>
             </div>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      <Dialog open={isWipeDialogOpen} onOpenChange={setIsWipeDialogOpen}>
-        <DialogContent className="sm:max-w-md p-6 rounded-[2rem] border-none shadow-3xl bg-background">
-            <DialogHeader>
-                <div className="mx-auto bg-destructive/10 p-4 rounded-2xl mb-4">
-                    <ShieldX className="h-8 w-8 text-destructive" strokeWidth={2.5} />
-                </div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center">Forensic Purge</DialogTitle>
-                <DialogDescription className="text-center font-medium text-xs">
-                    Initiating permanent removal of security traces for a specific target. This action bypasses standard archiving.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-6 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="wipe-barcode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Target SKU / Barcode</Label>
-                    <div className="relative">
-                        <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                        <Input 
-                            id="wipe-barcode"
-                            placeholder="IDENTIFY SKU FOR PURGE..."
-                            value={wipeBarcode}
-                            onChange={(e) => setWipeBarcode(e.target.value.toUpperCase())}
-                            className="pl-12 h-14 rounded-2xl bg-muted/10 font-black border-destructive/20 focus:border-destructive"
-                        />
-                    </div>
-                </div>
-                <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl flex items-start gap-3">
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-red-700/80 font-bold leading-relaxed">
-                        CRITICAL: This will erase ALL historical logs mentioning this barcode. This process is cryptographic and irreversible.
-                    </p>
-                </div>
-            </div>
-            <DialogFooter className="grid grid-cols-2 gap-3">
-                <Button variant="outline" onClick={() => setIsWipeDialogOpen(false)} className="rounded-xl font-bold h-12">Abort</Button>
-                <Button 
-                    onClick={initiateWipe} 
-                    disabled={!wipeBarcode.trim()}
-                    className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-destructive/20 h-12"
-                >
-                    Initialize Purge
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AuthorizeActionDialog 
-          isOpen={isAuthDialogOpen}
-          onOpenChange={setIsAuthDialogOpen}
-          onAuthorizationSuccess={handleAuthorizationSuccess}
-          actionDescription={`Authorized Forensic Wipe for barcode: ${wipeBarcode}. Administrator clearance required.`}
-      />
+        {isSupplierEditDialogOpen && supplierToEdit && (
+            <EditSupplierDialog 
+                isOpen={isSupplierEditDialogOpen} 
+                onOpenChange={setIsSupplierEditDialogOpen} 
+                supplier={supplierToEdit} 
+            />
+        )}
     </div>
   );
-}
-
-```
-</content>
-  </change>
-  <change>
-    <file>src/ai/flows/process-voucher-flow.ts</file>
-    <content><![CDATA['use server';
-
-/**
- * Voucher Document Processor
- *
- * Extracts barcode/SKU, product name, and return quantity
- * from voucher images or PDF documents using Genkit + Gemini 3.7 Flash.
- */
-
-import { ai, z } from '@/ai/genkit';
-
-/* -------------------------------------------------------------------------- */
-/*                                   INPUT                                    */
-/* -------------------------------------------------------------------------- */
-
-const ProcessVoucherInputSchema = z.object({
-  photoDataUri: z
-    .string()
-    .min(1)
-    .refine((value) => value.startsWith('data:'), {
-      message: 'Document must be provided as a valid data URI.',
-    })
-    .describe(
-      'Base64 data URI containing the voucher image or PDF document.'
-    ),
-});
-
-export type ProcessVoucherInput = z.infer<
-  typeof ProcessVoucherInputSchema
->;
-
-/* -------------------------------------------------------------------------- */
-/*                              EXTRACTION DATA                               */
-/* -------------------------------------------------------------------------- */
-
-const VoucherItemSchema = z.object({
-  barcode: z
-    .string()
-    .min(1)
-    .describe(
-      'Barcode/SKU exactly as printed. Never modify digits.'
-    ),
-
-  quantity: z
-    .number()
-    .nonnegative()
-    .describe(
-      'Return quantity exactly as shown.'
-    ),
-
-  productName: z
-    .string()
-    .describe(
-      'Product description printed in the document.'
-    ),
-
-  confidence: z
-    .number()
-    .min(0)
-    .max(1)
-    .describe(
-      'Estimated visual confidence from 0 to 1.'
-    ),
-});
-
-const VoucherExtractionSchema = z.object({
-  documentReadable: z
-    .boolean()
-    .describe(
-      'True when the voucher is sufficiently readable.'
-    ),
-
-  items: z
-    .array(VoucherItemSchema)
-    .describe(
-      'All reliably identified voucher rows.'
-    ),
-
-  warning: z
-    .string()
-    .optional()
-    .describe(
-      'Reason if some rows are unclear or missing.'
-    ),
-});
-
-/* -------------------------------------------------------------------------- */
-/*                                API OUTPUT                                  */
-/* -------------------------------------------------------------------------- */
-
-const ProcessVoucherOutputSchema = z.object({
-  success: z.boolean(),
-  error: z.string().optional(),
-  warning: z.string().optional(),
-  items: z.array(VoucherItemSchema),
-});
-
-export type ProcessVoucherOutput = z.infer<
-  typeof ProcessVoucherOutputSchema
->;
-
-/* -------------------------------------------------------------------------- */
-/*                                  PROMPT                                    */
-/* -------------------------------------------------------------------------- */
-
-const processVoucherPrompt = ai.definePrompt({
-  name: 'processVoucherPrompt',
-  input: { schema: ProcessVoucherInputSchema },
-  output: { schema: VoucherExtractionSchema },
-  config: { 
-    temperature: 0.1,
-    // Thinking mode is enabled for maximum extraction precision on 3.7 Flash
-    thinkingConfig: {
-        includeThoughts: true,
-        thinkingLevel: 'MEDIUM'
-    }
-  } as any,
-  prompt: `
-You are a highly accurate retail voucher data-extraction system.
-
-Your task is to inspect the supplied voucher document and extract its product rows.
-
-DOCUMENT:
-{{media url=photoDataUri}}
-
-RULES:
-1. BARCODE: Copy EXACTLY. Preserve leading zeros.
-2. QUANTITY: Extract the RETURN quantity for that specific row.
-3. ASSOCIATION: Ensure barcode and quantity come from the SAME row.
-4. ACCURACY: If unsure about a row, omit it. Do not guess digits.
-
-Set documentReadable to false if the image is blurred or not a voucher.
-`,
-});
-
-/* -------------------------------------------------------------------------- */
-/*                              SERVER ACTION                                 */
-/* -------------------------------------------------------------------------- */
-
-export async function processVoucher(
-  input: ProcessVoucherInput
-): Promise<ProcessVoucherOutput> {
-  try {
-    const { output } = await processVoucherPrompt(input);
-
-    if (!output) {
-      return { success: false, error: 'AI returned no structured data.', items: [] };
-    }
-
-    if (!output.documentReadable) {
-      return { success: false, error: output.warning || 'Voucher not readable.', items: [] };
-    }
-
-    // Return deeply serialized plain object for Next.js 15 stability
-    return JSON.parse(JSON.stringify({
-      success: true,
-      warning: output.warning,
-      items: output.items,
-    }));
-  } catch (error: any) {
-    console.error('[Voucher AI] Error:', error);
-    return { 
-      success: false, 
-      error: 'Registry analysis failed. Ensure API key is valid.', 
-      items: [] 
-    };
-  }
 }
