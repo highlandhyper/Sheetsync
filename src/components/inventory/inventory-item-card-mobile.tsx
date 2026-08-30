@@ -23,6 +23,7 @@ import {
   DollarSign,
   Wallet,
   Clock,
+  MapPin,
   Image as ImageIcon,
 } from 'lucide-react';
 
