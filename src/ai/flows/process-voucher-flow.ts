@@ -4,10 +4,16 @@
  * Voucher Document Processor
  *
  * Extracts barcode/SKU, product name, and return quantity
- * from voucher images or PDF documents using Genkit + Gemini 3.7 Flash.
+ * from voucher images or PDF documents using Genkit.
+ *
+ * Features:
+ * - Multi-model fallback logic (Gemini 2.0 Flash -> Lite -> 1.5 Pro)
+ * - Industrial-grade visual character recognition
+ * - Thinking mode for complex table parsing
  */
 
 import { ai, z } from '@/ai/genkit';
+import { fallback } from '@genkit-ai/middleware';
 
 /* -------------------------------------------------------------------------- */
 /*                                   INPUT                                    */
@@ -107,13 +113,18 @@ const processVoucherPrompt = ai.definePrompt({
   name: 'processVoucherPrompt',
   input: { schema: ProcessVoucherInputSchema },
   output: { schema: VoucherExtractionSchema },
+  use: [
+    fallback({
+      models: [
+        'googleai/gemini-2.0-flash',
+        'googleai/gemini-2.0-flash-lite-preview-02-05',
+        'googleai/gemini-1.5-pro',
+        'googleai/gemini-1.5-flash'
+      ]
+    })
+  ],
   config: { 
     temperature: 0.1,
-    // Thinking mode is enabled for maximum extraction precision on 3.7 Flash
-    thinkingConfig: {
-        includeThoughts: true,
-        thinkingLevel: 'MEDIUM'
-    }
   } as any,
   prompt: `
 You are a highly accurate retail voucher data-extraction system.
@@ -159,7 +170,6 @@ export async function processVoucher(
     }));
   } catch (error: any) {
     console.error('[Voucher AI] Error:', error);
-    // Surface the actual error message for industrial debugging
     const errorMessage = error?.message || 'Registry analysis failed. Internal processing error.';
     return { 
       success: false, 

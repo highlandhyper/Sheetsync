@@ -1,16 +1,20 @@
 import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { fallback } from '@genkit-ai/middleware';
 
 /**
  * Central Genkit AI configuration.
  *
- * Gemini 3.7 Flash is used as the default model for fast,
- * high-volume multimodal document and image processing.
+ * established as the primary industrial analysis node.
+ * Integrated with fallback middleware for automatic model hand-off.
  */
 export const ai = genkit({
-  plugins: [googleAI()],
+  plugins: [
+    googleAI(),
+    fallback.plugin()
+  ],
 
-  model: googleAI.model('gemini-3.7-flash'),
+  model: googleAI.model('gemini-flash-latest'),
 });
 
 export { z };
