@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef, useMemo } from 'react';
-import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, ScanBarcode, ArrowRight, Layers, ChevronRight, MapPin } from 'lucide-react';
+import { Search, Loader2, X, PackageSearch, Undo2, Edit, Trash2, Scan, ArrowRight, Layers, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -255,7 +255,7 @@ export function HeaderBarcodeLookup() {
                     )}
                     <Separator orientation="vertical" className="h-8 bg-white/10" />
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-primary hover:bg-primary/10 transition-all" onClick={() => setIsScannerOpen(true)}>
-                        <ScanBarcode className="h-6 w-6" />
+                        <Scan className="h-6 w-6" />
                     </Button>
                     <Button variant="default" size="icon" className="h-10 w-10 rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all" onClick={handleSearch} disabled={!barcode || isLoading}>
                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
@@ -341,7 +341,7 @@ export function HeaderBarcodeLookup() {
           <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
               <DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
                   <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
-                      <ScanBarcode className="h-8 w-8" /> Visual Capture
+                      <Scan className="h-8 w-8" /> Visual Capture
                   </DialogTitle>
                   <DialogDescription className="text-zinc-400 text-xs">Position barcode within the identification frame.</DialogDescription>
               </DialogHeader>

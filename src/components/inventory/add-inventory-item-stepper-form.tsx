@@ -14,7 +14,7 @@ import {
     Warehouse, 
     ArrowLeft, 
     ArrowRight,
-    ScanBarcode,
+    Scan,
     User,
     Tag,
     Hash,
@@ -447,7 +447,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             <Input id="barcode" ref={(e) => { register('barcode').ref(e); (barcodeInputRef as any).current = e; }} placeholder="Scan or enter barcode" {...register('barcode')} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} autoFocus className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')} />
                             {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
                         </div>
-                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-10 sm:w-10 shrink-0 bg-primary/5 border-primary/20"><ScanBarcode className="h-6 w-6 sm:h-5 sm:w-5 text-primary" /></Button>
+                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-10 sm:w-10 shrink-0 bg-primary/5 border-primary/20"><Scan className="h-6 w-6 sm:h-5 sm:w-5 text-primary" /></Button>
                     </div>
                     <div className="min-h-[24px]">
                         {productLookupError && !isFetchingProduct && (
@@ -471,7 +471,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10"><h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3><p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p><p className="text-xs font-mono text-muted-foreground mt-1">SKU: {getValues('barcode')}</p></div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
-                        <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }}>
+                        <Popover open={staffComboboxOpen} onValueChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}><div className="flex items-center gap-2"><User className="h-5 w-5 sm:h-4 sm:w-4 text-primary" /><span>{allFormValues.staffName || "Select Staff Member..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button>
                             </PopoverTrigger>

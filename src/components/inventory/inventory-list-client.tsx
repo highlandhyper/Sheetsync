@@ -26,7 +26,7 @@ import {
     ChevronsUpDown, 
     Check, 
     MapPin,
-    ScanBarcode,
+    Scan,
     X,
     AlertTriangle
 } from 'lucide-react';
@@ -169,7 +169,7 @@ export function InventoryListClient() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // FUZZY SEARCH ENGINE: Optimized only for Product Name per directive
+  // FUZZY SEARCH ENGINE: Optimized only for Product Name per industrial directive
   const fuse = useMemo(() => new Fuse(cachedItems, {
     keys: ['productName'],
     threshold: 0.4,
@@ -493,7 +493,7 @@ export function InventoryListClient() {
                     onClick={() => setIsScannerDialogOpen(true)} 
                     className="h-11 w-11 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
                 >
-                    <ScanBarcode className="h-5 w-5" />
+                    <Scan className="h-5 w-5" />
                 </Button>
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
@@ -728,7 +728,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right noprint">
                            <div className="relative h-8 flex items-center justify-end">
                                 <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
+                                    {mainItem.timestamp ? format(parseISO(item.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
                                 </span>
 
                                 <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
@@ -838,7 +838,7 @@ export function InventoryListClient() {
         <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
             <DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
                 <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
-                    <ScanBarcode className="h-8 w-8" /> Visual Filter
+                    <Scan className="h-8 w-8" /> Visual Filter
                 </DialogTitle>
                 <DialogDescription className="text-xs font-medium text-zinc-400">Position barcode to instantly filter records.</DialogDescription>
             </DialogHeader>
