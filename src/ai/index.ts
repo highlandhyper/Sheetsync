@@ -1,3 +1,5 @@
-
-import './genkit.js';
-// Register industrial AI flows for server execution
+/**
+ * DEPRECATED: Industrial AI Registry
+ * Entry point disabled as AI features were purged.
+ */
+export {};

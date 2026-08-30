@@ -13,12 +13,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  serverExternalPackages: [
-    'genkit', 
-    '@genkit-ai/google-genai', 
-    '@genkit-ai/next', 
-    '@genkit-ai/middleware'
-  ],
   images: {
     remotePatterns: [
       {

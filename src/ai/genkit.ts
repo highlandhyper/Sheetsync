@@ -1,20 +1,6 @@
-import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-import { fallback } from '@genkit-ai/middleware';
-
 /**
- * Central Genkit AI configuration.
- *
- * established as the primary industrial analysis node.
- * Integrated with fallback middleware for automatic model hand-off.
+ * DEPRECATED: Industrial AI Node
+ * Genkit dependencies removed to resolve build failures.
  */
-export const ai = genkit({
-  plugins: [
-    googleAI(),
-    fallback.plugin()
-  ],
-
-  model: googleAI.model('gemini-flash-latest'),
-});
-
-export { z };
+export const ai = null;
+export const z = null;
