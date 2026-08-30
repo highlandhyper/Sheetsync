@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
     'genkit', 
     '@genkit-ai/google-genai', 
     '@genkit-ai/next', 
+    '@genkit-ai/middleware',
     '@genkit-ai/core', 
     '@genkit-ai/flow'
   ],
