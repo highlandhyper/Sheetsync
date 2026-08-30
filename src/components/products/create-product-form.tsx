@@ -65,24 +65,19 @@ interface EditOrCreateProductFormProps {
 }
 
 const getActionIcon = (action: string) => {
-    switch (action) {
-        case 'LOG_INVENTORY': return <PlusCircle className="h-3 w-3" />;
-        case 'RETURN_INVENTORY': return <Undo2 className="h-3 w-3" />;
-        case 'UPDATE_INVENTORY': return <Edit className="h-3 w-3" />;
-        case 'DELETE_INVENTORY': return <Trash2 className="h-3 w-3" />;
-        case 'WIPE_DATABASE': return <AlertTriangle className="h-3 w-3" />;
-        default: return <Tag className="h-3 w-3" />;
-    }
+    if (action.includes('DELETE') || action.includes('WIPE')) return <Trash2 className="h-3 w-3" />;
+    if (action.includes('UPDATE') || action.includes('EDIT')) return <Edit className="h-3 w-3" />;
+    if (action.includes('CREATE') || action.includes('LOG')) return <PlusCircle className="h-3 w-3" />;
+    if (action.includes('RETURN')) return <Undo2 className="h-3 w-3" />;
+    return <Activity className="h-3 w-3" />;
 };
 
 const getActionColor = (action: string) => {
-    switch (action) {
-        case 'LOG_INVENTORY': return "bg-green-500/10 text-green-600 border-green-500/20";
-        case 'RETURN_INVENTORY': return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-        case 'UPDATE_INVENTORY': return "bg-accent/10 text-accent-foreground border-accent/20";
-        case 'DELETE_INVENTORY': case 'WIPE_DATABASE': return "bg-destructive/10 text-destructive border-destructive/20";
-        default: return "bg-muted text-muted-foreground border-transparent";
-    }
+    if (action.includes('DELETE') || action.includes('WIPE')) return "bg-destructive/10 text-destructive border-destructive/20";
+    if (action.includes('UPDATE') || action.includes('EDIT')) return "bg-accent/10 text-accent-foreground border-accent/20";
+    if (action.includes('CREATE') || action.includes('LOG')) return "bg-green-500/10 text-green-600 border-green-500/20";
+    if (action.includes('RETURN')) return "bg-blue-500/10 text-blue-600 border-blue-500/20";
+    return "bg-muted text-muted-foreground border-transparent";
 };
 
 export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFormProps) {
@@ -130,7 +125,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if (!searchedBarcode) return [];
     const bc = searchedBarcode.toLowerCase().trim();
 
-    const auditTraces = auditLogs
+    return auditLogs
         .filter(log => {
             const d = log.details.toLowerCase();
             const t = log.target.toLowerCase();
@@ -143,13 +138,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             action: log.action,
             details: log.details,
             type: 'audit'
-        }));
-
-    return auditTraces.sort((a, b) => {
-        const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
-        const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
-        return dateB - dateA;
-    });
+        }))
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [auditLogs, searchedBarcode]);
 
   const skuStats = useMemo(() => {
@@ -258,7 +248,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if (!searchedBarcode) return;
     
     if (!isDirty) {
-      toast({ title: "Identity Consistent", description: "No updates were identified for the registry." });
+      toast({ title: "Identity Consistent", description: "No updates identified for the registry." });
       return;
     }
 
@@ -285,10 +275,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     if (editMode === 'create') addProductToCache(optimisticProduct);
     else updateProductInCache(optimisticProduct);
 
-    toast({ 
-        title: 'Registry Sync Initiated', 
-        description: 'Instant local update complete. Finalizing cloud write...' 
-    });
+    toast({ title: 'Registry Sync Initiated', description: 'Applying changes to catalog...' });
 
     startSaveTransition(async () => {
       try {
@@ -489,7 +476,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between h-4 ml-1">
                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] opacity-30">Primary Vendor</Label>
-                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !allSortedSuppliers.some(s => s.name.toLowerCase() === supplierNameValue.toLowerCase())} className="text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
+                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !sortedSuppliers.some(s => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())} className="text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
                                                     Master Edit
                                                 </Button>
                                             </div>
