@@ -30,7 +30,8 @@ import {
     Volume2,
     Music,
     Smartphone,
-    MessageSquare
+    MessageSquare,
+    Info
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
