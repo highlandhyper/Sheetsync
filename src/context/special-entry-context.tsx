@@ -1,11 +1,14 @@
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
 import type { SpecialEntryRequest, InventoryItem } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { useDataCache } from './data-cache-context';
+import { useGeneralSettings } from './general-settings-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { sendSmsAction } from '@/app/actions';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -34,6 +37,7 @@ const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
   const { toast } = useToast();
+  const { settings } = useGeneralSettings();
   const { specialRequests, updateSpecialRequests } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
@@ -171,6 +175,12 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
     const otp = generateOTP();
 
+    // SMS DISPATCH LOGIC
+    if (settings.smsRecipientNumber) {
+        const msg = `SheetSync: OTP for ${staffName.toUpperCase()} is ${otp}. Valid for ${durationMinutes || 'single'} operation.`;
+        sendSmsAction(msg, settings.smsRecipientNumber);
+    }
+
     const newRequest: SpecialEntryRequest = {
       id: `grant_${Date.now()}`,
       userEmail: targetEmail,
@@ -187,7 +197,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
-  }, [user, specialRequests, updateSpecialRequests]);
+  }, [user, specialRequests, updateSpecialRequests, settings.smsRecipientNumber]);
 
   const approveRequest = useCallback(async (id: string, durationMinutes?: number) => {
     const now = new Date();
@@ -195,6 +205,12 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
     const otp = generateOTP();
     
+    const request = specialRequests.find(r => r.id === id);
+    if (request && settings.smsRecipientNumber) {
+        const msg = `SheetSync: Authorized ${request.staffName}. Security Key: ${otp}`;
+        sendSmsAction(msg, settings.smsRecipientNumber);
+    }
+
     const updated = specialRequests.map(r => {
       if (r.id !== id) return r;
       return {
@@ -209,7 +225,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     });
     
     await updateSpecialRequests(updated);
-  }, [specialRequests, updateSpecialRequests]);
+  }, [specialRequests, updateSpecialRequests, settings.smsRecipientNumber]);
 
   const rejectRequest = useCallback(async (id: string) => {
     const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);

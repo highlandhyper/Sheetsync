@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -83,7 +84,7 @@ function sanitizeForJSON(input: any): any {
             } else if (value instanceof Date) {
                 target[key] = value.toISOString();
             } else if (typeof value === 'number') {
-                target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
+                target[key] = (Number.isNaN(input) || !Number.isFinite(input)) ? 0 : value;
             } else if (typeof value === 'object') {
                 const newTarget = Array.isArray(value) ? [] : {};
                 target[key] = newTarget;
@@ -586,5 +587,41 @@ export async function getMasterSpreadsheetUrlAction(): Promise<ActionResponse<st
         return { success: true, data: `https://docs.google.com/spreadsheets/d/${sheetId}/edit` };
     } catch (e) {
         return { success: false, message: "Failed to retrieve database path." };
+    }
+}
+
+/**
+ * SMS GATEWAY ACTION: Securely dispatches OTPs via Textbee REST API.
+ */
+export async function sendSmsAction(message: string, recipientNumber: string) {
+    const apiKey = process.env.TEXTBEE_API_KEY;
+    const deviceId = process.env.TEXTBEE_DEVICE_ID || '6a957332f3dc6f0f7b4d9aa3';
+
+    if (!apiKey) {
+        console.warn("SMS Gateway: API Key missing in environment. Dispatch suppressed.");
+        return { success: false, message: "Gateway misconfigured." };
+    }
+
+    try {
+        const res = await fetch(
+            'https://api.textbee.dev/api/v1/gateway/send-sms',
+            {
+                method: 'POST',
+                headers: {
+                    'x-api-key': apiKey,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    deviceId: deviceId,
+                    recipients: [recipientNumber],
+                    message: message,
+                }),
+            }
+        );
+        const data = await res.json();
+        return { success: res.ok, data };
+    } catch (e) {
+        console.error("SMS Gateway Error:", e);
+        return { success: false };
     }
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -27,7 +28,9 @@ import {
     Save,
     BellDot,
     Volume2,
-    Music
+    Music,
+    Smartphone,
+    MessageSquare
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -50,6 +53,7 @@ import { useGeneralSettings } from '@/context/general-settings-context';
 import { useNotifications } from '@/context/notification-context';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { AudioFeedbackToggle } from '@/components/settings/audio-feedback-toggle';
 import { IdentityAudioSelector } from '@/components/settings/identity-audio-selector';
 
@@ -214,6 +218,7 @@ function NotificationTerminal() {
 export default function SettingsPage() {
   const { role, user } = useAuth();
   const { toast } = useToast();
+  const { settings, setSetting } = useGeneralSettings();
   
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbLoading, setIsDbLoading] = React.useState(false);
@@ -331,6 +336,42 @@ export default function SettingsPage() {
                 >
                     <NotificationTerminal />
                 </SettingsCard>
+                
+                {role === 'admin' && (
+                    <SettingsCard
+                        icon={Smartphone}
+                        title="Alert Routing"
+                        description="Direct security OTPs to a dedicated mobile terminal via SMS gateway."
+                        triggerText="SMS Gateway"
+                        badge="GATEWAY"
+                    >
+                        <div className="space-y-6">
+                            <div className="rounded-[2rem] border-2 border-primary/5 p-8 bg-muted/5 shadow-inner">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Recipient Phone Number</Label>
+                                        <div className="relative">
+                                            <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
+                                            <Input 
+                                                placeholder="+974..." 
+                                                value={settings.smsRecipientNumber || ''} 
+                                                onChange={(e) => setSetting('smsRecipientNumber', e.target.value)}
+                                                className="pl-12 h-14 rounded-2xl font-bold bg-background border-primary/10"
+                                            />
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight ml-1">International format required (e.g. +974...)</p>
+                                    </div>
+                                    <div className="py-4 px-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-4">
+                                        <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                        <p className="text-[10px] text-primary/70 font-medium leading-relaxed">
+                                            When a Silent Entry is authorized, the system will automatically route the OTP to this terminal via the Textbee REST API.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </SettingsCard>
+                )}
                 
                 {role === 'admin' && (
                     <SettingsCard

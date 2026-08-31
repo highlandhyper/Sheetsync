@@ -20,6 +20,7 @@ const defaultSettings: GeneralSettings = {
   inactivityTimeout: 5,
   isLockOnInactivityEnabled: true,
   isBrowserNotificationsEnabled: false,
+  smsRecipientNumber: '',
 };
 
 export function GeneralSettingsProvider({ children }: PropsWithChildren) {

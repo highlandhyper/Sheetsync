@@ -179,4 +179,5 @@ export interface GeneralSettings {
   inactivityTimeout: number;
   isLockOnInactivityEnabled: boolean;
   isBrowserNotificationsEnabled: boolean;
+  smsRecipientNumber: string;
 }
