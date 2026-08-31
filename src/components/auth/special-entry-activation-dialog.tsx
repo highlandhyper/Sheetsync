@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, Loader2, RefreshCw } from 'lucide-react';
+import { ShieldCheck, KeyRound, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -123,7 +123,7 @@ export function SpecialEntryActivationDialog({ session, onActivate, onResend, is
                             }}
                             className={cn(
                                 "text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30 transition-all",
-                                isError ? "border-destructive" : "border-primary/20 focus:border-primary"
+                                isError ? "border-destructive ring-2 ring-destructive/20" : "border-primary/20 focus:border-primary"
                             )}
                             placeholder="----"
                             autoFocus
@@ -132,19 +132,27 @@ export function SpecialEntryActivationDialog({ session, onActivate, onResend, is
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                    {verificationAttempts > 0 && !isResending && (
-                        <p className="text-center text-[10px] font-black uppercase text-destructive animate-pulse tracking-widest mb-1">
-                            Attempt {verificationAttempts}/3
-                        </p>
-                    )}
+                <div className="flex flex-col items-center gap-2 pt-2">
+                    {verificationAttempts > 0 && !isResending ? (
+                        <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                            <div className="flex items-center gap-1.5 text-destructive mb-1">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                    Attempt {verificationAttempts} of 3
+                                </span>
+                            </div>
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter opacity-60">
+                                Terminal will block identity after 3 failures
+                            </p>
+                        </div>
+                    ) : null}
                     
                     <Button 
                         variant="ghost" 
                         size="sm" 
                         disabled={resendCooldown > 0 || isResending || isVerifying}
                         onClick={handleResend}
-                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 h-8 px-4 rounded-xl"
+                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 h-8 px-4 rounded-xl mt-2"
                     >
                         {isResending ? (
                             <Loader2 className="mr-2 h-3 w-3 animate-spin" />

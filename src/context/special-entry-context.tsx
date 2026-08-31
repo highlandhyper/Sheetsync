@@ -214,15 +214,16 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
   const activateSession = useCallback(async (id: string, enteredOtp: string) => {
       const res = await verifyOtpAction(id, enteredOtp);
+      
+      // CRITICAL: Force registry refresh to update attempts/status in real-time
+      await refreshData();
+
       if (res.success) {
           localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
           setActivatedSessionId(id);
           setPendingActivationSession(null);
           return true;
       } else {
-          if (res.message?.includes('block')) {
-              await refreshData();
-          }
           return false;
       }
   }, [refreshData]);
