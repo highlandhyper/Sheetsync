@@ -140,14 +140,18 @@ export interface SpecialEntryRequest {
   staffName: string;
   reason?: string;
   suggestedProductName?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
+  status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired' | 'blocked';
   type: 'single' | 'timed' | 'product_add' | 'inventory_edit';
   durationMinutes?: number;
   requestedAt: string;
   approvedAt?: string;
   expiresAt?: string;
   grantedByAdmin?: boolean;
-  otp?: string;
+  otpHash?: string; // SECURE STORAGE: Hashed OTP
+  otpExpiresAt?: string; // TEMPORAL WINDOW: 5-minute expiry
+  verificationAttempts?: number; // ANTI-BRUTE FORCE
+  isBlocked?: boolean;
+  otp?: string; // DEPRECATED: Retained for legacy migration compatibility but zeroed in new entries
   isDismissedByAdmin?: boolean;
   isReadByUser?: boolean;
   originalDetails?: {

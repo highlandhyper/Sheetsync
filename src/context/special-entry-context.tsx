@@ -8,7 +8,7 @@ import { useDataCache } from './data-cache-context';
 import { useGeneralSettings } from './general-settings-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { sendSmsAction } from '@/app/actions';
+import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction } from '@/app/actions';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -25,20 +25,18 @@ interface SpecialEntryContextType {
   rejectRequest: (id: string) => Promise<void>;
   revokeRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
-  activateSession: (id: string, otp: string) => boolean;
+  activateSession: (id: string, otp: string) => Promise<boolean>;
 }
 
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
 
 const ACTIVATED_STORAGE_KEY = 'sheetSync_activatedSessionId';
 
-const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
-
 export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { settings } = useGeneralSettings();
-  const { specialRequests, updateSpecialRequests } = useDataCache();
+  const { specialRequests, updateSpecialRequests, refreshData } = useDataCache();
   
   const [activeSession, setActiveSession] = useState<SpecialEntryRequest | null>(null);
   const [pendingActivationSession, setPendingActivationSession] = useState<SpecialEntryRequest | null>(null);
@@ -88,15 +86,11 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     const currentActive = sessionsVisibleToMe.find(r => r.id === activatedSessionId);
     const firstUnactivated = sessionsVisibleToMe.find(r => r.id !== activatedSessionId && (r.type === 'single' || r.type === 'timed'));
 
-    // AGGRESSIVE ALERT DISPATCHER (NO AUTO-OPEN AS REQUESTED)
     if (sessionsVisibleToMe.length > prevApprovedCountRef.current) {
-        const latest = sessionsVisibleToMe[0];
-        
-        // Trigger In-App Toast with OTP context if not the first load
         if (!isFirstLoadRef.current) {
             toast({
-                title: latest.staffName === "ALL PERSONNEL (GLOBAL)" ? "Global Grant Active" : "Authorization Granted",
-                description: latest.otp ? `Access Code Identifed: ${latest.otp}. Click "Activate Silent Mode" to begin.` : "New authorization detected.",
+                title: "Security Grant Active",
+                description: "New authorization detected. Click 'Activate Silent Mode' to verify with the key sent via SMS.",
             });
         }
     }
@@ -165,67 +159,42 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   }, [user, specialRequests, updateSpecialRequests]);
 
   const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
-    if (!user) return;
+    if (!user || !user.email) return;
     
+    // Proactive grants create a placeholder request then approve it
+    const id = `grant_${Date.now()}`;
     const isGlobal = staffName === "ALL PERSONNEL (GLOBAL)";
-    const targetEmail = isGlobal ? "broadcast@system.com" : (specialRequests.find(r => r.staffName.toUpperCase() === staffName.toUpperCase())?.userEmail?.toLowerCase().trim() || "viewer@example.com"); 
-
-    const now = new Date();
-    const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
-    const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
-    const otp = generateOTP();
-
-    // SMS DISPATCH LOGIC
-    if (settings.smsRecipientNumber) {
-        const msg = `SheetSync: OTP for ${staffName.toUpperCase()} is ${otp}. Valid for ${durationMinutes || 'single'} operation.`;
-        sendSmsAction(msg, settings.smsRecipientNumber);
-    }
+    const targetEmail = isGlobal ? "broadcast@system.com" : "viewer@example.com";
 
     const newRequest: SpecialEntryRequest = {
-      id: `grant_${Date.now()}`,
+      id,
       userEmail: targetEmail,
       staffName: staffName.toUpperCase(),
-      status: 'approved',
-      type: isTimed ? 'timed' : 'single',
-      durationMinutes: durationMinutes,
-      requestedAt: now.toISOString(),
-      approvedAt: now.toISOString(),
-      expiresAt: expiresAt,
-      grantedByAdmin: true,
-      otp: otp,
-      isDismissedByAdmin: false, 
+      status: 'pending',
+      type: 'single',
+      requestedAt: new Date().toISOString(),
+      isDismissedByAdmin: false,
       isReadByUser: false,
     };
-    await updateSpecialRequests([newRequest, ...specialRequests]);
-  }, [user, specialRequests, updateSpecialRequests, settings.smsRecipientNumber]);
+
+    // Pre-inject into local state for responsiveness
+    const updated = [newRequest, ...specialRequests];
+    await updateSpecialRequestsAction(updated);
+    
+    // Call Secure Server Action for OTP generation and SMS dispatch
+    await approveRequestAction(id, user.email, durationMinutes);
+    await refreshData();
+  }, [user, specialRequests, updateSpecialRequestsAction, refreshData]);
 
   const approveRequest = useCallback(async (id: string, durationMinutes?: number) => {
-    const now = new Date();
-    const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
-    const expiresAt = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
-    const otp = generateOTP();
-    
-    const request = specialRequests.find(r => r.id === id);
-    if (request && settings.smsRecipientNumber) {
-        const msg = `SheetSync: Authorized ${request.staffName}. Security Key: ${otp}`;
-        sendSmsAction(msg, settings.smsRecipientNumber);
+    if (!user?.email) return;
+    const res = await approveRequestAction(id, user.email, durationMinutes);
+    if (res.success) {
+        await refreshData();
+    } else {
+        toast({ variant: "destructive", title: "Approval Failed", description: res.message });
     }
-
-    const updated = specialRequests.map(r => {
-      if (r.id !== id) return r;
-      return {
-        ...r, 
-        status: 'approved' as const, 
-        approvedAt: now.toISOString(), 
-        type: r.type === 'inventory_edit' || r.type === 'product_add' ? r.type : (isTimed ? 'timed' : 'single'), 
-        expiresAt: expiresAt,
-        otp: otp,
-        isDismissedByAdmin: true,
-      };
-    });
-    
-    await updateSpecialRequests(updated);
-  }, [specialRequests, updateSpecialRequests, settings.smsRecipientNumber]);
+  }, [user, refreshData, toast]);
 
   const rejectRequest = useCallback(async (id: string) => {
     const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);
@@ -247,16 +216,20 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [activeSession, specialRequests, updateSpecialRequests]);
 
-  const activateSession = useCallback((id: string, enteredOtp: string) => {
-      const request = specialRequests.find(r => r.id === id);
-      if (request && request.otp === enteredOtp) {
+  const activateSession = useCallback(async (id: string, enteredOtp: string) => {
+      const res = await verifyOtpAction(id, enteredOtp);
+      if (res.success) {
           localStorage.setItem(ACTIVATED_STORAGE_KEY, id);
           setActivatedSessionId(id);
           setPendingActivationSession(null);
           return true;
+      } else {
+          if (res.message?.includes('block')) {
+              await refreshData();
+          }
+          return false;
       }
-      return false;
-  }, [specialRequests, activatedSessionId]);
+  }, [refreshData]);
 
   const value = useMemo(() => ({ 
     pendingRequests: pendingRequestsList, 
