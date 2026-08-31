@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -168,7 +167,8 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
  */
 export async function sendSmsAction(message: string, recipientNumber: string, customDeviceId?: string) {
     const apiKey = process.env.TEXTBEE_API_KEY;
-    const deviceId = customDeviceId || process.env.TEXTBEE_DEVICE_ID || '6a957332f3dc6f0f7b4d9aa3';
+    // Prefer ENV device ID, fallback to UI provided, then hardcoded default
+    const deviceId = process.env.TEXTBEE_DEVICE_ID || customDeviceId || '6a957332f3dc6f0f7b4d9aa3';
 
     if (!apiKey || apiKey.trim() === '') {
         console.error("SMS Gateway Error: TEXTBEE_API_KEY is missing from environment variables.");
@@ -186,7 +186,8 @@ export async function sendSmsAction(message: string, recipientNumber: string, cu
     }
 
     try {
-        console.log(`SMS Dispatch: Sending to ${formattedPhone} via device ${deviceId}...`);
+        const maskedDeviceId = deviceId.substring(0, 4) + '...' + deviceId.substring(deviceId.length - 4);
+        console.log(`SMS Dispatch: Sending to ${formattedPhone} via hardware node ${maskedDeviceId}...`);
         
         const res = await fetch(
             'https://api.textbee.dev/api/v1/gateway/send-sms',
@@ -227,8 +228,8 @@ export async function checkSmsConfigAction(): Promise<ActionResponse<{ hasApiKey
     return {
         success: true,
         data: {
-            hasApiKey: !!process.env.TEXTBEE_API_KEY && process.env.TEXTBEE_API_KEY.length > 5,
-            hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID || true // Default fallback exists
+            hasApiKey: !!process.env.TEXTBEE_API_KEY && process.env.TEXTBEE_API_KEY.trim() !== '',
+            hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID && process.env.TEXTBEE_DEVICE_ID.trim() !== ''
         }
     };
 }

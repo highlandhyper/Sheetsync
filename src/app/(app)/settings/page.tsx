@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -34,7 +33,9 @@ import {
     Info,
     SmartphoneNfc,
     Wifi,
-    WifiOff
+    WifiOff,
+    ShieldAlert,
+    Cpu
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -288,7 +289,7 @@ export default function SettingsPage() {
         </h1>
         <div className="flex items-center gap-4 ml-1">
             <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.6em] opacity-40">
-                Operational Registry Control • v4.1.0
+                Operational Registry Control • v5.0.0
             </p>
             <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-2 py-0.5 animate-pulse">Live Link Active</Badge>
         </div>
@@ -367,15 +368,22 @@ export default function SettingsPage() {
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="text-xs font-black uppercase tracking-widest">Gateway Health</h3>
-                                        {smsEnvStatus?.hasApiKey ? (
-                                            <Badge className="bg-green-500/10 text-green-600 border-none px-3">
-                                                <Wifi className="mr-1.5 h-3 w-3" /> ONLINE
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="destructive" className="bg-destructive/10 text-destructive border-none px-3">
-                                                <WifiOff className="mr-1.5 h-3 w-3" /> NO API KEY
-                                            </Badge>
-                                        )}
+                                        <div className="flex gap-2">
+                                            {smsEnvStatus?.hasApiKey ? (
+                                                <Badge className="bg-green-500/10 text-green-600 border-none px-3">
+                                                    <Wifi className="mr-1.5 h-3 w-3" /> API READY
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="destructive" className="bg-destructive/10 text-destructive border-none px-3">
+                                                    <WifiOff className="mr-1.5 h-3 w-3" /> NO API KEY
+                                                </Badge>
+                                            )}
+                                            {smsEnvStatus?.hasDeviceId && (
+                                                <Badge className="bg-primary/10 text-primary border-none px-3">
+                                                    <Cpu className="mr-1.5 h-3 w-3" /> ENV LOADED
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {!smsEnvStatus?.hasApiKey && (
@@ -402,23 +410,26 @@ export default function SettingsPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Textbee Device ID</Label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Textbee Device ID</Label>
+                                            {smsEnvStatus?.hasDeviceId && <span className="text-[8px] font-black text-primary uppercase">Securely Loaded from Environment</span>}
+                                        </div>
                                         <div className="relative">
                                             <SmartphoneNfc className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
                                             <Input 
-                                                placeholder="6a95..." 
+                                                placeholder={smsEnvStatus?.hasDeviceId ? "******** (Loaded from ENV)" : "6a95..."} 
                                                 value={permissions.smsDeviceId || ''} 
                                                 onChange={(e) => setSmsDeviceId(e.target.value)}
                                                 className="pl-12 h-14 rounded-2xl font-mono text-sm bg-background border-primary/10"
                                             />
                                         </div>
-                                        <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight ml-1">Found in your Textbee Gateway dashboard.</p>
+                                        <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight ml-1">Leave empty if configured in .env.local (Safe Practice).</p>
                                     </div>
 
                                     <div className="py-4 px-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-4">
                                         <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                         <p className="text-[10px] text-primary/70 font-medium leading-relaxed">
-                                            When a Silent Entry is authorized, the system will automatically route the OTP to this terminal via the Textbee REST API. This is a global system setting.
+                                            When a Silent Entry is authorized, the system will automatically route the OTP to this terminal via the Textbee REST API. Environment variables in .env.local take priority for maximum security.
                                         </p>
                                     </div>
                                 </div>
