@@ -72,6 +72,8 @@ export function SpecialEntryActivationDialog({ session, onActivate, onResend, is
       }
   };
 
+  const verificationAttempts = session.verificationAttempts ?? 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -131,9 +133,9 @@ export function SpecialEntryActivationDialog({ session, onActivate, onResend, is
                 </div>
 
                 <div className="flex flex-col items-center gap-2">
-                    {session.verificationAttempts && session.verificationAttempts > 0 && !isResending && (
+                    {verificationAttempts > 0 && !isResending && (
                         <p className="text-center text-[10px] font-black uppercase text-destructive animate-pulse tracking-widest mb-1">
-                            Attempt {session.verificationAttempts}/3
+                            Attempt {verificationAttempts}/3
                         </p>
                     )}
                     
