@@ -167,7 +167,6 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
  */
 export async function sendSmsAction(message: string, recipientNumber: string, customDeviceId?: string) {
     const apiKey = process.env.TEXTBEE_API_KEY;
-    // Prefer ENV device ID, fallback to UI provided, then hardcoded default
     const deviceId = process.env.TEXTBEE_DEVICE_ID || customDeviceId || '6a957332f3dc6f0f7b4d9aa3';
 
     if (!apiKey || apiKey.trim() === '') {
@@ -179,7 +178,6 @@ export async function sendSmsAction(message: string, recipientNumber: string, cu
         return { success: false, message: "Recipient phone number not provided." };
     }
 
-    // Ensure International Format for Textbee
     let formattedPhone = recipientNumber.trim().replace(/\s/g, '');
     if (formattedPhone && !formattedPhone.startsWith('+')) {
         formattedPhone = '+' + formattedPhone;
@@ -314,7 +312,6 @@ export async function approveRequestAction(requestId: string, adminEmail: string
                 console.error(`OTP dispatch failed for ${req.staffName}: ${errorMessage}`);
             }
         } else {
-            // Log local only if no phone
             console.warn(`OTP dispatch skipped for ${req.staffName}: No recipient phone configured.`);
             smsSent = true; 
         }
@@ -337,6 +334,55 @@ export async function approveRequestAction(requestId: string, adminEmail: string
         }
     } catch (e) {
         return { success: false, message: "Registry update failed." };
+    }
+}
+
+/**
+ * SECURITY: Securely regenerates and redispatches an OTP.
+ */
+export async function resendOtpAction(requestId: string, userEmail: string): Promise<ActionResponse> {
+    try {
+        const meta = await getAppMetaData();
+        const requests = meta.specialRequests || [];
+        const req = requests.find(r => r.id === requestId);
+        
+        if (!req) return { success: false, message: "Request node not found." };
+        
+        // Validation: Must be requester, global, or admin
+        const isOwner = req.userEmail.toLowerCase() === userEmail.toLowerCase().trim();
+        const isAdmin = getRoleByEmail(userEmail) === 'admin';
+        const isGlobal = req.staffName === "ALL PERSONNEL (GLOBAL)";
+
+        if (!isOwner && !isAdmin && !isGlobal) {
+            return { success: false, message: "Unauthorized registry access." };
+        }
+
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const hash = hashOtp(otp);
+        const now = new Date();
+        const otpExpiry = new Date(now.getTime() + 5 * 60000).toISOString();
+
+        const phone = meta.permissions?.smsRecipientNumber;
+        const deviceId = meta.permissions?.smsDeviceId;
+
+        if (phone && phone.trim() !== '') {
+            const msg = `SheetSync: New OTP for ${req.staffName} is ${otp}. Valid 5 mins.`;
+            const smsRes = await sendSmsAction(msg, phone, deviceId);
+            if (!smsRes.success) return { success: false, message: `Gateway Error: ${smsRes.message}` };
+        }
+
+        req.otpHash = hash;
+        req.otpExpiresAt = otpExpiry;
+        req.status = 'approved'; 
+        req.verificationAttempts = 0; // Reset attempts for new key
+        req.isBlocked = false;
+
+        await saveSpecialRequestsToSheet(requests);
+        await logAuditEvent(userEmail, 'RESEND_OTP', req.id, `Regenerated secure key for ${req.staffName}.`);
+        
+        return { success: true };
+    } catch (e) {
+        return { success: false, message: "Resend protocol failed." };
     }
 }
 

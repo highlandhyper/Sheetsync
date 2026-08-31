@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,22 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, Loader2 } from 'lucide-react';
+import { ShieldCheck, KeyRound, Loader2, RefreshCw } from 'lucide-react';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 interface SpecialEntryActivationDialogProps {
   session: SpecialEntryRequest;
   onActivate: (otp: string) => Promise<boolean>;
+  onResend: () => Promise<boolean>;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOpenChange }: SpecialEntryActivationDialogProps) {
+export function SpecialEntryActivationDialog({ session, onActivate, onResend, isOpen, onOpenChange }: SpecialEntryActivationDialogProps) {
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [isError, setIsError] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,6 +33,14 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
       setIsError(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+        timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleActivate = async () => {
     setIsVerifying(true);
@@ -45,8 +56,20 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
     } else {
       setIsError(true);
       setOtp("");
-      // Logic handled in verifyOtpAction for blocking/expiry
     }
+  };
+
+  const handleResend = async () => {
+      setIsResending(true);
+      const success = await onResend();
+      setIsResending(false);
+      
+      if (success) {
+          toast({ title: "New Key Dispatched", description: "Identity key routed to mobile terminal." });
+          setResendCooldown(30); // 30s cooldown
+          setOtp("");
+          setIsError(false);
+      }
   };
 
   return (
@@ -80,38 +103,60 @@ export function SpecialEntryActivationDialog({ session, onActivate, isOpen, onOp
             
             <Separator className="bg-primary/5" />
 
-            <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block text-center">Verify Hashed Identity Key</Label>
-                <div className="relative max-w-[220px] mx-auto">
-                    <Input 
-                        type="text" 
-                        inputMode="numeric" 
-                        autoComplete="off"
-                        maxLength={4} 
-                        value={otp}
-                        disabled={isVerifying}
-                        onChange={(e) => {
-                            setIsError(false);
-                            const val = e.target.value.replace(/[^0-9]/g, '');
-                            setOtp(val);
-                        }}
-                        className={isError ? "border-destructive text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30" : "text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30 border-primary/20 focus:border-primary transition-all"}
-                        placeholder="----"
-                        autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && otp.length === 4 && handleActivate()}
-                    />
+            <div className="space-y-4">
+                <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block text-center">Verify Hashed Identity Key</Label>
+                    <div className="relative max-w-[220px] mx-auto">
+                        <Input 
+                            type="text" 
+                            inputMode="numeric" 
+                            autoComplete="off"
+                            maxLength={4} 
+                            value={otp}
+                            disabled={isVerifying || isResending}
+                            onChange={(e) => {
+                                setIsError(false);
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setOtp(val);
+                            }}
+                            className={cn(
+                                "text-center text-3xl font-mono font-black tracking-[0.5em] h-14 rounded-2xl shadow-inner bg-muted/30 transition-all",
+                                isError ? "border-destructive" : "border-primary/20 focus:border-primary"
+                            )}
+                            placeholder="----"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && otp.length === 4 && handleActivate()}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-2">
+                    {session.verificationAttempts && session.verificationAttempts > 0 && !isResending && (
+                        <p className="text-center text-[10px] font-black uppercase text-destructive animate-pulse tracking-widest mb-1">
+                            Attempt {session.verificationAttempts}/3
+                        </p>
+                    )}
+                    
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={resendCooldown > 0 || isResending || isVerifying}
+                        onClick={handleResend}
+                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 h-8 px-4 rounded-xl"
+                    >
+                        {isResending ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                            <RefreshCw className={cn("mr-2 h-3 w-3", resendCooldown > 0 && "opacity-20")} />
+                        )}
+                        {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Resend Security Key"}
+                    </Button>
                 </div>
             </div>
-
-            {session.verificationAttempts && session.verificationAttempts > 0 && (
-                <p className="text-center text-[10px] font-black uppercase text-destructive animate-pulse tracking-widest">
-                    Attempt {session.verificationAttempts}/3
-                </p>
-            )}
         </div>
 
         <div className="p-6 pt-0">
-          <Button onClick={handleActivate} className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20" disabled={otp.length < 4 || isVerifying}>
+          <Button onClick={handleActivate} className="w-full h-14 text-base font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20" disabled={otp.length < 4 || isVerifying || isResending}>
             {isVerifying ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Initialize"}
           </Button>
         </div>

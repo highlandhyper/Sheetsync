@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type PropsWithChildren, useMemo, useRef } from 'react';
@@ -8,7 +7,7 @@ import { useDataCache } from './data-cache-context';
 import { useGeneralSettings } from './general-settings-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction } from '@/app/actions';
+import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction, resendOtpAction } from '@/app/actions';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -26,6 +25,7 @@ interface SpecialEntryContextType {
   revokeRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
   activateSession: (id: string, otp: string) => Promise<boolean>;
+  resendOtp: (id: string) => Promise<boolean>;
 }
 
 const SpecialEntryContext = createContext<SpecialEntryContextType | undefined>(undefined);
@@ -76,7 +76,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
 
     const currentEmail = user.email.toLowerCase().trim();
 
-    // SESSIONS VISIBLE TO THIS USER: Their own or Global ones
     const sessionsVisibleToMe = specialRequests.filter(r => 
       (r.userEmail?.toLowerCase().trim() === currentEmail || r.staffName === "ALL PERSONNEL (GLOBAL)") && 
       r.status === 'approved' && 
@@ -161,7 +160,6 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   const grantProactiveEntry = useCallback(async (staffName: string, durationMinutes?: number) => {
     if (!user || !user.email) return;
     
-    // Proactive grants create a placeholder request then approve it
     const id = `grant_${Date.now()}`;
     const isGlobal = staffName === "ALL PERSONNEL (GLOBAL)";
     const targetEmail = isGlobal ? "broadcast@system.com" : "viewer@example.com";
@@ -177,11 +175,9 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       isReadByUser: false,
     };
 
-    // Pre-inject into local state for responsiveness
     const updated = [newRequest, ...specialRequests];
     await updateSpecialRequestsAction(updated);
     
-    // Call Secure Server Action for OTP generation and SMS dispatch
     await approveRequestAction(id, user.email, durationMinutes);
     await refreshData();
   }, [user, specialRequests, updateSpecialRequestsAction, refreshData]);
@@ -231,6 +227,18 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       }
   }, [refreshData]);
 
+  const resendOtp = useCallback(async (id: string) => {
+      if (!user?.email) return false;
+      const res = await resendOtpAction(id, user.email);
+      if (res.success) {
+          await refreshData();
+          return true;
+      } else {
+          toast({ variant: "destructive", title: "Resend Failed", description: res.message });
+          return false;
+      }
+  }, [user, refreshData, toast]);
+
   const value = useMemo(() => ({ 
     pendingRequests: pendingRequestsList, 
     processedRequests: processedRequestsList,
@@ -246,8 +254,9 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     rejectRequest, 
     revokeRequest,
     consumeSpecialEntry,
-    activateSession
-  }), [pendingRequestsList, processedRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession]);
+    activateSession,
+    resendOtp
+  }), [pendingRequestsList, processedRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession, resendOtp]);
 
   return (
     <SpecialEntryContext.Provider value={value}>
@@ -256,6 +265,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
             <SpecialEntryActivationDialog 
                 session={pendingActivationSession} 
                 onActivate={(otp) => activateSession(pendingActivationSession.id, otp)}
+                onResend={() => resendOtp(pendingActivationSession.id)}
                 isOpen={isActivationDialogOpen}
                 onOpenChange={setIsActivationDialogOpen}
             />
