@@ -32,7 +32,9 @@ import {
     Smartphone,
     MessageSquare,
     Info,
-    SmartphoneNfc
+    SmartphoneNfc,
+    Wifi,
+    WifiOff
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -45,7 +47,7 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
-import { getMasterSpreadsheetUrlAction } from '@/app/actions';
+import { getMasterSpreadsheetUrlAction, checkSmsConfigAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
@@ -232,6 +234,16 @@ export default function SettingsPage() {
   const [isBulkAuthOpen, setIsBulkAuthOpen] = React.useState(false);
   const [isImportTerminalOpen, setIsImportTerminalOpen] = React.useState(false);
 
+  const [smsEnvStatus, setSmsEnvStatus] = React.useState<{ hasApiKey: boolean; hasDeviceId: boolean } | null>(null);
+
+  React.useEffect(() => {
+    if (role === 'admin') {
+        checkSmsConfigAction().then(res => {
+            if (res.success && res.data) setSmsEnvStatus(res.data);
+        });
+    }
+  }, [role]);
+
   const handleOpenMasterDb = async () => {
     if (dbUrl) return;
     setIsDbLoading(true);
@@ -353,6 +365,28 @@ export default function SettingsPage() {
                         <div className="space-y-6">
                             <div className="rounded-[2rem] border-2 border-primary/5 p-8 bg-muted/5 shadow-inner">
                                 <div className="space-y-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xs font-black uppercase tracking-widest">Gateway Health</h3>
+                                        {smsEnvStatus?.hasApiKey ? (
+                                            <Badge className="bg-green-500/10 text-green-600 border-none px-3">
+                                                <Wifi className="mr-1.5 h-3 w-3" /> ONLINE
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="destructive" className="bg-destructive/10 text-destructive border-none px-3">
+                                                <WifiOff className="mr-1.5 h-3 w-3" /> NO API KEY
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    {!smsEnvStatus?.hasApiKey && (
+                                        <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-2xl flex items-start gap-3 mb-4">
+                                            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                                            <p className="text-[10px] text-destructive/80 font-bold leading-relaxed">
+                                                TEXTBEE_API_KEY not detected in .env.local. SMS dispatch is disabled.
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Recipient Phone Number</Label>
                                         <div className="relative">

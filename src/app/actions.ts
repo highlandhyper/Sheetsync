@@ -96,7 +96,6 @@ function sanitizeForJSON(input: any): any {
             } else if (value instanceof Date) {
                 target[key] = value.toISOString();
             } else if (typeof value === 'number') {
-                // FIXED: Validating individual value node instead of root input
                 target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
             } else if (typeof value === 'object') {
                 const newTarget = Array.isArray(value) ? [] : {};
@@ -171,18 +170,24 @@ export async function sendSmsAction(message: string, recipientNumber: string, cu
     const apiKey = process.env.TEXTBEE_API_KEY;
     const deviceId = customDeviceId || process.env.TEXTBEE_DEVICE_ID || '6a957332f3dc6f0f7b4d9aa3';
 
-    if (!apiKey) {
-        console.warn("SMS Gateway: API Key missing in environment.");
-        return { success: false, message: "Gateway API Key not set." };
+    if (!apiKey || apiKey.trim() === '') {
+        console.error("SMS Gateway Error: TEXTBEE_API_KEY is missing from environment variables.");
+        return { success: false, message: "Gateway API Key not configured in .env.local." };
+    }
+
+    if (!recipientNumber || recipientNumber.trim() === '') {
+        return { success: false, message: "Recipient phone number not provided." };
     }
 
     // Ensure International Format for Textbee
-    let formattedPhone = recipientNumber.trim();
+    let formattedPhone = recipientNumber.trim().replace(/\s/g, '');
     if (formattedPhone && !formattedPhone.startsWith('+')) {
         formattedPhone = '+' + formattedPhone;
     }
 
     try {
+        console.log(`SMS Dispatch: Sending to ${formattedPhone} via device ${deviceId}...`);
+        
         const res = await fetch(
             'https://api.textbee.dev/api/v1/gateway/send-sms',
             {
@@ -201,16 +206,31 @@ export async function sendSmsAction(message: string, recipientNumber: string, cu
         );
         
         const data = await res.json();
+        
         if (!res.ok) {
-            console.error("Textbee API Error:", data);
-            return { success: false, message: data.message || "Gateway rejected transmission." };
+            console.error("Textbee API Error Response:", JSON.stringify(data));
+            return { success: false, message: data.message || `Gateway Error ${res.status}` };
         }
         
+        console.log("SMS Dispatch Success:", JSON.stringify(data));
         return { success: true, data };
-    } catch (e) {
-        console.error("SMS Gateway Exception:", e);
-        return { success: false, message: "Gateway connection failed." };
+    } catch (e: any) {
+        console.error("SMS Gateway Exception:", e.message);
+        return { success: false, message: `Gateway Timeout or Connection Error: ${e.message}` };
     }
+}
+
+/**
+ * SECURITY: Checks if the server environment has the required SMS keys.
+ */
+export async function checkSmsConfigAction(): Promise<ActionResponse<{ hasApiKey: boolean, hasDeviceId: boolean }>> {
+    return {
+        success: true,
+        data: {
+            hasApiKey: !!process.env.TEXTBEE_API_KEY && process.env.TEXTBEE_API_KEY.length > 5,
+            hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID || true // Default fallback exists
+        }
+    };
 }
 
 /**
@@ -226,10 +246,8 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
         
         const req = requests[requestIndex];
         
-        // 1. Check Blocking
         if (req.isBlocked) return { success: false, message: "Security block active. Multiple failed attempts." };
         
-        // 2. Check Expiry
         const now = new Date();
         if (req.otpExpiresAt && new Date(req.otpExpiresAt) < now) {
             req.status = 'expired';
@@ -237,15 +255,12 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
             return { success: false, message: "Security key has expired (5-minute limit)." };
         }
         
-        // 3. Verify Hash
         const hashedEntered = hashOtp(enteredOtp);
         if (req.otpHash === hashedEntered) {
-            // Success: mark as used and clear attempts
             req.verificationAttempts = 0;
             await saveSpecialRequestsToSheet(requests);
             return { success: true, data: true };
         } else {
-            // Failure: Increment attempts
             req.verificationAttempts = (req.verificationAttempts || 0) + 1;
             if (req.verificationAttempts >= 3) {
                 req.isBlocked = true;
@@ -278,11 +293,10 @@ export async function approveRequestAction(requestId: string, adminEmail: string
         const hash = hashOtp(otp);
         
         const now = new Date();
-        const otpExpiry = new Date(now.getTime() + 5 * 60000).toISOString(); // Strict 5 mins
+        const otpExpiry = new Date(now.getTime() + 5 * 60000).toISOString(); 
         const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
         const sessionExpiry = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
         
-        // Dispatch SMS from AUTHORITATIVE SHEET PERMISSIONS
         const phone = meta.permissions?.smsRecipientNumber;
         const deviceId = meta.permissions?.smsDeviceId;
         
@@ -294,15 +308,17 @@ export async function approveRequestAction(requestId: string, adminEmail: string
             const smsRes = await sendSmsAction(msg, phone, deviceId);
             smsSent = smsRes.success;
             errorMessage = smsRes.message || "";
+            
+            if (!smsSent) {
+                console.error(`OTP dispatch failed for ${req.staffName}: ${errorMessage}`);
+            }
         } else {
-            // If no phone is configured, we treat it as "sent" to allow the approval 
-            // but log a warning as it likely means the user expects browser-only OTP
+            // Log local only if no phone
+            console.warn(`OTP dispatch skipped for ${req.staffName}: No recipient phone configured.`);
             smsSent = true; 
         }
 
-        // Only update sheet if SMS was dispatched (or if no phone set)
         if (smsSent) {
-            // Update Request
             req.status = 'approved';
             req.approvedAt = now.toISOString();
             req.otpHash = hash;
@@ -316,7 +332,7 @@ export async function approveRequestAction(requestId: string, adminEmail: string
             
             return { success: true };
         } else {
-            return { success: false, message: errorMessage || "SMS Gateway Dispatch Failed. Check configuration." };
+            return { success: false, message: `SMS Dispatch Failure: ${errorMessage}` };
         }
     } catch (e) {
         return { success: false, message: "Registry update failed." };
