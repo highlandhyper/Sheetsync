@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -121,7 +122,8 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
 
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
-  if (!data) return [];
+  if (data === null) throw new Error("Registry Catalog Unavailable");
+  
   return data.reduce((acc: Product[], row) => {
     const p = transformToProduct(row);
     if (p && p.barcode) acc.push(p);
@@ -138,7 +140,8 @@ export async function getSuppliers(prods?: Product[]): Promise<Supplier[]> {
 
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   const data = await readSheetData(INVENTORY_READ_RANGE);
-  if (!data) return [];
+  if (data === null) throw new Error("Inventory Registry Offline");
+  
   return data.reduce((acc: InventoryItem[], row, i) => {
     const item = transformToInventoryItem(row, i);
     if (item && item.quantity > 0) acc.push(item);
@@ -148,7 +151,7 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
-  if (!data || data.length === 0) return [];
+  if (data === null) throw new Error("Audit Trail Unavailable");
   
   const oneYearAgo = subDays(new Date(), 365);
   
@@ -204,7 +207,7 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
         const details = String(row[AUDIT_COL_DETAILS] || '').toLowerCase();
         
         if (target.includes(lowerBarcode) || details.includes(lowerBarcode)) {
-            rowsToDelete.push(i + 2); // A2 is row 2
+            rowsToDelete.push(i + 2); 
         }
     });
 
@@ -221,7 +224,7 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                       action: 'forensicWipe',
-                      password: APPSCRIPT_PASS, // MANDATORY HANDSHAKE
+                      password: APPSCRIPT_PASS, 
                       barcode: barcode,
                       adminEmail: email,
                       timestamp: new Date().toISOString(),
@@ -265,8 +268,10 @@ export async function logAuditEvent(user: string, action: string, target: string
 
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  if (data === null) throw new Error("System configuration unreachable.");
+
   const findJson = (key: string) => {
-    const rows = data?.filter(r => r[SETTINGS_COL_KEY] === key);
+    const rows = data.filter(r => r[SETTINGS_COL_KEY] === key);
     if (!rows || rows.length === 0) return null;
     const lastRow = rows[rows.length - 1];
     try {
@@ -349,7 +354,7 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
 
 export async function deleteProductsByBarcodes(email: string, identifiers: string[]) {
   const sheetData = await readSheetData(DB_READ_RANGE);
-  if (!sheetData || sheetData.length === 0) return false;
+  if (sheetData === null) throw new Error("Registry Catalog Unavailable");
   const idSet = new Set(identifiers.map(id => id.trim()));
   const rowIndicesToDelete: number[] = [];
   const deletedInfo: string[] = [];
@@ -425,7 +430,6 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
  */
 export async function addInventoryItemToSheet(item: any) {
   try {
-    // Robust payload with aliases for maximum compatibility with varying Apps Script implementations
     const payload = {
       barcode: item.barcode,
       sku: item.barcode,
@@ -452,7 +456,7 @@ export async function addInventoryItemToSheet(item: any) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      redirect: 'follow', // MANDATORY FOR APPSCRIPT 302 REDIRECTS
+      redirect: 'follow', 
       signal: AbortSignal.timeout(15000) 
     });
 
@@ -481,7 +485,7 @@ export async function addInventoryItemToSheet(item: any) {
       item.location, 
       item.staffName, 
       item.productName, 
-      item.supplierName || '', // INDEX 7: POPULATES COLUMN H
+      item.supplierName || '', 
       item.itemType, 
       item.id
     ];
@@ -494,7 +498,7 @@ export async function addInventoryItemToSheet(item: any) {
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) throw new Error("Not found.");
+  if (!row) throw new Error("Record Identification Failure.");
   
   const existingData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
   if (!existingData || !existingData[0]) throw new Error("Data retrieval failed.");
@@ -535,7 +539,7 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) throw new Error("Not found.");
+  if (!row) throw new Error("Record Identification Failure.");
   
   const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
   if (!data || !data[0]) throw new Error("Data retrieval failed.");
@@ -605,5 +609,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 }
 
 export async function getInventoryLogEntriesByBarcode(b: string) { 
-    return (await getInventoryItems()).filter(i => i.barcode === b); 
+    const items = await getInventoryItems();
+    return items.filter(i => i.barcode === b); 
 }

@@ -31,7 +31,8 @@ import {
     Music,
     Smartphone,
     MessageSquare,
-    Info
+    Info,
+    SmartphoneNfc
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -52,6 +53,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useGeneralSettings } from '@/context/general-settings-context';
 import { useNotifications } from '@/context/notification-context';
+import { useAccessControl } from '@/context/access-control-context';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -220,6 +222,7 @@ export default function SettingsPage() {
   const { role, user } = useAuth();
   const { toast } = useToast();
   const { settings, setSetting } = useGeneralSettings();
+  const { permissions, setSmsRecipientNumber, setSmsDeviceId } = useAccessControl();
   
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbLoading, setIsDbLoading] = React.useState(false);
@@ -345,27 +348,43 @@ export default function SettingsPage() {
                         description="Direct security OTPs to a dedicated mobile terminal via SMS gateway."
                         triggerText="SMS Gateway"
                         badge="GATEWAY"
+                        dialogClassName="sm:max-w-xl"
                     >
                         <div className="space-y-6">
                             <div className="rounded-[2rem] border-2 border-primary/5 p-8 bg-muted/5 shadow-inner">
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Recipient Phone Number</Label>
                                         <div className="relative">
                                             <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
                                             <Input 
                                                 placeholder="+974..." 
-                                                value={settings.smsRecipientNumber || ''} 
-                                                onChange={(e) => setSetting('smsRecipientNumber', e.target.value)}
+                                                value={permissions.smsRecipientNumber || ''} 
+                                                onChange={(e) => setSmsRecipientNumber(e.target.value)}
                                                 className="pl-12 h-14 rounded-2xl font-bold bg-background border-primary/10"
                                             />
                                         </div>
                                         <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight ml-1">International format required (e.g. +974...)</p>
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Textbee Device ID</Label>
+                                        <div className="relative">
+                                            <SmartphoneNfc className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
+                                            <Input 
+                                                placeholder="6a95..." 
+                                                value={permissions.smsDeviceId || ''} 
+                                                onChange={(e) => setSmsDeviceId(e.target.value)}
+                                                className="pl-12 h-14 rounded-2xl font-mono text-sm bg-background border-primary/10"
+                                            />
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight ml-1">Found in your Textbee Gateway dashboard.</p>
+                                    </div>
+
                                     <div className="py-4 px-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-4">
                                         <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                         <p className="text-[10px] text-primary/70 font-medium leading-relaxed">
-                                            When a Silent Entry is authorized, the system will automatically route the OTP to this terminal via the Textbee REST API.
+                                            When a Silent Entry is authorized, the system will automatically route the OTP to this terminal via the Textbee REST API. This is a global system setting.
                                         </p>
                                     </div>
                                 </div>
@@ -500,6 +519,13 @@ export default function SettingsPage() {
             </div>
         )}
 
+      </div>
+
+      <div className="mt-10 p-6 bg-muted/20 border-2 border-dashed rounded-[2rem] text-center space-y-2">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Industrial Data Integrity Check</p>
+          <p className="text-[10px] text-muted-foreground/60 leading-relaxed max-w-lg mx-auto">
+              Verify that the Google Spreadsheet ID and Service Account credentials are correctly set in the environment variables to ensure zero-latency synchronization.
+          </p>
       </div>
 
       <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>

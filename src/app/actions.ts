@@ -65,6 +65,7 @@ function hashOtp(otp: string): string {
 
 /**
  * HIGH-PERFORMANCE ITERATIVE SANITIZER
+ * Ensures all data nodes are safe for JSON transmission.
  */
 function sanitizeForJSON(input: any): any {
     if (input === null || input === undefined) return input;
@@ -76,8 +77,11 @@ function sanitizeForJSON(input: any): any {
         return input;
     }
 
-    const stack: { source: any, target: any, key?: string | number }[] = [{ source: input, target: Array.isArray(input) ? [] : {} }];
-    const root = stack[0].target;
+    const stack: { source: any, target: any }[] = [{ 
+        source: input, 
+        target: Array.isArray(input) ? [] : {} 
+    }];
+    const rootTarget = stack[0].target;
 
     while (stack.length > 0) {
         const { source, target } = stack.pop()!;
@@ -92,7 +96,8 @@ function sanitizeForJSON(input: any): any {
             } else if (value instanceof Date) {
                 target[key] = value.toISOString();
             } else if (typeof value === 'number') {
-                target[key] = (Number.isNaN(input) || !Number.isFinite(input)) ? 0 : value;
+                // FIXED: Validating individual value node instead of root input
+                target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
             } else if (typeof value === 'object') {
                 const newTarget = Array.isArray(value) ? [] : {};
                 target[key] = newTarget;
@@ -103,7 +108,7 @@ function sanitizeForJSON(input: any): any {
         }
     }
 
-    return root;
+    return rootTarget;
 }
 
 export async function fetchAllDataAction(skipProducts: boolean = false): Promise<ActionResponse<{
@@ -126,12 +131,11 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
         promises.push(getProducts());
     }
 
-    const [
-      inventoryItems,
-      auditLogs,
-      meta,
-      products
-    ] = await Promise.all(promises);
+    const results = await Promise.all(promises);
+    const inventoryItems = results[0];
+    const auditLogs = results[1];
+    const meta = results[2];
+    const products = skipProducts ? undefined : results[3];
 
     const activeProducts = skipProducts ? undefined : (products || []);
     const calculatedSuppliers = skipProducts ? undefined : await getSuppliers(activeProducts);
@@ -154,22 +158,28 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       success: true,
       data: sanitizeForJSON(result)
     };
-  } catch (error) {
-    console.error("Critical Failure in fetchAllDataAction:", error);
-    return { success: false, message: "Registry link timeout. Retrying..." };
+  } catch (error: any) {
+    console.error("Registry Sync Failure:", error);
+    return { success: false, message: error.message || "Registry link timeout. Retrying..." };
   }
 }
 
 /**
  * SECURITY: Securely dispatches OTPs via Textbee REST API.
  */
-export async function sendSmsAction(message: string, recipientNumber: string) {
+export async function sendSmsAction(message: string, recipientNumber: string, customDeviceId?: string) {
     const apiKey = process.env.TEXTBEE_API_KEY;
-    const deviceId = process.env.TEXTBEE_DEVICE_ID || '6a957332f3dc6f0f7b4d9aa3';
+    const deviceId = customDeviceId || process.env.TEXTBEE_DEVICE_ID || '6a957332f3dc6f0f7b4d9aa3';
 
     if (!apiKey) {
         console.warn("SMS Gateway: API Key missing in environment.");
-        return { success: false, message: "Gateway misconfigured." };
+        return { success: false, message: "Gateway API Key not set." };
+    }
+
+    // Ensure International Format for Textbee
+    let formattedPhone = recipientNumber.trim();
+    if (formattedPhone && !formattedPhone.startsWith('+')) {
+        formattedPhone = '+' + formattedPhone;
     }
 
     try {
@@ -183,16 +193,23 @@ export async function sendSmsAction(message: string, recipientNumber: string) {
                 },
                 body: JSON.stringify({
                     deviceId: deviceId,
-                    recipients: [recipientNumber],
+                    recipients: [formattedPhone],
                     message: message,
                 }),
+                signal: AbortSignal.timeout(15000)
             }
         );
+        
         const data = await res.json();
-        return { success: res.ok, data };
+        if (!res.ok) {
+            console.error("Textbee API Error:", data);
+            return { success: false, message: data.message || "Gateway rejected transmission." };
+        }
+        
+        return { success: true, data };
     } catch (e) {
-        console.error("SMS Gateway Error:", e);
-        return { success: false };
+        console.error("SMS Gateway Exception:", e);
+        return { success: false, message: "Gateway connection failed." };
     }
 }
 
@@ -223,13 +240,13 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
         // 3. Verify Hash
         const hashedEntered = hashOtp(enteredOtp);
         if (req.otpHash === hashedEntered) {
-            // Success: Terminate temporal session parameters but mark as active
+            // Success: mark as used and clear attempts
             req.verificationAttempts = 0;
             await saveSpecialRequestsToSheet(requests);
             return { success: true, data: true };
         } else {
             // Failure: Increment attempts
-            req.verificationAttempts = (req.attempts || 0) + 1;
+            req.verificationAttempts = (req.verificationAttempts || 0) + 1;
             if (req.verificationAttempts >= 3) {
                 req.isBlocked = true;
                 req.status = 'blocked';
@@ -265,26 +282,42 @@ export async function approveRequestAction(requestId: string, adminEmail: string
         const isTimed = typeof durationMinutes === 'number' && durationMinutes > 0;
         const sessionExpiry = isTimed ? new Date(now.getTime() + durationMinutes * 60000).toISOString() : undefined;
         
-        // Update Request
-        req.status = 'approved';
-        req.approvedAt = now.toISOString();
-        req.otpHash = hash;
-        req.otpExpiresAt = otpExpiry;
-        req.expiresAt = sessionExpiry;
-        req.verificationAttempts = 0;
-        req.type = isTimed ? 'timed' : 'single';
-        
-        // Dispatch SMS
+        // Dispatch SMS from AUTHORITATIVE SHEET PERMISSIONS
         const phone = meta.permissions?.smsRecipientNumber;
-        if (phone) {
+        const deviceId = meta.permissions?.smsDeviceId;
+        
+        let smsSent = false;
+        let errorMessage = "";
+
+        if (phone && phone.trim() !== '') {
             const msg = `SheetSync: OTP for ${req.staffName} is ${otp}. Valid 5 mins.`;
-            await sendSmsAction(msg, phone);
+            const smsRes = await sendSmsAction(msg, phone, deviceId);
+            smsSent = smsRes.success;
+            errorMessage = smsRes.message || "";
+        } else {
+            // If no phone is configured, we treat it as "sent" to allow the approval 
+            // but log a warning as it likely means the user expects browser-only OTP
+            smsSent = true; 
         }
-        
-        await saveSpecialRequestsToSheet(requests);
-        await logAuditEvent(adminEmail, 'APPROVE_SPECIAL_ENTRY', req.id, `Authorized ${req.staffName}. OTP dispatched via SMS.`);
-        
-        return { success: true };
+
+        // Only update sheet if SMS was dispatched (or if no phone set)
+        if (smsSent) {
+            // Update Request
+            req.status = 'approved';
+            req.approvedAt = now.toISOString();
+            req.otpHash = hash;
+            req.otpExpiresAt = otpExpiry;
+            req.expiresAt = sessionExpiry;
+            req.verificationAttempts = 0;
+            req.type = isTimed ? 'timed' : 'single';
+            
+            await saveSpecialRequestsToSheet(requests);
+            await logAuditEvent(adminEmail, 'APPROVE_SPECIAL_ENTRY', req.id, `Authorized ${req.staffName}. OTP generated and hashed.`);
+            
+            return { success: true };
+        } else {
+            return { success: false, message: errorMessage || "SMS Gateway Dispatch Failed. Check configuration." };
+        }
     } catch (e) {
         return { success: false, message: "Registry update failed." };
     }

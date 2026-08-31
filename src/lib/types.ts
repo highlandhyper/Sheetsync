@@ -106,6 +106,8 @@ export type Permissions = {
   isAudioEnabled?: boolean;
   isIdentityAudioEnabled?: boolean;
   identityAudioType?: 'whoareyou' | 'whoareyou1';
+  smsRecipientNumber?: string;
+  smsDeviceId?: string;
 };
 
 export interface AuditLogEntry {

@@ -17,6 +17,8 @@ interface AccessControlContextType {
   setAudioPermission: (enabled: boolean) => void;
   setIdentityAudioEnabled: (enabled: boolean) => void;
   setIdentityAudioType: (type: 'whoareyou' | 'whoareyou1') => void;
+  setSmsRecipientNumber: (number: string) => void;
+  setSmsDeviceId: (deviceId: string) => void;
   isAllowed: (role: 'admin' | 'viewer', path: string) => boolean;
   hasFeature: (feature: ViewerFeature) => boolean;
 }
@@ -39,6 +41,8 @@ const getDefaultPermissions = (): Permissions => {
     isAudioEnabled: true,
     isIdentityAudioEnabled: true,
     identityAudioType: 'whoareyou',
+    smsRecipientNumber: '',
+    smsDeviceId: '',
   };
 };
 
@@ -147,6 +151,26 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
     });
   }, [role]);
 
+  const setSmsRecipientNumber = useCallback((number: string) => {
+    if (role !== 'admin') return;
+    setPermissions(prev => {
+        const newState = { ...prev, smsRecipientNumber: number };
+        localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newState));
+        setPermissionsAction(newState).catch(console.error);
+        return newState;
+    });
+  }, [role]);
+
+  const setSmsDeviceId = useCallback((deviceId: string) => {
+    if (role !== 'admin') return;
+    setPermissions(prev => {
+        const newState = { ...prev, smsDeviceId: deviceId };
+        localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(newState));
+        setPermissionsAction(newState).catch(console.error);
+        return newState;
+    });
+  }, [role]);
+
   const isAllowed = useCallback((userRole: 'admin' | 'viewer', path: string) => {
     if (userRole === 'admin') return true;
     if (path === '/more') return true; // System-critical hub
@@ -159,10 +183,15 @@ export function AccessControlProvider({ children }: PropsWithChildren) {
   }, [permissions, role]);
 
   return (
-    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, setAudioPermission, setIdentityAudioEnabled, setIdentityAudioType, isAllowed, hasFeature }}>
+    <AccessControlContext.Provider value={{ permissions, isInitialized, setPermission, setFeaturePermission, setViewerDefaultPath, setAudioPermission, setIdentityAudioEnabled, setIdentityAudioType, setSmsRecipientNumber, setSmsDeviceId, isAllowed, hasFeature }}>
       {children}
     </AccessControlContext.Provider>
   );
+}
+
+export function useIsAccessControlInitialized() {
+    const context = useContext(AccessControlContext);
+    return context?.isInitialized;
 }
 
 export function useAccessControl() {

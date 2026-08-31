@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -76,6 +77,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   const lastProductSyncRef = useRef<number>(0);
+  const syncFailureCountRef = useRef(0);
   
   const isCacheReady = isInitialized;
 
@@ -148,6 +150,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     try {
       const response = await fetchAllDataAction(shouldSkipProducts);
       if (response.success && response.data) {
+        syncFailureCountRef.current = 0;
         if (!shouldSkipProducts) {
             lastProductSyncRef.current = now;
         }
@@ -163,6 +166,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 : prev.suppliers,
             lastSync: now 
         }));
+      } else {
+          syncFailureCountRef.current++;
+          if (syncFailureCountRef.current >= 3) {
+              toast({ 
+                  variant: "destructive", 
+                  title: "Registry Sync Alert", 
+                  description: response.message || "Failed to establish industrial handshake with Google Sheets." 
+              });
+          }
       }
     } catch (e) {
       console.warn("Data Sync Background Error:", e);
@@ -171,7 +183,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [user, data.products.length, data.suppliers.length]);
+  }, [user, data.products.length, data.suppliers.length, toast]);
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
