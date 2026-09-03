@@ -30,7 +30,8 @@ import {
     PackageSearch,
     SendHorizontal,
     Globe,
-    Zap
+    Zap,
+    XCircle
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -49,14 +50,13 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -135,6 +135,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const identityAudioRef = useRef<HTMLAudioElement | null>(null);
   const identityAudio1Ref = useRef<HTMLAudioElement | null>(null);
 
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [submittedStaffName, setSubmittedStaffName] = useState('');
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
         thankYouAudioRef.current = new Audio('/thankyou.m4a');
@@ -155,9 +160,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [suggestedProductName, setSuggestedProductName] = useState('');
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
   const [foundInGlobalRegistry, setFoundInGlobalRegistry] = useState(false);
-
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [submittedStaffName, setSubmittedStaffName] = useState('');
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -258,10 +260,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
+    // OPTIMISTIC PROTOCOL: INSTANT FEEDBACK
     playThankYouAudio();
     setIsSuccessDialogOpen(true);
     setIsSubmitting(true);
     submitLockRef.current = true;
+    setSubmittedStaffName(data.staffName);
 
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
@@ -280,24 +284,27 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         timestamp: now.toISOString()
     };
 
+    // Update local store immediately
     addInventoryItem(optimisticItem);
-    setSubmittedStaffName(data.staffName);
     
+    // Automatic Reset sequence
+    const savedStaffName = data.staffName; 
     setTimeout(() => {
         setIsSuccessDialogOpen(false);
-        barcodeInputRef.current?.focus();
-    }, 3000); 
-
-    const savedStaffName = data.staffName; 
-    reset({ ...data, barcode: '', quantity: 1 });
-    setValue('staffName', savedStaffName); 
-    setProductName('');
-    setProductSupplier('');
-    setProductLookupError('');
-    setSuggestedProductName('');
-    setHasRequestedProduct(false);
-    setFoundInGlobalRegistry(false);
-    setCurrentStep(0);
+        reset({ ...data, barcode: '', quantity: 1 });
+        setValue('staffName', savedStaffName); 
+        setProductName('');
+        setProductSupplier('');
+        setProductLookupError('');
+        setSuggestedProductName('');
+        setHasRequestedProduct(false);
+        setFoundInGlobalRegistry(false);
+        setCurrentStep(0);
+        submitLockRef.current = false;
+        setIsSubmitting(false);
+        // Force focus back to barcode for next item
+        setTimeout(() => barcodeInputRef.current?.focus(), 100);
+    }, 2500);
 
     if (!navigator.onLine) {
         queueAction({
@@ -315,11 +322,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             }
         });
         if (activeSession) consumeSpecialEntry();
-        setIsSubmitting(false);
-        submitLockRef.current = false;
         return;
     }
 
+    // BACKGROUND HANDSHAKE
     startTransition(async () => {
       const formData = new FormData();
       formData.append('barcode', data.barcode);
@@ -338,13 +344,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           if (activeSession) consumeSpecialEntry(); 
           refreshData(); 
         } else {
-          toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Background log failed.' });
+          setErrorMessage(response.message || 'The Google Sheets registry refused the connection.');
+          setIsErrorDialogOpen(true);
           refreshData(); 
         }
       } catch (err) {
-      } finally {
-        setIsSubmitting(false);
-        submitLockRef.current = false;
+        setErrorMessage('Industrial terminal handshake timeout. Check connectivity.');
+        setIsErrorDialogOpen(true);
+        refreshData();
       }
     });
   };
@@ -477,7 +484,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                                 <Command>
-                                    <CommandInput placeholder="Search personnel registry..." className="h-10" />
                                     <CommandList>
                                         <CommandEmpty>No staff member found.</CommandEmpty>
                                         <CommandGroup>
@@ -516,7 +522,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}><div className="flex items-center gap-2"><span>{allFormValues.location || "Select Zone..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" /></Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command><CommandInput placeholder="Search location..." /><CommandList><CommandEmpty>No location found.</CommandEmpty><CommandGroup>{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium"><Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                <Command><CommandList><CommandEmpty>No location found.</CommandEmpty><CommandGroup>{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium"><Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
                             </PopoverContent>
                         </Popover>
                         {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
@@ -534,7 +540,29 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     </Card>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}><DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black"><DialogHeader className="p-6 pb-2 border-b border-white/10 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20"><DialogTitle className="font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle><DialogDescription className="text-zinc-400 text-xs">Align product barcode with the center target.</DialogDescription></DialogHeader><div className="relative scanner-container h-[400px] w-full"><div id={SCANNER_REGION_ID} className="h-full w-full [&>span]:hidden" /><div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /><div className="scanner-corner scanner-corner-tl" /><div className="scanner-corner scanner-corner-tr" /><div className="scanner-corner scanner-corner-bl" /><div className="scanner-corner scanner-corner-br" /></div></div></div><div className="p-4 bg-zinc-900/50 border-t border-white/10 flex justify-center relative z-20"><Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">Terminate Scan</Button></div></DialogContent></Dialog>
+    
     <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}><DialogContent className="max-w-sm w-[90%] p-8 overflow-hidden rounded-2xl border-0 shadow-2xl bg-slate-950 text-white flex flex-col items-center text-center animate-fade-in"><div className="bg-primary/20 p-4 rounded-full mb-6 animate-bounce"><PartyPopper className="h-12 w-12 text-primary" /></div><DialogHeader className="space-y-2"><DialogTitle className="text-3xl font-black tracking-tighter text-primary uppercase">{navigator.onLine ? "Logged Successfully!" : "Saved Locally!"}</DialogTitle><DialogDescription className="text-slate-400 text-lg font-medium">{navigator.onLine ? "Inventory data has been saved to the cloud." : "Working offline. Data stored."}</DialogDescription></DialogHeader><Separator className="my-6 bg-slate-800" /><div className="flex flex-col items-center gap-2"><Heart className="h-6 w-6 text-red-500 fill-red-500" /><p className="text-xl font-bold">Thank you, <span className="text-primary">{submittedStaffName}</span>!</p><p className="text-slate-500 text-sm italic">You're doing a great job.</p></div><Button onClick={() => setIsSuccessDialogOpen(false)} className="mt-8 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl h-12">Got it!</Button></DialogContent></Dialog>
+
+    <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent className="max-w-md w-[95%] p-10 overflow-hidden rounded-3xl border-0 shadow-3xl bg-destructive text-destructive-foreground flex flex-col items-center text-center">
+            <div className="bg-white/20 p-6 rounded-full mb-6 shadow-2xl">
+                <XCircle className="h-16 w-16 text-white" />
+            </div>
+            <DialogHeader className="space-y-3">
+                <DialogTitle className="text-4xl font-black uppercase tracking-tighter leading-none">Synchronization Failure</DialogTitle>
+                <DialogDescription className="text-white/80 text-base font-bold uppercase tracking-widest opacity-90">Registry Node Disconnected</DialogDescription>
+            </DialogHeader>
+            <div className="mt-8 p-6 bg-black/20 rounded-2xl border border-white/10 w-full">
+                <p className="text-sm font-medium leading-relaxed italic">"{errorMessage}"</p>
+            </div>
+            <div className="mt-10 flex flex-col gap-3 w-full">
+                <Button onClick={() => setIsErrorDialogOpen(false)} variant="secondary" className="w-full h-16 text-lg font-black uppercase tracking-widest rounded-2xl shadow-2xl">
+                    Back to Terminal
+                </Button>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Industrial Core Exception Error 0x884</p>
+            </div>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }
