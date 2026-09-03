@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -51,6 +52,19 @@ export interface ActionResponse<T = any> {
 function getRoleByEmail(email: string | null): Role {
     if (!email) return 'viewer';
     return email.toLowerCase().trim() === 'viewer@example.com' ? 'viewer' : 'admin';
+}
+
+/**
+ * SECURITY: Helper to get human-readable purpose for SMS context
+ */
+function getRequestPurpose(req: SpecialEntryRequest): string {
+    switch (req.type) {
+        case 'product_add': return 'Register SKU';
+        case 'inventory_edit': return `Edit ${req.editDetails?.productName || 'Stock'}`;
+        case 'timed': return 'Timed Access';
+        case 'single': return 'Silent Entry';
+        default: return 'Identity Check';
+    }
 }
 
 /**
@@ -303,7 +317,8 @@ export async function approveRequestAction(requestId: string, adminEmail: string
         let errorMessage = "";
 
         if (phone && phone.trim() !== '') {
-            const msg = `SheetSync: OTP for ${req.staffName} is ${otp}. Valid 5 mins.`;
+            const purpose = getRequestPurpose(req);
+            const msg = `SheetSync: OTP for ${purpose} (${req.staffName}) is ${otp}. Valid 5 mins.`;
             const smsRes = await sendSmsAction(msg, phone, deviceId);
             smsSent = smsRes.success;
             errorMessage = smsRes.message || "";
@@ -366,7 +381,8 @@ export async function resendOtpAction(requestId: string, userEmail: string): Pro
         const deviceId = meta.permissions?.smsDeviceId;
 
         if (phone && phone.trim() !== '') {
-            const msg = `SheetSync: New OTP for ${req.staffName} is ${otp}. Valid 5 mins.`;
+            const purpose = getRequestPurpose(req);
+            const msg = `SheetSync: New OTP for ${purpose} (${req.staffName}) is ${otp}. Valid 5 mins.`;
             const smsRes = await sendSmsAction(msg, phone, deviceId);
             if (!smsRes.success) return { success: false, message: `Gateway Error: ${smsRes.message}` };
         }
@@ -423,7 +439,7 @@ export async function addInventoryItemAction(
 
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
-    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(startOfDay(validatedItemData.expiryDate), startOfDay(now));
+    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(validatedItemData.expiryDate, startOfDay(now));
     const sheetTriggerType = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : validatedItemData.itemType);
 
     const itemData: InventoryItem = {
