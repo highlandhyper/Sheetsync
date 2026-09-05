@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -200,7 +199,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] ml-1">Final Observation Target (Expiry)</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] ml-1">Expiry Date</Label>
                             <Popover modal={true}>
                                 <PopoverTrigger asChild>
                                     <Button 
