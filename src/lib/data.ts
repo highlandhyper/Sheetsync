@@ -55,9 +55,8 @@ const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
 
-// PRIMARY LOGGING ENDPOINT
 const APPSCRIPT_API_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
-const APPSCRIPT_PASS = "0438"; // Matches ADMIN_PASSWORD in Code.gs
+const APPSCRIPT_PASS = "0438"; 
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -177,21 +176,26 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
             supplierName: String(row[WATCH_COL_SUPPLIER] || ''),
             status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
             timestamp: tsDate && isValid(tsDate) ? tsDate.toISOString() : String(tsRaw || ''),
-            staffName: '' // Hidden in sheet, kept in type for compat
+            staffName: '' 
         };
     }).filter(r => r.id && r.status === 'pending');
 }
 
+/**
+ * EXCLUSIVE EXPIRY WATCH LOGGING
+ * Strictly logs to "Expiry Watch" sheet only. Does NOT trigger main inventory log.
+ */
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
+    
     // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp
     const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts];
     
-    // STRICT ISOLATION: Only write to "Expiry Watch" sheet
+    // CRITICAL: Isolated write to "Expiry Watch"
     await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);
     
-    // Dispatch to AppsScript for SMS scheduling
+    // Specialized fetch to AppsScript with isWatchEntry flag
     try {
         await fetch(APPSCRIPT_API_URL, {
             method: 'POST',
@@ -199,8 +203,13 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
             body: JSON.stringify({
                 action: 'scheduleExpiryWatch',
                 password: APPSCRIPT_PASS,
-                ...reminder,
-                reminderId: id
+                isWatchEntry: true, 
+                reminderId: id,
+                barcode: reminder.barcode,
+                productName: reminder.productName,
+                expiryDate: reminder.expiryDate,
+                staffName: reminder.staffName,
+                supplierName: reminder.supplierName
             }),
             redirect: 'follow'
         });
@@ -214,7 +223,6 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
 export async function resolveExpiryReminder(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
-        // STRICT ISOLATION: Targeted status update in "Expiry Watch" sheet column F
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_WATCH', id, `Cleared product from Expiry Watch.`);
         return true;
@@ -264,7 +272,6 @@ export async function pruneAuditLogs() {
 
     if (rowsToDelete.length > 0) {
         await deleteSheetRowsBatch(AUDIT_LOG_SHEET_NAME, rowsToDelete);
-        console.log(`Pruned ${rowsToDelete.length} expired audit logs.`);
     }
 }
 
@@ -278,7 +285,6 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
     data.forEach((row, i) => {
         const target = String(row[AUDIT_COL_TARGET] || '').toLowerCase();
         const details = String(row[AUDIT_COL_DETAILS] || '').toLowerCase();
-        
         if (target.includes(lowerBarcode) || details.includes(lowerBarcode)) {
             rowsToDelete.push(i + 2); 
         }
@@ -287,43 +293,7 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
     if (rowsToDelete.length > 0) {
         const success = await deleteSheetRowsBatch(AUDIT_LOG_SHEET_NAME, rowsToDelete);
         if (success) {
-            const wipeDetails = `[PURGE] Wiped ${rowsToDelete.length} security traces for barcode: ${barcode}`;
-            await logAuditEvent(email, 'FORENSIC_WIPE', barcode, wipeDetails);
-            
-            // DISPATCH FORENSIC WIPE ALERT TO APPSCRIPT
-            try {
-              await fetch(APPSCRIPT_API_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                      action: 'forensicWipe',
-                      password: APPSCRIPT_PASS, 
-                      barcode: barcode,
-                      adminEmail: email,
-                      timestamp: new Date().toISOString(),
-                      reason: "Administrator initiated permanent purge of historical SKU traces.",
-                      device: typeof navigator !== 'undefined' ? navigator.userAgent : 'Registry Terminal'
-                  }),
-                  redirect: 'follow'
-              });
-            } catch (e) {
-                console.error("Forensic wipe notification trigger failed:", e);
-            }
-
-            const ts = format(new Date(), "d/M/yyyy HH:mm:ss");
-            const notificationRow = [
-                ts, 
-                barcode, 
-                0, 
-                '', 
-                'SECURITY CORE', 
-                'SYSTEM ALERT', 
-                '!!! FORENSIC WIPE COMPLETED !!!', 
-                'SECURITY PURGE', 
-                'SECURITY_ALERT', 
-                `wipe_${Date.now()}`
-            ];
-            await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [notificationRow]);
+            await logAuditEvent(email, 'FORENSIC_WIPE', barcode, `[PURGE] Wiped traces for ${barcode}`);
         }
         return success;
     }
@@ -333,10 +303,7 @@ export async function deleteAuditLogsByBarcode(email: string, barcode: string) {
 export async function logAuditEvent(user: string, action: string, target: string, details: string) {
   const ts = format(new Date(), "yyyy-MM-dd HH:mm:ss");
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);
-  
-  if (Math.random() < 0.01) {
-      pruneAuditLogs().catch(err => console.error("Auto-pruning failed:", err));
-  }
+  if (Math.random() < 0.01) pruneAuditLogs().catch(() => {});
 }
 
 export async function getAppMetaData() {
@@ -425,10 +392,8 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
   let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_UNIQUE_ID) ||
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
   if (row) {
-    const data = await readSheetData(`${DB_SHEET_NAME}!C${row}:C${row}`);
-    const name = data?.[0]?.[0] || 'Unknown';
     await deleteSheetRow(DB_SHEET_NAME, row);
-    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `[REMOVED] Barcode: ${barcode} | Product: ${name}`);
+    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `[REMOVED] Barcode: ${barcode}`);
     return true;
   }
   return false;
@@ -436,29 +401,22 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
 
 export async function deleteProductsByBarcodes(email: string, identifiers: string[]) {
   const sheetData = await readSheetData(DB_READ_RANGE);
-  if (sheetData === null) throw new Error("Registry Catalog Unavailable");
+  if (sheetData === null) return false;
   const idSet = new Set(identifiers.map(id => id.trim()));
   const rowIndicesToDelete: number[] = [];
-  const deletedInfo: string[] = [];
-
   sheetData.forEach((row, i) => {
     const rowUniqueId = String(row[DB_COL_UNIQUE_ID] || '').trim();
     const rowBarcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
     if ((rowUniqueId && idSet.has(rowUniqueId)) || idSet.has(rowBarcode)) {
         rowIndicesToDelete.push(i + 2); 
-        deletedInfo.push(`${row[DB_COL_PRODUCT_NAME]} (${rowBarcode})`);
     }
   });
   if (rowIndicesToDelete.length === 0) return false;
-  const success = await deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
-  if (success) await logAuditEvent(email, 'BULK_DELETE_PRODUCT', identifiers.join(','), `[BATCH REMOVAL] Deleted ${deletedInfo.length} catalog items: ${deletedInfo.join(', ')}`);
-  return success;
+  return deleteSheetRowsBatch(DB_SHEET_NAME, rowIndicesToDelete);
 }
 
 export async function clearProductDatabase(email: string) {
-  const success = await clearSheetData(`${DB_SHEET_NAME}!A2:H`);
-  if (success) await logAuditEvent(email, 'WIPE_DATABASE', 'GLOBAL', `[FULL WIPE] Catalog cleared by administrator.`);
-  return success;
+  return clearSheetData(`${DB_SHEET_NAME}!A2:H`);
 }
 
 export async function updateProductBatch(batch: any[][], startRow: number) {
@@ -466,10 +424,6 @@ export async function updateProductBatch(batch: any[][], startRow: number) {
   await ensureSheetRows(DB_SHEET_NAME, endRow);
   const range = `${DB_SHEET_NAME}!A${startRow}:H${endRow}`;
   return updateSheetData(range, batch);
-}
-
-export async function appendProductBatch(batch: any[][]) {
-  return appendSheetData(`${DB_SHEET_NAME}!A:H`, batch);
 }
 
 export async function updateProductAndSupplierLinks(email: string, b: string, n: string, s: string, c?: number, uniqueId?: string) {
@@ -482,56 +436,44 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
       { range: `${DB_SHEET_NAME}!D${row}`, values: [[s]] }, 
       { range: `${DB_SHEET_NAME}!E${row}`, values: [[costValue]] }
     ]);
-    await logAuditEvent(email, 'UPDATE_PRODUCT', b, `[UPDATED] Barcode: ${b} | Product: ${n} | Supplier: ${s} | Unit Cost: ${costValue}`);
     return true;
   }
   return false;
 }
 
 export async function updateSupplierNameAndReferences(email: string, oldName: string, newName: string) {
-  const oldSupplier = oldName.trim();
-  const newSupplier = newName.trim();
-  if (!oldSupplier || !newSupplier || oldSupplier === newSupplier) return false;
   const dbData = await readSheetData(DB_READ_RANGE);
   if (dbData) {
     const dbUpdates: { range: string; values: any[][] }[] = [];
     dbData.forEach((row, i) => {
-      if (String(row[DB_COL_SUPPLIER_NAME] || '').trim() === oldSupplier) {
-        dbUpdates.push({ range: `${DB_SHEET_NAME}!D${i + 2}`, values: [[newSupplier]] });
+      if (String(row[DB_COL_SUPPLIER_NAME] || '').trim() === oldName.trim()) {
+        dbUpdates.push({ range: `${DB_SHEET_NAME}!D${i + 2}`, values: [[newName]] });
       }
     });
     if (dbUpdates.length > 0) await batchUpdateSheetCells(dbUpdates);
   }
-  await logAuditEvent(email, 'UPDATE_SUPPLIER', oldSupplier, `[RENAMED VENDOR] Changed from "${oldSupplier}" to "${newSupplier}" across all registries.`);
   return true;
 }
 
 /**
- * INDUSTRIAL APPSCRIPT DISPATCHER
- * Performs a secure POST to the AppsScript Web App for email triggers and logging.
+ * STANDARD INVENTORY LOGGING
+ * Logs exclusively to "Form responses 2".
  */
 export async function addInventoryItemToSheet(item: any) {
   try {
     const payload = {
+      action: 'standardLog', 
+      isStandardLog: true,
       barcode: item.barcode,
-      sku: item.barcode,
       quantity: item.quantity,
-      qty: item.quantity,
       expiryDate: item.expiryDate, 
       location: item.location,
-      zone: item.location,
-      identity: item.staffName,
       staff: item.staffName,
       productName: item.productName,
-      product: item.productName,
       supplierName: item.supplierName || '', 
-      supplier: item.supplierName || '', 
-      vendor: item.supplierName || '', 
-      type: item.itemType,        
       itemType: item.itemType,        
       timestamp: item.timestamp || new Date().toISOString(),
-      disableNotification: item.disableNotification === true,
-      isSpecial: item.isSpecial === true 
+      disableNotification: item.disableNotification === true
     };
 
     const response = await fetch(APPSCRIPT_API_URL, {
@@ -547,23 +489,17 @@ export async function addInventoryItemToSheet(item: any) {
       if (result.status === 'success') return true;
     }
   } catch (error) {
-    console.error("AppsScript Dispatch Failure:", error);
+    console.error("AppsScript Standard Log Error:", error);
   }
 
-  // FALLBACK: DIRECT SDK WRITE (Only if API fails)
+  // FALLBACK
   try {
     const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
-    let formattedExpiry = item.expiryDate;
-    try {
-      const d = parseISO(item.expiryDate);
-      if (isValid(d)) formattedExpiry = format(d, "d/M/yyyy");
-    } catch {}
-
     const sdkRowData = [
       format(entryDate, "d/M/yyyy HH:mm:ss"), 
       item.barcode, 
       item.quantity, 
-      formattedExpiry, 
+      item.expiryDate, 
       item.location, 
       item.staffName, 
       item.productName, 
@@ -571,7 +507,6 @@ export async function addInventoryItemToSheet(item: any) {
       item.itemType, 
       item.id
     ];
-    
     return await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
   } catch (error) {
     return false;
@@ -581,79 +516,32 @@ export async function addInventoryItemToSheet(item: any) {
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
   if (!row) throw new Error("Record Identification Failure.");
-  
-  const existingData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
-  if (!existingData || !existingData[0]) throw new Error("Data retrieval failed.");
-  
-  const rowData = existingData[0];
-  const barcode = rowData[INV_COL_BARCODE];
-  const productName = rowData[INV_COL_PRODUCT_NAME];
-  const oldQty = rowData[INV_COL_QTY];
-  const oldLoc = rowData[INV_COL_LOCATION];
-  const oldType = rowData[INV_COL_TYPE];
-
   const ups = [];
-  const changes = [];
-
-  if (u.quantity !== undefined && String(u.quantity) !== String(oldQty)) {
-    ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!C${row}`, values: [[Number(u.quantity)]] });
-    changes.push(`Qty: ${oldQty} -> ${u.quantity}`);
-  }
-  if (u.location && u.location !== oldLoc) {
-    ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!E${row}`, values: [[u.location]] });
-    changes.push(`Zone: ${oldLoc} -> ${u.location}`);
-  }
-  if (u.itemType && u.itemType !== oldType) {
-    ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!I${row}`, values: [[u.itemType]] });
-    changes.push(`Type: ${oldType} -> ${u.itemType}`);
-  }
+  if (u.quantity !== undefined) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!C${row}`, values: [[Number(u.quantity)]] });
+  if (u.location) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!E${row}`, values: [[u.location]] });
+  if (u.itemType) ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!I${row}`, values: [[u.itemType]] });
   if (u.expiryDate) {
     const formattedDate = format(parseISO(u.expiryDate), "d/M/yyyy");
     ups.push({ range: `${FORM_RESPONSES_SHEET_NAME}!D${row}`, values: [[formattedDate]] });
   }
-
-  if (ups.length > 0) { 
-    await batchUpdateSheetCells(ups); 
-    await logAuditEvent(email, 'UPDATE_INVENTORY', id, `[EDITED] Barcode: ${barcode} | Product: ${productName} | Changes: ${changes.join(', ')}`); 
-  }
+  if (ups.length > 0) await batchUpdateSheetCells(ups);
   return { id, ...u };
 }
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) throw new Error("Record Identification Failure.");
-  
-  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
-  if (!data || !data[0]) throw new Error("Data retrieval failed.");
-  
-  const rowData = data[0];
-  const barcode = rowData[INV_COL_BARCODE];
-  const productName = rowData[INV_COL_PRODUCT_NAME];
-  const qty = parseInt(String(rowData[INV_COL_QTY] || '0'), 10);
-  const amt = q === undefined ? qty : q;
-  const final = Math.max(0, qty - amt);
-
+  if (!row) return;
+  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}:C${row}`);
+  const qty = parseInt(String(data?.[0]?.[0] || '0'), 10);
+  const final = Math.max(0, qty - (q === undefined ? qty : q));
   if (final > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[final]]);
   else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-  
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, `[RETURN] Barcode: ${barcode} | Product: ${productName} | Returned ${amt} units. Remaining: ${final}. By: ${staff}`);
   return { success: true };
 }
 
 export async function deleteInventoryItemById(email: string, id: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (row) {
-    const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
-    if (data && data[0]) {
-        const barcode = data[0][INV_COL_BARCODE];
-        const productName = data[0][INV_COL_PRODUCT_NAME];
-        await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-        await logAuditEvent(email, 'DELETE_INVENTORY', id, `[DELETED] Barcode: ${barcode} | Product: ${productName} | Permanent log removal.`);
-        return true;
-    }
-    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-    return true;
-  }
+  if (row) return deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
   return false;
 }
 
