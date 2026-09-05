@@ -117,14 +117,14 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md w-[95%] sm:w-full p-0 overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-none shadow-3xl bg-background">
-                <div className="bg-primary p-6 sm:p-8 text-primary-foreground">
-                    <div className="flex items-center gap-3 sm:gap-4 mb-1">
+                <div className="bg-primary p-3 sm:p-5 text-primary-foreground">
+                    <div className="flex items-center gap-3 sm:gap-4">
                         <div className="bg-white/20 p-2 rounded-xl sm:rounded-2xl">
                             <Eye className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-lg sm:text-xl font-black uppercase tracking-tighter">Systematic Watch</DialogTitle>
-                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Expiry Observation Protocol</p>
+                            <DialogTitle className="text-base sm:text-lg font-black uppercase tracking-tighter leading-none mb-1">Systematic Watch</DialogTitle>
+                            <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest opacity-70">Expiry Observation Protocol</p>
                         </div>
                     </div>
                 </div>
