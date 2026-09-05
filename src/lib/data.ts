@@ -73,7 +73,7 @@ function parseFlexibleTimestamp(val: any): Date | null {
   const iso = parseISO(s);
   if (isValid(iso)) return iso;
   
-  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy"];
+  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"];
   for (const f of formats) {
     try {
       const d = dateParse(s, f, new Date());
@@ -162,15 +162,22 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
     const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
     if (!data) return [];
     
-    return data.map(row => ({
-        id: String(row[WATCH_COL_ID] || ''),
-        barcode: String(row[WATCH_COL_BARCODE] || ''),
-        productName: String(row[WATCH_COL_NAME] || ''),
-        expiryDate: String(row[WATCH_COL_EXPIRY] || ''),
-        staffName: String(row[WATCH_COL_STAFF] || ''),
-        status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
-        timestamp: String(row[WATCH_COL_TIMESTAMP] || '')
-    })).filter(r => r.id && r.status === 'pending');
+    return data.map(row => {
+        const expRaw = row[WATCH_COL_EXPIRY];
+        const expDate = parseFlexibleTimestamp(expRaw);
+        const tsRaw = row[WATCH_COL_TIMESTAMP];
+        const tsDate = parseFlexibleTimestamp(tsRaw);
+
+        return {
+            id: String(row[WATCH_COL_ID] || ''),
+            barcode: String(row[WATCH_COL_BARCODE] || ''),
+            productName: String(row[WATCH_COL_NAME] || ''),
+            expiryDate: expDate && isValid(expDate) ? format(expDate, 'yyyy-MM-dd') : String(expRaw || ''),
+            staffName: String(row[WATCH_COL_STAFF] || ''),
+            status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
+            timestamp: tsDate && isValid(tsDate) ? tsDate.toISOString() : String(tsRaw || '')
+        };
+    }).filter(r => r.id && r.status === 'pending');
 }
 
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {

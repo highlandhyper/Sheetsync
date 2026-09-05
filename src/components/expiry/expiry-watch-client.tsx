@@ -22,7 +22,7 @@ import {
     Loader2,
     FilterX
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, isBefore, addMonths } from 'date-fns';
+import { format, parseISO, differenceInDays, isBefore, addMonths, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AddReminderDialog } from './add-reminder-dialog';
 
@@ -40,7 +40,18 @@ export function ExpiryWatchClient() {
             r.productName.toLowerCase().includes(lower) || 
             r.barcode.toLowerCase().includes(lower) ||
             r.staffName.toLowerCase().includes(lower)
-        ).sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+        ).sort((a, b) => {
+            const dateA = parseISO(a.expiryDate);
+            const dateB = parseISO(b.expiryDate);
+            const validA = isValid(dateA);
+            const validB = isValid(dateB);
+            
+            if (!validA && !validB) return 0;
+            if (!validA) return 1;
+            if (!validB) return -1;
+            
+            return dateA.getTime() - dateB.getTime();
+        });
     }, [expiryReminders, searchTerm]);
 
     const handleResolve = async (id: string, name: string) => {
@@ -63,7 +74,10 @@ export function ExpiryWatchClient() {
         const nextMonth = addMonths(now, 1);
         return {
             total: expiryReminders.length,
-            critical: expiryReminders.filter(r => isBefore(parseISO(r.expiryDate), nextMonth)).length,
+            critical: expiryReminders.filter(r => {
+                const d = parseISO(r.expiryDate);
+                return isValid(d) && isBefore(d, nextMonth);
+            }).length,
             personnel: new Set(expiryReminders.map(r => r.staffName)).size
         };
     }, [expiryReminders]);
@@ -135,8 +149,10 @@ export function ExpiryWatchClient() {
 
                 <div className="grid grid-cols-1 gap-4">
                     {filteredReminders.length > 0 ? filteredReminders.map(reminder => {
-                        const daysLeft = differenceInDays(parseISO(reminder.expiryDate), new Date());
-                        const isCritical = daysLeft <= 30;
+                        const parsedDate = parseISO(reminder.expiryDate);
+                        const isDateValid = isValid(parsedDate);
+                        const daysLeft = isDateValid ? differenceInDays(parsedDate, new Date()) : 0;
+                        const isCritical = isDateValid && daysLeft <= 30;
                         
                         return (
                             <Card key={reminder.id} className={cn(
@@ -171,10 +187,10 @@ export function ExpiryWatchClient() {
                                                     isCritical ? "text-orange-600" : "text-slate-900 dark:text-white"
                                                 )}>
                                                     <Calendar className="h-4 w-4 opacity-30" />
-                                                    {format(parseISO(reminder.expiryDate), 'dd MMM yyyy')}
+                                                    {isDateValid ? format(parsedDate, 'dd MMM yyyy') : 'Invalid Date'}
                                                 </div>
                                                 <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1.5", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
-                                                    {daysLeft > 0 ? `${daysLeft} Days to Threshold` : "Registry Overdue"}
+                                                    {!isDateValid ? "Check Registry" : daysLeft > 0 ? `${daysLeft} Days to Threshold` : "Registry Overdue"}
                                                 </p>
                                             </div>
 
