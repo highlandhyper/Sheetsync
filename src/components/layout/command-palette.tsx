@@ -27,13 +27,15 @@ import {
     History, 
     RefreshCw, 
     PackageSearch,
-    X
+    X,
+    FileText
 } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
   const [staffName, setStaffName] = React.useState('');
+  const [reason, setReason] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
 
@@ -112,15 +115,24 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const handleRequestSpecial = async () => {
     if (!staffName) return;
     setIsSubmitting(true);
-    await requestSpecialEntry(staffName, 'single');
+    await requestSpecialEntry(staffName, 'single', reason.trim() || undefined);
     setIsSubmitting(false);
     setIsRequestDialogOpen(false);
     onOpenChange(false);
     setStaffName('');
+    setReason('');
     toast({
         title: 'Request Sent',
         description: 'Administrators have been notified of your special entry request.',
     });
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsRequestDialogOpen(open);
+    if (!open) {
+        setStaffName('');
+        setReason('');
+    }
   };
 
   return (
@@ -200,41 +212,47 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       </CommandList>
     </CommandDialog>
 
-    <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent className="sm:max-w-[380px] p-6 rounded-3xl">
+    <Dialog open={isRequestDialogOpen} onOpenChange={handleDialogClose}>
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-[2rem] border-none shadow-3xl bg-background">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    Special Entry
-                </DialogTitle>
-                <DialogDescription className="text-xs font-medium">
-                    Authorize logging without triggering automated email alerts.
-                </DialogDescription>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-3 bg-primary/10 rounded-2xl">
+                        <MessageSquare className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
+                            Special Entry
+                        </DialogTitle>
+                        <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 leading-none">
+                            Silent Authorization Protocol
+                        </DialogDescription>
+                    </div>
+                </div>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Identify Personnel</Label>
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] ml-1">Identify Personnel</Label>
                     <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                         <PopoverTrigger asChild>
                             <Button 
                                 variant="outline" 
                                 role="combobox" 
                                 aria-expanded={staffPopoverOpen}
-                                className="w-full h-12 justify-between font-bold bg-muted/20 border-primary/10 px-4 rounded-xl"
+                                className="w-full h-14 justify-between font-black uppercase tracking-tight bg-muted/20 border-primary/10 px-4 rounded-2xl shadow-inner"
                             >
-                                <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-primary" />
+                                <div className="flex items-center gap-3">
+                                    <User className="h-5 w-5 text-primary" />
                                     {staffName || "Select staff member..."}
                                 </div>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-white/10" align="start">
                             <Command>
-                                <CommandInput placeholder="Search personnel registry..." />
+                                <CommandInput placeholder="Search personnel registry..." className="h-12" />
                                 <CommandList>
-                                    <CommandEmpty>No matching personnel identified.</CommandEmpty>
-                                    <CommandGroup>
+                                    <CommandEmpty className="py-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center">Zero registry matches</CommandEmpty>
+                                    <CommandGroup className="p-2">
                                         {uniqueStaffNames.map(name => (
                                             <CommandItem 
                                                 key={name} 
@@ -243,9 +261,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     setStaffName(name);
                                                     setStaffPopoverOpen(false);
                                                 }}
-                                                className="font-bold h-11 cursor-pointer"
+                                                className="font-black uppercase text-xs h-11 cursor-pointer rounded-lg px-4"
                                             >
-                                                <Check className={cn("mr-2 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
+                                                <Check className={cn("mr-3 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
                                                 {name}
                                             </CommandItem>
                                         ))}
@@ -255,13 +273,33 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         </PopoverContent>
                     </Popover>
                 </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Justification</Label>
+                        <Badge variant="outline" className="text-[8px] font-black uppercase opacity-30 border-none">Optional</Badge>
+                    </div>
+                    <div className="relative group">
+                        <FileText className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                        <Textarea 
+                            placeholder="Identify purpose for silent log entry..."
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            className="min-h-[100px] pl-11 py-4 rounded-2xl bg-muted/20 border-primary/5 font-bold text-sm shadow-inner focus:border-primary/20 placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-[9px] placeholder:tracking-widest"
+                        />
+                    </div>
+                </div>
             </div>
-            <DialogFooter className="grid grid-cols-2 gap-3 pt-2">
-                <Button variant="outline" size="lg" onClick={() => setIsRequestDialogOpen(false)} className="font-bold rounded-xl h-12">
-                    Cancel
+            <DialogFooter className="grid grid-cols-2 gap-4 pt-2">
+                <Button variant="ghost" onClick={() => handleDialogClose(false)} className="font-black uppercase tracking-widest text-[10px] h-14 rounded-2xl opacity-40 hover:opacity-100">
+                    Abort
                 </Button>
-                <Button size="lg" onClick={handleRequestSpecial} disabled={isSubmitting || !staffName} className="font-black uppercase tracking-tighter rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-12">
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Request"}
+                <Button 
+                    onClick={handleRequestSpecial} 
+                    disabled={isSubmitting || !staffName} 
+                    className="font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-2xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-14 border-none"
+                >
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Dispatch Request"}
                 </Button>
             </DialogFooter>
         </DialogContent>
