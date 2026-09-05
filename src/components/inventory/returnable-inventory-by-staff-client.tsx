@@ -1,8 +1,29 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { InventoryItem, Product } from '@/lib/types';
-import { Search, PackageOpen, User, Loader2, X, ListFilter, Eye, Printer, Undo2, Pencil, Trash2, ListChecks, Wallet, FileText, ChevronDown } from 'lucide-react';
+import type { InventoryItem, Product, ExpiryReminder } from '@/lib/types';
+import { 
+    Search, 
+    PackageOpen, 
+    User, 
+    Loader2, 
+    X, 
+    ListFilter, 
+    Eye, 
+    Printer, 
+    Undo2, 
+    Pencil, 
+    Trash2, 
+    Wallet, 
+    FileText, 
+    ChevronDown,
+    LayoutList,
+    History,
+    Check,
+    Bell,
+    Layers
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { ReturnableInventoryItemRow } from '@/components/inventory/returnable-inventory-item-row';
@@ -25,7 +46,6 @@ import { Checkbox } from '../ui/checkbox';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { BulkReturnDialog } from './bulk-return-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { generateInventoryPDF, type PDFOrientation } from '@/lib/pdf-reports';
 import {
   DropdownMenu,
@@ -33,7 +53,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
@@ -47,9 +67,13 @@ export function ReturnableInventoryByStaffClient() {
     products: cachedProducts,
     uniqueLocations,
     uniqueStaffNames: allStaffNames,
+    expiryReminders,
     refreshData,
+    resolveExpiryReminder
   } = useDataCache();
+
   const [selectedStaffName, setSelectedStaffName] = useState<string>('');
+  const [logCategory, setLogCategory] = useState<'normal' | 'diary'>('normal');
   const [isLoading, setIsLoading] = useState(true);
 
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
@@ -65,11 +89,12 @@ export function ReturnableInventoryByStaffClient() {
   const [selectedItemForDeletion, setSelectedItemForDeletion] = useState<InventoryItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const [totalItemsForSelectedStaff, setTotalItemsForSelectedStaff] = useState(0);
+  const [totalItemsCount, setTotalItemsCount] = useState(0);
   
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isBulkReturnOpen, setIsBulkReturnOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [isResolvingDiary, setIsResolvingDiary] = useState<string | null>(null);
 
   // Feature Flags
   const canExport = role === 'admin' || hasFeature('EXPORT_PDF');
@@ -78,41 +103,26 @@ export function ReturnableInventoryByStaffClient() {
   const canEdit = role === 'admin' || hasFeature('EDIT_INVENTORY');
   const canDelete = role === 'admin' || hasFeature('DELETE_INVENTORY');
 
-  const uniqueDbLocations = useMemo(() => {
-    return uniqueLocations;
-  }, [uniqueLocations]);
-
   const productsByBarcode = useMemo(() => {
     return new Map(cachedProducts.map(p => [p.barcode, p]));
   }, [cachedProducts]);
 
   const totalValueOfSelectedItems = useMemo(() => {
-    if (selectedItemIds.size === 0) return 0;
-
+    if (selectedItemIds.size === 0 || logCategory === 'diary') return 0;
     let totalValue = 0;
     selectedItemIds.forEach(itemId => {
       const item = cachedItems.find(i => i.id === itemId);
       if (item) {
         const product = productsByBarcode.get(item.barcode);
-        const costPrice = product?.costPrice ?? 0;
-        totalValue += costPrice * item.quantity;
+        totalValue += (product?.costPrice ?? 0) * item.quantity;
       }
     });
     return totalValue;
-  }, [selectedItemIds, cachedItems, productsByBarcode]);
-
+  }, [selectedItemIds, cachedItems, productsByBarcode, logCategory]);
 
   useEffect(() => {
-    setCurrentItemToEdit(null);
-    setIsEditDialogOpen(false);
     setIsLoading(false);
   }, []);
-  
-  useEffect(() => {
-    if (!isMultiSelectEnabled) {
-      setSelectedItemIds(new Set());
-    }
-  }, [isMultiSelectEnabled]);
 
   const handleOpenReturnDialog = (item: InventoryItem) => {
     if (!canReturn) return; 
@@ -145,106 +155,95 @@ export function ReturnableInventoryByStaffClient() {
     setSelectedItemIds(new Set());
   }, []);
 
-  const handleReturnSuccess = useCallback(() => {
-    setIsReturnDialogOpen(false);
-    setSelectedItemIds(new Set());
-  }, []);
-  
-  const handleBulkSuccess = useCallback(() => {
-      refreshData();
-      setSelectedItemIds(new Set());
-      setIsBulkReturnOpen(false);
-      setIsBulkDeleteOpen(false);
-  }, [refreshData]);
-
-  const filteredInventoryItemsByStaff = useMemo(() => {
-    const sortedAndFiltered = cachedItems
-      .filter(item => item.quantity > 0)
-      .sort((a, b) => {
-        const dateA = a.timestamp ? parseISO(a.timestamp) : null;
-        const dateB = b.timestamp ? parseISO(b.timestamp) : null;
-        if (dateA && isValid(dateA) && dateB && isValid(dateB)) {
-          return dateB.getTime() - dateA.getTime();
-        }
-        return 0;
-      });
-
-    if (!selectedStaffName.trim()) {
-      setTotalItemsForSelectedStaff(0);
-      return [];
+  const handleResolveDiary = async (id: string, name: string) => {
+    setIsResolvingDiary(id);
+    try {
+        await resolveExpiryReminder(id);
+        toast({ title: "Reminder Resolved", description: `"${name}" cleared from Diary registry.` });
+        refreshData();
+    } catch (e) {
+        toast({ variant: "destructive", title: "Sync Error", description: "Registry core connection failure." });
+    } finally {
+        setIsResolvingDiary(null);
     }
-    const lowerStaffName = selectedStaffName.toLowerCase();
-    const filtered = sortedAndFiltered.filter(item =>
-      item.staffName?.toLowerCase() === lowerStaffName
-    );
-    setTotalItemsForSelectedStaff(filtered.length);
-    return filtered;
-  }, [cachedItems, selectedStaffName]);
-  
-  const totalValueForSelectedStaff = useMemo(() => {
-    return filteredInventoryItemsByStaff.reduce((total, item) => {
-      const product = productsByBarcode.get(item.barcode);
-      const itemValue = (product?.costPrice ?? 0) * item.quantity;
-      return total + itemValue;
-    }, 0);
-  }, [filteredInventoryItemsByStaff, productsByBarcode]);
+  };
 
+  const filteredItems = useMemo(() => {
+    if (!selectedStaffName.trim()) return [];
+    const lowerStaffName = selectedStaffName.toLowerCase();
+
+    if (logCategory === 'normal') {
+        const items = cachedItems
+            .filter(item => item.quantity > 0 && item.staffName?.toLowerCase() === lowerStaffName)
+            .sort((a, b) => {
+                const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+                const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+                return dateB - dateA;
+            });
+        setTotalItemsCount(items.length);
+        return items;
+    } else {
+        const reminders = expiryReminders
+            .filter(r => r.status === 'pending' && r.staffName?.toLowerCase() === lowerStaffName)
+            .sort((a, b) => {
+                const dateA = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+                const dateB = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+                return dateB - dateA;
+            });
+        setTotalItemsCount(reminders.length);
+        return reminders;
+    }
+  }, [cachedItems, expiryReminders, selectedStaffName, logCategory]);
+  
+  const totalValueForView = useMemo(() => {
+    if (logCategory === 'diary') return 0;
+    return (filteredItems as InventoryItem[]).reduce((total, item) => {
+      const product = productsByBarcode.get(item.barcode);
+      return total + ((product?.costPrice ?? 0) * item.quantity);
+    }, 0);
+  }, [filteredItems, productsByBarcode, logCategory]);
 
   useEffect(() => {
     setSelectedItemIds(new Set());
-  }, [selectedStaffName]);
+  }, [selectedStaffName, logCategory]);
 
   const clearStaffSearch = () => {
     setSelectedStaffName('');
-    setTotalItemsForSelectedStaff(0);
+    setTotalItemsCount(0);
   };
 
-  const itemsToRender = useMemo(() => {
-    if (filteredInventoryItemsByStaff.length > MAX_INVENTORY_ITEMS_TO_DISPLAY) {
-      return filteredInventoryItemsByStaff.slice(0, MAX_INVENTORY_ITEMS_TO_DISPLAY);
-    }
-    return filteredInventoryItemsByStaff;
-  }, [filteredInventoryItemsByStaff]);
-
-
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const handleExportPDF = (orientation: PDFOrientation) => {
-    if (!selectedStaffName || itemsToRender.length === 0) return;
+    if (!selectedStaffName || filteredItems.length === 0) return;
     
-    const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
-    const dataMapper = (item: InventoryItem, idx: number) => {
-        const product = productsByBarcode.get(item.barcode);
-        const cost = product?.costPrice ?? 0;
-        return [
-            (idx + 1).toString(),
-            item.productName,
-            item.barcode,
-            item.supplierName || 'N/A',
-            item.quantity.toString(),
-            `QAR ${cost.toFixed(2)}`,
-            `QAR ${(cost * item.quantity).toFixed(2)}`,
-            item.expiryDate || 'N/A',
-            item.location
+    if (logCategory === 'normal') {
+        const items = filteredItems as InventoryItem[];
+        const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
+        const dataMapper = (item: InventoryItem, idx: number) => {
+            const product = productsByBarcode.get(item.barcode);
+            const cost = product?.costPrice ?? 0;
+            return [
+                (idx + 1).toString(), item.productName, item.barcode, item.supplierName || 'N/A',
+                item.quantity.toString(), `QAR ${cost.toFixed(2)}`, `QAR ${(cost * item.quantity).toFixed(2)}`,
+                item.expiryDate || 'N/A', item.location
+            ];
+        };
+        generateInventoryPDF(`Staff Standard Logs: ${selectedStaffName}`, items, cols, (item) => dataMapper(item, items.indexOf(item)), totalValueForView, orientation);
+    } else {
+        const items = filteredItems as ExpiryReminder[];
+        const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Expiry Date', 'Status'];
+        const dataMapper = (r: ExpiryReminder, idx: number) => [
+            (idx + 1).toString(), r.productName, r.barcode, r.supplierName || 'N/A',
+            r.expiryDate, 'PENDING'
         ];
-    };
-
-    generateInventoryPDF(
-        `Staff Return Summary: ${selectedStaffName}`, 
-        itemsToRender, 
-        cols, 
-        (item) => dataMapper(item, itemsToRender.indexOf(item)), 
-        totalValueForSelectedStaff,
-        orientation
-    );
+        generateInventoryPDF(`Staff Diary Logs: ${selectedStaffName}`, items, cols, (item) => dataMapper(item, items.indexOf(item)), undefined, orientation);
+    }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allItemIds = new Set(itemsToRender.map(item => item.id));
-      setSelectedItemIds(allItemIds);
+      setSelectedItemIds(new Set(filteredItems.map(item => item.id)));
     } else {
       setSelectedItemIds(new Set());
     }
@@ -252,51 +251,20 @@ export function ReturnableInventoryByStaffClient() {
 
   const handleSelectRow = (itemId: string) => {
     setSelectedItemIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
     });
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row items-center gap-4 p-4 border rounded-lg shadow bg-card mb-6">
-            <Skeleton className="h-10 w-full md:max-w-lg" />
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-6 w-32 md:ml-auto" />
-        </div>
+        <Skeleton className="h-10 w-full rounded-xl" />
         <Card className="shadow-md">
-          <Table><TableHeader>
-            <TableRow>
-             <TableHead>Product Name</TableHead>
-             <TableHead>Barcode</TableHead>
-             <TableHead>Supplier</TableHead>
-             <TableHead className="text-right">In Stock</TableHead>
-             <TableHead>Expiry</TableHead>
-             <TableHead>Location</TableHead>
-             <TableHead>Type</TableHead>
-             <TableHead className="w-auto sm:w-36 text-center noprint">Last Logged</TableHead>
-           </TableRow>
-          </TableHeader><TableBody>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-9 w-24 mx-auto" /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody></Table>
+          <Table><TableHeader><TableRow><TableHead>Identity</TableHead><TableHead>Barcode</TableHead><TableHead>Vendor</TableHead><TableHead className="text-right">Volume</TableHead><TableHead className="w-36 text-center">Protocol</TableHead></TableRow></TableHeader>
+          <TableBody>{Array.from({ length: 3 }).map((_, i) => (<TableRow key={i}><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell><TableCell><Skeleton className="h-9 w-24 mx-auto" /></TableCell></TableRow>))}</TableBody></Table>
         </Card>
       </div>
     );
@@ -305,98 +273,69 @@ export function ReturnableInventoryByStaffClient() {
   return (
     <div className="space-y-6">
       <Card className="p-4 shadow-md filters-card-noprint">
-        <CardContent className="p-0">
-          {selectedItemIds.size > 0 && isMultiSelectEnabled && canReturn ? (
+        <CardContent className="p-0 space-y-4">
+          {selectedItemIds.size > 0 && isMultiSelectEnabled && logCategory === 'normal' ? (
              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="text-sm font-medium text-muted-foreground">
-                        {selectedItemIds.size} item(s) selected
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
+                    <div className="text-sm font-black uppercase tracking-widest text-muted-foreground">{selectedItemIds.size} Linked Nodes</div>
+                    <div className="flex items-center text-sm font-black text-primary border-l pl-4 uppercase tracking-tighter">
                         <Wallet className="mr-2 h-4 w-4" />
-                        <span>
-                            Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        <span>Valuation: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    {canReturn && <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return Selected</Button>}
-                    {canDelete && <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete Selected</Button>}
+                    <Button variant="outline" size="sm" className="font-bold rounded-lg" onClick={() => setIsBulkReturnOpen(true)}>Bulk Return</Button>
+                    {canDelete && <Button variant="destructive" size="sm" className="font-bold rounded-lg" onClick={() => setIsBulkDeleteOpen(true)}>Bulk Purge</Button>}
                 </div>
              </div>
           ) : (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-                    <Select
-                        value={selectedStaffName}
-                        onValueChange={(value) => {
-                            setSelectedStaffName(value === "__EMPTY_STAFF_VALUE__" ? "" : value);
-                        }}
-                    >
-                        <SelectTrigger className="w-full md:w-[320px]">
-                            <div className="flex items-center">
-                                <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                                <SelectValue placeholder="Filter by staff member..." />
-                            </div>
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                    <Select value={selectedStaffName} onValueChange={(v) => setSelectedStaffName(v === "__EMPTY__" ? "" : v)}>
+                        <SelectTrigger className="w-full sm:w-[300px] h-11 rounded-xl font-bold bg-background shadow-sm">
+                            <div className="flex items-center"><User className="mr-2 h-4 w-4 text-primary/40" /><SelectValue placeholder="Identify Personnel..." /></div>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl border-white/10 shadow-2xl">
                             <ScrollArea className="h-72">
-                                <SelectItem value="__EMPTY_STAFF_VALUE__">
-                                    <em>Show All / Clear Filter</em>
-                                </SelectItem>
-                                {allStaffNames.length > 0 ? (
-                                    allStaffNames.map((staffName) => (
-                                        <SelectItem key={staffName} value={staffName}>
-                                            {staffName}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <div className="p-2 text-sm text-muted-foreground text-center">No staff names available.</div>
-                                )}
+                                <SelectItem value="__EMPTY__" className="font-medium italic">Clear Identification</SelectItem>
+                                {allStaffNames.map(name => <SelectItem key={name} value={name} className="font-black uppercase text-xs py-2.5">{name}</SelectItem>)}
                             </ScrollArea>
                         </SelectContent>
                     </Select>
-
-                    {selectedStaffName && (
-                        <Button variant="ghost" onClick={clearStaffSearch} className="w-full sm:w-auto">
-                            <X className="mr-2 h-4 w-4" /> Clear
-                        </Button>
-                    )}
+                    
+                    <Tabs value={logCategory} onValueChange={(v: any) => setLogCategory(v)} className="w-full sm:w-auto">
+                        <TabsList className="h-11 p-1 bg-muted/20 border rounded-xl grid grid-cols-2 w-full sm:w-[260px]">
+                            <TabsTrigger value="normal" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Normal Log</TabsTrigger>
+                            <TabsTrigger value="diary" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Diary Log</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
                     {selectedStaffName && (
-                        <div className="hidden lg:flex items-center text-xs text-muted-foreground mr-2 whitespace-nowrap">
-                            <ListFilter className="mr-1.5 h-3.5 w-3.5" />
-                            <span>{totalItemsForSelectedStaff} logs found</span>
-                        </div>
+                        <Badge variant="secondary" className="bg-primary/5 text-primary border-none px-4 py-1.5 font-black uppercase text-[9px] tracking-widest hidden sm:flex">
+                            <History className="mr-2 h-3 w-3" />
+                            {totalItemsCount} TRACES
+                        </Badge>
                     )}
-                    
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-2">
                         {canExport && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={itemsToRender.length === 0}>
-                                    <FileText className="mr-2 h-4 w-4" /> Export PDF <ChevronDown className="ml-1 h-3 w-3" />
-                                </Button>
+                                    <Button variant="outline" size="sm" className="h-11 rounded-xl px-4 font-bold border-white/5 bg-background shadow-sm" disabled={filteredItems.length === 0}>
+                                        <FileText className="mr-2 h-4 w-4" /> Export
+                                    </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
-                                    Portrait Orientation
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
-                                    Landscape Orientation
-                                </DropdownMenuItem>
+                                <DropdownMenuContent align="end" className="rounded-xl shadow-3xl">
+                                    <DropdownMenuItem onClick={() => handleExportPDF('portrait')} className="font-bold text-xs uppercase py-2">Portrait</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExportPDF('landscape')} className="font-bold text-xs uppercase py-2">Landscape</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         )}
-
                         {canPrint && (
-                            <div className="print-button-container flex-1 sm:flex-none">
-                                <Button onClick={handlePrint} variant="outline" size="sm" className="w-full" disabled={itemsToRender.length === 0}>
-                                    <Printer className="mr-2 h-4 w-4" /> Print
-                                </Button>
-                            </div>
+                            <Button onClick={handlePrint} variant="outline" size="sm" className="h-11 rounded-xl px-4 font-bold border-white/5 bg-background shadow-sm" disabled={filteredItems.length === 0}>
+                                <Printer className="mr-2 h-4 w-4" /> Print
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -405,151 +344,170 @@ export function ReturnableInventoryByStaffClient() {
         </CardContent>
       </Card>
       
-      {selectedStaffName && itemsToRender.length > 0 && (
-        <Card className="p-4 shadow-md filters-card-noprint">
+      {selectedStaffName && logCategory === 'normal' && filteredItems.length > 0 && (
+        <Card className="p-6 shadow-md border-primary/10 bg-primary/5 rounded-2xl animate-in zoom-in-95 duration-500">
             <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-                <Wallet className="h-6 w-6 text-primary" />
-                <div>
-                    <h3 className="text-lg font-semibold">Staff Selection Value</h3>
-                    <p className="text-sm text-muted-foreground">Total cost of all items logged by {selectedStaffName}.</p>
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary/10 rounded-xl"><Wallet className="h-6 w-6 text-primary" /></div>
+                    <div>
+                        <h3 className="text-lg font-black uppercase tracking-tight">Active Asset Contribution</h3>
+                        <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Total value of inventory logged by this identity.</p>
+                    </div>
                 </div>
-            </div>
-            <p className="text-2xl font-bold text-primary">
-                QAR {totalValueForSelectedStaff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
+                <p className="text-3xl font-black text-primary tabular-nums">
+                    QAR {totalValueForView.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </p>
             </div>
         </Card>
       )}
 
-      {!selectedStaffName.trim() ? (
-         <div className="text-center py-12">
-          <Search className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">Search Inventory by Staff Member</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Select a staff member using the button above to view inventory items they logged.
-          </p>
+      {!selectedStaffName ? (
+         <div className="text-center py-32 flex flex-col items-center justify-center opacity-20 grayscale">
+          <User className="h-16 w-16 mb-4" strokeWidth={1.5} />
+          <h3 className="text-2xl font-black uppercase tracking-tighter">Personnel Selection Required</h3>
+          <p className="text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Identify staff member to initiate audit trace.</p>
         </div>
-      ) : itemsToRender.length > 0 ? (
+      ) : filteredItems.length > 0 ? (
         <>
-            <Card className="shadow-md hidden md:block">
-            <Table><TableHeader className="bg-muted/50">
-                <TableRow>
-                {isMultiSelectEnabled && canReturn && (
-                  <TableHead className="w-12 text-center noprint">
-                      <Checkbox
-                      checked={selectedItemIds.size === itemsToRender.length && itemsToRender.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                      aria-label="Select all rows"
-                      />
-                  </TableHead>
-                )}
-                <TableHead>Product Name</TableHead>
-                <TableHead>Barcode</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead className="text-right">In Stock</TableHead>
-                <TableHead className="text-right">Unit Cost</TableHead>
-                <TableHead className="text-right font-semibold">Total Value</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="w-auto sm:w-36 text-center noprint">Last Logged</TableHead>
-            </TableRow>
-            </TableHeader><TableBody>
-                {itemsToRender.map((item) => (
-                <ReturnableInventoryItemRow
-                    key={`row-staff-${item.id}`}
-                    item={item}
-                    onInitiateReturn={canReturn ? handleOpenReturnDialog : undefined}
-                    onViewDetails={handleOpenDetailsDialog}
-                    onEditItem={canEdit ? handleOpenEditDialog : undefined}
-                    isProcessing={selectedItemForReturn?.id === item.id && isReturnDialogOpen}
-                    showSupplierName={true}
-                    disableReturnButton={!canReturn}
-                    isSelected={selectedItemIds.has(item.id)}
-                    onSelectRow={isMultiSelectEnabled && canReturn ? handleSelectRow : undefined}
-                    showCheckbox={isMultiSelectEnabled && canReturn}
-                    costPrice={productsByBarcode.get(item.barcode)?.costPrice}
-                    showCost={true}
-                />
-                ))}
-            </TableBody></Table>
+            <Card className="shadow-2xl border-white/5 overflow-hidden rounded-[2rem] hidden md:block bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl">
+                <Table>
+                    <TableHeader className="bg-muted/10 border-b border-white/5">
+                        <TableRow className="h-14 hover:bg-transparent">
+                            {logCategory === 'normal' && isMultiSelectEnabled && (
+                                <TableHead className="w-12 text-center pl-6">
+                                    <Checkbox checked={selectedItemIds.size === filteredItems.length} onCheckedChange={handleSelectAll} />
+                                </TableHead>
+                            )}
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] pl-8">Identity Node</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em]">Barcode</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-right">Volume</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-right">Valuation</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em]">Zone</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em]">Expiry</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-center pr-8">Protocol</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredItems.map((item) => {
+                            if (logCategory === 'normal') {
+                                const inv = item as InventoryItem;
+                                return (
+                                    <ReturnableInventoryItemRow
+                                        key={inv.id}
+                                        item={inv}
+                                        onInitiateReturn={canReturn ? handleOpenReturnDialog : undefined}
+                                        onViewDetails={handleOpenDetailsDialog}
+                                        onEditItem={canEdit ? handleOpenEditDialog : undefined}
+                                        isProcessing={selectedItemForReturn?.id === inv.id && isReturnDialogOpen}
+                                        isSelected={selectedItemIds.has(inv.id)}
+                                        onSelectRow={isMultiSelectEnabled ? handleSelectRow : undefined}
+                                        showCheckbox={isMultiSelectEnabled}
+                                        costPrice={productsByBarcode.get(inv.barcode)?.costPrice}
+                                        showCost={true}
+                                    />
+                                );
+                            } else {
+                                const r = item as ExpiryReminder;
+                                const isCritical = isBefore(parseISO(r.expiryDate), addDays(new Date(), 30));
+                                return (
+                                    <TableRow key={r.id} className="group hover:bg-primary/[0.02] border-white/5 h-16">
+                                        <TableCell className="pl-8 font-black text-sm uppercase text-slate-700 dark:text-slate-300">{r.productName}</TableCell>
+                                        <TableCell className="font-mono text-[11px] text-muted-foreground/50 tracking-tighter uppercase">{r.barcode}</TableCell>
+                                        <TableCell className="text-right font-black text-primary/40">---</TableCell>
+                                        <TableCell className="text-right font-black text-slate-400">N/A</TableCell>
+                                        <TableCell className="text-xs font-bold text-muted-foreground uppercase">{r.supplierName || 'System'}</TableCell>
+                                        <TableCell className={cn("text-xs font-bold", isCritical ? "text-orange-500 animate-pulse" : "text-slate-400")}>
+                                            {format(parseISO(r.expiryDate), 'PP')}
+                                        </TableCell>
+                                        <TableCell className="text-right pr-8">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100 transition-all"
+                                                onClick={() => handleResolveDiary(r.id, r.productName)}
+                                                disabled={isResolvingDiary === r.id}
+                                            >
+                                                {isResolvingDiary === r.id ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Check className="h-3 w-3 mr-2" />}
+                                                Resolve
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            }
+                        })}
+                    </TableBody>
+                </Table>
             </Card>
 
-            <div className="grid grid-cols-1 gap-4 md:hidden">
-                {itemsToRender.map((item) => {
-                    const product = productsByBarcode.get(item.barcode);
-                    return (
-                    <InventoryItemCardMobile
-                        key={`card-staff-${item.id}`}
-                        item={item}
-                        product={product}
-                        onDetails={() => handleOpenDetailsDialog(item)}
-                        onViewImage={() => handleOpenDetailsDialog(item, true)}
-                        onEdit={canEdit ? () => handleOpenEditDialog(item) : undefined}
-                        onReturn={canReturn ? () => handleOpenReturnDialog(item) : undefined}
-                        isSelected={isMultiSelectEnabled && selectedItemIds.has(item.id)}
-                        onSelect={isMultiSelectEnabled && canReturn ? () => handleSelectRow(item.id) : undefined}
-                        context="staff"
-                    />
-                )})}
+            <div className="grid grid-cols-1 gap-4 md:hidden px-2">
+                {filteredItems.map((item) => {
+                    if (logCategory === 'normal') {
+                        const inv = item as InventoryItem;
+                        return (
+                            <InventoryItemCardMobile
+                                key={`mob-${inv.id}`}
+                                item={inv}
+                                product={productsByBarcode.get(inv.barcode)}
+                                onDetails={() => handleOpenDetailsDialog(inv)}
+                                onViewImage={() => handleOpenDetailsDialog(inv, true)}
+                                onEdit={canEdit ? () => handleOpenEditDialog(inv) : undefined}
+                                onReturn={canReturn ? () => handleOpenReturnDialog(inv) : undefined}
+                                isSelected={isMultiSelectEnabled && selectedItemIds.has(inv.id)}
+                                onSelect={isMultiSelectEnabled ? () => handleSelectRow(inv.id) : undefined}
+                                context="staff"
+                            />
+                        );
+                    } else {
+                        const r = item as ExpiryReminder;
+                        return (
+                            <Card key={`mob-diary-${r.id}`} className="border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-xl overflow-hidden">
+                                <CardContent className="p-5 space-y-4">
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="space-y-1 min-w-0">
+                                            <h4 className="text-base font-black uppercase truncate text-slate-800 dark:text-white leading-tight">{r.productName}</h4>
+                                            <p className="text-[10px] font-mono text-muted-foreground tracking-widest">{r.barcode}</p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-none text-[8px] font-black px-2 py-0.5">DIARY LOG</Badge>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[8px] font-black uppercase text-muted-foreground/40">Expiry Target</p>
+                                            <p className="text-xs font-black text-slate-700 dark:text-slate-300">{format(parseISO(r.expiryDate), 'dd MMM yy')}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[8px] font-black uppercase text-muted-foreground/40">Registry Sync</p>
+                                            <p className="text-xs font-bold text-muted-foreground">{format(parseISO(r.timestamp), 'dd/MM/yy')}</p>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        className="w-full h-11 font-black uppercase text-[10px] tracking-widest rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border-none transition-all shadow-none"
+                                        onClick={() => handleResolveDiary(r.id, r.productName)}
+                                        disabled={isResolvingDiary === r.id}
+                                    >
+                                        {isResolvingDiary === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Check className="h-3.5 w-3.5 mr-2" />}
+                                        Initialize Resolve
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        );
+                    }
+                })}
             </div>
         </>
       ) : (
-        <div className="text-center py-12">
-          <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No inventory items found logged by "{selectedStaffName}"</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ensure items logged by this staff member have quantity greater than zero.
-          </p>
+        <div className="py-32 flex flex-col items-center justify-center text-center opacity-20 grayscale">
+          <PackageOpen className="h-16 w-16 mb-4" strokeWidth={1} />
+          <h3 className="text-xl font-black uppercase tracking-widest">Registry Nominal</h3>
+          <p className="text-[10px] font-medium uppercase tracking-[0.3em] mt-2">Zero active {logCategory} traces identified for this node.</p>
         </div>
       )}
       
-      <ReturnQuantityDialog
-        key={`return-staff-${selectedItemForReturn?.id || 'none'}`}
-        item={selectedItemForReturn}
-        isOpen={isReturnDialogOpen}
-        onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleActionSuccess}
-      />
-      <InventoryItemDetailsDialog
-        key={`details-staff-${selectedItemForDetails?.id || 'none'}`}
-        item={selectedItemForDetails}
-        isOpen={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-        displayContext="returnByStaff"
-        autoFetchImage={shouldAutoFetchImage}
-        onStartEdit={canEdit ? handleOpenEditDialog : undefined}
-      />
-      <EditInventoryItemDialog
-        key={`edit-staff-${currentItemToEdit?.id || 'none'}`}
-        item={currentItemToEdit}
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleActionSuccess}
-        uniqueLocationsFromDb={uniqueDbLocations}
-      />
-      <DeleteConfirmationDialog
-        key={`delete-staff-${selectedItemForDeletion?.id || 'none'}`}
-        item={selectedItemForDeletion}
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onSuccess={handleActionSuccess}
-      />
-       <BulkReturnDialog 
-        isOpen={isBulkReturnOpen}
-        onOpenChange={setIsBulkReturnOpen}
-        itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleBulkSuccess}
-        itemCount={selectedItemIds.size}
-      />
-      <BulkDeleteDialog
-        isOpen={isBulkDeleteOpen}
-        onOpenChange={setIsBulkDeleteOpen}
-        itemIds={Array.from(selectedItemIds)}
-        onSuccess={handleBulkSuccess}
-        itemCount={selectedItemIds.size}
-      />
+      <ReturnQuantityDialog key={`ret-${selectedItemForReturn?.id || 'none'}`} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
+      <InventoryItemDetailsDialog key={`det-${selectedItemForDetails?.id || 'none'}`} item={selectedItemForDetails} isOpen={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} autoFetchImage={shouldAutoFetchImage} onStartEdit={canEdit ? handleOpenEditDialog : undefined} />
+      <EditInventoryItemDialog key={`edt-${currentItemToEdit?.id || 'none'}`} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
+      <DeleteConfirmationDialog key={`del-${selectedItemForDeletion?.id || 'none'}`} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
+      <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={Array.from(selectedItemIds)} onSuccess={handleBulkSuccess} itemCount={selectedItemIds.size} />
+      <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={Array.from(selectedItemIds)} onSuccess={handleBulkSuccess} itemCount={selectedItemIds.size} />
     </div>
   );
 }

@@ -43,12 +43,13 @@ const WATCH_COL_EXPIRY = 3;
 const WATCH_COL_SUPPLIER = 4;
 const WATCH_COL_STATUS = 5;
 const WATCH_COL_TIMESTAMP = 6;
+const WATCH_COL_STAFF = 7; // COLUMN H: Staff Name Identity
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
-const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:G`;
+const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:H`;
 
 const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
@@ -176,28 +177,34 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
             supplierName: String(row[WATCH_COL_SUPPLIER] || ''),
             status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
             timestamp: tsDate && isValid(tsDate) ? tsDate.toISOString() : String(tsRaw || ''),
-            staffName: '' 
+            staffName: String(row[WATCH_COL_STAFF] || '').trim() 
         };
     }).filter(r => r.id && r.status === 'pending');
 }
 
 /**
- * EXCLUSIVE EXPIRY WATCH LOGGING
- * Strictly logs to "Expiry Watch" sheet only. Does NOT trigger main inventory log.
- * USES TOTAL DECOUPLING: No shared paths with addInventoryItemToSheet.
+ * EXCLUSIVE DIARY REMINDER LOGGING
+ * Strictly logs to "Expiry Watch" sheet only. 
+ * Persists Staff Name in Column H for integrated reporting.
  */
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
     
-    // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp
-    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts];
+    // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp | Staff
+    const row = [
+        id, 
+        reminder.barcode, 
+        reminder.productName, 
+        reminder.expiryDate, 
+        reminder.supplierName || '', 
+        'pending', 
+        ts,
+        reminder.staffName || '' // COLUMN H
+    ];
     
-    // SDK WRITE: Strictly confined to "Expiry Watch" range
-    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);
+    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:H`, [row]);
     
-    // APPS SCRIPT HANDSHAKE: Specialized for SMS scheduling only.
-    // Explicitly uses 'triggerWatchSmsOnly' to avoid misidentification as a standard log.
     try {
         await fetch(APPSCRIPT_API_URL, {
             method: 'POST',
@@ -206,7 +213,7 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
                 action: 'triggerWatchSmsOnly',
                 password: APPSCRIPT_PASS,
                 isWatchEntry: true, 
-                isStandardLog: false, // Explicit negative flag
+                isStandardLog: false,
                 reminderId: id,
                 barcode: reminder.barcode,
                 productName: reminder.productName,
@@ -217,7 +224,7 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
             redirect: 'follow'
         });
     } catch (e) {
-        console.error("Expiry Watch: AppsScript trigger failed.", e);
+        console.error("Diary Reminder: AppsScript trigger failed.", e);
     }
     
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
@@ -227,7 +234,7 @@ export async function resolveExpiryReminder(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
-        await logAuditEvent(email, 'RESOLVE_WATCH', id, `Cleared product from Expiry Watch.`);
+        await logAuditEvent(email, 'RESOLVE_DIARY', id, `Cleared product from Diary Reminders.`);
         return true;
     }
     return false;
