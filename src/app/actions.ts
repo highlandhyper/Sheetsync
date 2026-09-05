@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -472,10 +471,12 @@ export async function addInventoryItemAction(
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, auditDetails);
     
-    revalidatePath('/inventory');
-    revalidatePath('/dashboard');
+    // HIGH-SPEED OPTIMIZATION: Skipping revalidatePath to prevent server-side re-render delay
+    // The client-side DataCache handles state management instantly.
+    // revalidatePath('/inventory');
+    // revalidatePath('/dashboard');
 
-    return { success: true, message: 'Logged successfully!', data: sanitizeForJSON(itemData) };
+    return { success: true, message: 'Logged successfully!', data: itemData };
   } catch (error: any) {
     console.error("addInventoryItemAction Critical Error:", error);
     return { success: false, message: error.message || "An internal error occurred during logging." };

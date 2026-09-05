@@ -259,7 +259,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setFoundInGlobalRegistry(false);
       
       const normalizedInput = barcode.replace(/^0+/, '');
-      const cachedProduct = cachedProducts.find(p => p.barcode === barcode || p.barcode.replace(/^0+/, '') === normalizedInput);
+      const cachedProduct = cachedProducts.find(p => p.barcode === barcode || p.barcode.replace(/^0+/, '') === normalizedTerm);
       
       if (cachedProduct) {
         setProductName(cachedProduct.productName);
@@ -295,7 +295,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
-    // OPTIMISTIC PROTOCOL: INSTANT FEEDBACK
+    // TURBO PROTOCOL: INSTANT FEEDBACK
     playThankYouAudio();
     setIsSuccessDialogOpen(true);
     setIsSubmitting(true);
@@ -322,7 +322,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     // Update local store immediately
     addInventoryItem(optimisticItem);
     
-    // Automatic Reset sequence
+    // TURBO RESET: Accelerating the "Ready for Next Scan" cycle
     const savedStaffName = data.staffName; 
     setTimeout(() => {
         setIsSuccessDialogOpen(false);
@@ -337,9 +337,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         setCurrentStep(0);
         submitLockRef.current = false;
         setIsSubmitting(false);
-        // Force focus back to barcode for next item
-        setTimeout(() => barcodeInputRef.current?.focus(), 100);
-    }, 2500);
+        // Instant focus return to barcode for rapid-fire logging
+        setTimeout(() => barcodeInputRef.current?.focus(), 50);
+    }, 800);
 
     if (!navigator.onLine) {
         queueAction({
@@ -377,16 +377,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         const response = await addInventoryItemAction(undefined, formData);
         if (response.success && response.data) {
           if (activeSession) consumeSpecialEntry(); 
-          refreshData(); 
+          // Background sync will naturally pick up changes via DataCache
         } else {
           setErrorMessage(response.message || 'The Google Sheets registry refused the connection.');
           setIsErrorDialogOpen(true);
-          refreshData(); 
         }
       } catch (err) {
         setErrorMessage('Industrial terminal handshake timeout. Check connectivity.');
         setIsErrorDialogOpen(true);
-        refreshData();
       }
     });
   };
@@ -427,7 +425,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       html5QrcodeScannerRef.current.stop().catch(() => {});
       html5QrcodeScannerRef.current = null;
     }
-    setTimeout(() => { nextStep(); scanProcessedRef.current = false; }, 1000); 
+    setTimeout(() => { nextStep(); scanProcessedRef.current = false; }, 500); 
   }, []);
 
   useEffect(() => {
