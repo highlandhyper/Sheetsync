@@ -1,5 +1,5 @@
 
-import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest } from '@/lib/types';
+import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -7,6 +7,7 @@ const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; 
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; 
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
+const EXPIRY_WATCH_SHEET_NAME = "EXPIRY_WATCH";
 
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -35,10 +36,19 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
+const WATCH_COL_ID = 0;
+const WATCH_COL_BARCODE = 1;
+const WATCH_COL_NAME = 2;
+const WATCH_COL_EXPIRY = 3;
+const WATCH_COL_STAFF = 4;
+const WATCH_COL_STATUS = 5;
+const WATCH_COL_TIMESTAMP = 6;
+
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
+const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:G`;
 
 const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
@@ -147,6 +157,55 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
     if (item && item.quantity > 0) acc.push(item);
     return acc;
   }, []);
+}
+
+export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
+    const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
+    if (!data) return [];
+    
+    return data.map(row => ({
+        id: String(row[WATCH_COL_ID] || ''),
+        barcode: String(row[WATCH_COL_BARCODE] || ''),
+        productName: String(row[WATCH_COL_NAME] || ''),
+        expiryDate: String(row[WATCH_COL_EXPIRY] || ''),
+        staffName: String(row[WATCH_COL_STAFF] || ''),
+        status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
+        timestamp: String(row[WATCH_COL_TIMESTAMP] || '')
+    })).filter(r => r.id && r.status === 'pending');
+}
+
+export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
+    const id = `rem_${Date.now()}`;
+    const ts = new Date().toISOString();
+    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.staffName, 'pending', ts];
+    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);
+    
+    // Dispatch to AppsScript for SMS scheduling
+    try {
+        await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'scheduleExpiryWatch',
+                password: APPSCRIPT_PASS,
+                ...reminder,
+                reminderId: id
+            }),
+            redirect: 'follow'
+        });
+    } catch (e) {}
+    
+    return { ...reminder, id, timestamp: ts, status: 'pending' as const };
+}
+
+export async function resolveExpiryReminder(id: string, email: string) {
+    const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
+    if (row) {
+        await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
+        await logAuditEvent(email, 'RESOLVE_WATCH', id, `Cleared product from Expiry Watch.`);
+        return true;
+    }
+    return false;
 }
 
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {

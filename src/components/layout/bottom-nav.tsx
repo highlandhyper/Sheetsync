@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,7 +15,8 @@ import {
     Settings,
     UserCheck,
     LucideIcon,
-    SearchCode
+    SearchCode,
+    Eye
 } from 'lucide-react';
 
 export function BottomNav() {
@@ -64,10 +66,10 @@ export function BottomNav() {
         
         {/* SLOT 1: DYNAMIC HOME */}
         <NavItem 
-          href={isAdmin ? '/dashboard' : '/products'} 
-          icon={isAdmin ? Home : UserCheck} 
-          label={isAdmin ? "Home" : "Returns"} 
-          isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
+          href={isAdmin ? '/dashboard' : '/expiry-watch'} 
+          icon={isAdmin ? Home : Eye} 
+          label={isAdmin ? "Home" : "Watch"} 
+          isActive={isAdmin ? pathname === '/dashboard' : pathname === '/expiry-watch'}
         />
         
         {/* SLOT 2: CATALOG (Admin) / LOOKUP (Viewer) */}
@@ -86,12 +88,12 @@ export function BottomNav() {
           isActive={pathname === '/inventory/add'}
         />
 
-        {/* SLOT 4: SEARCH (Admin) / SETTINGS (Viewer) */}
+        {/* SLOT 4: SEARCH (Admin) / RETURNS (Viewer) */}
         <NavItem 
-          href={isAdmin ? "/inventory/lookup" : "/settings"} 
-          icon={isAdmin ? Search : Settings} 
-          label={isAdmin ? "Search" : "Settings"} 
-          isActive={isAdmin ? pathname === '/inventory/lookup' : pathname === '/settings'}
+          href={isAdmin ? "/inventory/lookup" : "/products"} 
+          icon={isAdmin ? Search : UserCheck} 
+          label={isAdmin ? "Search" : "Returns"} 
+          isActive={isAdmin ? pathname === '/inventory/lookup' : pathname === '/products'}
         />
 
         {/* SLOT 5: NAVIGATION HUB */}

@@ -33,6 +33,16 @@ export interface InventoryItem {
   timestamp?: string;
 }
 
+export interface ExpiryReminder {
+  id: string;
+  barcode: string;
+  productName: string;
+  expiryDate: string;
+  staffName: string;
+  status: 'pending' | 'resolved';
+  timestamp: string;
+}
+
 export interface ReturnedItem {
   id: string; 
   originalInventoryItemId?: string;

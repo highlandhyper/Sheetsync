@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -33,9 +34,12 @@ import {
   clearProductDatabase,
   appendProductBatch,
   updateProductBatch,
-  deleteAuditLogsByBarcode as dbDeleteAuditLogsByBarcode
+  deleteAuditLogsByBarcode as dbDeleteAuditLogsByBarcode,
+  getExpiryReminders,
+  addExpiryReminder,
+  resolveExpiryReminder
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role, ExpiryReminder } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
@@ -130,12 +134,14 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
+  expiryReminders: ExpiryReminder[];
 }>> {
   try {
     const promises: any[] = [
       getInventoryItems(),
       getAuditLogs(), 
-      getAppMetaData()
+      getAppMetaData(),
+      getExpiryReminders()
     ];
 
     if (!skipProducts) {
@@ -146,7 +152,8 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     const inventoryItems = results[0];
     const auditLogs = results[1];
     const meta = results[2];
-    const products = skipProducts ? undefined : results[3];
+    const expiryReminders = results[3];
+    const products = skipProducts ? undefined : results[4];
 
     const activeProducts = skipProducts ? undefined : (products || []);
     const calculatedSuppliers = skipProducts ? undefined : await getSuppliers(activeProducts);
@@ -163,6 +170,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       uniqueStaffNames: meta.staff || [],
       auditLogs: auditLogs || [],
       specialRequests: sortedRequests,
+      expiryReminders: expiryReminders || []
     };
 
     return {
@@ -479,6 +487,25 @@ export async function addInventoryItemAction(
     console.error("addInventoryItemAction Critical Error:", error);
     return { success: false, message: error.message || "An internal error occurred during logging." };
   }
+}
+
+export async function addExpiryWatchAction(data: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>): Promise<ActionResponse<ExpiryReminder>> {
+    try {
+        const result = await addExpiryReminder(data);
+        await logAuditEvent(data.staffName, 'CREATE_WATCH', data.barcode, `Added ${data.productName} to Expiry Watch (Systematic Tracking).`);
+        return { success: true, data: sanitizeForJSON(result) };
+    } catch (e) {
+        return { success: false, message: "Registry link failed." };
+    }
+}
+
+export async function resolveExpiryWatchAction(id: string, email: string): Promise<ActionResponse> {
+    try {
+        const success = await resolveExpiryReminder(id, email);
+        return { success };
+    } catch (e) {
+        return { success: false };
+    }
 }
 
 export async function saveProductAction(prevState: any, formData: FormData): Promise<ActionResponse<Product>> {

@@ -4,8 +4,8 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction } from '@/app/actions';
-import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction } from '@/lib/types';
+import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction, resolveExpiryWatchAction } from '@/app/actions';
+import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction, ExpiryReminder } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { saveInventory, getInventory, saveAuditLogs, getAuditLogs, saveProducts, getProducts } from '@/lib/db';
 
@@ -17,6 +17,7 @@ interface AppData {
   uniqueStaffNames: string[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
+  expiryReminders: ExpiryReminder[];
   lastSync: number | null;
 }
 
@@ -41,6 +42,8 @@ interface DataCacheContextType extends AppData {
   queueAction: (action: Omit<OfflineAction, 'id' | 'timestamp'>) => void;
   updateOfflineAction: (id: string, data: any) => void;
   removeOfflineAction: (id: string) => void;
+  resolveExpiryReminder: (id: string) => Promise<void>;
+  addExpiryReminderLocal: (reminder: ExpiryReminder) => void;
 }
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
@@ -48,8 +51,8 @@ const DataCacheContext = createContext<DataCacheContextType | undefined>(undefin
 const SYNC_INTERVAL_MS = 15000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
-const DATA_CACHE_KEY = 'sheetSync_metaCache_v3';
-const OFFLINE_KEY = 'sheetSync_offlineActions_v3';
+const DATA_CACHE_KEY = 'sheetSync_metaCache_v4';
+const OFFLINE_KEY = 'sheetSync_offlineActions_v4';
 
 const initialEmptyData: AppData = {
   inventoryItems: [],
@@ -59,6 +62,7 @@ const initialEmptyData: AppData = {
   uniqueStaffNames: [],
   auditLogs: [],
   specialRequests: [],
+  expiryReminders: [],
   lastSync: null,
 };
 
@@ -267,6 +271,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       if (navigator.onLine) await saveLocationListAction(locations);
   }, []);
 
+  const resolveExpiryReminder = useCallback(async (id: string) => {
+    setData(prev => ({ ...prev, expiryReminders: prev.expiryReminders.filter(r => r.id !== id) }));
+    if (navigator.onLine) await resolveExpiryWatchAction(id, user?.email || 'Admin');
+  }, [user]);
+
+  const addExpiryReminderLocal = useCallback((r: ExpiryReminder) => {
+    setData(prev => ({ ...prev, expiryReminders: [r, ...prev.expiryReminders] }));
+  }, []);
+
   const queueAction = useCallback((action: Omit<OfflineAction, 'id' | 'timestamp'>) => {
       const newAction: OfflineAction = { 
           ...action, 
@@ -300,6 +313,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     queueAction,
     updateOfflineAction,
     removeOfflineAction,
+    resolveExpiryReminder,
+    addExpiryReminderLocal,
     updateInventoryItem: (i: any) => setData(p => ({ 
         ...p, 
         inventoryItems: p.inventoryItems.map(x => x.id === i.id ? { ...x, ...i } : x) 
@@ -341,7 +356,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         ...p, 
         products: p.products.filter(x => !barcodes.includes(x.barcode)) 
     })),
-  }), [data, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction]);
+  }), [data, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction, resolveExpiryReminder, addExpiryReminderLocal]);
 
   return (
     <DataCacheContext.Provider value={contextValue}>

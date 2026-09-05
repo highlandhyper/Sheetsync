@@ -1,4 +1,5 @@
-import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, FileText, BellDot, Package, ShieldCheck, Users, Menu } from 'lucide-react';
+
+import { Settings, ClipboardPlus, ClipboardList, Undo, History, UserCheck, Edit3 as ManageProductsIcon, SearchCode, LayoutDashboard, Building, FileText, BellDot, Package, ShieldCheck, Users, Menu, Eye } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -13,6 +14,7 @@ export const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'], exact: true },
   { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, roles: ['admin'], exact: true },
   { href: '/products/list', label: 'Product Catalog', icon: Package, roles: ['admin', 'viewer'] },
+  { href: '/expiry-watch', label: 'Expiry Watch', icon: Eye, roles: ['admin', 'viewer'] },
   { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, roles: ['admin'] },
   { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'], exact: true },
   { href: '/inventory', label: 'View Inventory', icon: ClipboardList, roles: ['admin'], exact: true },
