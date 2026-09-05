@@ -38,7 +38,8 @@ import {
     Clock,
     BellOff,
     Zap,
-    ShieldAlert
+    ShieldAlert,
+    Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,7 @@ const HUB_SECTIONS: { title: string; index: string; items: HubItem[] }[] = [
         items: [
             { href: '/dashboard', label: 'Mission Control', icon: LayoutDashboard, description: 'Live registry metrics & analytics.', role: 'admin', variant: 'primary' },
             { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, description: 'Verify & authorize staff requests.', role: 'admin', variant: 'security' },
+            { href: '/expiry-watch', label: 'Expiry Watch', icon: Eye, description: 'Systematic diary replacement protocol.', role: 'both', variant: 'primary' },
             { href: '/inventory', label: 'Global Inventory', icon: ClipboardList, description: 'Master log of all units in stock.', role: 'admin' },
             { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, description: 'Standard industrial SKU logging.', role: 'both', variant: 'primary' },
             { href: '/inventory/lookup', label: 'Barcode Lookup', icon: SearchCode, description: 'Trace specific log & audit history.', role: 'both' },
