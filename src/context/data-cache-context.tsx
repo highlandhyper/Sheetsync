@@ -5,7 +5,7 @@ import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction, resolveExpiryWatchAction } from '@/app/actions';
-import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction, ExpiryReminder } from '@/lib/types';
+import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction, ExpiryReminder, StaffMember } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { saveInventory, getInventory, saveAuditLogs, getAuditLogs, saveProducts, getProducts } from '@/lib/db';
 
@@ -14,7 +14,7 @@ interface AppData {
   products: Product[];
   suppliers: Supplier[];
   uniqueLocations: string[];
-  uniqueStaffNames: string[];
+  staffRegistry: StaffMember[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
   expiryReminders: ExpiryReminder[];
@@ -26,6 +26,7 @@ interface DataCacheContextType extends AppData {
   isSyncing: boolean;
   isOnline: boolean;
   pendingActions: OfflineAction[];
+  uniqueStaffNames: string[]; // DERIVED FOR BACKWARD COMPAT
   updateInventoryItem: (item: Partial<InventoryItem> & { id: string }) => void;
   addInventoryItem: (item: InventoryItem) => void;
   removeInventoryItem: (itemId: string) => void;
@@ -36,7 +37,7 @@ interface DataCacheContextType extends AppData {
   updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
   removeProducts: (barcodes: string[]) => void;
   updateSpecialRequests: (requests: SpecialEntryRequest[]) => Promise<void>;
-  updateStaffList: (staff: string[]) => Promise<void>;
+  updateStaffList: (staff: StaffMember[]) => Promise<void>;
   updateLocationList: (locations: string[]) => Promise<void>;
   refreshData: () => Promise<void>;
   queueAction: (action: Omit<OfflineAction, 'id' | 'timestamp'>) => void;
@@ -51,7 +52,7 @@ const DataCacheContext = createContext<DataCacheContextType | undefined>(undefin
 const SYNC_INTERVAL_MS = 15000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
-const DATA_CACHE_KEY = 'sheetSync_metaCache_v4';
+const DATA_CACHE_KEY = 'sheetSync_metaCache_v5'; // Bump version for staff object structure
 const OFFLINE_KEY = 'sheetSync_offlineActions_v4';
 
 const initialEmptyData: AppData = {
@@ -59,7 +60,7 @@ const initialEmptyData: AppData = {
   products: [],
   suppliers: [],
   uniqueLocations: [],
-  uniqueStaffNames: [],
+  staffRegistry: [],
   auditLogs: [],
   specialRequests: [],
   expiryReminders: [],
@@ -95,7 +96,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       let metaData = initialEmptyData;
       try {
         const saved = localStorage.getItem(DATA_CACHE_KEY);
-        if (saved) metaData = JSON.parse(saved);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // Backward compatibility: If old staff list (string[]) found, convert it
+            if (parsed.staff && Array.isArray(parsed.staff) && typeof parsed.staff[0] === 'string') {
+                parsed.staffRegistry = parsed.staff.map((n: string) => ({ name: n }));
+                delete parsed.staff;
+            }
+            metaData = { ...initialEmptyData, ...parsed };
+        }
       } catch (e) {}
 
       try {
@@ -161,7 +170,8 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         
         setData(prev => ({ 
             ...prev, 
-            ...response.data!, 
+            ...response.data!,
+            staffRegistry: response.data!.uniqueStaffNames.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s),
             products: response.data!.products && response.data!.products.length > 0 
                 ? response.data!.products 
                 : prev.products,
@@ -261,9 +271,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
       if (navigator.onLine) await updateSpecialRequestsAction(requests);
   }, []);
 
-  const updateStaffList = useCallback(async (staff: string[]) => {
-      setData(prev => ({ ...prev, uniqueStaffNames: staff }));
-      if (navigator.onLine) await saveStaffListAction(staff);
+  const updateStaffList = useCallback(async (staff: StaffMember[]) => {
+      setData(prev => ({ ...prev, staffRegistry: staff }));
+      if (navigator.onLine) await saveStaffListAction(staff as any);
   }, []);
 
   const updateLocationList = useCallback(async (locations: string[]) => {
@@ -300,8 +310,13 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     toast({ title: "Action Purged", description: "Transmission canceled." });
   }, [toast]);
 
+  const uniqueStaffNames = useMemo(() => {
+    return data.staffRegistry.map(s => s.name);
+  }, [data.staffRegistry]);
+
   const contextValue = useMemo(() => ({
     ...data,
+    uniqueStaffNames,
     isCacheReady,
     isSyncing: isSyncing || isQueueProcessing,
     isOnline,
@@ -356,7 +371,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         ...p, 
         products: p.products.filter(x => !barcodes.includes(x.barcode)) 
     })),
-  }), [data, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction, resolveExpiryReminder, addExpiryReminderLocal]);
+  }), [data, uniqueStaffNames, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction, resolveExpiryReminder, addExpiryReminderLocal]);
 
   return (
     <DataCacheContext.Provider value={contextValue}>

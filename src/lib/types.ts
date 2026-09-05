@@ -16,6 +16,11 @@ export interface Supplier {
   createdAt?: string;
 }
 
+export interface StaffMember {
+  name: string;
+  phone?: string;
+}
+
 export type ItemType = 'Expiry' | 'Damage';
 
 export interface InventoryItem {

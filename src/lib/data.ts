@@ -1,5 +1,5 @@
 
-import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder } from '@/lib/types';
+import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
@@ -337,10 +337,19 @@ export async function getAppMetaData() {
         return lastRow ? JSON.parse(lastRow[SETTINGS_COL_VALUE]) : null;
     } catch { return null; }
   };
+
+  const rawStaff = findJson(STAFF_LIST_KEY);
+  let processedStaff: StaffMember[] = [];
+  if (Array.isArray(rawStaff)) {
+      processedStaff = rawStaff.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s);
+  } else {
+      processedStaff = ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"].map(n => ({ name: n }));
+  }
+
   return {
     permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
     specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
-    staff: (findJson(STAFF_LIST_KEY) as string[]) || ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"],
+    staff: processedStaff,
     locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"]
   };
 }
@@ -364,7 +373,7 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(prunedReqs)]]);
 }
 
-export async function saveStaffListToSheet(staff: string[]) {
+export async function saveStaffListToSheet(staff: StaffMember[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === STAFF_LIST_KEY) lastIdx = i; });
