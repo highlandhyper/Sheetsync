@@ -200,6 +200,7 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
 export async function resolveExpiryReminder(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
+        // Targeted status update in column F
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_WATCH', id, `Cleared product from Expiry Watch.`);
         return true;

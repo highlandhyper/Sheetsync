@@ -1,43 +1,33 @@
-
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo } from 'react';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
     Search, 
     Plus, 
-    CheckCircle2, 
-    Clock, 
     Calendar, 
-    Barcode, 
     User, 
-    Trash2, 
     Bell, 
     ShieldAlert, 
     Box, 
     History,
     Check,
     Loader2,
-    FilterX,
-    MoreVertical,
-    Send,
-    ArrowRight
+    FilterX
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AddReminderDialog } from './add-reminder-dialog';
-import { resolveExpiryWatchAction } from '@/app/actions';
-import { ScrollArea } from '../ui/scroll-area';
 
 export function ExpiryWatchClient() {
-    const { expiryReminders, resolveExpiryReminder, products, refreshData } = useDataCache();
+    const { expiryReminders, resolveExpiryReminder, refreshData } = useDataCache();
     const { user } = useAuth();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
@@ -55,14 +45,14 @@ export function ExpiryWatchClient() {
 
     const handleResolve = async (id: string, name: string) => {
         setIsResolving(id);
-        toast({ title: "Resolving Log", description: `Purging ${name} from active watch list...` });
+        toast({ title: "Resolving Log", description: `Updating status for ${name} to 'resolved' in the registry...` });
 
         try {
             await resolveExpiryReminder(id);
-            toast({ title: "Record Cleared", description: "Product identity verified and watch list updated." });
+            toast({ title: "Status Updated", description: "Product identity verified and registry status set to resolved." });
             await refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Sync Failure", description: "Registry core connection interrupted." });
+            toast({ variant: "destructive", title: "Sync Failure", description: "Registry core connection interrupted. Status update failed." });
         } finally {
             setIsResolving(null);
         }
@@ -135,7 +125,7 @@ export function ExpiryWatchClient() {
             {/* WATCH FEED */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Watch Registry Feed</h3>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Watch Registry Feed (Pending)</h3>
                     {searchTerm && (
                         <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-6 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5">
                             <FilterX className="mr-1 h-3 w-3" /> Clear Filter
@@ -175,7 +165,7 @@ export function ExpiryWatchClient() {
 
                                         <div className="flex items-center justify-between sm:justify-end gap-8 shrink-0">
                                             <div className="flex flex-col items-end">
-                                                <p className="text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1">Observation Target</p>
+                                                <p className="text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1.5">Expiry Date</p>
                                                 <div className={cn(
                                                     "flex items-center gap-2 font-black text-lg tabular-nums leading-none tracking-tighter",
                                                     isCritical ? "text-orange-600" : "text-slate-900 dark:text-white"
@@ -183,7 +173,7 @@ export function ExpiryWatchClient() {
                                                     <Calendar className="h-4 w-4 opacity-30" />
                                                     {format(parseISO(reminder.expiryDate), 'dd MMM yyyy')}
                                                 </div>
-                                                <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
+                                                <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1.5", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
                                                     {daysLeft > 0 ? `${daysLeft} Days to Threshold` : "Registry Overdue"}
                                                 </p>
                                             </div>
@@ -199,7 +189,7 @@ export function ExpiryWatchClient() {
                                                 )}
                                             >
                                                 {isResolving === reminder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                Verified & Resolved
+                                                Mark as Resolved
                                             </Button>
                                         </div>
                                     </div>
