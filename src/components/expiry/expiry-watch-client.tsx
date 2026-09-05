@@ -83,8 +83,8 @@ export function ExpiryWatchClient() {
     }, [expiryReminders]);
 
     return (
-        <div className="space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* INDUSTRIAL STATS GRID - HIDDEN ON MOBILE PER USER REQUEST */}
+        <div className="space-y-6 sm:space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            {/* INDUSTRIAL STATS GRID - Conditionally Hidden for prioritising list space */}
             <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="bg-primary/5 border-primary/10 shadow-none rounded-[1.5rem]">
                     <CardContent className="p-6 flex items-center gap-4">
@@ -117,37 +117,37 @@ export function ExpiryWatchClient() {
                 </Card>
             </div>
 
-            {/* COMMAND BAR */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="relative flex-grow group w-full">
+            {/* COMMAND BAR - Ergononmic stacking on small screens */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+                <div className="relative flex-grow group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                     <Input 
-                        placeholder="IDENTIFY WATCH SKU OR NAME..."
+                        placeholder="IDENTIFY SKU OR NAME..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-14 pl-11 rounded-2xl bg-muted/20 border-white/5 font-black uppercase tracking-tight text-base shadow-inner"
+                        className="h-12 sm:h-14 pl-11 rounded-xl sm:rounded-2xl bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
                     />
                 </div>
                 <Button 
                     onClick={() => setIsAddDialogOpen(true)}
-                    className="h-14 px-8 rounded-2xl w-full sm:w-auto font-black uppercase tracking-widest shadow-2xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
                 >
-                    <Plus className="mr-2 h-5 w-5" /> Initialize Watch Log
+                    <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Initialize Watch
                 </Button>
             </div>
 
             {/* WATCH FEED */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Watch Registry Feed (Pending)</h3>
+                <div className="flex items-center justify-between px-1">
+                    <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Watch Registry Feed</h3>
                     {searchTerm && (
-                        <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-6 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5">
-                            <FilterX className="mr-1 h-3 w-3" /> Clear Filter
+                        <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5">
+                            <FilterX className="mr-1 h-3 w-3" /> Clear
                         </Button>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:gap-4">
                     {filteredReminders.length > 0 ? filteredReminders.map(reminder => {
                         const parsedDate = parseISO(reminder.expiryDate);
                         const isDateValid = isValid(parsedDate);
@@ -156,41 +156,41 @@ export function ExpiryWatchClient() {
                         
                         return (
                             <Card key={reminder.id} className={cn(
-                                "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-3xl overflow-hidden transition-all duration-500",
+                                "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-500",
                                 isCritical ? "border-orange-500/20" : "hover:border-primary/20"
                             )}>
                                 <CardContent className="p-0">
-                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center p-6 gap-6">
-                                        <div className="flex items-center gap-5 flex-1 min-w-0">
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center p-4 sm:p-6 gap-4 sm:gap-6">
+                                        <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
                                             <div className={cn(
-                                                "h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border transition-transform duration-700 group-hover:rotate-[5deg]",
+                                                "h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-inner border transition-transform duration-700",
                                                 isCritical ? "bg-orange-500/10 border-orange-500/20 text-orange-600" : "bg-primary/5 border-primary/10 text-primary"
                                             )}>
-                                                {isCritical ? <ShieldAlert className="h-7 w-7" /> : <Box className="h-7 w-7" />}
+                                                {isCritical ? <ShieldAlert className="h-6 w-6 sm:h-7 sm:w-7" /> : <Box className="h-6 w-6 sm:h-7 sm:w-7" />}
                                             </div>
                                             <div className="min-w-0 space-y-1">
-                                                <h4 className="text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase truncate">{reminder.productName}</h4>
+                                                <h4 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase truncate">{reminder.productName}</h4>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-[10px] font-mono font-black text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded tracking-tighter uppercase">{reminder.barcode}</span>
-                                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-muted-foreground/30">
+                                                    <span className="text-[8px] sm:text-[10px] font-mono font-black text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded tracking-tighter uppercase">{reminder.barcode}</span>
+                                                    <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase text-muted-foreground/30">
                                                         <User className="h-3 w-3" /> {reminder.staffName}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between sm:justify-end gap-8 shrink-0">
-                                            <div className="flex flex-col items-end">
-                                                <p className="text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1.5">Expiry Date</p>
+                                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 shrink-0 bg-muted/10 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none">
+                                            <div className="flex flex-col items-start sm:items-end">
+                                                <p className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1">Expiry Date</p>
                                                 <div className={cn(
-                                                    "flex items-center gap-2 font-black text-lg tabular-nums leading-none tracking-tighter",
+                                                    "flex items-center gap-1.5 sm:gap-2 font-black text-sm sm:text-lg tabular-nums leading-none tracking-tighter",
                                                     isCritical ? "text-orange-600" : "text-slate-900 dark:text-white"
                                                 )}>
-                                                    <Calendar className="h-4 w-4 opacity-30" />
-                                                    {isDateValid ? format(parsedDate, 'dd MMM yyyy') : 'Invalid Date'}
+                                                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 opacity-30" />
+                                                    {isDateValid ? format(parsedDate, 'dd MMM yyyy') : 'Registry Error'}
                                                 </div>
-                                                <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1.5", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
-                                                    {!isDateValid ? "Check Registry" : daysLeft > 0 ? `${daysLeft} Days to Threshold` : "Registry Overdue"}
+                                                <p className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
+                                                    {!isDateValid ? "Invalid Data" : daysLeft > 0 ? `${daysLeft} Days Left` : "Registry Overdue"}
                                                 </p>
                                             </div>
 
@@ -198,14 +198,14 @@ export function ExpiryWatchClient() {
                                                 onClick={() => handleResolve(reminder.id, reminder.productName)}
                                                 disabled={isResolving === reminder.id}
                                                 className={cn(
-                                                    "h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all",
+                                                    "h-10 sm:h-14 px-4 sm:px-8 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[8px] sm:text-[10px] transition-all",
                                                     isCritical 
-                                                        ? "bg-orange-500 hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20" 
+                                                        ? "bg-orange-500 hover:bg-orange-600 text-white shadow-lg" 
                                                         : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
                                                 )}
                                             >
-                                                {isResolving === reminder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                Mark as Resolved
+                                                {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                                                Resolve
                                             </Button>
                                         </div>
                                     </div>
@@ -213,12 +213,12 @@ export function ExpiryWatchClient() {
                             </Card>
                         );
                     }) : (
-                        <div className="py-32 flex flex-col items-center justify-center text-center opacity-20 grayscale animate-in zoom-in-95 duration-700">
-                            <div className="p-8 bg-muted/20 rounded-[3rem] mb-6 border-4 border-dashed border-white/5">
-                                <History className="h-16 w-16" strokeWidth={1} />
+                        <div className="py-24 flex flex-col items-center justify-center text-center opacity-20 grayscale">
+                            <div className="p-6 bg-muted/20 rounded-[2.5rem] mb-6 border-2 border-dashed border-white/5">
+                                <History className="h-12 w-12" strokeWidth={1} />
                             </div>
-                            <h4 className="text-2xl font-black uppercase tracking-tighter">Watch Registry Clear</h4>
-                            <p className="text-xs font-medium mt-2 max-w-[280px] leading-relaxed uppercase tracking-widest">No long-term products are currently under observation. Registry state is nominal.</p>
+                            <h4 className="text-xl font-black uppercase tracking-tighter">Registry Nominal</h4>
+                            <p className="text-[10px] font-medium mt-2 max-w-[200px] leading-relaxed uppercase tracking-widest">No long-term products identified for watch protocol.</p>
                         </div>
                     )}
                 </div>
@@ -230,10 +230,10 @@ export function ExpiryWatchClient() {
             />
             
             <div className="pt-20 text-center">
-                <p className="text-[8px] font-black uppercase tracking-[0.8em] text-muted-foreground/10 flex items-center justify-center gap-8">
-                    <span className="w-12 h-px bg-current opacity-20" />
+                <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6">
+                    <span className="w-8 h-px bg-current opacity-20" />
                     SHEETSYNC EXPIRY WATCH CORE
-                    <span className="w-12 h-px bg-current opacity-20" />
+                    <span className="w-8 h-px bg-current opacity-20" />
                 </p>
             </div>
         </div>
