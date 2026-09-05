@@ -13,6 +13,7 @@ import {
   DialogClose,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -197,7 +198,7 @@ export function InventoryItemDetailsDialog({
                             {item.productName}
                         </DialogTitle>
                         <DialogDescription className="flex items-center gap-2 mt-2">
-                            <span className="font-mono text-xs font-bold text-primary/60 tracking-tighter uppercase flex items-center bg-primary/5 px-2 py-0.5 rounded">
+                            <span className="font-mono text-xs font-bold text-muted-foreground uppercase tracking-widest bg-background px-2 py-0.5 rounded border border-white/10">
                                 <BarcodeIcon className="h-3 w-3 mr-1.5" />
                                 {item.barcode}
                             </span>
