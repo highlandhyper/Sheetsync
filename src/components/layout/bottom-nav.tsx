@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -67,7 +68,7 @@ export function BottomNav() {
         <NavItem 
           href={isAdmin ? '/dashboard' : '/expiry-watch'} 
           icon={isAdmin ? Home : Eye} 
-          label={isAdmin ? "Home" : "Watch"} 
+          label={isAdmin ? "Home" : "Diary"} 
           isActive={isAdmin ? pathname === '/dashboard' : pathname === '/expiry-watch'}
         />
         
@@ -87,11 +88,11 @@ export function BottomNav() {
           isActive={pathname === '/inventory/add'}
         />
 
-        {/* SLOT 4: WATCH (Admin) / RETURNS (Viewer) */}
+        {/* SLOT 4: DIARY (Admin) / RETURNS (Viewer) */}
         <NavItem 
           href={isAdmin ? "/expiry-watch" : "/products"} 
           icon={isAdmin ? Eye : UserCheck} 
-          label={isAdmin ? "Watch" : "Returns"} 
+          label={isAdmin ? "Diary" : "Returns"} 
           isActive={isAdmin ? pathname === '/expiry-watch' : pathname === '/products'}
         />
 

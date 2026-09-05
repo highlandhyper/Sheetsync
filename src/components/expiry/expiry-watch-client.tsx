@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -56,14 +57,14 @@ export function ExpiryWatchClient() {
 
     const handleResolve = async (id: string, name: string) => {
         setIsResolving(id);
-        toast({ title: "Resolving Log", description: `Updating status for ${name} to 'resolved' in the registry...` });
+        toast({ title: "Resolving Entry", description: `Clearing ${name} from Diary Reminders...` });
 
         try {
             await resolveExpiryReminder(id);
-            toast({ title: "Status Updated", description: "Product identity verified and registry status set to resolved." });
+            toast({ title: "Task Completed", description: "Product removed from active observation." });
             await refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Sync Failure", description: "Registry core connection interrupted. Status update failed." });
+            toast({ variant: "destructive", title: "Sync Failure", description: "Registry core connection interrupted." });
         } finally {
             setIsResolving(null);
         }
@@ -84,13 +85,13 @@ export function ExpiryWatchClient() {
 
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* INDUSTRIAL STATS GRID - Standard Radii */}
+            {/* STATS GRID */}
             <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="bg-primary/5 border-primary/10 shadow-none rounded-xl">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="bg-primary/10 p-3 rounded-lg"><History className="h-5 w-5 text-primary" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Watch</p>
+                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Entries</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white leading-none mt-1">{stats.total}</p>
                         </div>
                     </CardContent>
@@ -101,7 +102,7 @@ export function ExpiryWatchClient() {
                             <Bell className={cn("h-5 w-5", stats.critical > 0 && "animate-pulse")} />
                         </div>
                         <div>
-                            <p className={cn("text-[10px] font-black uppercase tracking-widest", stats.critical > 0 ? "text-orange-600/60" : "text-muted-foreground/60")}>1-Month Alerts</p>
+                            <p className={cn("text-[10px] font-black uppercase tracking-widest", stats.critical > 0 ? "text-orange-600/60" : "text-muted-foreground/60")}>Critical Threshold</p>
                             <p className={cn("text-3xl font-black leading-none mt-1", stats.critical > 0 ? "text-orange-600" : "text-muted-foreground/40")}>{stats.critical}</p>
                         </div>
                     </CardContent>
@@ -122,7 +123,7 @@ export function ExpiryWatchClient() {
                 <div className="relative flex-grow group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                     <Input 
-                        placeholder="IDENTIFY SKU OR NAME..."
+                        placeholder="IDENTIFY REMINDER..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="h-12 sm:h-14 pl-11 rounded-lg bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
@@ -132,14 +133,14 @@ export function ExpiryWatchClient() {
                     onClick={() => setIsAddDialogOpen(true)}
                     className="h-12 sm:h-14 px-6 sm:px-8 rounded-lg font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
                 >
-                    <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Initialize Watch
+                    <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Add New Entry
                 </Button>
             </div>
 
-            {/* WATCH FEED */}
+            {/* FEED */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
-                    <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Watch Registry Feed</h3>
+                    <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Active Reminders</h3>
                     {searchTerm && (
                         <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5">
                             <FilterX className="mr-1 h-3 w-3" /> Clear
@@ -173,7 +174,7 @@ export function ExpiryWatchClient() {
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-[8px] sm:text-[10px] font-mono font-black text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded tracking-tighter uppercase">{reminder.barcode}</span>
                                                     <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase text-muted-foreground/30">
-                                                        <User className="h-3 w-3" /> {reminder.staffName}
+                                                        <User className="h-3 w-3" /> {reminder.staffName || 'Personnel'}
                                                     </div>
                                                 </div>
                                             </div>
@@ -190,7 +191,7 @@ export function ExpiryWatchClient() {
                                                     {isDateValid ? format(parsedDate, 'dd MMM yyyy') : 'Registry Error'}
                                                 </div>
                                                 <p className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
-                                                    {!isDateValid ? "Invalid Data" : daysLeft > 0 ? `${daysLeft} Days Left` : "Registry Overdue"}
+                                                    {!isDateValid ? "Invalid Data" : daysLeft > 0 ? `${daysLeft} Days Left` : "Overdue Threshold"}
                                                 </p>
                                             </div>
 
@@ -205,7 +206,7 @@ export function ExpiryWatchClient() {
                                                 )}
                                             >
                                                 {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-                                                Resolve
+                                                Clear
                                             </Button>
                                         </div>
                                     </div>
@@ -217,8 +218,8 @@ export function ExpiryWatchClient() {
                             <div className="p-6 bg-muted/20 rounded-xl mb-6 border-2 border-dashed border-white/5">
                                 <History className="h-12 w-12" strokeWidth={1} />
                             </div>
-                            <h4 className="text-xl font-black uppercase tracking-tighter">Registry Nominal</h4>
-                            <p className="text-[10px] font-medium mt-2 max-w-[200px] leading-relaxed uppercase tracking-widest">No long-term products identified for watch protocol.</p>
+                            <h4 className="text-xl font-black uppercase tracking-tighter">Diary Nominal</h4>
+                            <p className="text-[10px] font-medium mt-2 max-w-[200px] leading-relaxed uppercase tracking-widest">No active reminders found in the registry core.</p>
                         </div>
                     )}
                 </div>
@@ -232,7 +233,7 @@ export function ExpiryWatchClient() {
             <div className="pt-20 text-center">
                 <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6">
                     <span className="w-8 h-px bg-current opacity-20" />
-                    SHEETSYNC EXPIRY WATCH CORE
+                    SHEETSYNC DIARY REMINDER CORE
                     <span className="w-8 h-px bg-current opacity-20" />
                 </p>
             </div>

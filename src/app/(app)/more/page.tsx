@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/context/auth-context';
@@ -64,7 +65,7 @@ const HUB_SECTIONS: { title: string; index: string; items: HubItem[] }[] = [
         items: [
             { href: '/dashboard', label: 'Mission Control', icon: LayoutDashboard, description: 'Live registry metrics & analytics.', role: 'admin', variant: 'primary' },
             { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, description: 'Verify & authorize staff requests.', role: 'admin', variant: 'security' },
-            { href: '/expiry-watch', label: 'Expiry Watch', icon: Eye, description: 'Systematic diary replacement protocol.', role: 'both', variant: 'primary' },
+            { href: '/expiry-watch', label: 'Diary Reminder', icon: Eye, description: 'Systematic diary replacement protocol.', role: 'both', variant: 'primary' },
             { href: '/inventory', label: 'Global Inventory', icon: ClipboardList, description: 'Master log of all units in stock.', role: 'admin' },
             { href: '/inventory/add', label: 'Log New Item', icon: ClipboardPlus, description: 'Standard industrial SKU logging.', role: 'both', variant: 'primary' },
             { href: '/inventory/lookup', label: 'Barcode Lookup', icon: SearchCode, description: 'Trace specific log & audit history.', role: 'both' },
@@ -93,7 +94,7 @@ function HubCard({ item }: { item: HubItem }) {
     return (
         <Link href={item.href} className="block group">
             <Card className={cn(
-                "relative border-white/5 bg-card/30 backdrop-blur-3xl hover:bg-primary/[0.05] hover:border-primary/20 transition-all duration-300 rounded-[1.5rem] overflow-hidden shadow-none active:scale-[0.97]",
+                "relative border-white/5 bg-card/30 backdrop-blur-3xl hover:bg-primary/[0.05] hover:border-primary/20 transition-all duration-300 rounded-xl overflow-hidden shadow-none active:scale-[0.97]",
                 item.variant === 'security' && "hover:border-destructive/20"
             )}>
                 <CardContent className="p-5 flex items-center gap-5">
@@ -124,7 +125,6 @@ export default function SystemHubPage() {
     const { role, user, logout } = useAuth();
     const { isAllowed } = useAccessControl();
     const { isOnline, isSyncing, lastSync, pendingActions, refreshData } = useDataCache();
-    const { activeSessions } = useSpecialEntry();
     
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isQueueOpen, setIsQueueOpen] = useState(false);
@@ -171,7 +171,7 @@ export default function SystemHubPage() {
                 </div>
 
                 {/* MOBILE CONTROL CENTER */}
-                <Card className="border-white/5 bg-primary/5 dark:bg-primary/[0.02] rounded-[2rem] overflow-hidden shadow-none">
+                <Card className="border-white/5 bg-primary/5 dark:bg-primary/[0.02] rounded-2xl overflow-hidden shadow-none">
                     <CardHeader className="pb-2 pt-6 px-6">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export default function SystemHubPage() {
                 </Card>
 
                 {/* OPERATIONAL IDENTITY BLOCK */}
-                <div className="p-6 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-zinc-900 dark:to-black text-white shadow-2xl shadow-black/10 relative overflow-hidden group">
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-zinc-900 dark:to-black text-white shadow-2xl shadow-black/10 relative overflow-hidden group">
                     <div className="absolute inset-0 bg-tech-grid opacity-20" />
                     <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[80px] group-hover:bg-primary/20 transition-all duration-1000" />
                     
@@ -330,7 +330,7 @@ export default function SystemHubPage() {
                     <Button 
                         variant="ghost" 
                         onClick={() => logout()}
-                        className="w-full h-16 rounded-[1.5rem] border-2 border-destructive/10 text-destructive hover:bg-destructive/5 font-black uppercase tracking-[0.2em] text-xs"
+                        className="w-full h-16 rounded-xl border-2 border-destructive/10 text-destructive hover:bg-destructive/5 font-black uppercase tracking-[0.2em] text-xs"
                     >
                         <LogOut className="mr-3 h-5 w-5" />
                         Terminate Registry Session
@@ -352,7 +352,7 @@ export default function SystemHubPage() {
             <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
 
             <Dialog open={isQueueOpen} onOpenChange={setIsQueueOpen}>
-                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-2xl border-none shadow-3xl bg-background">
                     <DialogHeader className="p-8 pb-4 bg-muted/20 border-b border-white/5">
                         <div className="flex items-center gap-4 mb-1">
                             <div className="p-3 bg-destructive/10 rounded-2xl">
