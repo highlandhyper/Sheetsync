@@ -30,7 +30,7 @@ import {
     X,
     AlertTriangle
 } from 'lucide-react';
-import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay } from 'date-fns';
+import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { ReturnQuantityDialog } from '@/components/inventory/return-quantity-dialog';
@@ -276,7 +276,8 @@ export function InventoryListClient() {
           if (item.itemType !== 'Expiry' || !item.expiryDate) return false;
           try {
             const expiry = startOfDay(parseISO(item.expiryDate));
-            return isValid(expiry) && isBefore(expiry, today);
+            // TURBO EXPIRE: Adjust filter to include today as expired
+            return isValid(expiry) && (isBefore(expiry, today) || isSameDay(expiry, today));
           } catch { return false; }
         }
         return true;
@@ -716,7 +717,7 @@ export function InventoryListClient() {
                         <TableCell className="text-right text-xs">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{cost ? `QAR ${(cost * totalQuantity).toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-xs">{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
-                        <TableCell className={cn("text-xs", mainItem.expiryDate && isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) ? "text-destructive font-bold" : "")}>
+                        <TableCell className={cn("text-xs", mainItem.expiryDate && (isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) || isSameDay(parseISO(mainItem.expiryDate), new Date())) ? "text-destructive font-bold" : "")}>
                             {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
                         </TableCell>
                         <TableCell className={cn("text-xs font-bold", !hasMultipleTypes && mainItem.itemType === 'Damage' ? "text-orange-500" : "text-primary/60")}>

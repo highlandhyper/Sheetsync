@@ -36,7 +36,7 @@ import {
   deleteAuditLogsByBarcode as dbDeleteAuditLogsByBarcode
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, DashboardMetrics, SpecialEntryRequest, AuditLogEntry, Role } from '@/lib/types';
-import { format, parseISO, isValid, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -438,7 +438,10 @@ export async function addInventoryItemAction(
 
     const now = new Date();
     const tempId = `log_${now.getTime()}`;
-    const isExpired = validatedItemData.itemType === 'Expiry' && isBefore(validatedItemData.expiryDate, startOfDay(now));
+    // TURBO EXPIRE: Include today's date in expired classification to trigger automated mail protocol
+    const isExpired = validatedItemData.itemType === 'Expiry' && 
+                     (isBefore(validatedItemData.expiryDate, startOfDay(now)) || isSameDay(validatedItemData.expiryDate, now));
+    
     const sheetTriggerType = isExpired ? 'EXPIRED' : (validatedItemData.itemType === 'Damage' ? 'DAMAGE' : validatedItemData.itemType);
 
     const itemData: InventoryItem = {
@@ -471,11 +474,6 @@ export async function addInventoryItemAction(
 
     await logAuditEvent(userEmail, 'LOG_INVENTORY', tempId, auditDetails);
     
-    // HIGH-SPEED OPTIMIZATION: Skipping revalidatePath to prevent server-side re-render delay
-    // The client-side DataCache handles state management instantly.
-    // revalidatePath('/inventory');
-    // revalidatePath('/dashboard');
-
     return { success: true, message: 'Logged successfully!', data: itemData };
   } catch (error: any) {
     console.error("addInventoryItemAction Critical Error:", error);

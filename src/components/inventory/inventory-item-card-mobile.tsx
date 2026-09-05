@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid, startOfDay, isSameDay } from 'date-fns';
+import { format, parseISO, isValid, startOfDay, isSameDay, isBefore } from 'date-fns';
 import { memo } from 'react';
 import {
   Barcode,
@@ -60,7 +60,8 @@ function InventoryItemCardMobileComponent({
 }: InventoryItemCardMobileProps) {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-  const isExpired = isValidExpiry && startOfDay(parsedExpiryDate!) < startOfDay(new Date()) && !isSameDay(startOfDay(parsedExpiryDate!), startOfDay(new Date()));
+  // TURBO EXPIRE: Classify today as expired for UI consistency and mail protocol
+  const isExpired = isValidExpiry && (isBefore(startOfDay(parsedExpiryDate!), startOfDay(new Date())) || isSameDay(parsedExpiryDate!, new Date()));
   const isProductFound = item.productName !== 'Not Found';
   const costPrice = product?.costPrice;
   const quantityToShow = totalQuantity ?? item.quantity;

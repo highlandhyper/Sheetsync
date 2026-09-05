@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -106,7 +106,8 @@ export function InventoryItemDetailsDialog({
 
   if (!item) return null;
 
-  const isItemExpired = item.expiryDate ? isValid(parseISO(item.expiryDate)) && parseISO(item.expiryDate) < new Date() : false;
+  // TURBO EXPIRE: Classify today as expired for UI consistency
+  const isItemExpired = item.expiryDate ? isValid(parseISO(item.expiryDate)) && (isBefore(startOfDay(parseISO(item.expiryDate)), startOfDay(new Date())) || isSameDay(parseISO(item.expiryDate), new Date())) : false;
 
   let formattedTimestamp = "N/A";
   if (item.timestamp) {

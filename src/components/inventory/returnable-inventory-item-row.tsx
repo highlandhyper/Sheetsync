@@ -1,10 +1,9 @@
-
 'use client';
 
 import type { InventoryItem } from '@/lib/types';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isBefore, startOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Undo2, Eye, Pencil } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
@@ -42,7 +41,8 @@ const ReturnableInventoryItemRowComponent = ({
 }: ReturnableInventoryItemRowProps) => {
   const parsedExpiryDate = item.expiryDate ? parseISO(item.expiryDate) : null;
   const isValidExpiry = !!parsedExpiryDate && isValid(parsedExpiryDate);
-  const isExpired = isValidExpiry && parsedExpiryDate! < new Date();
+  // TURBO EXPIRE: Adjust highlighting to include today as expired
+  const isExpired = isValidExpiry && (isBefore(startOfDay(parsedExpiryDate!), startOfDay(new Date())) || isSameDay(parsedExpiryDate!, new Date()));
 
   let formattedExpiryDate = 'N/A';
   if (item.expiryDate) { 
