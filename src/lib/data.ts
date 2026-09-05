@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -39,7 +40,7 @@ const WATCH_COL_ID = 0;
 const WATCH_COL_BARCODE = 1;
 const WATCH_COL_NAME = 2;
 const WATCH_COL_EXPIRY = 3;
-const WATCH_COL_STAFF = 4;
+const WATCH_COL_SUPPLIER = 4;
 const WATCH_COL_STATUS = 5;
 const WATCH_COL_TIMESTAMP = 6;
 
@@ -173,9 +174,10 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
             barcode: String(row[WATCH_COL_BARCODE] || ''),
             productName: String(row[WATCH_COL_NAME] || ''),
             expiryDate: expDate && isValid(expDate) ? format(expDate, 'yyyy-MM-dd') : String(expRaw || ''),
-            staffName: String(row[WATCH_COL_STAFF] || ''),
+            supplierName: String(row[WATCH_COL_SUPPLIER] || ''),
             status: (String(row[WATCH_COL_STATUS] || 'pending').toLowerCase() as any),
-            timestamp: tsDate && isValid(tsDate) ? tsDate.toISOString() : String(tsRaw || '')
+            timestamp: tsDate && isValid(tsDate) ? tsDate.toISOString() : String(tsRaw || ''),
+            staffName: '' // Hidden in sheet, kept in type for compat
         };
     }).filter(r => r.id && r.status === 'pending');
 }
@@ -183,8 +185,8 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
-    // STRUCTURE: ID | Barcode | Name | Expiry | Staff | Status | Timestamp
-    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.staffName, 'pending', ts];
+    // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp
+    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts];
     
     // STRICT ISOLATION: Only write to "Expiry Watch" sheet
     await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);

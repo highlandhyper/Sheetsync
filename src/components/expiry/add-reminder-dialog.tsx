@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -50,6 +51,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
 
     const [barcode, setBarcode] = useState('');
     const [productName, setProductName] = useState('');
+    const [supplierName, setSupplierName] = useState('');
     const [staffName, setStaffName] = useState('');
     const [expiryDate, setExpiryDate] = useState<Date | undefined>();
     const [isSearching, setIsSearching] = useState(false);
@@ -62,6 +64,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
         if (isOpen) {
             setBarcode('');
             setProductName('');
+            setSupplierName('');
             setStaffName('');
             setExpiryDate(undefined);
             setTimeout(() => barcodeInputRef.current?.focus(), 150);
@@ -75,12 +78,15 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
         const match = products.find(p => p.barcode === bc.trim() || p.barcode.replace(/^0+/, '') === bc.trim().replace(/^0+/, ''));
         if (match) {
             setProductName(match.productName);
+            setSupplierName(match.supplierName || 'Unknown Vendor');
         } else {
             const res = await fetchProductAction(bc);
             if (res.success && res.data) {
                 setProductName(res.data.productName);
+                setSupplierName(res.data.supplierName || 'Unknown Vendor');
             } else {
                 setProductName('Identity Node Not Registered');
+                setSupplierName('N/A');
             }
         }
         setIsSearching(false);
@@ -93,6 +99,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
         const res = await addExpiryWatchAction({
             barcode: barcode.trim(),
             productName,
+            supplierName,
             staffName,
             expiryDate: format(expiryDate, 'yyyy-MM-dd')
         });
@@ -150,6 +157,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                     <div className="min-w-0">
                                         <p className="text-[9px] font-black uppercase text-primary/60 tracking-widest leading-none mb-1">Identified Node</p>
                                         <p className="text-sm font-black uppercase text-slate-900 dark:text-white truncate">{productName}</p>
+                                        <p className="text-[9px] font-bold text-muted-foreground truncate uppercase">{supplierName}</p>
                                     </div>
                                 </div>
                             </div>

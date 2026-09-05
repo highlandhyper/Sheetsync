@@ -44,6 +44,7 @@ export interface ExpiryReminder {
   productName: string;
   expiryDate: string;
   staffName: string;
+  supplierName?: string;
   status: 'pending' | 'resolved';
   timestamp: string;
 }
