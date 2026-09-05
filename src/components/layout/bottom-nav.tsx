@@ -13,7 +13,8 @@ import {
     Menu,
     Settings,
     UserCheck,
-    LucideIcon
+    LucideIcon,
+    SearchCode
 } from 'lucide-react';
 
 export function BottomNav() {
@@ -69,12 +70,12 @@ export function BottomNav() {
           isActive={isAdmin ? pathname === '/dashboard' : pathname === '/products'}
         />
         
-        {/* SLOT 2: CATALOG */}
+        {/* SLOT 2: CATALOG (Admin) / LOOKUP (Viewer) */}
         <NavItem 
-            href="/products/list" 
-            icon={Package} 
-            label="Catalog" 
-            isActive={pathname === '/products/list'}
+            href={isAdmin ? "/products/list" : "/inventory/lookup"} 
+            icon={isAdmin ? Package : SearchCode} 
+            label={isAdmin ? "Catalog" : "Lookup"} 
+            isActive={isAdmin ? pathname === '/products/list' : pathname === '/inventory/lookup'}
         />
 
         {/* SLOT 3: PRIMARY LOG ACTION */}
@@ -85,7 +86,7 @@ export function BottomNav() {
           isActive={pathname === '/inventory/add'}
         />
 
-        {/* SLOT 4: SEARCH / SETTINGS */}
+        {/* SLOT 4: SEARCH (Admin) / SETTINGS (Viewer) */}
         <NavItem 
           href={isAdmin ? "/inventory/lookup" : "/settings"} 
           icon={isAdmin ? Search : Settings} 
