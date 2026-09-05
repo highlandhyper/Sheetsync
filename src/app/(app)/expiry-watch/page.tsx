@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Suspense } from 'react';
@@ -31,8 +30,8 @@ export default function ExpiryWatchPage() {
     <div className="container mx-auto py-2">
        <div className="flex items-center justify-between mb-8">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
-                    <Eye className="mr-3 h-8 w-8 text-primary" strokeWidth={3} />
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
+                    <Eye className="mr-3 h-6 w-6 sm:h-8 sm:w-8 text-primary" strokeWidth={3} />
                     Expiry Watch
                 </h1>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] ml-1 opacity-40">Systematic Long-Term Tracking</p>

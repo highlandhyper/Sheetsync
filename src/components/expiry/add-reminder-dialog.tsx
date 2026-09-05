@@ -119,12 +119,12 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
             <DialogContent className="max-w-md w-[95%] sm:w-full p-0 overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-none shadow-3xl bg-background">
                 <div className="bg-primary p-6 sm:p-8 text-primary-foreground">
                     <div className="flex items-center gap-3 sm:gap-4 mb-1">
-                        <div className="bg-white/20 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                        <div className="bg-white/20 p-2 rounded-xl sm:rounded-2xl">
                             <Eye className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Systematic Watch</DialogTitle>
-                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest opacity-70">Expiry Observation Protocol</p>
+                            <DialogTitle className="text-lg sm:text-xl font-black uppercase tracking-tighter">Systematic Watch</DialogTitle>
+                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Expiry Observation Protocol</p>
                         </div>
                     </div>
                 </div>
