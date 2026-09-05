@@ -30,11 +30,12 @@ import {
     Wifi,
     Eye,
     List,
-    X
+    X,
+    Search
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
-import Link from 'next/link';
+import Link from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -256,9 +257,9 @@ export function AddReminderStepperForm() {
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-2">Industrial Observation Registry</p>
             </div>
             <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold border-primary/10 bg-background shadow-sm hover:bg-primary/5">
-                <Link href="/expiry-watch">
+                <a href="/expiry-watch">
                     <List className="mr-2 h-4 w-4 text-primary" /> Show List
-                </Link>
+                </a>
             </Button>
         </div>
 
