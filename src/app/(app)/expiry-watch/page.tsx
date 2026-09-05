@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Suspense } from 'react';
@@ -25,7 +26,7 @@ function ExpiryWatchSkeleton() {
     );
 }
 
-export default function ExpiryWatchPage() {
+export default function DiaryRegistryPage() {
   const { isCacheReady } = useDataCache();
 
   return (
@@ -34,11 +35,11 @@ export default function ExpiryWatchPage() {
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tighter uppercase leading-none">
                     <Eye className="mr-3 h-6 w-6 sm:h-8 sm:w-8 text-primary" strokeWidth={3} />
-                    Diary Reminder
+                    Diary Registry
                 </h1>
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] ml-1 opacity-40">Industrial Observation Terminal</p>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] ml-1 opacity-40">Observation Trace History</p>
             </div>
-            <Button asChild className="h-11 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hidden sm:flex">
+            <Button asChild className="h-11 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20">
                 <Link href="/expiry-watch/add">
                     <ClipboardPlus className="mr-2 h-4 w-4" /> Log New Entry
                 </Link>

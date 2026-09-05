@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useRef, useCallback, useMemo } from 'react';
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
-import Link from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -257,9 +258,9 @@ export function AddReminderStepperForm() {
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-2">Industrial Observation Registry</p>
             </div>
             <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold border-primary/10 bg-background shadow-sm hover:bg-primary/5">
-                <a href="/expiry-watch">
+                <Link href="/expiry-watch">
                     <List className="mr-2 h-4 w-4 text-primary" /> Show List
-                </a>
+                </Link>
             </Button>
         </div>
 
@@ -307,7 +308,7 @@ export function AddReminderStepperForm() {
                         <Button 
                             onClick={() => handleBarcodeLookup(barcode)}
                             disabled={!barcode.trim() || isFetchingProduct}
-                            className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20"
+                            className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 bg-primary text-white border-none"
                         >
                             {isFetchingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                             Initialize Protocol
@@ -414,7 +415,7 @@ export function AddReminderStepperForm() {
                 <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
                 <div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /></div></div>
             </div>
-            <div className="p-4 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
+            <div className="p-1.5 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
                 <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
                     Abort Scanning Protocol
                 </Button>

@@ -66,10 +66,10 @@ export function BottomNav() {
         
         {/* SLOT 1: DYNAMIC HOME */}
         <NavItem 
-          href={isAdmin ? '/dashboard' : '/expiry-watch'} 
+          href={isAdmin ? '/dashboard' : '/expiry-watch/add'} 
           icon={isAdmin ? Home : Eye} 
           label={isAdmin ? "Home" : "Diary"} 
-          isActive={isAdmin ? pathname === '/dashboard' : pathname === '/expiry-watch'}
+          isActive={isAdmin ? pathname === '/dashboard' : pathname.startsWith('/expiry-watch')}
         />
         
         {/* SLOT 2: CATALOG (Admin) / LOOKUP (Viewer) */}
@@ -90,10 +90,10 @@ export function BottomNav() {
 
         {/* SLOT 4: DIARY (Admin) / RETURNS (Viewer) */}
         <NavItem 
-          href={isAdmin ? "/expiry-watch" : "/products"} 
+          href={isAdmin ? "/expiry-watch/add" : "/products"} 
           icon={isAdmin ? Eye : UserCheck} 
           label={isAdmin ? "Diary" : "Returns"} 
-          isActive={isAdmin ? pathname === '/expiry-watch' : pathname === '/products'}
+          isActive={isAdmin ? pathname.startsWith('/expiry-watch') : pathname === '/products'}
         />
 
         {/* SLOT 5: NAVIGATION HUB */}
