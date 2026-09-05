@@ -29,7 +29,8 @@ import {
     Fingerprint,
     Image as ImageIcon,
     Box,
-    Clock
+    Clock,
+    ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
@@ -50,6 +51,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
 import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
@@ -96,6 +98,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const [isSavePending, startSaveTransition] = useTransition();
   const [isFetchPending, startFetchTransition] = useTransition();
   const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   
   const [barcodeToSearch, setBarcodeToSearch] = useState('');
   const [searchedBarcode, setSearchedBarcode] = useState(''); 
@@ -181,6 +184,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         const res = await fetchProductExternalDataAction(barcode);
         if (res.success && res.data) {
             setExternalData(res.data);
+            if (res.data.image) {
+                setIsImageDialogOpen(true);
+            }
             if (!skipFieldOverwrite) {
                 if (res.data.name) setValue('productName', res.data.name, { shouldValidate: true, shouldDirty: true });
                 if (res.data.brand) setValue('supplierName', res.data.brand, { shouldValidate: true, shouldDirty: true });
@@ -208,7 +214,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
     startFetchTransition(async () => {
       setSearchedBarcode(barcodeToUse);
-      setExternalData(null); // Clear previous visual data
+      setExternalData(null); 
       
       const cachedProduct = barcodeMap.get(barcodeToUse);
       
@@ -220,7 +226,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setEditMode('edit');
         setProductNotFound(false);
         setShowForm(true);
-        // NO AUTO MAGIC LOOKUP HERE
         setTimeout(() => nameInputRef.current?.focus(), 150);
         return;
       }
@@ -233,7 +238,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('costPrice', result.data.costPrice);
         setEditMode('edit');
         setProductNotFound(false);
-        // NO AUTO MAGIC LOOKUP HERE
       } else {
         setValue('barcode', barcodeToUse); 
         setValue('productName', '');
@@ -241,7 +245,6 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('costPrice', undefined);
         setEditMode('create');
         setProductNotFound(true);
-        // NO AUTO MAGIC LOOKUP HERE
       }
       setShowForm(true); 
       setTimeout(() => nameInputRef.current?.focus(), 150);
@@ -261,7 +264,11 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
-    formData.append('costPrice', (data.costPrice === undefined || isNaN(data.costPrice)) ? '' : String(data.costPrice));
+    formData.append('uniqueId', product.uniqueId || '');
+    
+    const costValue = (data.costPrice === undefined || Number.isNaN(data.costPrice)) ? '' : String(data.costPrice);
+    formData.append('costPrice', costValue);
+    
     formData.append('editMode', editMode);
     
     const existing = barcodeMap.get(searchedBarcode);
@@ -388,73 +395,30 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
                     {showForm && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
-                                <div className="md:col-span-4">
-                                    <div className="aspect-[4/3] relative rounded-2xl sm:rounded-[2rem] bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden group shadow-inner">
-                                        {isMagicLoading ? (
-                                            <div className="flex flex-col items-center gap-3">
-                                                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary/40 animate-spin" />
-                                                <span className="text-[7px] font-black uppercase tracking-widest text-primary/40">Fetching...</span>
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                        <Badge variant="outline" className={cn("px-3 sm:px-4 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest rounded-lg sm:rounded-xl border-none shadow-md", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
+                                            {productNotFound ? <PlusCircle className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> : <ShieldCheck className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />}
+                                            {productNotFound ? 'Unregistered Identity' : 'Registry Verified'}
+                                        </Badge>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-2">
+                                                <Box className="h-3 w-3 text-primary/40" />
+                                                <span className="text-[9px] font-black text-primary">{skuStats.total} Units</span>
                                             </div>
-                                        ) : externalData?.image ? (
-                                            <>
-                                                <Image 
-                                                    src={externalData.image} 
-                                                    alt="Verification Preview" 
-                                                    fill 
-                                                    className="object-contain p-4 group-hover:scale-110 transition-transform duration-1000"
-                                                    unoptimized
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-4">
-                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase text-white tracking-widest">Visual Review</span>
+                                            {skuStats.damaged > 0 && (
+                                                <div className="px-3 py-1.5 rounded-lg bg-orange-500/5 border border-orange-500/10 flex items-center gap-2">
+                                                    <AlertTriangle className="h-3 w-3 text-orange-500/40" />
+                                                    <span className="text-[9px] font-black text-orange-600">{skuStats.damaged} Damaged</span>
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-3 opacity-10">
-                                                <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12" strokeWidth={1} />
-                                                <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-center">Identity Node<br/>Awaiting Visual</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                
-                                <div className="md:col-span-8 flex flex-col justify-between py-1">
-                                    <div className="space-y-4">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                                                <Badge variant="outline" className={cn("px-3 sm:px-4 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest rounded-lg sm:rounded-xl border-none shadow-md", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
-                                                    {productNotFound ? <PlusCircle className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> : <ShieldCheck className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />}
-                                                    {productNotFound ? 'Unregistered Identity' : 'Registry Verified'}
-                                                </Badge>
-                                                {externalData?.brand && (
-                                                    <Badge variant="secondary" className="px-3 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest border-none bg-muted/40 max-w-[150px] sm:max-w-[200px] truncate">
-                                                        {externalData.brand}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-primary/5 border border-primary/10 space-y-0.5 sm:space-y-1">
-                                                <div className="flex items-center gap-2 text-primary/30">
-                                                    <Box className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">In Stock</span>
-                                                </div>
-                                                <p className="text-lg sm:text-xl font-black text-primary tracking-tighter">{skuStats.total} Units</p>
-                                            </div>
-                                            <div className={cn("p-3 sm:p-4 rounded-xl sm:rounded-2xl border space-y-0.5 sm:space-y-1", skuStats.damaged > 0 ? "bg-orange-500/5 border-orange-500/10" : "bg-muted/5 border-white/5 opacity-40")}>
-                                                <div className={cn("flex items-center gap-2", skuStats.damaged > 0 ? "text-orange-500/40" : "text-muted-foreground/30")}>
-                                                    <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Damaged</span>
-                                                </div>
-                                                <p className={cn("text-lg sm:text-xl font-black tracking-tighter", skuStats.damaged > 0 ? "text-orange-600" : "text-muted-foreground/20")}>{skuStats.damaged}</p>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
-
-                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup(searchedBarcode)} disabled={isMagicLoading} className="h-10 w-full text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl border border-primary/10 transition-all mt-4">
+                                    
+                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup(searchedBarcode)} disabled={isMagicLoading} className="h-9 w-full sm:w-auto text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-lg border border-primary/10 transition-all">
                                         <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isMagicLoading && "animate-spin")} />
-                                        {externalData ? 'Force Identity Sync' : 'Initialize Magic Lookup'}
+                                        Visual Sync
                                     </Button>
                                 </div>
                             </div>
@@ -536,8 +500,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                     </div>
                                 </div>
 
-                                <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-background/95 to-transparent py-4 shrink-0 mt-auto">
-                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-14 sm:h-16 font-black uppercase tracking-[0.4em] text-[10px] sm:text-[11px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/30 rounded-xl sm:rounded-2xl transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
+                                <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                                    <Button type="submit" disabled={isSavePending || !isDirty} className="flex-1 h-14 sm:h-16 font-black uppercase tracking-[0.4em] text-[10px] sm:text-[11px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/30 rounded-xl sm:rounded-2xl transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
                                         {isSavePending ? <Loader2 className="mr-4 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Save className="mr-4 h-4 w-4 sm:h-5 sm:w-5" />}
                                         {editMode === 'create' ? 'REGISTER IDENTITY' : 'UPDATE MASTER CATALOG'}
                                     </Button>
@@ -585,7 +549,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                 </div>
                                                 <div className="space-y-2 sm:space-y-1.5 flex-1 min-w-0">
                                                     <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Operating Personnel</p>
-                                                    <p className="text-xs sm:text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
+                                                    <p className="text-xs sm:sm:text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
                                                     <div className="mt-2 sm:mt-3 p-3 sm:p-4 bg-muted/20 rounded-xl sm:rounded-2xl border border-white/5">
                                                         <p className="text-[10px] sm:text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
                                                             "{log.details}"
@@ -602,7 +566,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                         <Layers className="h-12 w-12 sm:h-16 sm:w-16" />
                                     </div>
                                     <h4 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Zero Traces</h4>
-                                    <p className="text-xs sm:text-sm font-medium mt-2 max-w-[240px] sm:max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
+                                    <p className="text-xs sm:sm:text-sm font-medium mt-2 max-w-[240px] sm:max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
                                 </div>
                             )}
                         </ScrollArea>
@@ -613,6 +577,43 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </Card>
             </div>
         )}
+
+        <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+            <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden bg-white border-none shadow-3xl rounded-[2.5rem]">
+                <DialogHeader className="p-8 pb-4 bg-slate-50 border-b">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <DialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900">Visual Identification</DialogTitle>
+                            <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Verified SKU Registry Asset</DialogDescription>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setIsImageDialogOpen(false)} className="rounded-full">
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+                </DialogHeader>
+                <div className="relative aspect-square w-full bg-white p-10">
+                    {externalData?.image ? (
+                        <Image 
+                            src={externalData.image} 
+                            alt="Product Visual" 
+                            fill 
+                            className="object-contain"
+                            unoptimized
+                            priority
+                        />
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                            <ImageIcon className="h-16 w-16 opacity-20" />
+                            <p className="text-xs font-bold uppercase tracking-widest">No Visual Data Identified</p>
+                        </div>
+                    )}
+                </div>
+                <div className="p-6 bg-slate-50 border-t flex flex-col items-center text-center gap-1">
+                    <p className="font-bold text-sm text-slate-900">{externalData?.name || 'Unknown Product'}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{searchedBarcode}</p>
+                </div>
+            </DialogContent>
+        </Dialog>
 
         {isSupplierEditDialogOpen && supplierToEdit && (
             <EditSupplierDialog 
