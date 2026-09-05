@@ -136,7 +136,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                 </div>
 
                 <ScrollArea className="max-h-[60vh] sm:max-h-[70vh]">
-                    <div className="p-5 sm:p-6 space-y-6">
+                    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                         
                         {/* STEP 1: BARCODE */}
                         {currentStep === 0 && (
@@ -156,7 +156,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                                     handleBarcodeLookup(barcode);
                                                 }
                                             }}
-                                            className="pl-11 h-14 rounded-lg bg-muted/20 border-white/5 font-black uppercase tracking-tight text-lg shadow-inner"
+                                            className="pl-11 h-12 rounded-lg bg-muted/20 border-white/5 font-black uppercase tracking-tight text-lg shadow-inner"
                                         />
                                         {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
                                     </div>
@@ -164,7 +164,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                 <Button 
                                     onClick={() => handleBarcodeLookup(barcode)}
                                     disabled={!barcode.trim() || isSearching}
-                                    className="w-full h-14 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                                    className="w-full h-12 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-primary/20"
                                 >
                                     Proceed <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
@@ -173,7 +173,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
 
                         {/* STEP 2: STAFF & DATE */}
                         {currentStep === 1 && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {productName && (
                                     <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 shadow-sm">
                                         <div className="flex items-center gap-3">
@@ -262,13 +262,13 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                 </div>
 
                                 <div className="flex gap-3 pt-4">
-                                    <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-14 px-4 font-black uppercase text-[10px] tracking-widest">
+                                    <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-12 px-4 font-black uppercase text-[10px] tracking-widest">
                                         <ArrowLeft className="mr-1 h-4 w-4" /> Back
                                     </Button>
                                     <Button 
                                         onClick={handleSave} 
                                         disabled={isSaving || !staffName || !expiryDate} 
-                                        className="flex-1 h-14 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20"
+                                        className="flex-1 h-12 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20"
                                     >
                                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                         Initialize Reminder
