@@ -15,10 +15,31 @@ import {
 } from '@/components/ui/dialog';
 import type { InventoryItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { Package, User, CalendarDays, AlertTriangle, Tag, Barcode as BarcodeIcon, Building, Pencil, History, Loader2, Image as ImageIcon, X } from 'lucide-react';
+import { 
+    Package, 
+    User, 
+    CalendarDays, 
+    AlertTriangle, 
+    Tag, 
+    Barcode as BarcodeIcon, 
+    Building, 
+    Pencil, 
+    History, 
+    Loader2, 
+    Image as ImageIcon, 
+    X,
+    MapPin,
+    Clock,
+    ShieldCheck,
+    Hash,
+    Layers,
+    ChevronRight
+} from 'lucide-react';
 import { ItemAuditLogDialog } from '@/components/audit/item-audit-log-dialog';
 import { fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 interface InventoryItemDetailsDialogProps {
   item: InventoryItem | null;
@@ -66,23 +87,23 @@ export function InventoryItemDetailsDialog({
                 setIsImagePopupOpen(true);
             } else {
                 toast({ 
-                    title: "No Image Found", 
-                    description: "No visual data available in global registries for this barcode.", 
+                    title: "Visual ID Missing", 
+                    description: "No global imagery found for this SKU.", 
                     variant: "destructive" 
                 });
             }
         } else {
             toast({ 
                 title: "Lookup Failed", 
-                description: res.message || "Could not retrieve product image.", 
+                description: res.message || "Visual registry handshake failed.", 
                 variant: "destructive" 
             });
         }
     } catch (err) {
         console.error("External lookup error:", err);
         toast({ 
-            title: "Connection Error", 
-            description: "External registry service is currently unreachable.", 
+            title: "Registry Timeout", 
+            description: "Visual service temporarily unavailable.", 
             variant: "destructive" 
         });
     } finally {
@@ -98,9 +119,7 @@ export function InventoryItemDetailsDialog({
   if (item.timestamp) {
     const parsedTs = parseISO(item.timestamp);
     if (isValid(parsedTs)) {
-      formattedTimestamp = format(parsedTs, 'PPp');
-    } else {
-      formattedTimestamp = "Invalid timestamp";
+      formattedTimestamp = format(parsedTs, 'dd MMM yyyy • HH:mm');
     }
   }
 
@@ -108,12 +127,7 @@ export function InventoryItemDetailsDialog({
   if (item.expiryDate) {
     const parsedExpDate = parseISO(item.expiryDate);
     if (isValid(parsedExpDate)) {
-      formattedExpiryDate = format(parsedExpDate, 'PP');
-      if (isItemExpired) {
-        formattedExpiryDate += " (Expired)";
-      }
-    } else {
-      formattedExpiryDate = "Invalid date";
+      formattedExpiryDate = format(parsedExpDate, 'dd MMM yyyy');
     }
   }
 
@@ -124,121 +138,164 @@ export function InventoryItemDetailsDialog({
     }
   };
 
+  const DataNode = ({ icon: Icon, label, value, subValue, variant = 'default', color = 'primary' }: { icon: any, label: string, value: string, subValue?: string, variant?: 'default' | 'alert', color?: 'primary' | 'orange' }) => (
+      <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/20 border border-white/5 shadow-inner group transition-all hover:bg-muted/30">
+          <div className={cn(
+              "p-2.5 rounded-xl transition-all duration-500 group-hover:scale-110",
+              color === 'primary' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500",
+              variant === 'alert' && "animate-pulse"
+          )}>
+              <Icon className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-[0.2em] leading-none mb-1.5">{label}</p>
+              <p className={cn(
+                  "text-sm font-black uppercase tracking-tight truncate",
+                  variant === 'alert' ? "text-destructive" : "text-slate-900 dark:text-white"
+              )}>
+                  {value}
+              </p>
+              {subValue && <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5">{subValue}</p>}
+          </div>
+      </div>
+  );
+
   return (
     <>
     <Dialog open={isOpen} onOpenChange={(open) => {
         if (!open) setIsAuditLogOpen(false);
         onOpenChange(open);
     }}>
-      <DialogContent className="sm:max-w-md overflow-hidden p-0">
-        <div className="p-6">
-            <DialogHeader className="mb-2">
-            <DialogTitle className="flex items-center text-xl">
-                <Package className="mr-2 h-5 w-5 text-primary" />
-                {item.productName}
-            </DialogTitle>
-            <DialogDescription>
-                {externalData?.brand ? (
-                    <span className="font-bold text-primary mr-2 uppercase text-[10px] bg-primary/10 px-2 py-0.5 rounded-full tracking-widest">{externalData.brand}</span>
-                ) : null}
-                Internal log details for this inventory asset.
-            </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3 text-sm mt-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                        <BarcodeIcon className="mr-3 h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Barcode:</span>
-                        <span className="ml-2 text-muted-foreground font-mono">{item.barcode}</span>
+      <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
+        <div className="flex flex-col max-h-[90vh]">
+            {/* ATMOSPHERIC HEADER */}
+            <div className="relative p-8 pb-6 bg-muted/20 border-b border-white/5 overflow-hidden shrink-0">
+                <div className="absolute inset-0 bg-tech-grid opacity-10" />
+                <div className="relative z-10 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-3 py-1 rounded-full">
+                            Industrial Log Node
+                        </Badge>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 text-[10px] font-black px-4 bg-background/50 border-primary/20 text-primary shadow-sm hover:bg-primary/5 transition-all" 
+                            onClick={handleFetchImage}
+                            disabled={isFetchingImage}
+                        >
+                            {isFetchingImage ? (
+                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <ImageIcon className="mr-2 h-3.5 w-3.5" />
+                            )}
+                            VISUAL ID
+                        </Button>
                     </div>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-7 text-[10px] font-bold px-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary" 
-                        onClick={handleFetchImage}
-                        disabled={isFetchingImage}
-                    >
-                        {isFetchingImage ? (
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                            <ImageIcon className="mr-1 h-3 w-3" />
-                        )}
-                        VIEW IMAGE
-                    </Button>
+                    
+                    <DialogHeader>
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-tight">
+                            {item.productName}
+                        </DialogTitle>
+                        <DialogDescription className="flex items-center gap-2 mt-2">
+                            <span className="font-mono text-xs font-bold text-primary/60 tracking-tighter uppercase flex items-center bg-primary/5 px-2 py-0.5 rounded">
+                                <BarcodeIcon className="h-3 w-3 mr-1.5" />
+                                {item.barcode}
+                            </span>
+                            {externalData?.brand && (
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 border-l border-white/10 pl-2">
+                                    {externalData.brand}
+                                </span>
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
                 </div>
-
-                <Separator />
-
-                {displayContext === 'returnByStaff' ? (
-                    <div className="flex items-center">
-                    <Building className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Supplier:</span>
-                    <span className="ml-2 text-muted-foreground">{item.supplierName || 'N/A'}</span>
-                    </div>
-                ) : ( 
-                    <div className="flex items-center">
-                    <User className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Logged by:</span>
-                    <span className="ml-2 text-muted-foreground">{item.staffName}</span>
-                    </div>
-                )}
-
-                <div className="flex items-center">
-                    <CalendarDays className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Logged on:</span>
-                    <span className="ml-2 text-muted-foreground">
-                    {formattedTimestamp}
-                    </span>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center">
-                    <Building className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Location:</span>
-                    <span className="ml-2 text-muted-foreground">{item.location}</span>
-                </div>
-
-                <div className="flex items-center">
-                    <CalendarDays className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Expiry Date:</span>
-                    <span className={`ml-2 ${isItemExpired && item.itemType === 'Expiry' ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
-                    {formattedExpiryDate}
-                    </span>
-                </div>
-
-                <div className="flex items-center">
-                    {item.itemType === 'Damage' ?
-                    <AlertTriangle className="mr-3 h-4 w-4 text-orange-500" /> :
-                    <Tag className="mr-3 h-4 w-4 text-muted-foreground" />
-                    }
-                    <span className="font-medium">Item Type:</span>
-                    <span className={`ml-2 ${item.itemType === 'Damage' ? 'text-orange-500' : 'text-muted-foreground'}`}>
-                    {item.itemType}
-                    </span>
-                </div>
-
-                <Separator />
             </div>
 
-            <DialogFooter className="mt-8 flex justify-between items-center gap-2">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setIsAuditLogOpen(true)}>
-                    <History className="mr-2 h-4 w-4" /> History
-                </Button>
-                <div className="flex items-center gap-2">
-                {onStartEdit && (
-                    <Button type="button" variant="outline" size="sm" onClick={handleEditClick}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit
+            {/* SCROLLABLE CONTENT BODY */}
+            <div className="flex-1 overflow-y-auto p-8 pt-6 space-y-8">
+                {/* PRIMARY STOCK NODE */}
+                <div className="p-6 rounded-[2rem] bg-primary/5 border-2 border-primary/10 flex items-center justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-tech-grid opacity-20" />
+                    <div className="relative z-10 flex items-center gap-5">
+                        <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
+                            <Layers className="h-8 w-8 text-white" strokeWidth={3} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-[0.3em] leading-none mb-1.5">In Stock Registry</p>
+                            <div className="flex items-baseline gap-2 leading-none">
+                                <h4 className="text-4xl font-black text-primary tracking-tighter">{item.quantity}</h4>
+                                <span className="text-[10px] font-black uppercase text-primary/40 tracking-widest">Active Units</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ChevronRight className="h-6 w-6 text-primary/10 relative z-10 group-hover:translate-x-2 transition-transform duration-500" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-2 opacity-40">Logistic Context</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <DataNode 
+                                icon={MapPin} 
+                                label="Storage Zone" 
+                                value={item.location} 
+                            />
+                            <DataNode 
+                                icon={item.itemType === 'Damage' ? AlertTriangle : Tag} 
+                                label="Log Type" 
+                                value={item.itemType}
+                                color={item.itemType === 'Damage' ? 'orange' : 'primary'}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em] ml-2 opacity-40">Temporal Audit</Label>
+                        <div className="grid grid-cols-1 gap-3">
+                            <DataNode 
+                                icon={CalendarDays} 
+                                label="Lifecycle Expiry" 
+                                value={formattedExpiryDate}
+                                subValue={isItemExpired ? "CRITICAL: EXPIRED" : "Nominal Window"}
+                                variant={isItemExpired && item.itemType === 'Expiry' ? 'alert' : 'default'}
+                            />
+                            <DataNode 
+                                icon={User} 
+                                label="Operating Personnel" 
+                                value={item.staffName}
+                                subValue={formattedTimestamp}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* HIGH-VELOCITY FOOTER */}
+            <div className="p-8 bg-muted/20 border-t border-white/5 flex flex-col gap-3 shrink-0">
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline" 
+                        className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] border-white/10 hover:bg-primary/5 hover:text-primary transition-all active:scale-95" 
+                        onClick={() => setIsAuditLogOpen(true)}
+                    >
+                        <History className="mr-2 h-4 w-4" /> Audit History
                     </Button>
-                )}
+                    {onStartEdit && (
+                        <Button 
+                            variant="outline" 
+                            className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] border-white/10 hover:bg-primary/5 hover:text-primary transition-all active:scale-95" 
+                            onClick={handleEditClick}
+                        >
+                            <Pencil className="mr-2 h-4 w-4" /> Modify Node
+                        </Button>
+                    )}
+                </div>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" size="sm">
-                    Close
+                    <Button className="w-full h-16 rounded-[1.8rem] font-black uppercase tracking-[0.3em] text-xs shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 border-none">
+                        Terminate View
                     </Button>
                 </DialogClose>
-                </div>
-            </DialogFooter>
+            </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -250,7 +307,7 @@ export function InventoryItemDetailsDialog({
                     <div>
                         <DialogTitle className="text-xl font-bold truncate pr-12 text-slate-900">{item.productName}</DialogTitle>
                         <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary flex items-center gap-2 mt-1">
-                            {externalData?.brand || 'Product Verification Image'}
+                            {externalData?.brand || 'Product Verification Asset'}
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
                             <span className="font-mono text-slate-500">{item.barcode}</span>
                         </DialogDescription>
@@ -284,7 +341,7 @@ export function InventoryItemDetailsDialog({
                 )}
             </div>
             <div className="p-4 bg-slate-50 border-t shrink-0 flex justify-center">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter italic">High Resolution Visual Verification Asset</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter italic">Industrial Visual Identification System</p>
             </div>
         </DialogContent>
     </Dialog>
