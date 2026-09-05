@@ -184,6 +184,7 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
 /**
  * EXCLUSIVE EXPIRY WATCH LOGGING
  * Strictly logs to "Expiry Watch" sheet only. Does NOT trigger main inventory log.
+ * USES TOTAL DECOUPLING: No shared paths with addInventoryItemToSheet.
  */
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
@@ -192,18 +193,20 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
     // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp
     const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts];
     
-    // CRITICAL: Isolated write to "Expiry Watch"
+    // SDK WRITE: Strictly confined to "Expiry Watch" range
     await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);
     
-    // Specialized fetch to AppsScript with isWatchEntry flag
+    // APPS SCRIPT HANDSHAKE: Specialized for SMS scheduling only.
+    // Explicitly uses 'triggerWatchSmsOnly' to avoid misidentification as a standard log.
     try {
         await fetch(APPSCRIPT_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                action: 'scheduleExpiryWatch',
+                action: 'triggerWatchSmsOnly',
                 password: APPSCRIPT_PASS,
                 isWatchEntry: true, 
+                isStandardLog: false, // Explicit negative flag
                 reminderId: id,
                 barcode: reminder.barcode,
                 productName: reminder.productName,
