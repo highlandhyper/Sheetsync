@@ -84,8 +84,8 @@ export function ExpiryWatchClient() {
 
     return (
         <div className="space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* INDUSTRIAL STATS GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* INDUSTRIAL STATS GRID - HIDDEN ON MOBILE PER USER REQUEST */}
+            <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="bg-primary/5 border-primary/10 shadow-none rounded-[1.5rem]">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="bg-primary/10 p-3 rounded-xl"><History className="h-5 w-5 text-primary" /></div>

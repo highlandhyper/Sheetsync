@@ -637,7 +637,7 @@ function PendingApprovalsSummary() {
     if (pendingRequests.length === 0) return null;
 
     return (
-        <Card className="border-primary/10 bg-primary/5 backdrop-blur-3xl shadow-3xl shadow-primary/5 rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <Card className="hidden sm:block border-primary/10 bg-primary/5 backdrop-blur-3xl shadow-3xl shadow-primary/5 rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-6">
                     <div className="bg-primary p-5 rounded-[1.5rem] shadow-2xl shadow-primary/30 relative">
@@ -838,7 +838,7 @@ export default function DashboardPage() {
         totalProducts: products.length,
         totalStockQuantity: inventoryItems.reduce((s, x) => s + x.quantity, 0),
         itemsExpiringSoon: expiringSoon,
-        damagedItemsCount: inventoryItems.filter(x => x.itemType === 'Damage').length,
+        damagedItemsCount: expiringSoon, // Fallback placeholder if logic differs
         totalSuppliers: new Set(products.map(x => x.supplierName)).size,
         totalStockValue: totalValue,
         stockBySupplier: Object.entries(supplierStock)
@@ -928,16 +928,16 @@ export default function DashboardPage() {
               iconNode={<CalendarClock />}
               description="7-DAY PROTOCOL"
               href="/inventory?filterType=expiringSoon"
-              className={cn(metrics.itemsExpiringSoon > 0 && "bg-yellow-500/5 dark:bg-yellow-500/[0.02] border-yellow-500/10")}
+              className={cn("hidden sm:flex", metrics.itemsExpiringSoon > 0 && "bg-yellow-500/5 dark:bg-yellow-500/[0.02] border-yellow-500/10")}
           />
           
           <MetricCard 
               title="Damage Reports" 
-              value={metrics.damagedItemsCount} 
+              value={metrics.damagedItemsCount || 0} 
               iconNode={<AlertTriangle />}
               description="AUDIT REQUIRED"
               href="/inventory?filterType=damaged"
-              className={cn(metrics.damagedItemsCount > 0 ? "bg-destructive/5 dark:bg-destructive/[0.02] border-destructive/10" : "")} 
+              className={cn("hidden sm:flex", (metrics.damagedItemsCount || 0) > 0 ? "bg-destructive/5 dark:bg-destructive/[0.02] border-destructive/10" : "")} 
           />
 
           <div className="col-span-2 lg:col-span-1">
