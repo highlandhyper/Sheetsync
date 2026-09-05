@@ -188,6 +188,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             }
         } else {
             setExternalData(null);
+            if (!skipFieldOverwrite) {
+                toast({ title: "No Match", description: "Product identity not identified.", variant: "destructive" });
+            }
         }
     } catch (e) {
         setExternalData(null);
@@ -205,6 +208,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
     startFetchTransition(async () => {
       setSearchedBarcode(barcodeToUse);
+      setExternalData(null); // Clear previous visual data
       
       const cachedProduct = barcodeMap.get(barcodeToUse);
       
@@ -216,7 +220,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setEditMode('edit');
         setProductNotFound(false);
         setShowForm(true);
-        handleMagicLookup(barcodeToUse, true);
+        // NO AUTO MAGIC LOOKUP HERE
         setTimeout(() => nameInputRef.current?.focus(), 150);
         return;
       }
@@ -229,7 +233,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('costPrice', result.data.costPrice);
         setEditMode('edit');
         setProductNotFound(false);
-        handleMagicLookup(barcodeToUse, true);
+        // NO AUTO MAGIC LOOKUP HERE
       } else {
         setValue('barcode', barcodeToUse); 
         setValue('productName', '');
@@ -237,7 +241,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         setValue('costPrice', undefined);
         setEditMode('create');
         setProductNotFound(true);
-        handleMagicLookup(barcodeToUse, false);
+        // NO AUTO MAGIC LOOKUP HERE
       }
       setShowForm(true); 
       setTimeout(() => nameInputRef.current?.focus(), 150);
@@ -314,65 +318,65 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
   return (
     <div className={cn(
-        "grid grid-cols-1 xl:grid-cols-12 gap-10 items-start relative z-10",
+        "grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-10 items-start relative z-10",
         showForm && "xl:h-[calc(100vh-12rem)]"
     )}>
         <div className={cn(
-            "xl:col-span-6 space-y-6 flex flex-col h-full", 
+            "xl:col-span-6 space-y-4 sm:space-y-6 flex flex-col h-full", 
             !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full"
         )}>
-            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[3rem] flex flex-col h-full">
-                <CardHeader className="bg-muted/10 pb-6 pt-10 px-12 border-b border-white/5 shrink-0">
+            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[2rem] sm:rounded-[3rem] flex flex-col h-full">
+                <CardHeader className="bg-muted/10 pb-4 sm:pb-6 pt-6 sm:pt-10 px-6 sm:px-12 border-b border-white/5 shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Catalog Identity Node</CardTitle>
-                            <CardDescription className="font-bold text-[9px] uppercase tracking-[0.4em] text-muted-foreground/30">Secure SKU Authority Terminal</CardDescription>
+                            <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">Catalog Identity</CardTitle>
+                            <CardDescription className="font-bold text-[8px] sm:text-[9px] uppercase tracking-[0.4em] text-muted-foreground/30">Secure SKU Authority Terminal</CardDescription>
                         </div>
                         {showForm && (
-                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-10 w-10 rounded-xl hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
-                                <X className="h-5 w-5" />
+                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
+                                <X className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
                         )}
                     </div>
                 </CardHeader>
                 
-                <CardContent className={cn("px-12 py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto" : "")}>
-                    <div className="space-y-6 mb-12 shrink-0">
+                <CardContent className={cn("px-6 sm:px-12 py-6 sm:py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto" : "")}>
+                    <div className="space-y-4 sm:space-y-6 mb-8 sm:mb-12 shrink-0">
                         <div className="flex items-center justify-between px-1">
-                            <Label className="text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
-                            <Badge variant="outline" className="text-[8px] font-black tracking-widest bg-primary/5 border-primary/10 text-primary px-3 py-1 rounded-full uppercase">
+                            <Label className="text-[9px] sm:text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
+                            <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black tracking-widest bg-primary/5 border-primary/10 text-primary px-3 py-1 rounded-full uppercase">
                                 SKU Mode
                             </Badge>
                         </div>
                         
-                        <div className="relative group p-1 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 rounded-[2rem] transition-all duration-700 hover:from-primary/40 hover:to-primary/40">
-                            <div className="flex flex-col sm:flex-row gap-0 bg-background/80 backdrop-blur-xl rounded-[1.9rem] overflow-hidden border border-white/10 shadow-2xl">
+                        <div className="relative group p-1 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 rounded-2xl sm:rounded-[2rem] transition-all duration-700 hover:from-primary/40 hover:to-primary/40">
+                            <div className="flex flex-col sm:flex-row gap-0 bg-background/80 backdrop-blur-xl rounded-xl sm:rounded-[1.9rem] overflow-hidden border border-white/10 shadow-2xl">
                                 <div className="relative flex-grow">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/10 transition-transform duration-500 group-focus-within:rotate-[15deg]">
-                                            <Barcode className="h-5 w-5 text-primary" />
+                                    <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                                        <div className="h-8 w-8 sm:h-10 sm:w-10 bg-primary/10 rounded-lg sm:rounded-xl flex items-center justify-center border border-primary/10 transition-transform duration-500 group-focus-within:rotate-[15deg]">
+                                            <Barcode className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                                         </div>
                                     </div>
                                     <Input
                                         ref={searchInputRef}
-                                        placeholder="IDENTIFY ASSET OR SCAN BARCODE..."
+                                        placeholder="IDENTIFY ASSET..."
                                         value={barcodeToSearch}
                                         onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                                        className="pl-20 border-none bg-transparent h-20 text-xl sm:text-2xl font-black tracking-tighter placeholder:text-muted-foreground/10 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                        className="pl-14 sm:pl-20 border-none bg-transparent h-14 sm:h-20 text-lg sm:text-2xl font-black tracking-tighter placeholder:text-muted-foreground/10 focus-visible:ring-0 focus-visible:ring-offset-0"
                                     />
                                 </div>
                                 <div className="p-2 shrink-0 flex items-center">
                                     <Button 
                                         onClick={() => handleSearchBarcode()} 
                                         disabled={isFetchPending || !barcodeToSearch.trim()} 
-                                        className="h-16 px-12 font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white border-none"
+                                        className="h-12 sm:h-16 w-full sm:px-12 font-black uppercase tracking-[0.3em] text-[9px] sm:text-[10px] rounded-xl sm:rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white border-none"
                                     >
                                         {isFetchPending ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                                         ) : (
-                                            <div className="flex items-center gap-3">
-                                                <Search className="h-5 w-5" strokeWidth={3} />
+                                            <div className="flex items-center justify-center gap-3">
+                                                <Search className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={3} />
                                                 <span>Initialize</span>
                                             </div>
                                         )}
@@ -383,13 +387,13 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </div>
 
                     {showForm && (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
                                 <div className="md:col-span-4">
-                                    <div className="aspect-[4/3] relative rounded-[2rem] bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden group shadow-inner">
+                                    <div className="aspect-[4/3] relative rounded-2xl sm:rounded-[2rem] bg-muted/10 border-2 border-dashed border-white/5 flex flex-col items-center justify-center overflow-hidden group shadow-inner">
                                         {isMagicLoading ? (
                                             <div className="flex flex-col items-center gap-3">
-                                                <Loader2 className="h-8 w-8 text-primary/40 animate-spin" />
+                                                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary/40 animate-spin" />
                                                 <span className="text-[7px] font-black uppercase tracking-widest text-primary/40">Fetching...</span>
                                             </div>
                                         ) : externalData?.image ? (
@@ -402,88 +406,88 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                     unoptimized
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-4">
-                                                    <span className="text-[9px] font-black uppercase text-white tracking-widest">Visual Review</span>
+                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase text-white tracking-widest">Visual Review</span>
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="flex flex-col items-center gap-3 opacity-10">
-                                                <ImageIcon className="h-12 w-12" strokeWidth={1} />
-                                                <span className="text-[8px] font-black uppercase tracking-widest">No Visual ID</span>
+                                                <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12" strokeWidth={1} />
+                                                <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-center">Identity Node<br/>Awaiting Visual</span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                                 
                                 <div className="md:col-span-8 flex flex-col justify-between py-1">
-                                    <div className="space-y-5">
+                                    <div className="space-y-4">
                                         <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className={cn("px-4 py-1.5 font-black text-[9px] uppercase tracking-widest rounded-xl border-none shadow-md", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
-                                                    {productNotFound ? <PlusCircle className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                                <Badge variant="outline" className={cn("px-3 sm:px-4 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest rounded-lg sm:rounded-xl border-none shadow-md", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
+                                                    {productNotFound ? <PlusCircle className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> : <ShieldCheck className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />}
                                                     {productNotFound ? 'Unregistered Identity' : 'Registry Verified'}
                                                 </Badge>
                                                 {externalData?.brand && (
-                                                    <Badge variant="secondary" className="px-3 py-1.5 font-black text-[9px] uppercase tracking-widest border-none bg-muted/40 max-w-[200px] truncate">
+                                                    <Badge variant="secondary" className="px-3 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest border-none bg-muted/40 max-w-[150px] sm:max-w-[200px] truncate">
                                                         {externalData.brand}
                                                     </Badge>
                                                 )}
                                             </div>
                                         </div>
                                         
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
+                                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-primary/5 border border-primary/10 space-y-0.5 sm:space-y-1">
                                                 <div className="flex items-center gap-2 text-primary/30">
-                                                    <Box className="h-3 w-3" />
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">Registry Volume</span>
+                                                    <Box className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">In Stock</span>
                                                 </div>
-                                                <p className="text-xl font-black text-primary tracking-tighter">{skuStats.total} Units</p>
+                                                <p className="text-lg sm:text-xl font-black text-primary tracking-tighter">{skuStats.total} Units</p>
                                             </div>
-                                            <div className={cn("p-4 rounded-2xl border space-y-1", skuStats.damaged > 0 ? "bg-orange-500/5 border-orange-500/10" : "bg-muted/5 border-white/5 opacity-40")}>
+                                            <div className={cn("p-3 sm:p-4 rounded-xl sm:rounded-2xl border space-y-0.5 sm:space-y-1", skuStats.damaged > 0 ? "bg-orange-500/5 border-orange-500/10" : "bg-muted/5 border-white/5 opacity-40")}>
                                                 <div className={cn("flex items-center gap-2", skuStats.damaged > 0 ? "text-orange-500/40" : "text-muted-foreground/30")}>
-                                                    <AlertTriangle className="h-3 w-3" />
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">Damaged Stock</span>
+                                                    <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Damaged</span>
                                                 </div>
-                                                <p className={cn("text-xl font-black tracking-tighter", skuStats.damaged > 0 ? "text-orange-600" : "text-muted-foreground/20")}>{skuStats.damaged}</p>
+                                                <p className={cn("text-lg sm:text-xl font-black tracking-tighter", skuStats.damaged > 0 ? "text-orange-600" : "text-muted-foreground/20")}>{skuStats.damaged}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup(searchedBarcode)} disabled={isMagicLoading} className="h-10 w-full text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl border border-primary/10 transition-all mt-4">
+                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup(searchedBarcode)} disabled={isMagicLoading} className="h-10 w-full text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl border border-primary/10 transition-all mt-4">
                                         <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isMagicLoading && "animate-spin")} />
-                                        Force Visual Refresh
+                                        {externalData ? 'Force Identity Sync' : 'Initialize Magic Lookup'}
                                     </Button>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-8">
-                                <div className="space-y-8">
-                                    <div className="space-y-3">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Authoritative Designation</Label>
+                            <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 sm:space-y-8">
+                                <div className="space-y-6 sm:space-y-8">
+                                    <div className="space-y-2 sm:space-y-3">
+                                        <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Authoritative Designation</Label>
                                         <div className="relative group">
-                                            <Package className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-primary/20 group-focus-within:text-primary transition-colors" />
+                                            <Package className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 text-primary/20 group-focus-within:text-primary transition-colors" />
                                             <Input
                                                 id="productName"
-                                                placeholder="ENTER MASTER PRODUCT NAME..."
+                                                placeholder="ENTER PRODUCT NAME..."
                                                 {...nameProps}
                                                 ref={(e) => { nameFormRef(e); (nameInputRef as any).current = e; }}
                                                 onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
-                                                className={cn("h-16 pl-16 text-xl font-black tracking-tighter rounded-2xl bg-background border-white/5 shadow-inner focus:border-primary/20", formErrors.productName && 'border-destructive')}
+                                                className={cn("h-14 sm:h-16 pl-12 sm:pl-16 text-lg sm:text-xl font-black tracking-tighter rounded-xl sm:rounded-2xl bg-background border-white/5 shadow-inner focus:border-primary/20", formErrors.productName && 'border-destructive')}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                        <div className="space-y-2 sm:space-y-3">
                                             <div className="flex items-center justify-between h-4 ml-1">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] opacity-30">Primary Vendor</Label>
-                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !sortedSuppliers.some(s => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())} className="text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
-                                                    Master Edit
+                                                <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] opacity-30">Primary Vendor</Label>
+                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !sortedSuppliers.some(s => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())} className="text-[8px] sm:text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
+                                                    Rename
                                                 </Button>
                                             </div>
                                             <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                                                 <PopoverTrigger asChild>
-                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-14 justify-between font-black text-sm bg-muted/5 border-white/5 rounded-2xl pl-14 shadow-sm", !supplierNameValue && "text-muted-foreground")}>
-                                                        <Building className="absolute left-6 h-5 w-5 text-primary/20" />
+                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-12 sm:h-14 justify-between font-black text-sm bg-muted/5 border-white/5 rounded-xl sm:rounded-2xl pl-10 sm:pl-14 shadow-sm", !supplierNameValue && "text-muted-foreground")}>
+                                                        <Building className="absolute left-4 sm:left-6 h-4 w-4 sm:h-5 sm:w-5 text-primary/20" />
                                                         <span className="truncate uppercase tracking-wider">{supplierNameValue || "SELECT VENDOR..."}</span>
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
                                                     </Button>
@@ -513,10 +517,10 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                             </Popover>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Unit Value (QAR)</Label>
+                                        <div className="space-y-2 sm:space-y-3">
+                                            <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Unit Value (QAR)</Label>
                                             <div className="relative">
-                                                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[11px] font-black text-primary/30 uppercase tracking-tighter">QAR</div>
+                                                <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-[10px] sm:text-[11px] font-black text-primary/30 uppercase tracking-tighter">QAR</div>
                                                 <Input
                                                     id="costPrice"
                                                     type="number"
@@ -525,17 +529,17 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                                     {...costProps}
                                                     ref={(e) => { costFormRef(e); (costInputRef as any).current = e; }}
                                                     onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
-                                                    className={cn('h-14 pl-16 font-black text-xl bg-muted/10 border-white/5 rounded-2xl text-right pr-8 shadow-sm focus:border-primary/20', formErrors.costPrice && 'border-destructive')}
+                                                    className={cn('h-12 sm:h-14 pl-12 sm:pl-16 font-black text-lg sm:text-xl bg-muted/10 border-white/5 rounded-xl sm:rounded-2xl text-right pr-6 sm:pr-8 shadow-sm focus:border-primary/20', formErrors.costPrice && 'border-destructive')}
                                                 />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-background/95 to-transparent py-4 shrink-0">
-                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-16 font-black uppercase tracking-[0.4em] text-[11px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/30 rounded-2xl transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
-                                        {isSavePending ? <Loader2 className="mr-4 h-5 w-5 animate-spin" /> : <Save className="mr-4 h-5 w-5" />}
-                                        {editMode === 'create' ? 'SYNCHRONIZE IDENTITY' : 'UPDATE MASTER CATALOG'}
+                                <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-background/95 to-transparent py-4 shrink-0 mt-auto">
+                                    <Button type="submit" disabled={isSavePending || !isDirty} className="w-full h-14 sm:h-16 font-black uppercase tracking-[0.4em] text-[10px] sm:text-[11px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/30 rounded-xl sm:rounded-2xl transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
+                                        {isSavePending ? <Loader2 className="mr-4 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Save className="mr-4 h-4 w-4 sm:h-5 sm:w-5" />}
+                                        {editMode === 'create' ? 'REGISTER IDENTITY' : 'UPDATE MASTER CATALOG'}
                                     </Button>
                                 </div>
                             </form>
@@ -546,16 +550,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
         </div>
 
         {showForm && (
-            <div className="xl:col-span-6 space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-700">
-                <Card className="border-white/5 bg-card/40 backdrop-blur-3xl rounded-[3rem] overflow-hidden shadow-2xl flex flex-col h-full">
-                    <CardHeader className="bg-muted/10 p-10 border-b border-white/5 shrink-0">
+            <div className="xl:col-span-6 space-y-4 sm:space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-700">
+                <Card className="border-white/5 bg-card/40 backdrop-blur-3xl rounded-2xl sm:rounded-[3rem] overflow-hidden shadow-2xl flex flex-col h-full">
+                    <CardHeader className="bg-muted/10 p-6 sm:p-10 border-b border-white/5 shrink-0">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary/10 rounded-2xl">
-                                <History className="h-6 w-6 text-primary" />
+                            <div className="p-2 sm:p-3 bg-primary/10 rounded-xl">
+                                <History className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                             </div>
                             <div>
-                                <CardTitle className="text-xl font-black uppercase tracking-tighter">Forensic Node History</CardTitle>
-                                <CardDescription className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/30">SKU Trace Logs & Forensic Audit</CardDescription>
+                                <CardTitle className="text-lg sm:text-xl font-black uppercase tracking-tighter">Forensic Node History</CardTitle>
+                                <CardDescription className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/30">SKU Trace Logs & Forensic Audit</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
@@ -564,26 +568,26 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             {currentHistory.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {currentHistory.map((log, index) => (
-                                        <div key={`${log.id}-${index}`} className="p-8 hover:bg-primary/[0.02] transition-colors group">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <Badge variant="outline" className={cn("px-3 py-1 font-black text-[8px] uppercase tracking-[0.1em] rounded-lg border-none shadow-sm", getActionColor(log.action))}>
+                                        <div key={`${log.id}-${index}`} className="p-6 sm:p-8 hover:bg-primary/[0.02] transition-colors group">
+                                            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                                <Badge variant="outline" className={cn("px-2 sm:px-3 py-1 font-black text-[7px] sm:text-[8px] uppercase tracking-[0.1em] rounded-lg border-none shadow-sm", getActionColor(log.action))}>
                                                     {getActionIcon(log.action)}
-                                                    <span className="ml-2">{log.action.replace('_', ' ')}</span>
+                                                    <span className="ml-1.5 sm:ml-2">{log.action.replace('_', ' ')}</span>
                                                 </Badge>
-                                                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">
-                                                    <Clock className="h-3 w-3" />
+                                                <div className="flex items-center gap-1.5 sm:gap-2 text-[8px] sm:text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">
+                                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                                     {format(parseISO(log.timestamp), 'dd MMM yy • HH:mm')}
                                                 </div>
                                             </div>
-                                            <div className="flex items-start gap-5">
-                                                <div className="p-2.5 bg-muted/40 rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500">
-                                                    <Fingerprint className="h-4 w-4" />
+                                            <div className="flex items-start gap-3 sm:gap-5">
+                                                <div className="p-2 sm:p-2.5 bg-muted/40 rounded-lg sm:rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500">
+                                                    <Fingerprint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                                 </div>
-                                                <div className="space-y-1.5 flex-1 min-w-0">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Operating Personnel</p>
-                                                    <p className="text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
-                                                    <div className="mt-3 p-4 bg-muted/20 rounded-2xl border border-white/5">
-                                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
+                                                <div className="space-y-2 sm:space-y-1.5 flex-1 min-w-0">
+                                                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Operating Personnel</p>
+                                                    <p className="text-xs sm:text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
+                                                    <div className="mt-2 sm:mt-3 p-3 sm:p-4 bg-muted/20 rounded-xl sm:rounded-2xl border border-white/5">
+                                                        <p className="text-[10px] sm:text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
                                                             "{log.details}"
                                                         </p>
                                                     </div>
@@ -593,18 +597,18 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                     ))}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-[500px] text-center opacity-20 grayscale">
-                                    <div className="p-8 bg-muted/20 rounded-[3rem] mb-6 border-4 border-dashed border-white/5">
-                                        <Layers className="h-16 w-16" />
+                                <div className="flex flex-col items-center justify-center py-20 text-center opacity-20 grayscale min-h-[300px]">
+                                    <div className="p-6 sm:p-8 bg-muted/20 rounded-[2rem] sm:rounded-[3rem] mb-4 sm:mb-6 border-4 border-dashed border-white/5">
+                                        <Layers className="h-12 w-12 sm:h-16 sm:w-16" />
                                     </div>
-                                    <h4 className="text-2xl font-black uppercase tracking-tighter">Zero Traces</h4>
-                                    <p className="text-sm font-medium mt-2 max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
+                                    <h4 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Zero Traces</h4>
+                                    <p className="text-xs sm:text-sm font-medium mt-2 max-w-[240px] sm:max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
                                 </div>
                             )}
                         </ScrollArea>
                     </CardContent>
-                    <div className="p-8 bg-muted/5 border-t border-white/5 shrink-0 text-center">
-                        <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/20">Secure Registry Tunnel • AES-256 Protocol</p>
+                    <div className="p-6 sm:p-8 bg-muted/5 border-t border-white/5 shrink-0 text-center">
+                        <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/20">Secure Registry Tunnel • AES-256 Protocol</p>
                     </div>
                 </Card>
             </div>
