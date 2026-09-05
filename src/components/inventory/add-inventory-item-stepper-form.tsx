@@ -32,7 +32,8 @@ import {
     Globe,
     Zap,
     XCircle,
-    Wifi
+    Wifi,
+    ShieldAlert
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -69,6 +70,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
+import { OfflineQueueTerminal } from '@/components/inventory/offline-queue-terminal';
 import type { InventoryItem } from '@/lib/types';
 
 function SessionTimer({ expiresAt }: { expiresAt: string }) {
@@ -107,12 +109,15 @@ function SessionTimer({ expiresAt }: { expiresAt: string }) {
  * INDUSTRIAL SYNC OUTBOX (OPTION 10)
  * Prominent visual counter for pending offline transmissions.
  */
-function OfflineOutboxBanner({ count }: { count: number }) {
+function OfflineOutboxBanner({ count, onOpen }: { count: number; onOpen: () => void }) {
     if (count === 0) return null;
     return (
-        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
+        <div 
+            onClick={onOpen}
+            className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500 cursor-pointer hover:bg-amber-500/20 transition-all group shadow-sm active:scale-[0.98]"
+        >
             <div className="flex items-center gap-4">
-                <div className="relative h-10 w-10 flex items-center justify-center bg-amber-500/20 rounded-xl overflow-hidden shrink-0">
+                <div className="relative h-10 w-10 flex items-center justify-center bg-amber-500/20 rounded-xl overflow-hidden shrink-0 transition-transform group-hover:scale-110">
                     <CloudOff className="h-5 w-5 text-amber-600" />
                     <div className="absolute inset-0 bg-amber-500/5 animate-pulse" />
                 </div>
@@ -122,8 +127,8 @@ function OfflineOutboxBanner({ count }: { count: number }) {
                 </div>
             </div>
             <div className="flex flex-col items-end gap-1">
-                <Badge variant="outline" className="h-7 px-3 bg-white/50 dark:bg-black/50 border-amber-500/30 text-amber-700 font-black uppercase text-[10px] tracking-widest shadow-sm">
-                    Pending Sync
+                <Badge variant="outline" className="h-7 px-3 bg-white/50 dark:bg-black/50 border-amber-500/30 text-amber-700 font-black uppercase text-[10px] tracking-widest shadow-sm group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                    Review Queue
                 </Badge>
             </div>
         </div>
@@ -166,6 +171,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [isOutboxOpen, setIsOutboxOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submittedStaffName, setSubmittedStaffName] = useState('');
 
@@ -450,7 +456,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     <>
     <div className="w-full max-w-2xl mx-auto space-y-4">
         {/* OPTION 10: PROMINENT OUTBOX BUFFER */}
-        <OfflineOutboxBanner count={pendingActions.length} />
+        <OfflineOutboxBanner count={pendingActions.length} onOpen={() => setIsOutboxOpen(true)} />
 
         <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden transition-all duration-500">
             <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 ? "pb-1 pt-4" : "pb-4")}>
@@ -627,6 +633,25 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     Back to Terminal
                 </Button>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Industrial Core Exception Error 0x884</p>
+            </div>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={isOutboxOpen} onOpenChange={setIsOutboxOpen}>
+        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
+            <DialogHeader className="p-8 pb-4 bg-muted/20 border-b border-white/5">
+                <div className="flex items-center gap-4 mb-1">
+                    <div className="p-3 bg-amber-500/10 rounded-2xl">
+                        <CloudOff className="h-6 w-6 text-amber-500" />
+                    </div>
+                    <div>
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-amber-600">Sync Queue</DialogTitle>
+                        <DialogDescription className="font-bold text-[9px] uppercase tracking-[0.3em] text-muted-foreground/60">Industrial Data Transmission Buffer</DialogDescription>
+                    </div>
+                </div>
+            </DialogHeader>
+            <div className="p-8 pt-4">
+                <OfflineQueueTerminal />
             </div>
         </DialogContent>
     </Dialog>
