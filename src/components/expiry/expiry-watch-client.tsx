@@ -84,20 +84,20 @@ export function ExpiryWatchClient() {
 
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* INDUSTRIAL STATS GRID - Conditionally Hidden for prioritising list space */}
+            {/* INDUSTRIAL STATS GRID - Standard Radii */}
             <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="bg-primary/5 border-primary/10 shadow-none rounded-[1.5rem]">
+                <Card className="bg-primary/5 border-primary/10 shadow-none rounded-xl">
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-xl"><History className="h-5 w-5 text-primary" /></div>
+                        <div className="bg-primary/10 p-3 rounded-lg"><History className="h-5 w-5 text-primary" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Watch</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white leading-none mt-1">{stats.total}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className={cn("border-none shadow-none rounded-[1.5rem]", stats.critical > 0 ? "bg-orange-500/10" : "bg-muted/30")}>
+                <Card className={cn("border-none shadow-none rounded-xl", stats.critical > 0 ? "bg-orange-500/10" : "bg-muted/30")}>
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className={cn("p-3 rounded-xl", stats.critical > 0 ? "bg-orange-500/20 text-orange-600" : "bg-muted text-muted-foreground")}>
+                        <div className={cn("p-3 rounded-lg", stats.critical > 0 ? "bg-orange-500/20 text-orange-600" : "bg-muted text-muted-foreground")}>
                             <Bell className={cn("h-5 w-5", stats.critical > 0 && "animate-pulse")} />
                         </div>
                         <div>
@@ -106,9 +106,9 @@ export function ExpiryWatchClient() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-muted/30 border-none shadow-none rounded-[1.5rem]">
+                <Card className="bg-muted/30 border-none shadow-none rounded-xl">
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className="bg-background/50 p-3 rounded-xl"><User className="h-5 w-5 text-muted-foreground" /></div>
+                        <div className="bg-background/50 p-3 rounded-lg"><User className="h-5 w-5 text-muted-foreground" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Operators</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white leading-none mt-1">{stats.personnel}</p>
@@ -117,7 +117,7 @@ export function ExpiryWatchClient() {
                 </Card>
             </div>
 
-            {/* COMMAND BAR - Ergononmic stacking on small screens */}
+            {/* COMMAND BAR */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
                 <div className="relative flex-grow group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
@@ -125,12 +125,12 @@ export function ExpiryWatchClient() {
                         placeholder="IDENTIFY SKU OR NAME..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-12 sm:h-14 pl-11 rounded-xl sm:rounded-2xl bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
+                        className="h-12 sm:h-14 pl-11 rounded-lg bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
                     />
                 </div>
                 <Button 
                     onClick={() => setIsAddDialogOpen(true)}
-                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-lg font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
                 >
                     <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Initialize Watch
                 </Button>
@@ -156,14 +156,14 @@ export function ExpiryWatchClient() {
                         
                         return (
                             <Card key={reminder.id} className={cn(
-                                "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-500",
+                                "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-xl overflow-hidden transition-all duration-500",
                                 isCritical ? "border-orange-500/20" : "hover:border-primary/20"
                             )}>
                                 <CardContent className="p-0">
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center p-4 sm:p-6 gap-4 sm:gap-6">
                                         <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
                                             <div className={cn(
-                                                "h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-inner border transition-transform duration-700",
+                                                "h-12 w-12 sm:h-14 sm:w-14 rounded-lg flex items-center justify-center shrink-0 shadow-sm border transition-transform duration-700",
                                                 isCritical ? "bg-orange-500/10 border-orange-500/20 text-orange-600" : "bg-primary/5 border-primary/10 text-primary"
                                             )}>
                                                 {isCritical ? <ShieldAlert className="h-6 w-6 sm:h-7 sm:w-7" /> : <Box className="h-6 w-6 sm:h-7 sm:w-7" />}
@@ -179,7 +179,7 @@ export function ExpiryWatchClient() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 shrink-0 bg-muted/10 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none">
+                                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 shrink-0 bg-muted/10 sm:bg-transparent p-3 sm:p-0 rounded-lg sm:rounded-none">
                                             <div className="flex flex-col items-start sm:items-end">
                                                 <p className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1">Expiry Date</p>
                                                 <div className={cn(
@@ -198,7 +198,7 @@ export function ExpiryWatchClient() {
                                                 onClick={() => handleResolve(reminder.id, reminder.productName)}
                                                 disabled={isResolving === reminder.id}
                                                 className={cn(
-                                                    "h-10 sm:h-14 px-4 sm:px-8 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[8px] sm:text-[10px] transition-all",
+                                                    "h-10 sm:h-14 px-4 sm:px-8 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[10px] transition-all",
                                                     isCritical 
                                                         ? "bg-orange-500 hover:bg-orange-600 text-white shadow-lg" 
                                                         : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
@@ -214,7 +214,7 @@ export function ExpiryWatchClient() {
                         );
                     }) : (
                         <div className="py-24 flex flex-col items-center justify-center text-center opacity-20 grayscale">
-                            <div className="p-6 bg-muted/20 rounded-[2.5rem] mb-6 border-2 border-dashed border-white/5">
+                            <div className="p-6 bg-muted/20 rounded-xl mb-6 border-2 border-dashed border-white/5">
                                 <History className="h-12 w-12" strokeWidth={1} />
                             </div>
                             <h4 className="text-xl font-black uppercase tracking-tighter">Registry Nominal</h4>

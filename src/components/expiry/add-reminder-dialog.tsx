@@ -116,10 +116,10 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] sm:w-full p-0 overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-none shadow-3xl bg-background">
+            <DialogContent className="max-w-md w-[95%] sm:w-full p-0 overflow-hidden rounded-2xl border-none shadow-3xl bg-background">
                 <div className="bg-primary p-3 sm:p-5 text-primary-foreground">
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="bg-white/20 p-2 rounded-xl sm:rounded-2xl">
+                        <div className="bg-white/20 p-2 rounded-lg">
                             <Eye className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
                         <div>
@@ -141,16 +141,16 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                     value={barcode}
                                     onChange={(e) => setBarcode(e.target.value.toUpperCase())}
                                     onBlur={() => handleBarcodeLookup(barcode)}
-                                    className="pl-11 h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
+                                    className="pl-11 h-12 sm:h-14 rounded-lg bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
                                 />
                                 {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
                             </div>
                         </div>
 
                         {productName && (
-                            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-primary/5 border-2 border-primary/10 animate-in slide-in-from-top-2 duration-300">
+                            <div className="p-3 sm:p-4 rounded-lg bg-primary/5 border-2 border-primary/10 animate-in slide-in-from-top-2 duration-300">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-background p-2 rounded-lg sm:rounded-xl shadow-sm border border-white/5 shrink-0">
+                                    <div className="bg-background p-2 rounded-lg shadow-sm border border-white/5 shrink-0">
                                         <ShieldCheck className="h-4 w-4 text-primary" />
                                     </div>
                                     <div className="min-w-0">
@@ -169,7 +169,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                     <Button 
                                         variant="outline" 
                                         role="combobox" 
-                                        className="w-full h-12 sm:h-14 justify-between font-black uppercase tracking-tight bg-muted/20 border-white/5 rounded-xl sm:rounded-2xl shadow-inner px-4"
+                                        className="w-full h-12 sm:h-14 justify-between font-black uppercase tracking-tight bg-muted/20 border-white/5 rounded-lg shadow-inner px-4"
                                     >
                                         <div className="flex items-center gap-3 truncate">
                                             <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary/40 shrink-0" />
@@ -178,7 +178,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                         <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-20 shrink-0" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-white/10" align="start">
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
                                     <Command>
                                         <CommandInput placeholder="Search personnel..." className="h-11 sm:h-12" />
                                         <CommandList>
@@ -212,7 +212,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                     <Button 
                                         variant="outline" 
                                         className={cn(
-                                            "w-full h-12 sm:h-14 justify-start font-black uppercase tracking-tight bg-muted/20 border-white/5 rounded-xl sm:rounded-2xl shadow-inner px-4",
+                                            "w-full h-12 sm:h-14 justify-start font-black uppercase tracking-tight bg-muted/20 border-white/5 rounded-lg shadow-inner px-4",
                                             !expiryDate && "text-muted-foreground/40"
                                         )}
                                     >
@@ -220,7 +220,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                         {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Select Target Date..."}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-2xl border-white/10" align="center">
+                                <PopoverContent className="w-auto p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="center">
                                     <Calendar 
                                         mode="single" 
                                         selected={expiryDate} 
@@ -240,12 +240,12 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                     <Button 
                         onClick={handleSave} 
                         disabled={isSaving || !barcode || !staffName || !expiryDate} 
-                        className="w-full h-14 sm:h-16 rounded-xl sm:rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] sm:text-[11px] shadow-2xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white border-none"
+                        className="w-full h-14 sm:h-16 rounded-lg font-black uppercase tracking-[0.2em] text-[10px] sm:text-[11px] shadow-2xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white border-none"
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Send className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
                         Initialize Watch
                     </Button>
-                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-muted/10 rounded-xl sm:rounded-2xl border border-dashed border-white/5 text-center">
+                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-muted/10 rounded-lg border border-dashed border-white/5 text-center">
                         <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground/30 tracking-[0.4em]">
                             System will dispatch SMS Alert 30 Days before target
                         </p>
