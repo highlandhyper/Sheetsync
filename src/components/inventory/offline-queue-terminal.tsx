@@ -9,26 +9,19 @@ import {
     CloudOff, 
     Trash2, 
     Edit, 
-    Clock, 
     Barcode, 
     Hash, 
     MapPin, 
     Save, 
     X,
-    Database,
     ShieldAlert,
     Wifi,
     RefreshCw,
     CheckCircle2,
     Search,
-    User,
-    Tag,
-    Calendar as CalendarIcon,
-    AlertTriangle,
-    Trash,
-    ChevronRight
+    ChevronRight,
+    Trash
 } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -184,18 +177,28 @@ export function OfflineQueueTerminal() {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4 shrink-0">
-                                                    <div className="text-right">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <div className="text-right mr-2">
                                                         <p className="text-xl font-black text-primary leading-none tabular-nums">
                                                             {action.data.quantity || action.data.returnedQty}
                                                         </p>
                                                         <p className="text-[8px] font-black uppercase text-muted-foreground/30 tracking-tighter mt-1">UNITS</p>
                                                     </div>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleStartEdit(action)} className="h-8 w-8 rounded-lg hover:bg-primary/5 text-primary/40 hover:text-primary">
+                                                    <div className="flex items-center gap-1">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => handleStartEdit(action)} 
+                                                            className="h-9 w-9 rounded-xl bg-primary/5 text-primary hover:bg-primary/10"
+                                                        >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => removeOfflineAction(action.id)} className="h-8 w-8 rounded-lg hover:bg-destructive/5 text-destructive/30 hover:text-destructive">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => removeOfflineAction(action.id)} 
+                                                            className="h-9 w-9 rounded-xl bg-destructive/5 text-destructive hover:bg-destructive/10"
+                                                        >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -209,7 +212,7 @@ export function OfflineQueueTerminal() {
                                                         <Edit className="h-3.5 w-3.5 text-primary" />
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-primary">Advanced Edit Mode</span>
                                                     </div>
-                                                    <button onClick={() => setEditingId(null)} className="text-muted-foreground/40 hover:text-foreground">
+                                                    <button onClick={() => setEditingId(null)} className="text-muted-foreground/40 hover:text-foreground p-1">
                                                         <X className="h-4 w-4" />
                                                     </button>
                                                 </div>
