@@ -105,10 +105,6 @@ function SessionTimer({ expiresAt }: { expiresAt: string }) {
     );
 }
 
-/**
- * INDUSTRIAL SYNC OUTBOX (OPTION 10)
- * Prominent visual counter for pending offline transmissions.
- */
 function OfflineOutboxBanner({ count, onOpen }: { count: number; onOpen: () => void }) {
     if (count === 0) return null;
     return (
@@ -258,7 +254,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setSuggestedProductName('');
       setFoundInGlobalRegistry(false);
       
-      const normalizedInput = barcode.replace(/^0+/, '');
+      const normalizedTerm = barcode.replace(/^0+/, '');
       const cachedProduct = cachedProducts.find(p => p.barcode === barcode || p.barcode.replace(/^0+/, '') === normalizedTerm);
       
       if (cachedProduct) {
@@ -295,7 +291,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
     
-    // TURBO PROTOCOL: INSTANT FEEDBACK
     playThankYouAudio();
     setIsSuccessDialogOpen(true);
     setIsSubmitting(true);
@@ -319,10 +314,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         timestamp: now.toISOString()
     };
 
-    // Update local store immediately
     addInventoryItem(optimisticItem);
     
-    // TURBO RESET: Accelerating the "Ready for Next Scan" cycle
     const savedStaffName = data.staffName; 
     setTimeout(() => {
         setIsSuccessDialogOpen(false);
@@ -337,7 +330,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         setCurrentStep(0);
         submitLockRef.current = false;
         setIsSubmitting(false);
-        // Instant focus return to barcode for rapid-fire logging
         setTimeout(() => barcodeInputRef.current?.focus(), 50);
     }, 800);
 
@@ -360,7 +352,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         return;
     }
 
-    // BACKGROUND HANDSHAKE
     startTransition(async () => {
       const formData = new FormData();
       formData.append('barcode', data.barcode);
@@ -377,7 +368,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         const response = await addInventoryItemAction(undefined, formData);
         if (response.success && response.data) {
           if (activeSession) consumeSpecialEntry(); 
-          // Background sync will naturally pick up changes via DataCache
         } else {
           setErrorMessage(response.message || 'The Google Sheets registry refused the connection.');
           setIsErrorDialogOpen(true);
@@ -453,7 +443,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   return (
     <>
     <div className="w-full max-w-2xl mx-auto space-y-4">
-        {/* OPTION 10: PROMINENT OUTBOX BUFFER */}
         <OfflineOutboxBanner count={pendingActions.length} onOpen={() => setIsOutboxOpen(true)} />
 
         <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden transition-all duration-500">
