@@ -6,7 +6,21 @@ import { useDataCache } from '@/context/data-cache-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Edit2, Check, X, Loader2, AlertTriangle, UserPlus, Users, Smartphone, Phone } from 'lucide-react';
+import { 
+    Plus, 
+    Trash2, 
+    Edit2, 
+    Check, 
+    X, 
+    Loader2, 
+    AlertTriangle, 
+    UserPlus, 
+    Users, 
+    Smartphone, 
+    Phone,
+    Send,
+    ShieldCheck
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -22,6 +36,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { StaffMember } from '@/lib/types';
+import { sendSmsAction } from '@/app/actions';
 
 export function StaffManager() {
   const { toast } = useToast();
@@ -31,6 +46,7 @@ export function StaffManager() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<StaffMember>({ name: '', phone: '' });
   const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
+  const [testingStaffName, setTestingStaffName] = useState<string | null>(null);
 
   const handleAddStaff = async () => {
     if (!newName.trim()) return;
@@ -46,6 +62,29 @@ export function StaffManager() {
     toast({ title: "Success", description: `"${upperName}" registered successfully.` });
     setNewName('');
     setNewPhone('');
+  };
+
+  const handleTestSms = async (member: StaffMember) => {
+    if (!member.phone) {
+        toast({ variant: "destructive", title: "Missing Node", description: "This personnel has no registered phone number." });
+        return;
+    }
+    
+    setTestingStaffName(member.name);
+    const msg = `SheetSync: Test alert for ${member.name}. Your terminal is now ready for Expiry Watch notifications.`;
+    
+    try {
+        const res = await sendSmsAction(msg, member.phone);
+        if (res.success) {
+            toast({ title: "Signal Dispatched", description: `Test SMS successfully sent to ${member.name}.` });
+        } else {
+            toast({ variant: "destructive", title: "Test Failed", description: res.message || "Gateway handshake failed." });
+        }
+    } catch (e) {
+        toast({ variant: "destructive", title: "System Error", description: "Communication failure with SMS gateway." });
+    } finally {
+        setTestingStaffName(null);
+    }
   };
 
   const confirmDelete = async () => {
@@ -163,6 +202,16 @@ export function StaffManager() {
                                 </div>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 text-primary hover:bg-primary/5" 
+                                    onClick={() => handleTestSms(member)}
+                                    disabled={!member.phone || testingStaffName === member.name}
+                                    title="Send Test SMS"
+                                >
+                                    {testingStaffName === member.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                </Button>
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/5" onClick={() => startEditing(index, member)}>
                                     <Edit2 className="h-3.5 w-3.5" />
                                 </Button>
