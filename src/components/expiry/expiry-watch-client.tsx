@@ -22,13 +22,14 @@ import {
     Loader2,
     FilterX,
     Scan,
-    X
+    X,
+    ClipboardPlus
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, addMonths, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { AddReminderDialog } from './add-reminder-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Html5Qrcode } from 'html5-qrcode';
+import Link from 'next/link';
 
 const SCANNER_REGION_ID = "diary-lookup-scanner-region";
 
@@ -60,7 +61,6 @@ export function ExpiryWatchClient() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isResolving, setIsResolving] = useState<string | null>(null);
 
     const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
@@ -200,7 +200,7 @@ export function ExpiryWatchClient() {
                             placeholder="IDENTIFY REMINDER..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-12 sm:h-14 pl-11 rounded-lg bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
+                            className="h-12 sm:h-14 pl-11 rounded-xl bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
                         />
                     </div>
                     <Button 
@@ -213,10 +213,12 @@ export function ExpiryWatchClient() {
                     </Button>
                 </div>
                 <Button 
-                    onClick={() => setIsAddDialogOpen(true)}
-                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-lg font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
+                    asChild
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
                 >
-                    <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Add New Entry
+                    <Link href="/expiry-watch/add">
+                        <ClipboardPlus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Log New Entry
+                    </Link>
                 </Button>
             </div>
 
@@ -241,7 +243,7 @@ export function ExpiryWatchClient() {
                         return (
                             <Card key={reminder.id} className={cn(
                                 "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-xl overflow-hidden transition-all duration-500",
-                                isCritical ? "border-orange-500/20" : "hover:border-primary/20"
+                                isCritical ? "border-orange-500/20" : "hover:border-primary/20 shadow-none"
                             )}>
                                 <CardContent className="p-0">
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center p-4 sm:p-6 gap-4 sm:gap-6">
@@ -307,11 +309,6 @@ export function ExpiryWatchClient() {
                     )}
                 </div>
             </div>
-
-            <AddReminderDialog 
-                isOpen={isAddDialogOpen} 
-                onOpenChange={setIsAddDialogOpen} 
-            />
 
             {/* OPTICAL SEARCH TERMINAL */}
             <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
