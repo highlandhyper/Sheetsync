@@ -31,7 +31,8 @@ import {
     SendHorizontal,
     Globe,
     Zap,
-    XCircle
+    XCircle,
+    Wifi
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -102,6 +103,33 @@ function SessionTimer({ expiresAt }: { expiresAt: string }) {
     );
 }
 
+/**
+ * INDUSTRIAL SYNC OUTBOX (OPTION 10)
+ * Prominent visual counter for pending offline transmissions.
+ */
+function OfflineOutboxBanner({ count }: { count: number }) {
+    if (count === 0) return null;
+    return (
+        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-4">
+                <div className="relative h-10 w-10 flex items-center justify-center bg-amber-500/20 rounded-xl overflow-hidden shrink-0">
+                    <CloudOff className="h-5 w-5 text-amber-600" />
+                    <div className="absolute inset-0 bg-amber-500/5 animate-pulse" />
+                </div>
+                <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-800 leading-none mb-1">Industrial Outbox</h4>
+                    <p className="text-xs font-bold text-amber-700/70">{count} logs waiting for connection</p>
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+                <Badge variant="outline" className="h-7 px-3 bg-white/50 dark:bg-black/50 border-amber-500/30 text-amber-700 font-black uppercase text-[10px] tracking-widest shadow-sm">
+                    Pending Sync
+                </Badge>
+            </div>
+        </div>
+    );
+}
+
 const steps = [
   { id: 1, name: 'Scan Item', fields: ['barcode'], icon: Barcode },
   { id: 2, name: 'Add Details', fields: ['staffName', 'quantity', 'expiryDate'], icon: Info },
@@ -120,6 +148,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     refreshData,
     queueAction,
     isOnline,
+    pendingActions,
   } = useDataCache();
   const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry, requestSpecialEntry } = useSpecialEntry(); 
   
@@ -419,125 +448,163 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   return (
     <>
-    <Card className="w-full max-w-2xl mx-auto shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl">
-      <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 ? "pb-1 pt-4" : "pb-4")}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            {currentStep === 0 && (
-                <div className="flex-1">
-                    <CardTitle className="text-2xl flex items-center gap-2">Log New Inventory Item {!isOnline && <Badge variant="destructive" className="animate-pulse"><CloudOff className="h-3 w-3 mr-1" /> Offline</Badge>}</CardTitle>
-                    <CardDescription>Follow the steps to log a new item into the inventory system.</CardDescription>
-                </div>
-            )}
-            <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                {activeSession && (
-                    <div className="flex items-center gap-2">
-                        {activeSession.type === 'timed' && activeSession.expiresAt && <SessionTimer expiresAt={activeSession.expiresAt} />}
-                        <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary">{isGlobalSession ? <Globe className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}{isGlobalSession ? "Global Silent Mode" : "Authorized Silent Mode"}</Badge>
-                    </div>
-                )}
-                {pendingActivationSession && !activeSession && (
-                    <Button size="sm" variant="outline" className="bg-yellow-500/10 border-yellow-500/20 text-yellow-600 hover:bg-yellow-500/20 animate-pulse font-bold" onClick={() => setActivationDialogOpen(true)}>
-                        <KeyRound className="mr-2 h-3.5 w-3.5" /> Activate Silent Mode
-                    </Button>
-                )}
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent className="px-4 sm:px-6">
-        <div className="space-y-4">
-            <div className="space-y-2"><Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" /><p className="text-[10px] font-black text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-widest">{React.createElement(steps[currentStep].icon, { className: "h-3 w-3" })} Step {currentStep + 1} of {steps.length}: {steps[currentStep].name}</p></div>
-            <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
-                    <Label htmlFor="barcode" className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase"><Barcode className="h-4 w-4" /> Product Barcode</Label>
-                     <div className="flex gap-2 items-start">
-                        <div className="flex-grow">
-                            <Input id="barcode" ref={(e) => { register('barcode').ref(e); (barcodeInputRef as any).current = e; }} placeholder="Scan or enter barcode" {...register('barcode')} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} autoFocus className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')} />
-                            {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
-                        </div>
-                        <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-10 sm:w-10 shrink-0 bg-primary/5 border-primary/20"><Scan className="h-6 w-6 sm:h-5 sm:w-5 text-primary" /></Button>
-                    </div>
-                    <div className="min-h-[24px]">
-                        {productLookupError && !isFetchingProduct && (
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                {!hasRequestedProduct ? (
-                                    <div className="space-y-2">
-                                        {foundInGlobalRegistry && suggestedProductName && (
-                                            <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg animate-pulse"><Globe className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-widest text-primary">Global Registry Match Identified</span></div>
-                                        )}
-                                        <Button type="button" variant="default" className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl" onClick={handleRequestProductAdd}><SendHorizontal className="mr-2 h-4 w-4" />{suggestedProductName ? <span className="flex items-center gap-2">Request: {suggestedProductName}<Globe className="h-3.5 w-3.5 opacity-70" /></span> : "Notify Admin: New Barcode"}</Button>
-                                    </div>
-                                ) : (
-                                    <div className="py-3 px-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center gap-3 animate-in zoom-in-95 duration-300"><ShieldCheck className="h-5 w-5 shrink-0" /><div className="flex-1"><p className="text-[10px] font-black uppercase tracking-widest leading-none mb-0.5">Notification Sent</p><p className="text-[9px] font-medium opacity-80 leading-none">Awaiting Admin catalog update.</p></div></div>
+    <div className="w-full max-w-2xl mx-auto space-y-4">
+        {/* OPTION 10: PROMINENT OUTBOX BUFFER */}
+        <OfflineOutboxBanner count={pendingActions.length} />
+
+        <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden transition-all duration-500">
+            <CardHeader className={cn("px-4 sm:px-6", currentStep !== 0 ? "pb-1 pt-4" : "pb-4")}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {currentStep === 0 && (
+                        <div className="flex-1">
+                            <CardTitle className="text-2xl flex items-center gap-2">
+                                Log New Inventory Item 
+                                {!isOnline && (
+                                    <Badge variant="destructive" className="animate-pulse shadow-sm">
+                                        <CloudOff className="h-3 w-3 mr-1" /> Offline
+                                    </Badge>
                                 )}
-                            </div>
+                            </CardTitle>
+                            <CardDescription>Follow the steps to log a new item into the inventory system.</CardDescription>
+                        </div>
+                    )}
+                    <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                        <div className="flex items-center gap-2">
+                            {isOnline && (
+                                <Badge variant="outline" className="py-1 px-2.5 bg-green-500/5 text-green-600 border-green-500/10 text-[8px] font-black uppercase tracking-widest hidden sm:flex">
+                                    <Wifi className="h-2.5 w-2.5 mr-1" /> Cloud Link Active
+                                </Badge>
+                            )}
+                            {activeSession && (
+                                <div className="flex items-center gap-2">
+                                    {activeSession.type === 'timed' && activeSession.expiresAt && <SessionTimer expiresAt={activeSession.expiresAt} />}
+                                    <Badge variant="secondary" className="w-fit flex items-center gap-1.5 py-1.5 px-3 bg-primary/10 border-primary/20 text-primary shadow-sm">
+                                        {isGlobalSession ? <Globe className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                                        {isGlobalSession ? "Global Silent Mode" : "Authorized Silent Mode"}
+                                    </Badge>
+                                </div>
+                            )}
+                        </div>
+                        {pendingActivationSession && !activeSession && (
+                            <Button size="sm" variant="outline" className="bg-yellow-500/10 border-yellow-500/20 text-yellow-600 hover:bg-yellow-500/20 animate-pulse font-bold shadow-sm" onClick={() => setActivationDialogOpen(true)}>
+                                <KeyRound className="mr-2 h-3.5 w-3.5" /> Activate Silent Mode
+                            </Button>
                         )}
                     </div>
                 </div>
-
-                <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
-                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10"><h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3><p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p><p className="text-xs font-mono text-muted-foreground mt-1">SKU: {getValues('barcode')}</p></div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6">
+                <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
-                        <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }} modal={true}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}><div className="flex items-center gap-2"><User className="h-5 w-5 sm:h-4 sm:w-4 text-primary" /><span>{allFormValues.staffName || "Select Staff Member..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                <Command>
-                                    <CommandList>
-                                        <CommandEmpty>No staff member found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
-                                                <CommandItem 
-                                                    key={staff} 
-                                                    value={staff} 
-                                                    onSelect={() => { 
-                                                        setValue("staffName", staff, { shouldValidate: true }); 
-                                                        setStaffComboboxOpen(false); 
-                                                    }} 
-                                                    className="h-12 sm:h-10 text-base sm:text-sm font-medium"
-                                                >
-                                                    <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>
-                                                    {staff}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {errors.staffName && <p className="text-sm text-destructive mt-1 font-medium">{errors.staffName.message}</p>}
+                        <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" />
+                        <p className="text-[10px] font-black text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-widest">
+                            {React.createElement(steps[currentStep].icon, { className: "h-3 w-3" })} Step {currentStep + 1} of {steps.length}: {steps[currentStep].name}
+                        </p>
                     </div>
-                    <div className="flex gap-3">
-                        <div className="w-1/3 space-y-2"><Label className="text-xs font-bold text-muted-foreground uppercase">Qty</Label><div className="relative"><Hash className="absolute left-4 sm:left-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-4 sm:w-4 text-muted-foreground" /><Input id="qty" type="number" min="1" {...register('quantity', { valueAsNumber: true })} onKeyDown={(e) => { if (['-', 'e', 'E', '+', '.'].includes(e.key)) e.preventDefault(); }} className={cn('h-14 sm:h-10 pl-11 text-lg sm:text-base font-bold', errors.quantity && 'border-destructive')} /></div></div>
-                        <div className="flex-1 space-y-2"><Label className="text-xs font-bold text-muted-foreground uppercase">Date</Label><Popover modal={true}><PopoverTrigger asChild><Button variant={'outline'} className={cn('h-14 sm:h-10 w-full pl-4 text-left font-semibold text-lg sm:text-sm', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}><CalendarIcon className="mr-3 h-5 w-5 sm:h-4 sm:w-4 text-primary" />{allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : <span>Pick Date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="end"><Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => { setValue('expiryDate', date || new Date()); }} initialFocus captionLayout="dropdown" startMonth={new Date(2020, 0)} endMonth={new Date(2045, 11)} /></PopoverContent></Popover></div>
-                    </div>
-                </div>
+                    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
+                            <Label htmlFor="barcode" className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase"><Barcode className="h-4 w-4" /> Product Barcode</Label>
+                            <div className="flex gap-2 items-start">
+                                <div className="flex-grow">
+                                    <Input id="barcode" ref={(e) => { register('barcode').ref(e); (barcodeInputRef as any).current = e; }} placeholder="Scan or enter barcode" {...register('barcode')} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} autoFocus className={cn("h-14 sm:h-10 text-lg sm:text-base font-semibold", errors.barcode && 'border-destructive')} />
+                                    {errors.barcode && <p className="text-sm text-destructive mt-1">{errors.barcode.message}</p>}
+                                </div>
+                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-10 sm:w-10 shrink-0 bg-primary/5 border-primary/20"><Scan className="h-6 w-6 sm:h-5 sm:w-5 text-primary" /></Button>
+                            </div>
+                            <div className="min-h-[24px]">
+                                {productLookupError && !isFetchingProduct && (
+                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {!hasRequestedProduct ? (
+                                            <div className="space-y-2">
+                                                {foundInGlobalRegistry && suggestedProductName && (
+                                                    <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg animate-pulse"><Globe className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-widest text-primary">Global Registry Match Identified</span></div>
+                                                )}
+                                                <Button type="button" variant="default" className="w-full h-12 text-sm font-black uppercase tracking-tight shadow-lg shadow-primary/20 rounded-xl" onClick={handleRequestProductAdd}><SendHorizontal className="mr-2 h-4 w-4" />{suggestedProductName ? <span className="flex items-center gap-2">Request: {suggestedProductName}<Globe className="h-3.5 w-3.5 opacity-70" /></span> : "Notify Admin: New Barcode"}</Button>
+                                            </div>
+                                        ) : (
+                                            <div className="py-3 px-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center gap-3 animate-in zoom-in-95 duration-300"><ShieldCheck className="h-5 w-5 shrink-0" /><div className="flex-1"><p className="text-[10px] font-black uppercase tracking-widest leading-none mb-0.5">Notification Sent</p><p className="text-[9px] font-medium opacity-80 leading-none">Awaiting Admin catalog update.</p></div></div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                 <div className={cn(currentStep !== 2 && "hidden", "space-y-6")}>
-                    <div className="space-y-4">
-                        <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">Storage Zone</Label>
-                        <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}><div className="flex items-center gap-2"><span>{allFormValues.location || "Select Zone..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command><CommandList><CommandEmpty>No location found.</CommandEmpty><CommandGroup>{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium"><Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
-                            </PopoverContent>
-                        </Popover>
-                        {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
+                        <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
+                            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10"><h3 className="font-bold text-lg sm:text-base text-primary">{productName || "Unknown Item"}</h3><p className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">Supplier: {productSupplier}</p><p className="text-xs font-mono text-muted-foreground mt-1">SKU: {getValues('barcode')}</p></div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase">Personnel</Label>
+                                <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }} modal={true}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}><div className="flex items-center gap-2"><User className="h-5 w-5 sm:h-4 sm:w-4 text-primary" /><span>{allFormValues.staffName || "Select Staff Member..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                        <Command>
+                                            <CommandList>
+                                                <CommandEmpty>No staff member found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
+                                                        <CommandItem 
+                                                            key={staff} 
+                                                            value={staff} 
+                                                            onSelect={() => { 
+                                                                setValue("staffName", staff, { shouldValidate: true }); 
+                                                                setStaffComboboxOpen(false); 
+                                                            }} 
+                                                            className="h-12 sm:h-10 text-base sm:text-sm font-medium"
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", allFormValues.staffName === staff ? "opacity-100" : "opacity-0")}/>
+                                                            {staff}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {errors.staffName && <p className="text-sm text-destructive mt-1 font-medium">{errors.staffName.message}</p>}
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-1/3 space-y-2"><Label className="text-xs font-bold text-muted-foreground uppercase">Qty</Label><div className="relative"><Hash className="absolute left-4 sm:left-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-4 sm:w-4 text-muted-foreground" /><Input id="qty" type="number" min="1" {...register('quantity', { valueAsNumber: true })} onKeyDown={(e) => { if (['-', 'e', 'E', '+', '.'].includes(e.key)) e.preventDefault(); }} className={cn('h-14 sm:h-10 pl-11 text-lg sm:text-base font-bold', errors.quantity && 'border-destructive')} /></div></div>
+                                <div className="flex-1 space-y-2"><Label className="text-xs font-bold text-muted-foreground uppercase">Date</Label><Popover modal={true}><PopoverTrigger asChild><Button variant={'outline'} className={cn('h-14 sm:h-10 w-full pl-4 text-left font-semibold text-lg sm:text-sm', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}><CalendarIcon className="mr-3 h-5 w-5 sm:h-4 sm:w-4 text-primary" />{allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : <span>Pick Date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="end"><Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => { setValue('expiryDate', date || new Date()); }} initialFocus captionLayout="dropdown" startMonth={new Date(2020, 0)} endMonth={new Date(2045, 11)} /></PopoverContent></Popover></div>
+                            </div>
+                        </div>
+
+                        <div className={cn(currentStep !== 2 && "hidden", "space-y-6")}>
+                            <div className="space-y-4">
+                                <Label className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">Storage Zone</Label>
+                                <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className={cn("h-14 sm:h-10 w-full justify-between font-semibold text-lg sm:text-sm px-4", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}><div className="flex items-center gap-2"><span>{allFormValues.location || "Select Zone..."}</span></div><ChevronsUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-50" /></Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command><CommandList><CommandEmpty>No location found.</CommandEmpty><CommandGroup>{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-12 sm:h-10 text-base sm:text-sm font-medium"><Check className={cn("mr-2 h-4 w-4", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {errors.location && <p className="text-sm text-destructive mt-1 font-medium">{errors.location.message}</p>}
+                            </div>
+                            <div className="flex items-center justify-between p-4 rounded-2xl border bg-muted/10"><div className="space-y-0.5"><div className="flex items-center gap-2"><Label htmlFor="damage-toggle" className="text-sm font-black uppercase">Report as Damage</Label>{allFormValues.itemType === 'Damage' && <AlertTriangle className="h-3.5 w-3.5 text-destructive animate-pulse" />}</div><p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">Toggle if the item is broken or unusable.</p></div><Switch id="damage-toggle" checked={allFormValues.itemType === 'Damage'} onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })} /></div>
+                        </div>
+                        
+                        <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
+                            <div className="p-6 rounded-2xl sm:rounded-lg bg-primary/5 border-2 border-primary/20 space-y-4 shadow-inner"><h3 className="font-extrabold text-2xl sm:text-lg text-primary text-center">{productName}</h3><Separator className="bg-primary/10" /><div className="grid grid-cols-1 gap-4 text-base sm:text-sm"><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Quantity</span><span className="font-black text-xl sm:text-lg">{allFormValues.quantity} units</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Logged By</span><span className="font-bold">{allFormValues.staffName}</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Type</span><span className={cn("font-black px-3 py-1 rounded-lg text-sm sm:text-xs", allFormValues.itemType === 'Damage' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{allFormValues.itemType}</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Location</span><span className="font-bold">{allFormValues.location}</span></div>{allFormValues.expiryDate && <div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Date</span><span className="font-bold">{format(allFormValues.expiryDate, "dd/MM/yyyy")}</span></div>}</div>{activeSession && <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-tight"><ShieldCheck className="h-4 w-4" /><span>{isGlobalSession ? "Global Silent Mode Active" : "Silent Entry Authorized"}</span></div>}{!isOnline && <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase text-center shadow-sm">Working Offline: Will Sync Automatically</div>}</div>
+                        </div>
+                    </form>
+                    <div className="flex gap-3 pt-2">
+                        <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold"><ArrowLeft className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Back</Button>
+                        {currentStep < steps.length - 1 ? (
+                            <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-sm">
+                                {isFetchingProduct ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin"/> : null}Continue <ArrowRight className="ml-2 h-5 w-5 sm:h-4 sm:w-4" />
+                            </Button>
+                        ) : (
+                            <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">
+                                {isPending || isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}Complete Log
+                            </Button>
+                        )}
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-2xl border bg-muted/10"><div className="space-y-0.5"><div className="flex items-center gap-2"><Label htmlFor="damage-toggle" className="text-sm font-black uppercase">Report as Damage</Label>{allFormValues.itemType === 'Damage' && <AlertTriangle className="h-3.5 w-3.5 text-destructive animate-pulse" />}</div><p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">Toggle if the item is broken or unusable.</p></div><Switch id="damage-toggle" checked={allFormValues.itemType === 'Damage'} onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })} /></div>
                 </div>
-                
-                <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
-                    <div className="p-6 rounded-2xl sm:rounded-lg bg-primary/5 border-2 border-primary/20 space-y-4 shadow-inner"><h3 className="font-extrabold text-2xl sm:text-lg text-primary text-center">{productName}</h3><Separator className="bg-primary/10" /><div className="grid grid-cols-1 gap-4 text-base sm:text-sm"><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Quantity</span><span className="font-black text-xl sm:text-lg">{allFormValues.quantity} units</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Logged By</span><span className="font-bold">{allFormValues.staffName}</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Type</span><span className={cn("font-black px-3 py-1 rounded-lg text-sm sm:text-xs", allFormValues.itemType === 'Damage' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{allFormValues.itemType}</span></div><div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Location</span><span className="font-bold">{allFormValues.location}</span></div>{allFormValues.expiryDate && <div className="flex items-center justify-between"><span className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Date</span><span className="font-bold">{format(allFormValues.expiryDate, "dd/MM/yyyy")}</span></div>}</div>{activeSession && <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-tight"><ShieldCheck className="h-4 w-4" /><span>{isGlobalSession ? "Global Silent Mode Active" : "Silent Entry Authorized"}</span></div>}{!isOnline && <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase text-center">Working Offline: Will Sync Automatically</div>}</div>
-                </div>
-            </form>
-            <div className="flex gap-3 pt-2"><Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-14 sm:h-10 px-6 font-bold"><ArrowLeft className="mr-2 h-5 w-5 sm:h-4 sm:w-4" /> Back</Button>{currentStep < steps.length - 1 ? <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md">{isFetchingProduct ? <Loader2 className="mr-2 h-5 w-5 sm:h-4 sm:w-4 animate-spin"/> : null}Continue <ArrowRight className="ml-2 h-5 w-5 sm:h-4 sm:w-4" /></Button> : <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-14 sm:h-10 flex-1 text-lg sm:text-base font-black rounded-xl sm:rounded-md shadow-lg shadow-primary/20">{isPending || isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />}Complete Log</Button>}</div>
-        </div>
-      </CardContent>
-    </Card>
+            </CardContent>
+        </Card>
+    </div>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}><DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black"><DialogHeader className="p-6 pb-2 border-b border-white/10 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20"><DialogTitle className="font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle><DialogDescription className="text-zinc-400 text-xs">Align product barcode with the center target.</DialogDescription></DialogHeader><div className="relative scanner-container h-[400px] w-full"><div id={SCANNER_REGION_ID} className="h-full w-full [&>span]:hidden" /><div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /><div className="scanner-corner scanner-corner-tl" /><div className="scanner-corner scanner-corner-tr" /><div className="scanner-corner scanner-corner-bl" /><div className="scanner-corner scanner-corner-br" /></div></div></div><div className="p-4 bg-zinc-900/50 border-t border-white/10 flex justify-center relative z-20"><Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="h-12 w-full rounded-xl font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">Terminate Scan</Button></div></DialogContent></Dialog>
     
