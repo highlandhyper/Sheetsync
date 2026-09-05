@@ -21,7 +21,8 @@ import {
     History,
     Check,
     Bell,
-    Layers
+    Layers,
+    ChevronsUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; 
@@ -54,6 +55,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const MAX_INVENTORY_ITEMS_TO_DISPLAY = 100;
 
@@ -73,6 +76,7 @@ export function ReturnableInventoryByStaffClient() {
   } = useDataCache();
 
   const [selectedStaffName, setSelectedStaffName] = useState<string>('');
+  const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
   const [logCategory, setLogCategory] = useState<'normal' | 'diary'>('normal');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -293,17 +297,55 @@ export function ReturnableInventoryByStaffClient() {
           ) : (
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                    <Select value={selectedStaffName} onValueChange={(v) => setSelectedStaffName(v === "__EMPTY__" ? "" : v)}>
-                        <SelectTrigger className="w-full sm:w-[300px] h-11 rounded-xl font-bold bg-background shadow-sm">
-                            <div className="flex items-center"><User className="mr-2 h-4 w-4 text-primary/40" /><SelectValue placeholder="Identify Personnel..." /></div>
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-white/10 shadow-2xl">
-                            <ScrollArea className="h-72">
-                                <SelectItem value="__EMPTY__" className="font-medium italic">Clear Identification</SelectItem>
-                                {allStaffNames.map(name => <SelectItem key={name} value={name} className="font-black uppercase text-xs py-2.5">{name}</SelectItem>)}
-                            </ScrollArea>
-                        </SelectContent>
-                    </Select>
+                    <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                role="combobox" 
+                                className="w-full sm:w-[300px] h-11 justify-between font-bold bg-background shadow-sm rounded-xl px-4"
+                            >
+                                <div className="flex items-center truncate">
+                                    <User className="mr-2 h-4 w-4 text-primary/40 shrink-0" />
+                                    <span className="truncate">{selectedStaffName || "Identify Personnel..."}</span>
+                                </div>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
+                            <Command>
+                                <CommandInput placeholder="Search personnel..." />
+                                <CommandList className="max-h-72">
+                                    <CommandEmpty className="py-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center">Zero registry matches</CommandEmpty>
+                                    <CommandGroup>
+                                        <CommandItem
+                                            value="__EMPTY__"
+                                            onSelect={() => {
+                                                setSelectedStaffName('');
+                                                setStaffPopoverOpen(false);
+                                            }}
+                                            className="font-medium italic text-xs py-2.5"
+                                        >
+                                            <X className="mr-2 h-4 w-4 opacity-40" /> Clear Identification
+                                        </CommandItem>
+                                        {allStaffNames.map(name => (
+                                            <CommandItem
+                                                key={name}
+                                                value={name}
+                                                onSelect={() => {
+                                                    setSelectedStaffName(name);
+                                                    setStaffPopoverOpen(false);
+                                                }}
+                                                className="font-black uppercase text-xs py-2.5 cursor-pointer"
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", selectedStaffName === name ? "opacity-100" : "opacity-0")} />
+                                                {name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                     
                     <Tabs value={logCategory} onValueChange={(v: any) => setLogCategory(v)} className="w-full sm:w-auto">
                         <TabsList className="h-11 p-1 bg-muted/20 border rounded-xl grid grid-cols-2 w-full sm:w-[260px]">

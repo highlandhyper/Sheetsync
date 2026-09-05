@@ -207,7 +207,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
                                                 <Command>
                                                     <CommandInput placeholder="Search registry..." className="h-11" />
-                                                    <CommandList>
+                                                    <CommandList className="max-h-72">
                                                         <CommandEmpty className="py-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center">No Node Found</CommandEmpty>
                                                         <CommandGroup className="p-1.5">
                                                             {uniqueStaffNames.map(name => (
@@ -279,9 +279,9 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                     </div>
                 </ScrollArea>
 
-                <div className="p-4 bg-muted/30 border-t shrink-0 flex justify-center">
+                <div className="p-1.5 bg-muted/30 border-t shrink-0 flex justify-center">
                     <DialogClose asChild>
-                        <Button variant="ghost" className="text-[9px] font-black uppercase tracking-[0.4em] opacity-40 hover:opacity-100">
+                        <Button variant="ghost" className="text-[8px] font-black uppercase tracking-[0.4em] opacity-30 hover:opacity-100">
                             Abort Protocol
                         </Button>
                     </DialogClose>

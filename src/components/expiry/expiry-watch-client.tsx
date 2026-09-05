@@ -324,8 +324,8 @@ export function ExpiryWatchClient() {
                         <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
                         <div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /></div></div>
                     </div>
-                    <div className="p-4 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
-                        <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-12 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
+                    <div className="p-2 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
+                        <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
                             Abort Protocol
                         </Button>
                     </div>
