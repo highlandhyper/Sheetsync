@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -37,7 +36,7 @@ import { DeleteConfirmationDialog } from '@/components/inventory/delete-inventor
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { parseISO, isValid, format } from 'date-fns';
+import { parseISO, isValid, format, isBefore, addDays } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
 import { useDataCache } from '@/context/data-cache-context';
@@ -155,6 +154,13 @@ export function ReturnableInventoryByStaffClient() {
     setSelectedItemIds(new Set());
   }, []);
 
+  const handleBulkSuccess = useCallback(() => {
+      refreshData();
+      setSelectedItemIds(new Set());
+      setIsBulkReturnOpen(false);
+      setIsBulkDeleteOpen(false);
+  }, [refreshData]);
+
   const handleResolveDiary = async (id: string, name: string) => {
     setIsResolvingDiary(id);
     try {
@@ -206,11 +212,6 @@ export function ReturnableInventoryByStaffClient() {
   useEffect(() => {
     setSelectedItemIds(new Set());
   }, [selectedStaffName, logCategory]);
-
-  const clearStaffSearch = () => {
-    setSelectedStaffName('');
-    setTotalItemsCount(0);
-  };
 
   const handlePrint = () => window.print();
 

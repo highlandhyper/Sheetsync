@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -21,11 +20,40 @@ import {
     History,
     Check,
     Loader2,
-    FilterX
+    FilterX,
+    Scan,
+    X
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, addMonths, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AddReminderDialog } from './add-reminder-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Html5Qrcode } from 'html5-qrcode';
+
+const SCANNER_REGION_ID = "diary-lookup-scanner-region";
+
+const playProfessionalBeep = () => {
+  try {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.2);
+  } catch (e) {}
+};
 
 export function ExpiryWatchClient() {
     const { expiryReminders, resolveExpiryReminder, refreshData } = useDataCache();
@@ -34,6 +62,10 @@ export function ExpiryWatchClient() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isResolving, setIsResolving] = useState<string | null>(null);
+
+    const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
+    const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+    const scanProcessedRef = useRef(false);
 
     const filteredReminders = useMemo(() => {
         const lower = searchTerm.toLowerCase().trim();
@@ -83,6 +115,47 @@ export function ExpiryWatchClient() {
         };
     }, [expiryReminders]);
 
+    const onScanSuccess = useCallback((decodedText: string) => {
+      if (scanProcessedRef.current || !decodedText) return;
+      scanProcessedRef.current = true;
+      playProfessionalBeep();
+      setSearchTerm(decodedText);
+      setIsScannerDialogOpen(false);
+      
+      toast({
+          title: "SKU Identified",
+          description: `Filtering Diary for: ${decodedText}`,
+      });
+
+      setTimeout(() => { scanProcessedRef.current = false; }, 1000);
+    }, [toast]);
+
+    useEffect(() => {
+      if (isScannerDialogOpen) {
+        const timer = setTimeout(() => {
+          if (html5QrcodeScannerRef.current) return;
+          const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
+          scanner.start(
+            { facingMode: 'environment' },
+            { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+            onScanSuccess,
+            () => {}
+          ).then(() => {
+            html5QrcodeScannerRef.current = scanner;
+          }).catch(() => {
+            setIsScannerDialogOpen(false);
+          });
+        }, 800);
+        return () => {
+          clearTimeout(timer);
+          if (html5QrcodeScannerRef.current) {
+            html5QrcodeScannerRef.current.stop().catch(() => {});
+            html5QrcodeScannerRef.current = null;
+          }
+        };
+      }
+    }, [isScannerDialogOpen, onScanSuccess]);
+
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {/* STATS GRID */}
@@ -120,14 +193,24 @@ export function ExpiryWatchClient() {
 
             {/* COMMAND BAR */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-                <div className="relative flex-grow group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
-                    <Input 
-                        placeholder="IDENTIFY REMINDER..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-12 sm:h-14 pl-11 rounded-lg bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
-                    />
+                <div className="flex-grow flex gap-2">
+                    <div className="relative flex-grow group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                        <Input 
+                            placeholder="IDENTIFY REMINDER..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-12 sm:h-14 pl-11 rounded-lg bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
+                        />
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsScannerDialogOpen(true)} 
+                        className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
+                    >
+                        <Scan className="h-6 w-6" />
+                    </Button>
                 </div>
                 <Button 
                     onClick={() => setIsAddDialogOpen(true)}
@@ -229,6 +312,25 @@ export function ExpiryWatchClient() {
                 isOpen={isAddDialogOpen} 
                 onOpenChange={setIsAddDialogOpen} 
             />
+
+            {/* OPTICAL SEARCH TERMINAL */}
+            <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
+                <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none bg-black">
+                    <DialogHeader className="p-6 pb-2 border-b border-white/5 bg-zinc-900/80 absolute top-0 left-0 right-0 z-20">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">Align SKU for Diary Filter</DialogDescription>
+                    </DialogHeader>
+                    <div className="relative scanner-container h-[400px] w-full">
+                        <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
+                        <div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /></div></div>
+                    </div>
+                    <div className="p-4 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
+                        <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-12 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
+                            Abort Protocol
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
             
             <div className="pt-20 text-center">
                 <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6">
