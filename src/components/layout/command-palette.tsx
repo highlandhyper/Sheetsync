@@ -27,7 +27,8 @@ import {
     RefreshCw, 
     PackageSearch,
     X,
-    FileText
+    FileText,
+    Tag
 } from 'lucide-react';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -36,6 +37,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { useDataCache } from '@/context/data-cache-context';
 import { cn } from '@/lib/utils';
@@ -45,6 +53,16 @@ interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const COMMON_REASONS = [
+    { label: "REGISTRY LOG CORRECTION", value: "REGISTRY LOG CORRECTION" },
+    { label: "DAMAGED LABEL RE-SCAN", value: "DAMAGED LABEL RE-SCAN" },
+    { label: "SHIFT HANDOVER SYNC", value: "SHIFT HANDOVER SYNC" },
+    { label: "URGENT STOCK ARRIVAL", value: "URGENT STOCK ARRIVAL" },
+    { label: "BULK RE-ZONE PROTOCOL", value: "BULK RE-ZONE PROTOCOL" },
+    { label: "RETURN TO VENDOR (RTV)", value: "RETURN TO VENDOR (RTV)" },
+    { label: "SYSTEM HANDSHAKE OVERRIDE", value: "SYSTEM HANDSHAKE OVERRIDE" },
+];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter();
@@ -57,25 +75,23 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
   const [staffName, setStaffName] = React.useState('');
-  const [reason, setReason] = React.useState('');
+  const [selectedReason, setSelectedReason] = React.useState('');
+  const [customReason, setCustomReason] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [staffPopoverOpen, setStaffPopoverOpen] = React.useState(false);
 
   const isAdmin = role === 'admin';
 
-  // INDUSTRIAL SHORTCUT ENGINE: Migrated to ALT to avoid OS conflicts
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const isAlt = e.altKey;
       
-      // Toggle Terminal: ALT+K
       if ((e.key === 'k' || e.key === 'K') && isAlt) {
         e.preventDefault();
         onOpenChange(!open);
         return;
       }
 
-      // Handle Terminal Actions: E, S, M
       if (isAlt) {
         const key = e.key.toLowerCase();
         
@@ -115,12 +131,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const handleRequestSpecial = async () => {
     if (!staffName) return;
     setIsSubmitting(true);
-    await requestSpecialEntry(staffName, 'single', reason.trim() || undefined);
+    
+    const finalReason = [selectedReason, customReason].filter(Boolean).join(' | ');
+    await requestSpecialEntry(staffName, 'single', finalReason || undefined);
+    
     setIsSubmitting(false);
     setIsRequestDialogOpen(false);
     onOpenChange(false);
     setStaffName('');
-    setReason('');
+    setSelectedReason('');
+    setCustomReason('');
     toast({
         title: 'Request Sent',
         description: 'Administrators have been notified of your special entry request.',
@@ -131,7 +151,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     setIsRequestDialogOpen(open);
     if (!open) {
         setStaffName('');
-        setReason('');
+        setSelectedReason('');
+        setCustomReason('');
     }
   };
 
@@ -213,7 +234,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     </CommandDialog>
 
     <Dialog open={isRequestDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[420px] p-6 rounded-[2rem] border-none shadow-3xl bg-background">
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-[2rem] border-none shadow-3xl bg-background max-h-[90vh] overflow-y-auto">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-3 bg-primary/10 rounded-2xl">
@@ -274,19 +295,40 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     </Popover>
                 </div>
 
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Justification</Label>
-                        <Badge variant="outline" className="text-[8px] font-black uppercase opacity-30 border-none">Optional</Badge>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] ml-1">Quick Justification</Label>
+                        <Select value={selectedReason} onValueChange={setSelectedReason}>
+                            <SelectTrigger className="h-14 font-black uppercase tracking-tight bg-muted/20 border-primary/10 rounded-2xl shadow-inner px-4">
+                                <div className="flex items-center gap-3">
+                                    <Tag className="h-4 w-4 text-primary" />
+                                    <SelectValue placeholder="SELECT STANDARD REASON..." />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-white/10 shadow-3xl">
+                                {COMMON_REASONS.map(reason => (
+                                    <SelectItem key={reason.value} value={reason.value} className="font-black uppercase text-[10px] py-3 tracking-widest">
+                                        {reason.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div className="relative group">
-                        <FileText className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
-                        <Textarea 
-                            placeholder="Identify purpose for silent log entry..."
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            className="min-h-[100px] pl-11 py-4 rounded-2xl bg-muted/20 border-primary/5 font-bold text-sm shadow-inner focus:border-primary/20 placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-[9px] placeholder:tracking-widest"
-                        />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Additional Context</Label>
+                            <Badge variant="outline" className="text-[8px] font-black uppercase opacity-30 border-none">Optional</Badge>
+                        </div>
+                        <div className="relative group">
+                            <FileText className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                            <Textarea 
+                                placeholder="Identify purpose for silent log entry..."
+                                value={customReason}
+                                onChange={(e) => setCustomReason(e.target.value)}
+                                className="min-h-[100px] pl-11 py-4 rounded-2xl bg-muted/20 border-primary/5 font-bold text-sm shadow-inner focus:border-primary/20 placeholder:text-muted-foreground/20 placeholder:font-black placeholder:uppercase placeholder:text-[9px] placeholder:tracking-widest"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
