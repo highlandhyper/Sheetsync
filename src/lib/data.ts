@@ -176,7 +176,10 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
+    // STRUCTURE: ID | Barcode | Name | Expiry | Staff | Status | Timestamp
     const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.staffName, 'pending', ts];
+    
+    // STRICT ISOLATION: Only write to "Expiry Watch" sheet
     await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:G`, [row]);
     
     // Dispatch to AppsScript for SMS scheduling
@@ -192,7 +195,9 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
             }),
             redirect: 'follow'
         });
-    } catch (e) {}
+    } catch (e) {
+        console.error("Expiry Watch: AppsScript trigger failed.", e);
+    }
     
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
 }
@@ -200,7 +205,7 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
 export async function resolveExpiryReminder(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
-        // Targeted status update in column F
+        // STRICT ISOLATION: Targeted status update in "Expiry Watch" sheet column F
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_WATCH', id, `Cleared product from Expiry Watch.`);
         return true;
