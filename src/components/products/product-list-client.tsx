@@ -237,19 +237,19 @@ export function ProductListClient() {
     itemsToRender.length > 0 && selectedIds.size === itemsToRender.length;
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-3 overflow-x-hidden px-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:px-3 sm:pb-8 lg:px-4">
       {/* Toolbar / selection bar */}
       <div>
         {selectedIds.size > 0 && isMultiSelectEnabled ? (
-          <Card className="overflow-hidden rounded-2xl border-primary/20 bg-primary/[0.045] shadow-sm">
-            <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Card className="overflow-hidden rounded-2xl border-0 bg-primary/[0.07] shadow-none">
+            <CardContent className="flex items-center justify-between gap-2 p-2.5 sm:p-3">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleSelectAll}
-                  className="h-10 shrink-0 rounded-xl px-3 text-xs font-semibold"
+                  className="h-9 shrink-0 rounded-lg bg-background/45 px-2.5 text-[11px] font-semibold shadow-none hover:bg-background/70 sm:h-10 sm:px-3 sm:text-xs"
                 >
                   {isAllVisibleSelected ? (
                     <CheckSquare className="mr-2 h-4 w-4 text-primary" />
@@ -268,7 +268,7 @@ export function ProductListClient() {
 
                 <Badge
                   variant="secondary"
-                  className="truncate rounded-lg bg-primary/10 px-3 py-1.5 text-[10px] font-semibold text-primary"
+                  className="max-w-[110px] truncate rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary sm:max-w-none sm:px-2.5"
                 >
                   {selectedIds.size} selected
                 </Badge>
@@ -280,29 +280,29 @@ export function ProductListClient() {
                   variant="destructive"
                   size="sm"
                   onClick={() => initiateDelete(Array.from(selectedIds))}
-                  className="h-10 w-full rounded-xl px-4 text-xs font-semibold shadow-sm sm:w-auto"
+                  className="h-9 shrink-0 rounded-lg px-2.5 text-[11px] font-semibold shadow-none sm:h-10 sm:px-4 sm:text-xs"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete selected
+                  <span className="hidden sm:inline">Delete selected</span><span className="sm:hidden">Delete</span>
                 </Button>
               )}
             </CardContent>
           </Card>
         ) : (
-          <Card className="rounded-2xl border-border/60 bg-card/70 shadow-sm backdrop-blur-xl">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <Card className="rounded-2xl border-0 bg-muted/20 shadow-none">
+            <CardContent className="p-2.5 sm:p-3">
+              <div className="space-y-2.5">
                 {/* Search + view toggle */}
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <div className="group relative min-w-0 flex-1">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
 
                     <Input
                       type="search"
-                      placeholder="Search product name or barcode..."
+                      placeholder="Search products or barcode"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
-                      className="h-11 w-full rounded-xl border-border/60 bg-muted/15 pl-10 pr-10 text-sm font-medium shadow-none focus-visible:bg-background"
+                      className="h-11 w-full rounded-xl border-0 bg-background/75 pl-9 pr-9 text-base font-medium shadow-none focus-visible:bg-background focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-sm"
                     />
 
                     {hasSearch && (
@@ -311,7 +311,7 @@ export function ProductListClient() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setSearchTerm('')}
-                        className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-lg text-muted-foreground"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       >
                         <X className="h-4 w-4" />
                         <span className="sr-only">Clear search</span>
@@ -319,7 +319,7 @@ export function ProductListClient() {
                     )}
                   </div>
 
-                  <div className="hidden shrink-0 items-center rounded-xl border border-border/60 bg-muted/20 p-1 sm:flex">
+                  <div className="hidden shrink-0 items-center rounded-xl bg-background/70 p-1 md:flex">
                     <Button
                       type="button"
                       variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
@@ -345,7 +345,7 @@ export function ProductListClient() {
                 </div>
 
                 {/* Sort + Add */}
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:flex md:items-center md:justify-end">
                   <Select
                     value={sortOrder}
                     onValueChange={(value) =>
@@ -358,12 +358,12 @@ export function ProductListClient() {
                       )
                     }
                   >
-                    <SelectTrigger className="h-11 w-full rounded-xl border-border/60 bg-background/70 text-xs font-semibold shadow-none sm:w-[190px]">
+                    <SelectTrigger className="h-10 w-full rounded-xl border-0 bg-background/70 px-3 text-[11px] font-semibold shadow-none focus:ring-0 md:h-11 md:w-[190px] md:text-xs">
                       <ListFilter className="mr-2 h-4 w-4 text-primary" />
                       <SelectValue placeholder="Sort products" />
                     </SelectTrigger>
 
-                    <SelectContent className="rounded-xl border-border/60 shadow-xl">
+                    <SelectContent className="rounded-xl border-0 shadow-xl">
                       <SelectItem value="name-asc">
                         Product name A–Z
                       </SelectItem>
@@ -384,8 +384,8 @@ export function ProductListClient() {
               </div>
 
               {/* Result summary */}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-0.5 pt-0.5">
+                <p className="min-w-0 truncate text-[11px] text-muted-foreground sm:text-xs">
                   {hasSearch ? (
                     <>
                       <span className="font-semibold text-foreground">
@@ -404,13 +404,13 @@ export function ProductListClient() {
                   )}
                 </p>
 
-                <div className="flex items-center gap-2 sm:hidden">
+                <div className="hidden">
                   <Button
                     type="button"
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('grid')}
-                    className="h-8 rounded-lg px-2.5 text-[11px] font-semibold"
+                    className="h-8 rounded-lg bg-background/60 px-2 text-[10px] font-semibold shadow-none"
                   >
                     <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
                     Grid
@@ -421,7 +421,7 @@ export function ProductListClient() {
                     variant={viewMode === 'table' ? 'secondary' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('table')}
-                    className="h-8 rounded-lg px-2.5 text-[11px] font-semibold"
+                    className="h-8 rounded-lg bg-background/60 px-2 text-[10px] font-semibold shadow-none"
                   >
                     <List className="mr-1.5 h-3.5 w-3.5" />
                     Table
@@ -436,7 +436,7 @@ export function ProductListClient() {
       {itemsToRender.length > 0 ? (
         <>
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-2.5 pb-4 min-[540px]:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {itemsToRender.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -454,10 +454,10 @@ export function ProductListClient() {
               ))}
             </div>
           ) : (
-            <Card className="mb-16 overflow-hidden rounded-2xl border-border/60 bg-card/70 shadow-sm">
+            <Card className="mb-4 overflow-hidden rounded-2xl border-0 bg-muted/15 shadow-none">
               <div className="overflow-x-auto">
-                <Table className="min-w-[900px]">
-                  <TableHeader className="bg-muted/25">
+                <Table className="min-w-[820px]">
+                  <TableHeader className="bg-muted/35">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-14 px-4 text-center">
                         <Checkbox
@@ -466,23 +466,23 @@ export function ProductListClient() {
                         />
                       </TableHead>
 
-                      <TableHead className="h-12 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <TableHead className="h-11 text-[10px] font-semibold text-muted-foreground">
                         Product
                       </TableHead>
 
-                      <TableHead className="h-12 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <TableHead className="h-11 text-[10px] font-semibold text-muted-foreground">
                         Barcode
                       </TableHead>
 
-                      <TableHead className="h-12 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <TableHead className="h-11 text-[10px] font-semibold text-muted-foreground">
                         Supplier
                       </TableHead>
 
-                      <TableHead className="h-12 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <TableHead className="h-11 text-right text-[10px] font-semibold text-muted-foreground">
                         Cost
                       </TableHead>
 
-                      <TableHead className="h-12 w-28 pr-4 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <TableHead className="h-11 w-24 pr-3 text-center text-[10px] font-semibold text-muted-foreground">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -493,7 +493,7 @@ export function ProductListClient() {
                       <TableRow
                         key={product.id}
                         onClick={() => handleProductClick(product)}
-                        className="group h-[68px] cursor-pointer border-border/50 transition-colors hover:bg-primary/[0.025]"
+                        className="group h-[58px] cursor-pointer border-border/30 transition-colors hover:bg-muted/35"
                       >
                         <TableCell
                           className="px-4 text-center"
@@ -524,7 +524,7 @@ export function ProductListClient() {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className="max-w-[220px] truncate rounded-lg border-border/60 bg-muted/25 px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
+                            className="max-w-[220px] truncate rounded-lg border-0 bg-muted/35 px-2 py-1 text-[10px] font-medium text-muted-foreground"
                           >
                             {product.supplierName || 'No supplier'}
                           </Badge>
@@ -545,13 +545,13 @@ export function ProductListClient() {
                           className="pr-4 text-center"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          <div className="flex justify-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                          <div className="flex justify-center gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => handleProductClick(product)}
-                              className="h-9 w-9 rounded-lg text-primary hover:bg-primary/10"
+                              className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10"
                             >
                               <Edit className="h-4 w-4" />
                               <span className="sr-only">Edit product</span>
@@ -563,7 +563,7 @@ export function ProductListClient() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => initiateDelete([product.id])}
-                                className="h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
                                 <span className="sr-only">Delete product</span>
@@ -580,7 +580,7 @@ export function ProductListClient() {
           )}
 
           {filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY && (
-            <div className="flex justify-center border-t border-border/50 py-8">
+            <div className="flex justify-center rounded-xl bg-muted/20 px-3 py-3">
               <p className="text-center text-xs text-muted-foreground">
                 Showing the first{' '}
                 <span className="font-semibold text-foreground">
@@ -596,16 +596,16 @@ export function ProductListClient() {
           )}
         </>
       ) : (
-        <div className="flex min-h-[360px] flex-col items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/10 px-5 py-14 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
-            <PackageOpen className="h-7 w-7" />
+        <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl bg-muted/20 px-5 py-10 text-center sm:min-h-[320px] sm:py-12">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-background/70 text-muted-foreground">
+            <PackageOpen className="h-5 w-5" />
           </div>
 
-          <h3 className="mt-5 text-lg font-bold tracking-tight text-foreground">
+          <h3 className="mt-3 text-base font-bold tracking-tight text-foreground sm:text-lg">
             {hasSearch ? 'No products found' : 'No products yet'}
           </h3>
 
-          <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+          <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
             {hasSearch
               ? `No product matches “${searchTerm.trim()}”. Try the exact barcode or another product name.`
               : 'Your product catalog is empty. Add a product to get started.'}
@@ -616,7 +616,7 @@ export function ProductListClient() {
               type="button"
               variant="outline"
               onClick={() => setSearchTerm('')}
-              className="mt-5 h-10 rounded-xl px-5 text-xs font-semibold"
+              className="mt-4 h-9 rounded-lg bg-background/60 px-4 text-xs font-semibold shadow-none"
             >
               Clear search
             </Button>
