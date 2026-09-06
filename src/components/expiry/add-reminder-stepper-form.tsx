@@ -249,45 +249,57 @@ export function AddReminderStepperForm() {
 
   return (
     <>
-    <div className="w-full max-w-2xl mx-auto space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2 mb-6">
-            <div>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
-                    DIARY <span className="text-primary">SIGNAL</span>
-                </h1>
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-2">Industrial Observation Registry</p>
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-2 overflow-x-hidden px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:px-4 md:px-0 md:pb-4">
+        <div className="mb-2 px-0.5 sm:mb-3">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <h1 className="truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                        Diary <span className="text-primary">Signal</span>
+                    </h1>
+                </div>
+
+                <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 shrink-0 rounded-lg bg-muted/35 px-2.5 text-[10px] font-semibold shadow-none hover:bg-muted/50"
+                >
+                    <Link href="/expiry-watch">
+                        <List className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                        Show List
+                    </Link>
+                </Button>
             </div>
-            <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold border-primary/10 bg-background shadow-sm hover:bg-primary/5">
-                <Link href="/expiry-watch">
-                    <List className="mr-2 h-4 w-4 text-primary" /> Show List
-                </Link>
-            </Button>
+
+            <p className="mt-1 text-[10px] text-muted-foreground sm:text-[11px]">
+                Industrial Observation Registry
+            </p>
         </div>
 
-        <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden transition-all duration-500">
-            <CardHeader className="px-4 sm:px-6 pb-2 pt-4">
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" />
-                        <p className="text-[10px] font-black text-center text-muted-foreground flex items-center justify-center gap-2 uppercase tracking-widest">
+        <Card className="w-full min-w-0 overflow-visible rounded-none border-0 bg-transparent shadow-none">
+            <CardHeader className="px-0 pb-2 pt-1 sm:pb-3 sm:pt-2">
+                <div className="space-y-2">
+                    <div className="space-y-1.5">
+                        <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1" />
+                        <p className="flex items-center justify-center gap-1.5 text-center text-[9px] font-semibold text-muted-foreground">
                             {React.createElement(steps[currentStep].icon, { className: "h-3 w-3" })} Step {currentStep + 1} of {steps.length}: {steps[currentStep].name}
                         </p>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="px-4 sm:px-6 py-6">
-                <div className="space-y-6">
+            <CardContent className="min-w-0 px-0 py-2 sm:py-3">
+                <div className="space-y-3">
                     {/* STEP 1: BARCODE */}
-                    <div className={cn(currentStep !== 0 && "hidden", "space-y-6")}>
-                        <div className="space-y-3">
-                            <Label htmlFor="barcode" className="text-xs font-black uppercase text-muted-foreground tracking-widest ml-1">Identify Target Node</Label>
-                            <div className="flex gap-2 items-start">
-                                <div className="relative flex-grow group">
-                                    <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                    <div className={cn(currentStep !== 0 && "hidden", "space-y-3")}>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="barcode" className="ml-0.5 text-[11px] font-semibold text-foreground">Barcode</Label>
+                            <div className="flex min-w-0 items-start gap-2">
+                                <div className="group relative min-w-0 flex-1">
+                                    <Barcode className="pointer-events-none absolute left-3 top-[22px] h-4 w-4 -translate-y-1/2 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
                                     <Input 
                                         id="barcode"
                                         ref={barcodeInputRef}
-                                        placeholder="SCAN OR ENTER SKU..." 
+                                        placeholder="Scan or enter barcode" 
                                         value={barcode}
                                         onChange={(e) => setBarcode(e.target.value.toUpperCase())}
                                         onKeyDown={(e) => { 
@@ -296,68 +308,76 @@ export function AddReminderStepperForm() {
                                                 handleBarcodeLookup(barcode); 
                                             } 
                                         }} 
-                                        className="h-14 sm:h-12 pl-12 text-lg sm:text-base font-bold bg-muted/10 border-white/5 rounded-xl shadow-inner uppercase"
+                                        className="h-11 w-full min-w-0 rounded-xl border-0 bg-muted/40 pl-9 pr-3 text-base font-semibold uppercase shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
                                         autoFocus 
                                     />
                                 </div>
-                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-14 w-14 sm:h-12 sm:w-12 shrink-0 bg-primary/5 border-primary/20 rounded-xl">
-                                    <Scan className="h-6 w-6 text-primary" />
+                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-0 bg-primary/10 shadow-none hover:bg-primary/15">
+                                    <Scan className="h-5 w-5 text-primary" />
                                 </Button>
                             </div>
                         </div>
                         <Button 
                             onClick={() => handleBarcodeLookup(barcode)}
                             disabled={!barcode.trim() || isFetchingProduct}
-                            className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 bg-primary text-white border-none"
+                            className="h-11 w-full rounded-xl border-0 bg-primary text-xs font-semibold text-primary-foreground shadow-none"
                         >
                             {isFetchingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                            Initialize Protocol
+                            Continue
                         </Button>
                     </div>
 
                     {/* STEP 2: DETAILS */}
-                    <div className={cn(currentStep !== 1 && "hidden", "space-y-6")}>
+                    <div className={cn(currentStep !== 1 && "hidden", "space-y-3")}>
                         {productName && (
-                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 shadow-sm relative overflow-hidden">
-                                <div className="absolute inset-0 bg-tech-grid opacity-10" />
-                                <div className="relative z-10 flex items-center gap-4">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <ShieldCheck className="h-6 w-6 text-primary" />
+                            <div className="rounded-2xl bg-primary/[0.055] p-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                                        <ShieldCheck className="h-4 w-4" />
                                     </div>
-                                    <div className="min-w-0">
-                                        <h3 className="font-black text-sm uppercase text-slate-900 dark:text-white truncate">{productName}</h3>
-                                        <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{supplierName || 'Unknown Vendor'}</p>
-                                        <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 uppercase tracking-tighter">{barcode}</p>
+
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[9px] font-semibold text-primary/70">
+                                            Product found
+                                        </p>
+                                        <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                                            {productName}
+                                        </h3>
+                                        <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
+                                            <span className="truncate">{supplierName || 'Unknown Vendor'}</span>
+                                            <span className="opacity-40">•</span>
+                                            <span className="shrink-0 font-mono">{barcode}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Operating Personnel</Label>
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Staff member</Label>
                                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="h-14 sm:h-12 w-full justify-between font-bold text-base sm:text-sm bg-muted/10 border-white/5 rounded-xl shadow-inner px-4">
-                                            <div className="flex items-center gap-2 truncate">
+                                        <Button variant="ghost" role="combobox" className="h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0">
+                                            <div className="flex min-w-0 items-center gap-2 overflow-hidden">
                                                 <User className="h-4 w-4 text-primary/40 shrink-0" />
-                                                <span className="truncate">{staffName || "Select Personnel..."}</span>
+                                                <span className="truncate">{staffName || "Select staff member..."}</span>
                                             </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border-0 p-0 shadow-xl" align="start">
                                         <Command>
-                                            <CommandInput placeholder="Search registry..." />
+                                            <CommandInput placeholder="Search staff..." />
                                             <CommandList className="max-h-72">
-                                                <CommandEmpty className="py-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center">Zero registry matches</CommandEmpty>
+                                                <CommandEmpty className="py-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center">No staff members found</CommandEmpty>
                                                 <CommandGroup className="p-2">
                                                     {uniqueStaffNames.map(name => (
                                                         <CommandItem 
                                                             key={name} 
                                                             value={name} 
                                                             onSelect={() => { setStaffName(name); setStaffPopoverOpen(false); }}
-                                                            className="font-black uppercase text-[10px] h-11 px-4 cursor-pointer rounded-lg"
+                                                            className="h-10 cursor-pointer rounded-lg px-3 text-xs font-medium"
                                                         >
                                                             <Check className={cn("mr-3 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
                                                             {name}
@@ -370,33 +390,33 @@ export function AddReminderStepperForm() {
                                 </Popover>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Threshold Expiry Date</Label>
+                            <div className="space-y-1.5">
+                                <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Expiry date</Label>
                                 <Popover modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className={cn("h-14 sm:h-12 w-full justify-start font-bold text-base sm:text-sm bg-muted/10 border-white/5 rounded-xl shadow-inner px-4", !expiryDate && "text-muted-foreground/40")}>
+                                        <Button variant="ghost" className={cn("h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-3 text-left text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0", !expiryDate && "text-muted-foreground")}>
                                             <CalendarIcon className="mr-3 h-4 w-4 text-primary/40 shrink-0" />
-                                            {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Identify Date..."}
+                                            {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Select date..."}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="center">
+                                    <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] overflow-auto rounded-2xl border-0 p-0 shadow-2xl" align="center" sideOffset={6}>
                                         <Calendar mode="single" selected={expiryDate} onSelect={setExpiryDate} initialFocus captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2045, 11)} />
                                     </PopoverContent>
                                 </Popover>
                             </div>
                         </div>
 
-                        <div className="flex gap-3 pt-4">
-                            <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-14 sm:h-12 px-6 font-black uppercase text-[10px] tracking-widest opacity-40 hover:opacity-100">
+                        <div className="flex min-w-0 gap-2 pt-1">
+                            <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-11 shrink-0 rounded-xl bg-muted/30 px-3 text-xs font-semibold opacity-100 shadow-none hover:bg-muted/45">
                                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
                             <Button 
                                 onClick={onSubmit}
                                 disabled={isSubmitting || !staffName || !expiryDate}
-                                className="flex-1 h-14 sm:h-12 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 bg-primary text-white border-none"
+                                className="h-11 flex-1 rounded-xl border-0 bg-primary text-xs font-semibold text-primary-foreground shadow-none"
                             >
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SendHorizontal className="mr-2 h-4 w-4" />}
-                                Finalize Entry
+                                Log Entry
                             </Button>
                         </div>
                     </div>
@@ -406,18 +426,18 @@ export function AddReminderStepperForm() {
     </div>
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-black">
-            <DialogHeader className="p-8 pb-4 border-b border-white/5 bg-zinc-900/80 absolute top-0 left-0 right-0 z-20">
-                <DialogTitle className="text-xl font-black uppercase tracking-tighter text-white">Registry Visual Capture</DialogTitle>
-                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">Position SKU for instant identification</DialogDescription>
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border-0 bg-black p-0 shadow-2xl sm:rounded-3xl">
+            <DialogHeader className="absolute inset-x-0 top-0 z-20 bg-zinc-900/85 p-4 pb-2">
+                <DialogTitle className="text-base font-semibold text-white">Barcode Scanner</DialogTitle>
+                <DialogDescription className="text-[10px] text-zinc-400">Position the barcode inside the frame</DialogDescription>
             </DialogHeader>
-            <div className="relative scanner-container h-[450px] w-full">
+            <div className="relative scanner-container h-[62dvh] min-h-[300px] max-h-[450px] w-full">
                 <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
                 <div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /></div></div>
             </div>
-            <div className="p-1.5 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
+            <div className="relative z-20 flex justify-center bg-zinc-900/85 p-1.5">
                 <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
-                    Abort Scanning Protocol
+                    Close Scanner
                 </Button>
             </div>
         </DialogContent>

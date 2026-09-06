@@ -120,34 +120,34 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-xl sm:rounded-2xl border-0 sm:border shadow-none sm:shadow-xl bg-transparent sm:bg-card h-auto max-h-[90vh]">
-                <div className="p-4 sm:p-6 pb-2 shrink-0 bg-transparent sm:bg-muted/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <Eye className="h-5 w-5 text-primary" />
+            <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[380px] max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-[26px] border-0 bg-background p-0 shadow-2xl">
+                <div className="shrink-0 px-4 pb-2 pt-5 sm:px-5 sm:pt-6">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Eye className="h-4.5 w-4.5 text-primary" />
                         </div>
                         <div>
                             <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none mb-1">
                                 {currentStep === 0 ? "Identify SKU" : "Reminder Details"}
                             </DialogTitle>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Registry Step {currentStep + 1} of 2</p>
+                            <p className="mt-1 text-[10px] font-medium text-muted-foreground">Step {currentStep + 1} of 2</p>
                         </div>
                     </div>
                 </div>
 
-                <ScrollArea className="max-h-[60vh] sm:max-h-[70vh]">
-                    <div className="p-4 sm:p-8 space-y-6">
+                <ScrollArea className="max-h-[68dvh]">
+                    <div className="space-y-4 px-4 py-3 sm:px-5 sm:py-4">
                         
                         {/* STEP 1: BARCODE */}
                         {currentStep === 0 && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-200">
                                 <div className="space-y-3">
                                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em] ml-1">Asset Identity Node</Label>
-                                    <div className="relative group">
-                                        <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                                    <div className="group relative">
+                                        <Barcode className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
                                         <Input 
                                             ref={barcodeInputRef}
-                                            placeholder="SCAN OR ENTER SKU..."
+                                            placeholder="Scan or enter barcode"
                                             value={barcode}
                                             onChange={(e) => setBarcode(e.target.value.toUpperCase())}
                                             onKeyDown={(e) => {
@@ -156,35 +156,35 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                                     handleBarcodeLookup(barcode);
                                                 }
                                             }}
-                                            className="pl-12 h-14 rounded-xl bg-muted/10 border-white/5 font-black uppercase tracking-tight text-lg shadow-inner"
+                                            className="h-11 w-full rounded-xl border-0 bg-muted/40 pl-9 pr-10 text-base font-semibold uppercase shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
                                         />
-                                        {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
+                                        {isSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />}
                                     </div>
                                 </div>
                                 <Button 
                                     onClick={() => handleBarcodeLookup(barcode)}
                                     disabled={!barcode.trim() || isSearching}
-                                    className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white"
+                                    className="h-11 w-full rounded-xl border-0 bg-primary text-xs font-semibold text-primary-foreground shadow-none"
                                 >
-                                    Begin Identification <ArrowRight className="ml-2 h-4 w-4" />
+                                    Continue <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </div>
                         )}
 
                         {/* STEP 2: STAFF & DATE */}
                         {currentStep === 1 && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-200">
                                 {productName && (
-                                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 shadow-sm relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-tech-grid opacity-10" />
-                                        <div className="relative z-10 flex items-center gap-4">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                                    <div className="rounded-2xl bg-primary/[0.055] p-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                                                <ShieldCheck className="h-4 w-4" />
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[8px] font-black uppercase text-primary/60 tracking-widest leading-none mb-1">Authenticated Target</p>
-                                                <p className="text-sm font-black uppercase text-slate-900 dark:text-white truncate">{productName}</p>
-                                                <p className="text-[10px] font-mono font-bold text-muted-foreground uppercase opacity-60">{barcode}</p>
+
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[9px] font-semibold text-primary/70">Product found</p>
+                                                <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{productName}</p>
+                                                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{barcode}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -192,26 +192,26 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
 
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em] ml-1">Operating Personnel</Label>
+                                        <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Staff member</Label>
                                         <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                                             <PopoverTrigger asChild>
                                                 <Button 
-                                                    variant="outline" 
+                                                    variant="ghost" 
                                                     role="combobox" 
-                                                    className="w-full h-14 justify-between font-black uppercase tracking-tight bg-muted/10 border-white/5 rounded-xl shadow-inner px-4 text-sm"
+                                                    className="h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0"
                                                 >
-                                                    <div className="flex items-center gap-3 truncate">
-                                                        <User className="h-5 w-5 text-primary/40 shrink-0" />
-                                                        <span className="truncate">{staffName || "Select Identity..."}</span>
+                                                    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                                                        <User className="h-4 w-4 shrink-0 text-primary/50" />
+                                                        <span className="truncate">{staffName || "Select staff member..."}</span>
                                                     </div>
                                                     <ChevronsUpDown className="h-4 w-4 opacity-20 shrink-0" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-white/10" align="start">
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border-0 p-0 shadow-xl" align="start">
                                                 <Command>
-                                                    <CommandInput placeholder="Search registry..." className="h-12" />
+                                                    <CommandInput placeholder="Search staff..." className="h-12" />
                                                     <CommandList className="max-h-72">
-                                                        <CommandEmpty className="py-8 text-[10px] font-black uppercase text-muted-foreground/40 text-center tracking-[0.2em]">Zero Node Matches</CommandEmpty>
+                                                        <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">No staff members found</CommandEmpty>
                                                         <CommandGroup className="p-2">
                                                             {uniqueStaffNames.map(name => (
                                                                 <CommandItem 
@@ -221,7 +221,7 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                                                         setStaffName(name);
                                                                         setStaffPopoverOpen(false);
                                                                     }}
-                                                                    className="font-black uppercase text-[10px] h-12 cursor-pointer rounded-xl px-4"
+                                                                    className="h-10 cursor-pointer rounded-lg px-3 text-xs font-medium"
                                                                 >
                                                                     <Check className={cn("mr-3 h-4 w-4", staffName === name ? "opacity-100" : "opacity-0")} />
                                                                     {name}
@@ -239,17 +239,17 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                         <Popover modal={true}>
                                             <PopoverTrigger asChild>
                                                 <Button 
-                                                    variant="outline" 
+                                                    variant="ghost" 
                                                     className={cn(
-                                                        "w-full h-14 justify-start font-black uppercase tracking-tight bg-muted/10 border-white/5 rounded-xl shadow-inner px-4 text-sm",
+                                                        "h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-3 text-left text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0",
                                                         !expiryDate && "text-muted-foreground/40"
                                                     )}
                                                 >
-                                                    <CalendarIcon className="mr-3 h-5 w-5 text-primary/40 shrink-0" />
-                                                    {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Identify Date..."}
+                                                    <CalendarIcon className="mr-2.5 h-4 w-4 shrink-0 text-primary/50" />
+                                                    {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Select date..."}
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-2xl border-white/10" align="center">
+                                            <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] overflow-auto rounded-2xl border-0 p-0 shadow-2xl" align="center" sideOffset={6}>
                                                 <Calendar 
                                                     mode="single" 
                                                     selected={expiryDate} 
@@ -264,17 +264,17 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 pt-4">
-                                    <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-14 px-6 font-black uppercase text-[10px] tracking-widest opacity-40 hover:opacity-100">
+                                <div className="flex min-w-0 gap-2 pt-1">
+                                    <Button variant="ghost" onClick={() => setCurrentStep(0)} className="h-11 shrink-0 rounded-xl bg-muted/30 px-3 text-xs font-semibold opacity-100 shadow-none hover:bg-muted/45">
                                         <ArrowLeft className="mr-2 h-4 w-4" /> Back
                                     </Button>
                                     <Button 
                                         onClick={handleSave} 
                                         disabled={isSaving || !staffName || !expiryDate} 
-                                        className="flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white"
+                                        className="h-11 flex-1 rounded-xl border-0 bg-primary text-xs font-semibold text-primary-foreground shadow-none"
                                     >
                                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                        Initialize Signal
+                                        Log Entry
                                     </Button>
                                 </div>
                             </div>
@@ -282,10 +282,10 @@ export function AddReminderDialog({ isOpen, onOpenChange }: AddReminderDialogPro
                     </div>
                 </ScrollArea>
 
-                <div className="p-2 bg-muted/5 sm:bg-muted/10 border-t shrink-0 flex justify-center">
+                <div className="flex shrink-0 justify-center px-4 pb-3 pt-1">
                     <DialogClose asChild>
-                        <Button variant="ghost" className="text-[8px] font-black uppercase tracking-[0.5em] opacity-20 hover:opacity-100 transition-all">
-                            Terminate Protocol
+                        <Button variant="ghost" className="h-8 rounded-lg px-3 text-[10px] font-medium text-muted-foreground shadow-none hover:bg-muted/40">
+                            Close
                         </Button>
                     </DialogClose>
                 </div>

@@ -157,83 +157,83 @@ export function ExpiryWatchClient() {
     }, [isScannerDialogOpen, onScanSuccess]);
 
     return (
-        <div className="space-y-6 sm:space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="space-y-4 pb-[calc(5rem+env(safe-area-inset-bottom))] animate-in fade-in duration-300 sm:space-y-5 sm:pb-8">
             {/* STATS GRID */}
-            <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="bg-primary/5 border-primary/10 shadow-none rounded-xl">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-lg"><History className="h-5 w-5 text-primary" /></div>
+            <div className="hidden grid-cols-3 gap-3 sm:grid">
+                <Card className="rounded-2xl border-0 bg-primary/[0.055] shadow-none">
+                    <CardContent className="flex items-center gap-3 p-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10"><History className="h-4 w-4 text-primary" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Entries</p>
-                            <p className="text-3xl font-black text-slate-900 dark:text-white leading-none mt-1">{stats.total}</p>
+                            <p className="text-[10px] font-medium text-primary/70">Active entries</p>
+                            <p className="mt-0.5 text-2xl font-bold leading-none text-foreground">{stats.total}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className={cn("border-none shadow-none rounded-xl", stats.critical > 0 ? "bg-orange-500/10" : "bg-muted/30")}>
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className={cn("p-3 rounded-lg", stats.critical > 0 ? "bg-orange-500/20 text-orange-600" : "bg-muted text-muted-foreground")}>
+                <Card className={cn("rounded-2xl border-0 shadow-none", stats.critical > 0 ? "bg-orange-500/10" : "bg-muted/35")}>
+                    <CardContent className="flex items-center gap-3 p-4">
+                        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", stats.critical > 0 ? "bg-orange-500/20 text-orange-600" : "bg-muted text-muted-foreground")}>
                             <Bell className={cn("h-5 w-5", stats.critical > 0 && "animate-pulse")} />
                         </div>
                         <div>
-                            <p className={cn("text-[10px] font-black uppercase tracking-widest", stats.critical > 0 ? "text-orange-600/60" : "text-muted-foreground/60")}>Critical Threshold</p>
-                            <p className={cn("text-3xl font-black leading-none mt-1", stats.critical > 0 ? "text-orange-600" : "text-muted-foreground/40")}>{stats.critical}</p>
+                            <p className={cn("text-[10px] font-medium", stats.critical > 0 ? "text-orange-600/70" : "text-muted-foreground")}>Critical</p>
+                            <p className={cn("mt-0.5 text-2xl font-bold leading-none", stats.critical > 0 ? "text-orange-600" : "text-muted-foreground/50")}>{stats.critical}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-muted/30 border-none shadow-none rounded-xl">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="bg-background/50 p-3 rounded-lg"><User className="h-5 w-5 text-muted-foreground" /></div>
+                <Card className="rounded-2xl border-0 bg-muted/35 shadow-none">
+                    <CardContent className="flex items-center gap-3 p-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60"><User className="h-4 w-4 text-muted-foreground" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Operators</p>
-                            <p className="text-3xl font-black text-slate-900 dark:text-white leading-none mt-1">{stats.personnel}</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Operators</p>
+                            <p className="mt-0.5 text-2xl font-bold leading-none text-foreground">{stats.personnel}</p>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* COMMAND BAR */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-                <div className="flex-grow flex gap-2">
-                    <div className="relative flex-grow group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+            <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 gap-2">
+                    <div className="group relative min-w-0 flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
                         <Input 
-                            placeholder="IDENTIFY REMINDER..."
+                            placeholder="Search reminders..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-12 sm:h-14 pl-11 rounded-xl bg-muted/10 sm:bg-muted/20 border-white/5 font-black uppercase tracking-tight text-sm sm:text-base shadow-inner"
+                            className="h-11 w-full rounded-xl border-0 bg-muted/40 pl-9 pr-3 text-base font-medium shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
                         />
                     </div>
                     <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsScannerDialogOpen(true)} 
-                        className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
+                        className="h-11 w-11 shrink-0 rounded-xl bg-muted/40 text-muted-foreground shadow-none hover:bg-primary/10 hover:text-primary"
                     >
-                        <Scan className="h-6 w-6" />
+                        <Scan className="h-5 w-5" />
                     </Button>
                 </div>
                 <Button 
                     asChild
-                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none"
+                    className="h-11 shrink-0 rounded-xl border-0 bg-primary px-3 text-[10px] font-semibold text-primary-foreground shadow-none sm:px-4 sm:text-xs"
                 >
                     <Link href="/expiry-watch/add">
-                        <ClipboardPlus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Log New Entry
+                        <ClipboardPlus className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden min-[390px]:inline">Log New Entry</span><span className="min-[390px]:hidden">New</span>
                     </Link>
                 </Button>
             </div>
 
             {/* FEED */}
-            <div className="space-y-4">
+            <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                    <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Active Reminders</h3>
+                    <h3 className="text-[11px] font-semibold text-muted-foreground">Active reminders</h3>
                     {searchTerm && (
-                        <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-7 text-[8px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5">
+                        <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="h-7 rounded-lg px-2 text-[10px] font-medium text-destructive hover:bg-destructive/5">
                             <FilterX className="mr-1 h-3 w-3" /> Clear
                         </Button>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                     {filteredReminders.length > 0 ? filteredReminders.map(reminder => {
                         const parsedDate = parseISO(reminder.expiryDate);
                         const isDateValid = isValid(parsedDate);
@@ -242,40 +242,40 @@ export function ExpiryWatchClient() {
                         
                         return (
                             <Card key={reminder.id} className={cn(
-                                "group border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-xl overflow-hidden transition-all duration-500",
-                                isCritical ? "border-orange-500/20" : "hover:border-primary/20 shadow-none"
+                                "group overflow-hidden rounded-2xl border-0 bg-muted/25 shadow-none transition-colors",
+                                isCritical ? "bg-orange-500/[0.07]" : "hover:bg-muted/40"
                             )}>
                                 <CardContent className="p-0">
-                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center p-4 sm:p-6 gap-4 sm:gap-6">
-                                        <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
+                                    <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+                                        <div className="flex min-w-0 flex-1 items-center gap-3">
                                             <div className={cn(
-                                                "h-12 w-12 sm:h-14 sm:w-14 rounded-lg flex items-center justify-center shrink-0 shadow-sm border transition-transform duration-700",
-                                                isCritical ? "bg-orange-500/10 border-orange-500/20 text-orange-600" : "bg-primary/5 border-primary/10 text-primary"
+                                                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0",
+                                                isCritical ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary"
                                             )}>
-                                                {isCritical ? <ShieldAlert className="h-6 w-6 sm:h-7 sm:w-7" /> : <Box className="h-6 w-6 sm:h-7 sm:w-7" />}
+                                                {isCritical ? <ShieldAlert className="h-4.5 w-4.5" /> : <Box className="h-4.5 w-4.5" />}
                                             </div>
                                             <div className="min-w-0 space-y-1">
-                                                <h4 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase truncate">{reminder.productName}</h4>
+                                                <h4 className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">{reminder.productName}</h4>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-[8px] sm:text-[10px] font-mono font-black text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded tracking-tighter uppercase">{reminder.barcode}</span>
-                                                    <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase text-muted-foreground/30">
+                                                    <span className="rounded-md bg-background/60 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{reminder.barcode}</span>
+                                                    <div className="hidden items-center gap-1.5 text-[9px] font-medium text-muted-foreground/60 sm:flex">
                                                         <User className="h-3 w-3" /> {reminder.staffName || 'Personnel'}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 shrink-0 bg-muted/10 sm:bg-transparent p-3 sm:p-0 rounded-lg sm:rounded-none">
+                                        <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-background/45 p-2.5 sm:bg-transparent sm:p-0">
                                             <div className="flex flex-col items-start sm:items-end">
-                                                <p className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground/30 tracking-widest mb-1">Expiry Date</p>
+                                                <p className="mb-1 text-[9px] font-medium text-muted-foreground">Expiry date</p>
                                                 <div className={cn(
-                                                    "flex items-center gap-1.5 sm:gap-2 font-black text-sm sm:text-lg tabular-nums leading-none tracking-tighter",
+                                                    "flex items-center gap-1.5 text-sm font-semibold tabular-nums leading-none sm:text-base",
                                                     isCritical ? "text-orange-600" : "text-slate-900 dark:text-white"
                                                 )}>
-                                                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 opacity-30" />
+                                                    <Calendar className="h-3.5 w-3.5 opacity-40" />
                                                     {isDateValid ? format(parsedDate, 'dd MMM yyyy') : 'Registry Error'}
                                                 </div>
-                                                <p className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1", isCritical ? "text-orange-500 animate-pulse" : "text-primary/60")}>
+                                                <p className={cn("mt-1 text-[9px] font-medium", isCritical ? "text-orange-500" : "text-primary/70")}>
                                                     {!isDateValid ? "Invalid Data" : daysLeft > 0 ? `${daysLeft} Days Left` : "Overdue Threshold"}
                                                 </p>
                                             </div>
@@ -284,10 +284,10 @@ export function ExpiryWatchClient() {
                                                 onClick={() => handleResolve(reminder.id, reminder.productName)}
                                                 disabled={isResolving === reminder.id}
                                                 className={cn(
-                                                    "h-10 sm:h-14 px-4 sm:px-8 rounded-lg font-black uppercase tracking-widest text-[8px] sm:text-[10px] transition-all",
+                                                    "h-9 rounded-lg px-3 text-[10px] font-semibold shadow-none transition-colors sm:h-10 sm:px-4",
                                                     isCritical 
-                                                        ? "bg-orange-500 hover:bg-orange-600 text-white shadow-lg" 
-                                                        : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
+                                                        ? "bg-orange-500 text-white hover:bg-orange-600" 
+                                                        : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
                                                 )}
                                             >
                                                 {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
@@ -299,12 +299,12 @@ export function ExpiryWatchClient() {
                             </Card>
                         );
                     }) : (
-                        <div className="py-24 flex flex-col items-center justify-center text-center opacity-20 grayscale">
-                            <div className="p-6 bg-muted/20 rounded-xl mb-6 border-2 border-dashed border-white/5">
-                                <History className="h-12 w-12" strokeWidth={1} />
+                        <div className="flex flex-col items-center justify-center py-14 text-center text-muted-foreground/50">
+                            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40">
+                                <History className="h-5 w-5" strokeWidth={1.5} />
                             </div>
-                            <h4 className="text-xl font-black uppercase tracking-tighter">Diary Nominal</h4>
-                            <p className="text-[10px] font-medium mt-2 max-w-[200px] leading-relaxed uppercase tracking-widest">No active reminders found in the registry core.</p>
+                            <h4 className="text-sm font-semibold text-foreground">No active reminders</h4>
+                            <p className="mt-1 max-w-[220px] text-xs leading-relaxed">New diary reminders will appear here.</p>
                         </div>
                     )}
                 </div>
@@ -312,28 +312,26 @@ export function ExpiryWatchClient() {
 
             {/* OPTICAL SEARCH TERMINAL */}
             <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-                <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-2xl border-none bg-black">
-                    <DialogHeader className="p-6 pb-2 border-b border-white/5 bg-zinc-900/80 absolute top-0 left-0 right-0 z-20">
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle>
-                        <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-primary">Align SKU for Diary Filter</DialogDescription>
+                <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border-0 bg-black p-0 shadow-2xl sm:rounded-3xl">
+                    <DialogHeader className="absolute inset-x-0 top-0 z-20 bg-zinc-900/85 p-4 pb-2">
+                        <DialogTitle className="text-base font-semibold text-white">Barcode Scanner</DialogTitle>
+                        <DialogDescription className="text-[10px] text-zinc-400">Scan a barcode to filter diary reminders</DialogDescription>
                     </DialogHeader>
-                    <div className="relative scanner-container h-[400px] w-full">
+                    <div className="relative scanner-container h-[58dvh] min-h-[300px] max-h-[420px] w-full">
                         <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
                         <div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /></div></div>
                     </div>
-                    <div className="p-2 bg-zinc-900/80 border-t border-white/5 relative z-20 flex justify-center">
+                    <div className="relative z-20 flex justify-center bg-zinc-900/85 p-1.5">
                         <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10">
-                            Abort Protocol
+                            Close Scanner
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
             
-            <div className="pt-20 text-center">
-                <p className="text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6">
-                    <span className="w-8 h-px bg-current opacity-20" />
-                    SHEETSYNC DIARY REMINDER CORE
-                    <span className="w-8 h-px bg-current opacity-20" />
+            <div className="hidden pt-8 text-center sm:block">
+                <p className="text-[10px] text-muted-foreground/40">
+                    SheetSync Diary
                 </p>
             </div>
         </div>
