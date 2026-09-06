@@ -168,7 +168,36 @@ export function InventoryListClient() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // FUZZY SEARCH ENGINE: Optimized strictly for Product Name per industrial directive
+  // PARSE DASHBOARD REDIRECTS
+  useEffect(() => {
+    const filterType = searchParams.get('filterType');
+    if (!filterType) {
+      setActiveDashboardFilter(null);
+      return;
+    }
+
+    if (filterType === 'damaged') {
+      setActiveDashboardFilter({ type: 'damaged' });
+    } else if (filterType === 'expiringSoon') {
+      setActiveDashboardFilter({ type: 'expiringSoon' });
+    } else if (filterType === 'specificSupplier') {
+        const suppliersStr = searchParams.get('suppliers');
+        if (suppliersStr) {
+            setSelectedSupplier(decodeURIComponent(suppliersStr));
+            setActiveDashboardFilter(null);
+        }
+    } else if (filterType === 'otherSuppliers') {
+        const suppliersStr = searchParams.get('suppliers');
+        if (suppliersStr) {
+            setActiveDashboardFilter({ 
+              type: 'otherSuppliers', 
+              suppliers: decodeURIComponent(suppliersStr).split(',') 
+            });
+        }
+    }
+  }, [searchParams]);
+
+  // FUZZY SEARCH ENGINE
   const fuse = useMemo(() => new Fuse(cachedItems, {
     keys: ['productName'],
     threshold: 0.4,
@@ -184,7 +213,6 @@ export function InventoryListClient() {
         const term = debouncedSearch.trim();
         const normalizedTerm = term.replace(/^0+/, '');
         
-        // 1. Check for exact barcode match first (Priority)
         const exactBarcodeItems = items.filter(item => {
             const itemBc = item.barcode.trim();
             return itemBc === term || itemBc.replace(/^0+/, '') === normalizedTerm;
@@ -193,7 +221,6 @@ export function InventoryListClient() {
         if (exactBarcodeItems.length > 0) {
             items = exactBarcodeItems;
         } else {
-            // 2. Fallback to fuzzy product name search
             items = fuse.search(term).map(r => r.item);
         }
     }
@@ -276,7 +303,6 @@ export function InventoryListClient() {
           if (item.itemType !== 'Expiry' || !item.expiryDate) return false;
           try {
             const expiry = startOfDay(parseISO(item.expiryDate));
-            // TURBO EXPIRE: Adjust filter to include today as expired
             return isValid(expiry) && (isBefore(expiry, today) || isSameDay(expiry, today));
           } catch { return false; }
         }
@@ -358,28 +384,43 @@ export function InventoryListClient() {
 
   const clearFilters = () => {
     setSearchTerm(''); setSelectedSupplier(''); setSelectedLocation(''); setSelectedDateRange(undefined); setIsDatePopoverOpen(false); setTypeFilter('all');
-    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+    if (activeDashboardFilter || searchParams.get('filterType')) {
+       setActiveDashboardFilter(null); 
+       router.replace('/inventory'); 
+    }
   }
 
   const handleSupplierChange = (value: string) => {
     setSelectedSupplier(value === ALL_SUPPLIERS_VALUE ? '' : value);
-    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+    if (activeDashboardFilter || searchParams.get('filterType')) { 
+      setActiveDashboardFilter(null); 
+      router.replace('/inventory'); 
+    }
   };
 
   const handleLocationChange = (value: string) => {
     setSelectedLocation(value === ALL_LOCATIONS_VALUE ? '' : value);
-    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+    if (activeDashboardFilter || searchParams.get('filterType')) { 
+      setActiveDashboardFilter(null); 
+      router.replace('/inventory'); 
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    if(activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+    if(activeDashboardFilter || searchParams.get('filterType')) { 
+      setActiveDashboardFilter(null); 
+      router.replace('/inventory'); 
+    }
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setSelectedDateRange(range);
     if (range?.from && range?.to) setIsDatePopoverOpen(false);
-    if (activeDashboardFilter) { setActiveDashboardFilter(null); router.replace('/inventory'); }
+    if (activeDashboardFilter || searchParams.get('filterType')) { 
+      setActiveDashboardFilter(null); 
+      router.replace('/inventory'); 
+    }
   }
 
   const handleOpenGroupDetails = (group: GroupedInventoryItem) => { setSelectedGroup(group); setIsGroupDetailsOpen(true); };
@@ -419,19 +460,11 @@ export function InventoryListClient() {
   const onScanSuccess = useCallback((decodedText: string) => {
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
-
     playProfessionalBeep();
     setSearchTerm(decodedText);
     setIsScannerDialogOpen(false);
-
-    toast({
-        title: "Barcode Identified",
-        description: `Filtering records for: ${decodedText}`,
-    });
-
-    setTimeout(() => {
-        scanProcessedRef.current = false;
-    }, 1000);
+    toast({ title: "Barcode Identified", description: `Filtering records for: ${decodedText}` });
+    setTimeout(() => { scanProcessedRef.current = false; }, 1000);
   }, [toast]);
 
   useEffect(() => {
@@ -451,7 +484,6 @@ export function InventoryListClient() {
           setIsScannerDialogOpen(false);
         });
       }, 800);
-
       return () => {
         clearTimeout(timer);
         if (html5QrcodeScannerRef.current) {
@@ -487,28 +519,13 @@ export function InventoryListClient() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input type="search" placeholder="Search records by name, barcode or personnel..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full h-11" />
                 </div>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setIsScannerDialogOpen(true)} 
-                    className="h-11 w-11 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
-                >
-                    <Scan className="h-5 w-5" />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsScannerDialogOpen(true)} className="h-11 w-11 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"><Scan className="h-5 w-5" /></Button>
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
               <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={supplierComboboxOpen}
-                    className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal"
-                  >
-                    <div className="flex items-center truncate">
-                      <Building className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                      {selectedSupplier ? selectedSupplier : "All Suppliers"}
-                    </div>
+                  <Button variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal">
+                    <div className="flex items-center truncate"><Building className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />{selectedSupplier ? selectedSupplier : "All Suppliers"}</div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -518,39 +535,8 @@ export function InventoryListClient() {
                     <CommandList>
                       <CommandEmpty>No supplier found.</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem
-                          value={ALL_SUPPLIERS_VALUE}
-                          onSelect={() => {
-                            handleSupplierChange(ALL_SUPPLIERS_VALUE);
-                            setSupplierComboboxOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              !selectedSupplier ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          All Suppliers
-                        </CommandItem>
-                        {suppliers.map((s) => (
-                          <CommandItem
-                            key={s.id}
-                            value={s.name}
-                            onSelect={() => {
-                              handleSupplierChange(s.name);
-                              setSupplierComboboxOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedSupplier === s.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {s.name}
-                          </CommandItem>
-                        ))}
+                        <CommandItem value={ALL_SUPPLIERS_VALUE} onSelect={() => { handleSupplierChange(ALL_SUPPLIERS_VALUE); setSupplierComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", !selectedSupplier ? "opacity-100" : "opacity-0")} />All Suppliers</CommandItem>
+                        {suppliers.map((s) => (<CommandItem key={s.id} value={s.name} onSelect={() => { handleSupplierChange(s.name); setSupplierComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", selectedSupplier === s.name ? "opacity-100" : "opacity-0")} />{s.name}</CommandItem>))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
@@ -559,16 +545,8 @@ export function InventoryListClient() {
 
               <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={locationComboboxOpen}
-                    className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal"
-                  >
-                    <div className="flex items-center truncate">
-                      <MapPin className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                      {selectedLocation ? selectedLocation : "All Locations"}
-                    </div>
+                  <Button variant="outline" role="combobox" aria-expanded={locationComboboxOpen} className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal">
+                    <div className="flex items-center truncate"><MapPin className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />{selectedLocation ? selectedLocation : "All Locations"}</div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -578,39 +556,8 @@ export function InventoryListClient() {
                     <CommandList>
                       <CommandEmpty>No location found.</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem
-                          value={ALL_LOCATIONS_VALUE}
-                          onSelect={() => {
-                            handleLocationChange(ALL_LOCATIONS_VALUE);
-                            setLocationComboboxOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              !selectedLocation ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          All Locations
-                        </CommandItem>
-                        {uniqueLocations.map((loc) => (
-                          <CommandItem
-                            key={loc}
-                            value={loc}
-                            onSelect={() => {
-                              handleLocationChange(loc);
-                              setLocationComboboxOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedLocation === loc ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {loc}
-                          </CommandItem>
-                        ))}
+                        <CommandItem value={ALL_LOCATIONS_VALUE} onSelect={() => { handleLocationChange(ALL_LOCATIONS_VALUE); setLocationComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", !selectedLocation ? "opacity-100" : "opacity-0")} />All Locations</CommandItem>
+                        {uniqueLocations.map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { handleLocationChange(loc); setLocationComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", selectedLocation === loc ? "opacity-100" : "opacity-0")} />{loc}</CommandItem>))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
@@ -618,42 +565,20 @@ export function InventoryListClient() {
               </Popover>
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-32 flex-1">
-                 <div className="flex items-center"><Tag className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Type" /></div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="expiry">Expiry</SelectItem>
-                  <SelectItem value="damage">Damage</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
+                <SelectTrigger className="w-full sm:w-auto sm:min-w-32 flex-1"><div className="flex items-center"><Tag className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Type" /></div></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="expiry">Expiry</SelectItem><SelectItem value="damage">Damage</SelectItem><SelectItem value="expired">Expired</SelectItem></SelectContent>
               </Select>
 
               <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen} modal={true}>
                 <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-40 flex-1", !selectedDateRange && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Range</span>}
-                  </Button>
+                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-40 flex-1", !selectedDateRange && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Range</span>}</Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="range" selected={selectedDateRange} onSelect={handleDateRangeSelect} numberOfMonths={1} />
-                </PopoverContent>
+                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="range" selected={selectedDateRange} onSelect={handleDateRangeSelect} numberOfMonths={1} /></PopoverContent>
               </Popover>
 
               <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                 {(searchTerm || selectedSupplier || selectedLocation || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (
-                    <Button variant="ghost" onClick={clearFilters} className="flex-grow sm:flex-grow-0"><FilterX className="mr-2 h-4 w-4" /> Clear</Button>
-                  )}
-                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><FileText className="mr-2 h-4 w-4" /> Export <ChevronDown className="ml-1 h-3 w-3" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>Portrait</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>Landscape</DropdownMenuItem>
-                      </DropdownMenuContent>
-                   </DropdownMenu>
+                 {(searchTerm || selectedSupplier || selectedLocation || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (<Button variant="ghost" onClick={clearFilters} className="flex-grow sm:flex-grow-0"><FilterX className="mr-2 h-4 w-4" /> Clear</Button>)}
+                   <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><FileText className="mr-2 h-4 w-4" /> Export <ChevronDown className="ml-1 h-3 w-3" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleExportPDF('portrait')}>Portrait</DropdownMenuItem><DropdownMenuItem onClick={() => handleExportPDF('landscape')}>Landscape</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                    <Button onClick={() => window.print()} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><Printer className="mr-2 h-4 w-4" /> Print</Button>
               </div>
             </div>
@@ -668,20 +593,8 @@ export function InventoryListClient() {
             <Table>
                 <TableHeader className="bg-muted/50">
                 <TableRow>
-                    {role === 'admin' && isMultiSelectEnabled && (
-                    <TableHead className="w-12 text-center noprint">
-                        <Checkbox checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length} onCheckedChange={(checked) => checked ? setSelectedBarcodes(new Set(groupedItems.map(g => g.mainItem.barcode))) : setSelectedBarcodes(new Set())} />
-                    </TableHead>
-                    )}
-                    <TableHead>Product Name</TableHead>
-                    <TableHead>Barcode</TableHead>
-                    <TableHead className="text-right">In Stock</TableHead>
-                    <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right font-semibold">Total Value</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Expiry</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="w-[160px] text-right noprint">Last Logged</TableHead>
+                    {role === 'admin' && isMultiSelectEnabled && (<TableHead className="w-12 text-center noprint"><Checkbox checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length} onCheckedChange={(checked) => checked ? setSelectedBarcodes(new Set(groupedItems.map(g => g.mainItem.barcode))) : setSelectedBarcodes(new Set())} /></TableHead>)}
+                    <TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead className="text-right">Unit Cost</TableHead><TableHead className="text-right font-semibold">Total Value</TableHead><TableHead>Location</TableHead><TableHead>Expiry</TableHead><TableHead>Type</TableHead><TableHead className="w-[160px] text-right noprint">Last Logged</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -692,177 +605,38 @@ export function InventoryListClient() {
                     const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
                     const hasMultipleLocs = new Set(individualItems.map(i => i.location)).size > 1;
                     const hasMultipleTypes = new Set(individualItems.map(i => i.itemType)).size > 1;
-
                     return (
                     <TableRow key={`row-${mainItem.barcode}`} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
-                        {role === 'admin' && isMultiSelectEnabled && (
-                        <TableCell className="text-center noprint">
-                            <Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} />
-                        </TableCell>
-                        )}
-                        <TableCell className="py-2.5">
-                            <div className="flex flex-col min-w-0 px-2">
-                                <span className="font-bold text-sm truncate leading-none mb-1">
-                                    {mainItem.productName}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate">
-                                    {mainItem.supplierName || 'No Registered Supplier'}
-                                </span>
-                            </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-muted-foreground">
-                            {mainItem.barcode}
-                        </TableCell>
+                        {role === 'admin' && isMultiSelectEnabled && (<TableCell className="text-center noprint"><Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} /></TableCell>)}
+                        <TableCell className="py-2.5"><div className="flex flex-col min-w-0 px-2"><span className="font-bold text-sm truncate leading-none mb-1">{mainItem.productName}</span><span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate">{mainItem.supplierName || 'No Registered Supplier'}</span></div></TableCell>
+                        <TableCell className="font-mono text-[11px] text-muted-foreground">{mainItem.barcode}</TableCell>
                         <TableCell className="text-right font-black text-primary/80">{totalQuantity}</TableCell>
                         <TableCell className="text-right text-xs">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-right font-semibold">{cost ? `QAR ${(cost * totalQuantity).toFixed(2)}` : 'N/A'}</TableCell>
                         <TableCell className="text-xs">{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
-                        <TableCell className={cn("text-xs", mainItem.expiryDate && (isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) || isSameDay(parseISO(mainItem.expiryDate), new Date())) ? "text-destructive font-bold" : "")}>
-                            {hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}
-                        </TableCell>
-                        <TableCell className={cn("text-xs font-bold", !hasMultipleTypes && mainItem.itemType === 'Damage' ? "text-orange-500" : "text-primary/60")}>
-                            {hasMultipleTypes ? (
-                                <Badge variant="outline" className="text-[8px] font-black uppercase bg-muted/30">Multiple</Badge>
-                            ) : mainItem.itemType}
-                        </TableCell>
-                        <TableCell className="text-right noprint">
-                           <div className="relative h-8 flex items-center justify-end">
-                                <span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">
-                                    {mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}
-                                </span>
-
-                                <div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">
-                                    {individualItems.length === 1 ? (
-                                        <>
-                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>
-                                            {role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8 text-muted-foreground hover:text-primary"><Undo2 className="h-4 w-4" /></Button>}
-                                            {role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>}
-                                        </>
-                                    ) : (
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
-                                            <Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs
-                                        </Button>
-                                    )}
-                                </div>
-                           </div>
-                        </TableCell>
+                        <TableCell className={cn("text-xs", mainItem.expiryDate && (isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) || isSameDay(parseISO(mainItem.expiryDate), new Date())) ? "text-destructive font-bold" : "")}>{hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}</TableCell>
+                        <TableCell className={cn("text-xs font-bold", !hasMultipleTypes && mainItem.itemType === 'Damage' ? "text-orange-500" : "text-primary/60")}>{hasMultipleTypes ? (<Badge variant="outline" className="text-[8px] font-black uppercase bg-muted/30">Multiple</Badge>) : mainItem.itemType}</TableCell>
+                        <TableCell className="text-right noprint"><div className="relative h-8 flex items-center justify-end"><span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span><div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">{individualItems.length === 1 ? (<><Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>{role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8 text-muted-foreground hover:text-primary"><Undo2 className="h-4 w-4" /></Button>}{role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>}</>) : (<Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"><Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs</Button>)}</div></div></TableCell>
                     </TableRow>
                     );
                 })}
                 </TableBody>
             </Table>
             </Card>
-
-            <div className="grid grid-cols-1 gap-4 md:hidden">
-                {groupedItems.map((group) => (
-                    <InventoryItemCardMobile
-                        key={`card-${group.mainItem.barcode}`}
-                        item={group.mainItem}
-                        product={productsByBarcode.get(group.mainItem.barcode)}
-                        totalQuantity={group.totalQuantity}
-                        individualItemCount={group.individualItems.length}
-                        onDetails={group.individualItems.length === 1 ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)}
-                        onViewImage={() => handleOpenDetailsDialog(group.mainItem, true)}
-                        onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined}
-                        onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined}
-                        isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)}
-                        onSelect={isMultiSelectEnabled && role ==='admin' ? () => { const n = new Set(selectedBarcodes); if (n.has(group.mainItem.barcode)) n.delete(group.mainItem.barcode); else n.add(group.mainItem.barcode); setSelectedBarcodes(n); } : undefined}
-                        context="inventory"
-                    />
-                ))}
-            </div>
+            <div className="grid grid-cols-1 gap-4 md:hidden">{groupedItems.map((group) => (<InventoryItemCardMobile key={`card-${group.mainItem.barcode}`} item={group.mainItem} product={productsByBarcode.get(group.mainItem.barcode)} totalQuantity={group.totalQuantity} individualItemCount={group.individualItems.length} onDetails={group.individualItems.length === 1 ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)} onViewImage={() => handleOpenDetailsDialog(group.mainItem, true)} onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined} onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined} isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)} onSelect={isMultiSelectEnabled && role ==='admin' ? () => { const n = new Set(selectedBarcodes); if (n.has(group.mainItem.barcode)) n.delete(group.mainItem.barcode); else n.add(group.mainItem.barcode); setSelectedBarcodes(n); } : undefined} context="inventory" />))}</div>
         </>
       ) : (
-        <div className="text-center py-12">
-          <PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No inventory items found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Log new items to see them here.</p>
-        </div>
+        <div className="text-center py-12"><PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" /><h3 className="mt-4 text-xl font-semibold">No inventory items found</h3><p className="mt-1 text-sm text-muted-foreground">Log new items to see them here.</p></div>
       )}
-
-       <InventoryItemGroupDetailsDialog
-        key={selectedGroup ? `group-${selectedGroup.mainItem.barcode}` : 'group-none'}
-        group={selectedGroup}
-        isOpen={isGroupDetailsOpen}
-        onOpenChange={setIsGroupDetailsOpen}
-        onActionSuccess={handleActionSuccess}
-        onOpenReturnDialog={handleOpenReturnDialog}
-        onOpenEditDialog={handleOpenEditDialog}
-        onOpenDeleteDialog={handleOpenDeleteDialog}
-      />
-      <InventoryItemDetailsDialog
-        key={selectedItemForDetails ? `details-${selectedItemForDetails.id}` : 'details-none'}
-        item={selectedItemForDetails}
-        isOpen={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-        autoFetchImage={shouldAutoFetchImage}
-        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
-      />
-      <ReturnQuantityDialog
-        key={selectedItemForReturn ? `return-${selectedItemForReturn.id}` : 'return-none'}
-        item={selectedItemForReturn}
-        isOpen={isReturnDialogOpen}
-        onOpenChange={setIsReturnDialogOpen}
-        onReturnSuccess={handleActionSuccess}
-      />
-      <EditInventoryItemDialog
-        key={currentItemToEdit ? `edit-${currentItemToEdit.id}` : 'edit-none'}
-        item={currentItemToEdit}
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onSuccess={handleActionSuccess}
-        uniqueLocationsFromDb={uniqueLocations}
-      />
-      <DeleteConfirmationDialog
-        key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-none'}
-        item={selectedItemForDeletion}
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onSuccess={handleActionSuccess}
-      />
-      
-      {barcodeToCreate && (
-        <CreateProductFromInventoryDialog
-          barcode={barcodeToCreate}
-          allSuppliers={suppliers}
-          isOpen={isCreateProductDialogOpen}
-          onSuccess={(p) => { addProductToCache(p); onDataNeeded(); }}
-          onOpenChange={setIsCreateProductDialogOpen}
-        />
-      )}
-      
+       <InventoryItemGroupDetailsDialog key={selectedGroup ? `group-${selectedGroup.mainItem.barcode}` : 'group-none'} group={selectedGroup} isOpen={isGroupDetailsOpen} onOpenChange={setIsGroupDetailsOpen} onActionSuccess={handleActionSuccess} onOpenReturnDialog={handleOpenReturnDialog} onOpenEditDialog={handleOpenEditDialog} onOpenDeleteDialog={handleOpenDeleteDialog} />
+      <InventoryItemDetailsDialog key={selectedItemForDetails ? `details-${selectedItemForDetails.id}` : 'details-none'} item={selectedItemForDetails} isOpen={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} autoFetchImage={shouldAutoFetchImage} onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined} />
+      <ReturnQuantityDialog key={selectedItemForReturn ? `return-${selectedItemForReturn.id}` : 'return-none'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
+      <EditInventoryItemDialog key={currentItemToEdit ? `edit-${currentItemToEdit.id}` : 'edit-none'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
+      <DeleteConfirmationDialog key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-none'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
+      {barcodeToCreate && (<CreateProductFromInventoryDialog barcode={barcodeToCreate} allSuppliers={suppliers} isOpen={isCreateProductDialogOpen} onSuccess={(p) => { addProductToCache(p); onDataNeeded(); }} onOpenChange={setIsCreateProductDialogOpen} />)}
       <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
       <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
-
-      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
-            <DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20">
-                <DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary">
-                    <Scan className="h-8 w-8" /> Visual Filter
-                </DialogTitle>
-                <DialogDescription className="text-xs font-medium text-zinc-400">Position barcode to instantly filter records.</DialogDescription>
-            </DialogHeader>
-            
-            <div className="relative scanner-container h-[400px] w-full">
-                <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
-                <div className="scanner-overlay">
-                    <div className="scanner-focus">
-                        <div className="scanner-laser" />
-                        <div className="scanner-corner scanner-corner-tl" />
-                        <div className="scanner-corner scanner-corner-tr" />
-                        <div className="scanner-corner scanner-corner-bl" />
-                        <div className="scanner-corner scanner-corner-br" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="p-6 bg-zinc-900/50 border-t border-white/10 relative z-20">
-                <Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">
-                  Cancel Scan
-                </Button>
-            </div>
-        </DialogContent>
-      </Dialog>
+      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}><DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black"><DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20"><DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary"><Scan className="h-8 w-8" /> Visual Filter</DialogTitle><DialogDescription className="text-xs font-medium text-zinc-400">Position barcode to instantly filter records.</DialogDescription></DialogHeader><div className="relative scanner-container h-[400px] w-full"><div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" /><div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /><div className="scanner-corner scanner-corner-tl" /><div className="scanner-corner scanner-corner-tr" /><div className="scanner-corner scanner-corner-bl" /><div className="scanner-corner scanner-corner-br" /></div></div></div><div className="p-6 bg-zinc-900/50 border-t border-white/10 relative z-20"><Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">Cancel Scan</Button></div></DialogContent></Dialog>
     </div>
   );
 }

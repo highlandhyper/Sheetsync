@@ -1,172 +1,236 @@
-'use client'; 
+'use client';
 
-import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type InventoryItem, type Product } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wallet, Warehouse, CalendarClock, AlertTriangle, Activity, TrendingUp, ArrowUp, ArrowDown, ShieldCheck, Check, Clock, Plus, UserPlus, ShieldQuestion, Timer, Calendar as CalendarIcon, BellOff, User, Ban, Key, ArrowRight, ChevronsUpDown, RefreshCw, Layers, Globe, History, Fingerprint, Edit, Trash2 } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
+import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type Product } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ArrowUp,
+  Ban,
+  Calendar as CalendarIcon,
+  CalendarClock,
+  Check,
+  ChevronsUpDown,
+  Clock,
+  Globe,
+  ShieldCheck,
+  ShieldQuestion,
+  Timer,
+  TrendingUp,
+  User,
+  Wallet,
+  Warehouse,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useRouter } from 'next/navigation';
 import { useSpecialEntry } from '@/context/special-entry-context';
-import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { useDataCache } from '@/context/data-cache-context';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { format, parseISO, subDays, eachDayOfInterval, isAfter, endOfDay, startOfDay, isSameDay, addDays, isBefore } from 'date-fns';
+import {
+  addDays,
+  eachDayOfInterval,
+  endOfDay,
+  format,
+  isAfter,
+  isBefore,
+  isSameDay,
+  parseISO,
+  startOfDay,
+  subDays,
+} from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Separator } from '@/components/ui/separator';
 
-function MetricCard({ title, value, iconNode, description, isLoading, href, className, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, onIconClick?: (e: React.MouseEvent) => void }) {
-  const cardInnerContent = (
-    <div className="relative z-20 flex flex-col h-full p-4 sm:p-5">
-        <div className="flex flex-row items-center justify-between w-full mb-1">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{title}</span>
-            <div 
-                className={cn(
-                    "w-9 h-9 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500", 
-                    onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
-                )}
-                onClick={(e) => {
-                    if (onIconClick) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onIconClick(e);
-                    }
-                }}
-            >
-                <div className="h-4 w-4">{iconNode}</div>
+type MetricTone = 'default' | 'warning' | 'danger';
+
+const metricToneClasses: Record<MetricTone, { card: string; icon: string; dot: string }> = {
+  default: {
+    card: 'hover:border-primary/25',
+    icon: 'bg-primary/10 text-primary',
+    dot: 'bg-primary',
+  },
+  warning: {
+    card: 'border-amber-500/20 bg-amber-500/[0.035] hover:border-amber-500/35',
+    icon: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    dot: 'bg-amber-500',
+  },
+  danger: {
+    card: 'border-destructive/20 bg-destructive/[0.025] hover:border-destructive/35',
+    icon: 'bg-destructive/10 text-destructive',
+    dot: 'bg-destructive',
+  },
+};
+
+function MetricCard({
+  title,
+  value,
+  iconNode,
+  description,
+  href,
+  className,
+  tone = 'default',
+}: {
+  title: string;
+  value: string | number;
+  iconNode: React.ReactNode;
+  description?: React.ReactNode;
+  href?: string;
+  className?: string;
+  tone?: MetricTone;
+}) {
+  const toneClasses = metricToneClasses[tone];
+
+  const content = (
+    <Card
+      className={cn(
+        'group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-xl transition-all duration-300',
+        'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/[0.04] dark:hover:shadow-black/20',
+        toneClasses.card,
+        className,
+      )}
+    >
+      <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground/60">
+              <span className={cn('h-1.5 w-1.5 rounded-full', toneClasses.dot)} />
+              {title}
             </div>
-        </div>
-        
-        <div className="flex-1 flex flex-col justify-center min-h-[80px]">
-            {isLoading ? (
-                <Skeleton className="h-8 w-3/4" />
-            ) : (
-                <div className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
-                    {value}
-                </div>
-            )}
+          </div>
+          <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105', toneClasses.icon)}>
+            <div className="flex h-4 w-4 items-center justify-center [&>svg]:h-4 [&>svg]:w-4">{iconNode}</div>
+          </div>
         </div>
 
-        <div className="mt-1 pt-1 border-t border-white/5 h-8 flex items-center">
-            {description && !isLoading && (
-                <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
-                    {description}
-                </div>
-            )}
-            {isLoading && <Skeleton className="h-3 w-1/2" />}
+        <div className="mt-2 flex flex-1 items-end">
+          <div className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">{value}</div>
         </div>
-    </div>
-  );
 
-  const cardContainerClassName = cn(
-    "group relative transition-all duration-700 rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden",
-    href ? "hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]" : "",
-    className
-  );
-  
-  if (href) {
-    return (
-      <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl block h-full">
-        <Card className={cardContainerClassName}>
-          {cardInnerContent}
-          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
-        </Card>
-      </Link>
-    );
-  }
-  return (
-    <Card className={cardContainerClassName}>
-        {cardInnerContent}
-        <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
+        <div className="mt-3 border-t border-border/50 pt-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-tight truncate">
+          {description}
+        </div>
+      </CardContent>
     </Card>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href} className="block h-full rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      {content}
+    </Link>
   );
 }
 
-function VolumeGaugeCard({ title, value, description, onIconClick, href }: { title: string, value: number, description: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void, href: string }) {
-    const MAX_CAPACITY = 10000; 
-    const tier1 = Math.min(value, MAX_CAPACITY);
-    const remainder = Math.max(0, MAX_CAPACITY - value);
+function VolumeGaugeCard({
+  value,
+  description,
+  onIconClick,
+  href,
+}: {
+  value: number;
+  description: React.ReactNode;
+  onIconClick?: (e: React.MouseEvent) => void;
+  href: string;
+}) {
+  const MAX_CAPACITY = 10000;
+  const active = Math.min(Math.max(value, 0), MAX_CAPACITY);
+  const remainder = Math.max(0, MAX_CAPACITY - active);
+  const percentage = Math.min(100, Math.round((value / MAX_CAPACITY) * 100));
+  const data = [
+    { name: 'Active', value: active },
+    { name: 'Remainder', value: remainder },
+  ];
 
-    const data = [
-        { name: 'Active', value: tier1 },
-        { name: 'Remainder', value: remainder },
-    ];
+  return (
+    <Link href={href} className="block h-full rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      <Card className="group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg">
+        <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-primary">Registry Volume</p>
+            </div>
+            <div
+              role="button"
+              aria-label="Open stock trend"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onIconClick?.(e);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95"
+            >
+              <Activity className="h-4 w-4" />
+            </div>
+          </div>
 
-    return (
-        <Link href={href} className="col-span-2 lg:col-span-1 h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl">
-            <Card className="group relative transition-all duration-700 rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]">
-                <div className="relative z-10 p-4 sm:p-5 h-full flex flex-col">
-                    <div className="w-full flex justify-between items-start z-20 mb-1">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{title}</span>
-                        <div 
-                            className="w-9 h-9 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
-                            onClick={(e) => {
-                                if (onIconClick) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onIconClick(e);
-                                }
-                            }}
-                        >
-                            <Warehouse className="h-4 w-4" />
-                        </div>
-                    </div>
-                    
-                    <div className="relative flex flex-col items-center justify-center flex-1 min-h-[80px] pt-4">
-                        {/* HALF ROUND PROGRESS BAR: ARCHING OVER NUMBERS */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none -top-2">
-                             <ResponsiveContainer width="100%" height={100}>
-                                <PieChart>
-                                    <Pie
-                                        data={data}
-                                        cx="50%"
-                                        cy="100%" 
-                                        startAngle={180}
-                                        endAngle={0}
-                                        innerRadius={32}
-                                        outerRadius={48}
-                                        paddingAngle={0}
-                                        dataKey="value"
-                                        stroke="none"
-                                        isAnimationActive={true}
-                                        animationDuration={2000}
-                                    >
-                                        <Cell fill="hsl(var(--primary))" />
-                                        <Cell fill="hsl(var(--primary) / 0.1)" />
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        
-                        <div className="relative z-10 text-center mt-6">
-                            <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
-                                {value.toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
+          <div className="mt-2 flex flex-1 flex-col items-center justify-center relative">
+             <div className="absolute inset-x-0 -top-1 h-14 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={data}
+                      cx="50%"
+                      cy="100%"
+                      startAngle={180}
+                      endAngle={0}
+                      innerRadius="75%"
+                      outerRadius="100%"
+                      paddingAngle={0}
+                      dataKey="value"
+                      stroke="none"
+                      isAnimationActive
+                    >
+                      <Cell fill="hsl(var(--primary))" />
+                      <Cell fill="hsl(var(--primary) / 0.1)" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+             </div>
+             <div className="pt-5 text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+                {value.toLocaleString()}
+             </div>
+          </div>
 
-                    <div className="mt-1 pt-1 border-t border-white/5 h-8 flex items-center justify-center z-20">
-                        <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
-                            {description}
-                        </div>
-                    </div>
-                </div>
-                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
-            </Card>
-        </Link>
-    );
+          <div className="mt-3 border-t border-primary/10 pt-2">{description}</div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
 }
 
 function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
@@ -174,342 +238,827 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
 
   const chartConfig = {
     totalStock: {
-      label: "Units",
-      color: "hsl(var(--primary))",
+      label: 'Units',
+      color: 'hsl(var(--primary))',
     },
   } satisfies ChartConfig;
 
   if (!data || data.length === 0) {
-    return <p className="text-center text-muted-foreground py-12 font-bold uppercase tracking-widest text-xs opacity-20">Registry Data Missing</p>;
+    return (
+      <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20">
+        <p className="text-sm font-medium text-muted-foreground">No supplier stock data available.</p>
+      </div>
+    );
   }
-  
+
   let chartDisplayData = data;
   let otherSuppliersData: StockBySupplier[] | null = null;
 
   if (data.length > 10) {
     const topSuppliers = data.slice(0, 9);
     otherSuppliersData = data.slice(9);
-    const otherStock = otherSuppliersData.reduce((sum, s) => sum + s.totalStock, 0);
-    chartDisplayData = [...topSuppliers, { name: "Other Suppliers", totalStock: otherStock }];
+    const otherStock = otherSuppliersData.reduce((sum, supplier) => sum + supplier.totalStock, 0);
+    chartDisplayData = [...topSuppliers, { name: 'Other Suppliers', totalStock: otherStock }];
   }
 
   const handleBarClick = (barPayload: any) => {
-    if (barPayload && barPayload.payload.name === "Other Suppliers" && otherSuppliersData) {
-      const otherActualSupplierNames = otherSuppliersData.map(s => s.name);
-      if (otherActualSupplierNames.length > 0) {
-        const suppliersQueryParam = encodeURIComponent(otherActualSupplierNames.join(','));
-        router.push(`/inventory?filterType=otherSuppliers&suppliers=${suppliersQueryParam}`);
+    if (!barPayload || !barPayload.activePayload || barPayload.activePayload.length === 0) return;
+    
+    const payload = barPayload.activePayload[0].payload;
+    const name = payload.name;
+
+    if (name === 'Other Suppliers' && otherSuppliersData) {
+      const supplierNames = otherSuppliersData.map((supplier) => supplier.name);
+      if (supplierNames.length > 0) {
+        router.push(`/inventory?filterType=otherSuppliers&suppliers=${encodeURIComponent(supplierNames.join(','))}`);
       }
-    } else if (barPayload && barPayload.payload.name) {
-      router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(barPayload.payload.name)}`);
+      return;
+    }
+
+    if (name) {
+      router.push(`/inventory?filterType=specificSupplier&suppliers=${encodeURIComponent(name)}`);
     }
   };
 
   return (
-    <ChartContainer config={chartConfig} className="h-full w-full max-h-[350px]">
+    <ChartContainer config={chartConfig} className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart accessibilityLayer data={chartDisplayData} margin={{ top: 40, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid horizontal={true} vertical={false} strokeDasharray="3 3" opacity={0.05} />
-            <XAxis dataKey="name" hide />
-            <YAxis type="number" tickLine={false} axisLine={false} tickMargin={8} className="text-[10px] font-black opacity-20" />
-            <ChartTooltip cursor={{ fill: 'hsl(var(--primary))', opacity: 0.03 }} content={<ChartTooltipContent className="bg-background/90 backdrop-blur-3xl shadow-3xl rounded-xl p-4 border-white/10" />} />
-            <Bar dataKey="totalStock" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} onClick={(payload) => handleBarClick(payload)} className="cursor-pointer" animationDuration={2000}>
-                <LabelList dataKey="totalStock" position="top" offset={12} className="fill-foreground text-[10px] font-black" />
-            </Bar>
+        <BarChart
+          accessibilityLayer
+          data={chartDisplayData}
+          layout="vertical"
+          margin={{ top: 4, right: 50, left: 0, bottom: 4 }}
+          barCategoryGap={12}
+          onClick={handleBarClick}
+        >
+          <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.08} />
+          <XAxis type="number" hide />
+          <YAxis
+            type="category"
+            dataKey="name"
+            axisLine={false}
+            tickLine={false}
+            width={118}
+            tickMargin={10}
+            tickFormatter={(value) => (value.length > 17 ? `${value.slice(0, 17)}…` : value)}
+            className="text-[10px] font-bold text-muted-foreground/60 uppercase"
+          />
+          <ChartTooltip
+            cursor={{ fill: 'hsl(var(--primary))', opacity: 0.04 }}
+            content={<ChartTooltipContent className="rounded-xl border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur-xl" />}
+          />
+          <Bar
+            dataKey="totalStock"
+            fill="hsl(var(--primary))"
+            radius={[0, 8, 8, 0]}
+            className="cursor-pointer"
+            animationDuration={1000}
+          >
+            <LabelList dataKey="totalStock" position="right" offset={8} className="fill-foreground text-[10px] font-black" />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>
   );
 }
 
-function StockTrendDetailedDialog({ isOpen, onOpenChange, initialData }: { isOpen: boolean; onOpenChange: (open: boolean) => void; initialData: StockTrendData[] }) {
-    const { inventoryItems } = useDataCache();
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+function StockTrendDetailedDialog({
+  isOpen,
+  onOpenChange,
+  initialData,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialData: StockTrendData[];
+}) {
+  const { inventoryItems } = useDataCache();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-    useEffect(() => {
-        if (isOpen && !dateRange) {
-            setDateRange({ from: subDays(new Date(), 14), to: new Date() });
-        }
-    }, [isOpen, dateRange]);
+  useEffect(() => {
+    if (isOpen && !dateRange) {
+      setDateRange({ from: subDays(new Date(), 14), to: new Date() });
+    }
+  }, [isOpen, dateRange]);
 
-    const trendData = useMemo(() => {
-        if (!dateRange?.from || !dateRange?.to) return initialData;
-        const data: StockTrendData[] = [];
-        const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-        const currentTotal = inventoryItems.reduce((s, i) => s + i.quantity, 0);
-        days.forEach(day => {
-            const addedSince = inventoryItems.filter(i => {
-                if (!i.timestamp) return false;
-                const logDate = parseISO(i.timestamp);
-                return isAfter(logDate, endOfDay(day));
-            }).reduce((s, i) => s + i.quantity, 0);
-            data.push({ date: format(day, 'MMM dd'), totalStock: Math.max(0, currentTotal - addedSince) });
-        });
-        return data;
-    }, [dateRange, inventoryItems, initialData]);
+  const trendData = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return initialData;
 
-    const chartConfig = { totalStock: { label: "Total Units", color: "hsl(var(--primary))" } } satisfies ChartConfig;
+    const data: StockTrendData[] = [];
+    const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+    const currentTotal = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl rounded-2xl border-none shadow-3xl p-8 overflow-hidden bg-background/95 backdrop-blur-2xl">
-                <DialogHeader className="mb-8">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                        <div className="space-y-1">
-                            <DialogTitle className="flex items-center gap-3 text-3xl font-black uppercase tracking-tighter">
-                                <Activity className="h-8 w-8 text-primary" strokeWidth={3} />
-                                Asset <span className="text-primary">Pulse</span>
-                            </DialogTitle>
-                            <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Global Registry Volume Analysis</DialogDescription>
-                        </div>
-                        <Popover modal={true}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-12 text-[10px] font-black uppercase tracking-widest px-6 rounded-xl bg-muted/20 border-primary/10">
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "MMM dd")} — {format(dateRange.to, "MMM dd")}</> : format(dateRange.from, "MMM dd")) : <span>Set Period</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 rounded-xl" align="end"><Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2} /></PopoverContent>
-                        </Popover>
-                    </div>
-                </DialogHeader>
-                <div className="h-[300px] sm:h-[450px] w-full">
-                    <ChartContainer config={chartConfig} className="h-full w-full">
-                        <AreaChart data={trendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                            <defs><linearGradient id="colorStockDetailed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient></defs>
-                            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.05} />
-                            <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={15} className="text-[10px] font-black uppercase text-muted-foreground/30 tracking-widest" />
-                            <YAxis axisLine={false} tickLine={false} tickMargin={15} className="text-[10px] font-black text-muted-foreground/30" />
-                            <ChartTooltip content={<ChartTooltipContent className="rounded-xl shadow-3xl" />} />
-                            <Area type="monotone" dataKey="totalStock" stroke="hsl(var(--primary))" strokeWidth={5} fillOpacity={1} fill="url(#colorStockDetailed)" animationDuration={2000} />
-                        </AreaChart>
-                    </ChartContainer>
+    days.forEach((day) => {
+      const addedSince = inventoryItems
+        .filter((item) => {
+          if (!item.timestamp) return false;
+          return isAfter(parseISO(item.timestamp), endOfDay(day));
+        })
+        .reduce((sum, item) => sum + item.quantity, 0);
+
+      data.push({
+        date: format(day, 'MMM dd'),
+        totalStock: Math.max(0, currentTotal - addedSince),
+      });
+    });
+
+    return data;
+  }, [dateRange, inventoryItems, initialData]);
+
+  const chartConfig = {
+    totalStock: { label: 'Total units', color: 'hsl(var(--primary))' },
+  } satisfies ChartConfig;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[96%] max-w-5xl overflow-hidden rounded-3xl border-border/60 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
+        <div className="border-b border-border/60 bg-muted/20 p-6 sm:p-8">
+          <DialogHeader>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Activity className="h-5 w-5" />
                 </div>
-                <DialogFooter className="mt-8"><Button variant="secondary" className="rounded-xl font-black uppercase tracking-widest text-[10px] px-12 h-14 w-full sm:w-auto" onClick={() => onOpenChange(false)}>Close Analysis</Button></DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+                <DialogTitle className="text-2xl font-black tracking-tight sm:text-3xl">Registry Analytics</DialogTitle>
+                <DialogDescription className="mt-1 text-sm font-medium">Historical registry volume tracing.</DialogDescription>
+              </div>
+
+              <Popover modal>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-11 justify-start rounded-xl bg-background/70 px-4 text-sm font-black uppercase tracking-widest">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>{format(dateRange.from, 'MMM dd')} — {format(dateRange.to, 'MMM dd')}</>
+                      ) : (
+                        format(dateRange.from, 'MMM dd')
+                      )
+                    ) : (
+                      'Temporal Period'
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto rounded-2xl p-0 shadow-3xl" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="p-5 sm:p-8">
+          <div className="h-[320px] w-full sm:h-[440px]">
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <AreaChart data={trendData} margin={{ top: 16, right: 20, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="inventoryTrendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.24} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.08} />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={12} className="text-[10px] font-black uppercase text-muted-foreground/30" />
+                <YAxis axisLine={false} tickLine={false} tickMargin={12} className="text-[10px] font-black uppercase text-muted-foreground/30" />
+                <ChartTooltip content={<ChartTooltipContent className="rounded-xl shadow-xl backdrop-blur-xl bg-background/90" />} />
+                <Area
+                  type="monotone"
+                  dataKey="totalStock"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#inventoryTrendFill)"
+                  animationDuration={1000}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
+        </div>
+
+        <DialogFooter className="border-t border-border/60 bg-muted/20 p-5 sm:p-6">
+          <Button variant="secondary" className="h-11 w-full rounded-xl px-8 font-black uppercase text-xs sm:w-auto" onClick={() => onOpenChange(false)}>
+            Close Terminal
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function QuickAuthorizeCard() {
-    const { uniqueStaffNames } = useDataCache();
-    const { grantProactiveEntry } = useSpecialEntry();
-    const { toast } = useToast();
-    const [selectedStaff, setSelectedStaff] = useState<string>("");
-    const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
-    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-    const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
-    const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
+  const { uniqueStaffNames } = useDataCache();
+  const { grantProactiveEntry } = useSpecialEntry();
+  const { toast } = useToast();
+  const [selectedStaff, setSelectedStaff] = useState('');
+  const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
+  const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
 
-    const handleOpenGrant = () => { if (selectedStaff) setIsGrantDialogOpen(true); };
-    const confirmGrant = (duration?: number) => { setGrantParams({ duration }); setIsAuthDialogOpen(true); };
-    const handleAuthorizationSuccess = () => {
-        setIsAuthDialogOpen(false);
-        grantProactiveEntry(selectedStaff, grantParams?.duration);
-        toast({ title: "Access Granted", description: `Key sent to ${selectedStaff}.` });
-        setSelectedStaff("");
-        setGrantParams(null);
-    };
+  const handleOpenGrant = () => {
+    if (selectedStaff) setIsGrantDialogOpen(true);
+  };
 
-    return (
-        <>
-        <Card className="shadow-none border border-white/5 bg-primary/5 dark:bg-primary/[0.02] h-full flex flex-col group overflow-hidden relative rounded-2xl">
-            <div className="absolute top-0 right-0 p-4 opacity-20"><ShieldCheck className="h-8 w-8 text-primary" strokeWidth={1} /></div>
-            <CardHeader className="pb-1 px-4 pt-4 sm:px-5 sm:pt-5">
-                <CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Terminal Access</CardTitle>
-                <CardDescription className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Authorization</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-1 flex-grow flex flex-col justify-center px-4 pb-4 sm:px-5 sm:pb-5 min-h-[80px]">
-                <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full h-9 text-[10px] justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-background/50 backdrop-blur-xl">
-                            <div className="flex items-center gap-2 truncate">
-                                {selectedStaff === "ALL PERSONNEL (GLOBAL)" ? <Globe className="h-3 w-3 text-primary shrink-0" /> : <User className="h-3 w-3 text-primary shrink-0" />}
-                                {selectedStaff || "SELECT PERSONNEL"}
-                            </div>
-                            <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-30" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden border-white/10" align="start">
-                        <Command>
-                            <CommandInput placeholder="Search registry..." className="h-11 text-xs font-bold" />
-                            <CommandList>
-                                <CommandEmpty className="text-[9px] font-black uppercase py-4 text-center opacity-40">Zero Results</CommandEmpty>
-                                <CommandGroup heading="Industrial Broadcast">
-                                    <CommandItem value="ALL PERSONNEL (GLOBAL)" onSelect={() => { setSelectedStaff("ALL PERSONNEL (GLOBAL)"); setStaffPopoverOpen(false); }} className="text-[10px] font-black text-primary h-10 px-4">
-                                        <Globe className="mr-2 h-3 w-3" /> ALL PERSONNEL (GLOBAL)
-                                        <Check className={cn("ml-auto h-3 w-3", selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "opacity-100" : "opacity-0")} />
-                                    </CommandItem>
-                                </CommandGroup>
-                                <CommandGroup heading="Individual Registry">
-                                    {uniqueStaffNames.map(name => (
-                                        <CommandItem key={name} value={name} onSelect={() => { setSelectedStaff(name); setStaffPopoverOpen(false); }} className="text-[10px] font-bold h-10 px-4">
-                                            <Check className={cn("mr-2 h-3 w-3", selectedStaff === name ? "opacity-100" : "opacity-0")} /> {name}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-                <Button className="w-full h-9 text-[10px] font-black uppercase tracking-[0.1em] rounded-xl shadow-2xl shadow-primary/20 bg-primary text-white" disabled={!selectedStaff} onClick={handleOpenGrant}>AUTHORIZE</Button>
-            </CardContent>
-            <div className="h-8 flex items-center px-4 sm:px-5 mt-auto mb-1"><div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30">PERMISSIONS</div></div>
-        </Card>
-        <ProactiveGrantDialog isOpen={isGrantDialogOpen} onOpenChange={setIsGrantDialogOpen} staffName={selectedStaff} onGrant={confirmGrant} />
-        <AuthorizeActionDialog isOpen={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} onAuthorizationSuccess={handleAuthorizationSuccess} actionDescription={`Authorizing access for ${selectedStaff}. Clearance required.`} />
-        </>
-    );
+  const confirmGrant = (duration?: number) => {
+    setGrantParams({ duration });
+    setIsAuthDialogOpen(true);
+  };
+
+  const handleAuthorizationSuccess = () => {
+    setIsAuthDialogOpen(false);
+    grantProactiveEntry(selectedStaff, grantParams?.duration);
+    toast({ title: 'Access Granted', description: `Key sent to ${selectedStaff}.` });
+    setSelectedStaff('');
+    setGrantParams(null);
+  };
+
+  return (
+    <>
+      <Card className="group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-primary/20 bg-primary/[0.045] shadow-sm">
+        <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-primary">Quick access</p>
+            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+          </div>
+
+          <div className="mt-2 flex flex-1 flex-col justify-center gap-2">
+            <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="h-10 w-full justify-between rounded-xl border-primary/15 bg-background/70 px-3 text-xs font-black uppercase tracking-tight shadow-none"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
+                      <Globe className="h-4 w-4 shrink-0 text-primary" />
+                    ) : (
+                      <User className="h-4 w-4 shrink-0 text-primary" />
+                    )}
+                    <span className="truncate">{selectedStaff || 'IDENTIFY...'}</span>
+                  </div>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] overflow-hidden rounded-xl border-border/70 p-0 shadow-3xl" align="start">
+                <Command>
+                  <CommandInput placeholder="Search personnel..." className="h-11 text-sm" />
+                  <CommandList>
+                    <CommandEmpty className="py-5 text-center text-xs text-muted-foreground">No personnel found.</CommandEmpty>
+                    <CommandGroup heading="Global access">
+                      <CommandItem
+                        value="ALL PERSONNEL (GLOBAL)"
+                        onSelect={() => {
+                          setSelectedStaff('ALL PERSONNEL (GLOBAL)');
+                          setStaffPopoverOpen(false);
+                        }}
+                        className="h-10 text-xs font-black uppercase tracking-widest text-primary"
+                      >
+                        <Globe className="mr-2 h-4 w-4" />
+                        Universal Grant
+                        <Check className={cn('ml-auto h-4 w-4', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} />
+                      </CommandItem>
+                    </CommandGroup>
+                    <CommandGroup heading="Personnel">
+                      {uniqueStaffNames.map((name) => (
+                        <CommandItem
+                          key={name}
+                          value={name}
+                          onSelect={() => {
+                            setSelectedStaff(name);
+                            setStaffPopoverOpen(false);
+                          }}
+                          className="h-10 text-xs font-bold uppercase tracking-tight"
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', selectedStaff === name ? 'opacity-100' : 'opacity-0')} />
+                          {name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Button className="h-10 w-full rounded-xl font-black uppercase tracking-widest text-[9px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
+              Authorize Access
+            </Button>
+          </div>
+        </CardContent>
+        <div className="pointer-events-none absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+      </Card>
+
+      <ProactiveGrantDialog
+        isOpen={isGrantDialogOpen}
+        onOpenChange={setIsGrantDialogOpen}
+        staffName={selectedStaff}
+        onGrant={confirmGrant}
+      />
+      <AuthorizeActionDialog
+        isOpen={isAuthDialogOpen}
+        onOpenChange={setIsAuthDialogOpen}
+        onAuthorizationSuccess={handleAuthorizationSuccess}
+        actionDescription={`Authorizing access for ${selectedStaff}. Clearance required.`}
+      />
+    </>
+  );
 }
 
 function ActiveAuthorizations() {
-    const { activeSessions, revokeRequest } = useSpecialEntry();
-    const { toast } = useToast();
-    if (activeSessions.length === 0) return null;
-    const handleRevoke = (id: string, name: string) => { revokeRequest(id); toast({ title: "Access Revoked", description: `Session for ${name} terminated.` }); };
-    return (
-        <div className="space-y-6 pt-6 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-            <div className="flex items-center justify-between px-2">
-                <h2 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-[0.1em]">
-                    <ShieldCheck className="h-5 w-5 text-green-500" strokeWidth={3} /> Active Access Grants
-                </h2>
-                <Badge variant="outline" className="bg-green-500/5 text-green-600 border-green-500/10 font-black uppercase text-[9px] tracking-widest px-3 py-1">{activeSessions.length} Online</Badge>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeSessions.map(session => {
-                    const isGlobal = session.staffName === "ALL PERSONNEL (GLOBAL)";
-                    return (
-                        <Card key={session.id} className={cn("border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl shadow-none rounded-xl overflow-hidden flex flex-col transition-all duration-500", isGlobal && "border-primary/20 bg-primary/[0.01]")}>
-                            <CardContent className="p-6 space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn("p-3 rounded-xl", isGlobal ? "bg-primary/10 text-primary" : "bg-green-500/10 text-green-600")}>{isGlobal ? <Globe className="h-6 w-6" /> : <User className="h-6 w-6" />}</div>
-                                        <div className="flex flex-col"><span className="text-base font-black tracking-tight">{isGlobal ? "Universal Grant" : session.staffName}</span><span className="text-[10px] uppercase font-bold text-muted-foreground/40 tracking-widest">{session.type} Entry Protocol</span></div>
-                                    </div>
-                                    <div className="py-2 px-4 bg-background dark:bg-black/20 rounded-xl border border-primary/5 shadow-inner flex flex-col items-center"><span className="text-[8px] font-black uppercase text-primary/40 tracking-widest mb-1">Passkey</span><span className="font-mono font-black text-lg text-primary tracking-[0.2em] leading-none">{session.otp || '----'}</span></div>
-                                </div>
-                                <div className="flex justify-between items-center pt-2">
-                                    <Button variant="ghost" size="sm" className="h-10 text-[9px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 rounded-lg px-4" onClick={() => handleRevoke(session.id, session.staffName)}><Ban className="mr-2 h-4 w-4" /> Terminate</Button>
-                                    {session.expiresAt && <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-lg"><Timer className="h-3.5 w-3.5 text-destructive animate-pulse" /><span className="text-[10px] font-black text-destructive tracking-widest">{format(parseISO(session.expiresAt), 'HH:mm')}</span></div>}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
+  const { activeSessions, revokeRequest } = useSpecialEntry();
+  const { toast } = useToast();
+
+  if (activeSessions.length === 0) return null;
+
+  const handleRevoke = (id: string, name: string) => {
+    revokeRequest(id);
+    toast({ title: 'Access Revoked', description: `Session for ${name} terminated.` });
+  };
+
+  return (
+    <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between gap-4 px-1">
+        <div>
+          <h2 className="text-lg font-black tracking-tight uppercase text-foreground">Active Access Nodes</h2>
+          <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Active temporary authorization sessions.</p>
         </div>
-    );
+        <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {activeSessions.length} Active
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {activeSessions.map((session) => {
+          const isGlobal = session.staffName === 'ALL PERSONNEL (GLOBAL)';
+
+          return (
+            <Card key={session.id} className={cn('rounded-2xl border-border/60 bg-card/70 shadow-sm', isGlobal && 'border-primary/20 bg-primary/[0.025]')}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', isGlobal ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}>
+                      {isGlobal ? <Globe className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black uppercase text-foreground">{isGlobal ? 'Universal grant' : session.staffName}</p>
+                      <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{session.type} Access</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-center">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Passkey</p>
+                    <p className="mt-0.5 font-mono text-base font-black tracking-[0.2em] text-primary">{session.otp || '----'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between border-t border-border/50 pt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 rounded-lg px-2.5 text-[9px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleRevoke(session.id, session.staffName)}
+                  >
+                    <Ban className="mr-1.5 h-3.5 w-3.5" />
+                    Terminate
+                  </Button>
+
+                  {session.expiresAt && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
+                      <Timer className="h-3.5 w-3.5 text-primary" />
+                      Exp {format(parseISO(session.expiresAt), 'HH:mm')}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function PendingApprovalsSummary() {
-    const { pendingRequests } = useSpecialEntry();
-    if (pendingRequests.length === 0) return null;
-    return (
-        <Card className="hidden sm:block border border-primary/10 bg-primary/5 backdrop-blur-3xl shadow-3xl shadow-primary/5 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
-            <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
-                <div className="flex items-center gap-6">
-                    <div className="bg-primary p-5 rounded-xl shadow-2xl shadow-primary/30 relative"><ShieldQuestion className="h-8 w-8 text-primary-foreground" /><div className="absolute -top-1 -right-1 h-4 w-4 bg-white rounded-full flex items-center justify-center text-[10px] font-black text-primary animate-bounce">!</div></div>
-                    <div className="space-y-1"><h3 className="text-2xl font-black tracking-tight uppercase leading-none">Security Pending</h3><p className="text-muted-foreground/60 font-bold uppercase text-[10px] tracking-widest"><span className="text-primary font-black">{pendingRequests.length} High-priority requests</span> awaiting clearance.</p></div>
-                </div>
-                <Button asChild size="lg" className="h-14 px-10 font-black uppercase tracking-widest text-[11px] rounded-xl shadow-2xl shadow-primary/20 bg-primary"><Link href="/approvals">Review Terminal <ArrowRight className="ml-3 h-5 w-5" /></Link></Button>
-            </CardContent>
-        </Card>
-    );
+  const { pendingRequests } = useSpecialEntry();
+
+  if (pendingRequests.length === 0) return null;
+
+  return (
+    <Card className="overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/[0.08] via-primary/[0.045] to-card/70 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+            <ShieldQuestion className="h-5 w-5" />
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-foreground px-1 text-[9px] font-bold text-background">
+              {pendingRequests.length}
+            </span>
+          </div>
+          <div>
+            <p className="text-base font-black uppercase tracking-tight text-foreground">Approvals need attention</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              {pendingRequests.length} ACCESS {pendingRequests.length === 1 ? 'REQUEST IS' : 'REQUESTS ARE'} WAITING FOR REVIEW.
+            </p>
+          </div>
+        </div>
+
+        <Button asChild className="h-11 rounded-xl px-8 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20">
+          <Link href="/approvals">
+            Open Terminal
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
-function ProactiveGrantDialog({ isOpen, onOpenChange, staffName, onGrant }: { isOpen: boolean; onOpenChange: (open: boolean) => void; staffName: string; onGrant: (duration?: number) => void; }) {
-    const [selectedDuration, setSelectedDuration] = useState<string>("single");
-    const [customMins, setCustomMins] = useState("15");
-    const handleGrant = () => {
-        let d: number | undefined;
-        if (selectedDuration === "10") d = 10; else if (selectedDuration === "30") d = 30; else if (selectedDuration === "custom") d = parseInt(customMins);
-        onGrant(d); onOpenChange(false);
-    };
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-[95%] rounded-2xl border-none shadow-3xl p-8 bg-background/95 backdrop-blur-2xl">
-                <DialogHeader><DialogTitle className="flex items-center gap-4 text-3xl font-black uppercase tracking-tighter"><ShieldCheck className="h-10 w-10 text-primary" strokeWidth={3} /> Identity Access</DialogTitle><DialogDescription className="font-medium text-sm pt-4 leading-relaxed">Granting silent access for <span className="font-black text-foreground underline decoration-primary/30">{staffName}</span>.</DialogDescription></DialogHeader>
-                <div className="space-y-8 py-6"><div className="space-y-4"><Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em]">Protocol Duration</Label><div className="grid grid-cols-2 gap-4">
-                    {['single', '10', '30', 'custom'].map(t => <Button key={t} variant={selectedDuration === t ? 'default' : 'outline'} onClick={() => setSelectedDuration(t)} className="h-20 flex flex-col gap-1 rounded-2xl border border-primary/5 font-black uppercase tracking-widest text-[10px] transition-all">{(t !== 'single' && t !== 'custom') && <Clock className={cn("h-4 w-4", selectedDuration === t ? "text-white" : "text-primary/40")} />} {t === 'single' ? 'Single' : t === 'custom' ? 'Custom' : `${t} Min`}</Button>)}
-                </div>{selectedDuration === 'custom' && <div className="pt-4 animate-in slide-in-from-top-4 duration-500"><Label htmlFor="custom-mins" className="text-[10px] uppercase font-black text-primary tracking-widest ml-1">Minutes Threshold</Label><Input id="custom-mins" type="number" value={customMins} onChange={(e) => setCustomMins(e.target.value)} className="mt-2 h-14 text-2xl font-black border-primary/20 rounded-xl bg-primary/5 text-center" /></div>}</div></div>
-                <DialogFooter className="flex flex-col sm:flex-row gap-4 pt-4"><Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-14 order-2 sm:order-1 px-8" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={handleGrant} className="h-14 px-10 font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-primary/30 bg-primary text-white">Initialize Grant</Button></DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+function ProactiveGrantDialog({
+  isOpen,
+  onOpenChange,
+  staffName,
+  onGrant,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  staffName: string;
+  onGrant: (duration?: number) => void;
+}) {
+  const [selectedDuration, setSelectedDuration] = useState('single');
+  const [customMins, setCustomMins] = useState('15');
+
+  const handleGrant = () => {
+    let duration: number | undefined;
+
+    if (selectedDuration === '10') duration = 10;
+    else if (selectedDuration === '30') duration = 30;
+    else if (selectedDuration === 'custom') duration = parseInt(customMins, 10);
+
+    onGrant(duration);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[95%] max-w-md rounded-3xl border-border/60 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
+        <div className="border-b border-border/60 p-6">
+          <DialogHeader>
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-2xl font-black tracking-tight uppercase">Authorize access</DialogTitle>
+            <DialogDescription className="pt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+              Identity: <span className="text-foreground">{staffName}</span>
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="space-y-5 p-6">
+          <div className="space-y-3">
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] ml-1">Session Duration</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {['single', '10', '30', 'custom'].map((option) => (
+                <Button
+                  key={option}
+                  variant={selectedDuration === option ? 'default' : 'outline'}
+                  onClick={() => setSelectedDuration(option)}
+                  className="h-14 rounded-xl font-black uppercase text-[10px] tracking-widest"
+                >
+                  {option === 'single' ? 'Single Use' : option === 'custom' ? 'Custom' : (
+                    <span className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      {option} Min
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {selectedDuration === 'custom' && (
+            <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+              <Label htmlFor="custom-mins" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Custom Minutes</Label>
+              <Input
+                id="custom-mins"
+                type="number"
+                min={1}
+                value={customMins}
+                onChange={(event) => setCustomMins(event.target.value)}
+                className="h-11 rounded-xl bg-muted/20 text-base font-black text-center tracking-widest"
+              />
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-border/60 bg-muted/20 p-5 sm:p-6">
+          <Button variant="ghost" className="h-10 rounded-xl font-black uppercase tracking-widest text-[9px] opacity-40 hover:opacity-100" onClick={() => onOpenChange(false)}>
+            Abort
+          </Button>
+          <Button onClick={handleGrant} className="h-10 rounded-xl px-8 font-black uppercase tracking-widest text-[10px] shadow-sm">
+            Finalize Grant
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
+  const topSuppliers = data.slice(0, 5);
+  const maxSupplierStock = topSuppliers[0]?.totalStock || 1;
+
+  return (
+    <Card className="overflow-hidden rounded-3xl border-border/60 bg-card/70 shadow-sm backdrop-blur-xl">
+      <CardHeader className="border-b border-border/50 p-5 sm:p-6 bg-muted/10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-black uppercase tracking-tight">Supplier Distribution</CardTitle>
+              <CardDescription className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">Click any bar to drill-down into inventory.</CardDescription>
+            </div>
+          </div>
+          <Badge variant="outline" className="w-fit border-border/70 bg-background/60 font-black text-[9px] uppercase tracking-widest text-muted-foreground/40 px-3">
+            {data.length} Suppliers Active
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-5 sm:p-6">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_290px]">
+          <div className="h-[360px] min-w-0">
+            <StockBySupplierChart data={data} />
+          </div>
+
+          <div className="rounded-[2rem] border border-border/60 bg-muted/[0.18] p-5 sm:p-6 shadow-inner">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-foreground">Top Vendors</p>
+                <p className="mt-0.5 text-[8px] font-bold uppercase text-muted-foreground/40 tracking-widest">By volume contributions</p>
+              </div>
+              <Warehouse className="h-4 w-4 text-muted-foreground/20" />
+            </div>
+
+            {topSuppliers.length === 0 ? (
+              <p className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground/20">Zero Node Data</p>
+            ) : (
+              <div className="space-y-5">
+                {topSuppliers.map((supplier, index) => (
+                  <div key={supplier.name} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-background text-[8px] font-black text-muted-foreground shadow-sm">
+                          {index + 1}
+                        </span>
+                        <span className="truncate text-[10px] font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">{supplier.name}</span>
+                      </div>
+                      <span className="shrink-0 text-xs font-black tabular-nums text-primary">{supplier.totalStock.toLocaleString()}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-primary/5 border border-primary/[0.03]">
+                      <div
+                        className="h-full rounded-full bg-primary shadow-[0_0_8px_rgba(41,171,226,0.3)] transition-all duration-1000"
+                        style={{ width: `${Math.max(6, (supplier.totalStock / maxSupplierStock) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">{Array.from({ length: 5 }).map((_, i) => (<Skeleton key={i} className="h-32 w-full rounded-2xl" />))}</div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><Skeleton className="h-[450px] w-full rounded-2xl" /><Skeleton className="h-[450px] w-full rounded-2xl" /></div>
+    <div className="space-y-6">
+      <Skeleton className="h-[190px] w-full rounded-3xl" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-[130px] w-full rounded-3xl" />
+        ))}
+      </div>
+      <Skeleton className="h-[500px] w-full rounded-3xl" />
     </div>
   );
 }
 
 export default function DashboardPage() {
   const { isCacheReady, isSyncing, inventoryItems, products } = useDataCache();
-  const [mountedDate, setMountedDate] = useState<string>('');
+  const [mountedDate, setMountedDate] = useState('');
   const [isStockTrendDialogOpen, setIsStockTrendDialogOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setMountedDate(format(new Date(), 'PP').toUpperCase()); setIsMounted(true); }, []);
+
+  useEffect(() => {
+    setMountedDate(format(new Date(), 'EEEE, MMM d').toUpperCase());
+    setIsMounted(true);
+  }, []);
 
   const metrics = useMemo<DashboardMetrics>(() => {
-    if (!isMounted) return { totalProducts: 0, totalStockQuantity: 0, itemsExpiringSoon: 0, damagedItemsCount: 0, totalSuppliers: 0, totalStockValue: 0, stockBySupplier: [], netItemsAddedToday: 0, dailyStockChangeDirection: 'none', stockTrend: [] };
-    const today = startOfDay(new Date());
-    const prodsMap = new Map<string, Product>(products.map(p => [p.barcode, p]));
-    let val = 0, added = 0, soon = 0;
-    const supplierStock: Record<string, number> = {};
-    inventoryItems.forEach(item => {
-        if (item.quantity <= 0) return;
-        const p = prodsMap.get(item.barcode);
-        if (p?.costPrice) val += (item.quantity * p.costPrice);
-        const s = item.supplierName || 'Unknown';
-        supplierStock[s] = (supplierStock[s] || 0) + item.quantity;
-        if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) added += item.quantity;
-        if (item.itemType === 'Expiry' && item.expiryDate) {
-            try { const exp = startOfDay(parseISO(item.expiryDate)); if (!isBefore(exp, today) && isBefore(exp, addDays(today, 7))) soon++; } catch {}
-        }
-    });
-    const trend: StockTrendData[] = [];
-    for (let i = 14; i >= 0; i--) {
-        const day = subDays(today, i);
-        const curr = inventoryItems.reduce((s, x) => s + x.quantity, 0);
-        const post = inventoryItems.filter(x => x.timestamp && isAfter(parseISO(x.timestamp), endOfDay(day))).reduce((s, x) => s + x.quantity, 0);
-        trend.push({ date: format(day, 'MMM dd'), totalStock: Math.max(0, curr - post) });
+    if (!isMounted) {
+      return {
+        totalProducts: 0,
+        totalStockQuantity: 0,
+        itemsExpiringSoon: 0,
+        damagedItemsCount: 0,
+        totalSuppliers: 0,
+        totalStockValue: 0,
+        stockBySupplier: [],
+        netItemsAddedToday: 0,
+        dailyStockChangeDirection: 'none',
+        stockTrend: [],
+      };
     }
-    return { totalProducts: products.length, totalStockQuantity: inventoryItems.reduce((s, x) => s + x.quantity, 0), itemsExpiringSoon: soon, damagedItemsCount: inventoryItems.filter(i => i.itemType === 'Damage').reduce((s, i) => s + i.quantity, 0), totalSuppliers: new Set(products.map(x => x.supplierName)).size, totalStockValue: val, stockBySupplier: Object.entries(supplierStock).map(([n, q]) => ({ name: n, totalStock: q })).sort((a, b) => b.totalStock - a.totalStock), netItemsAddedToday: added, dailyStockChangeDirection: added > 0 ? 'increase' : 'none', stockTrend: trend };
+
+    const today = startOfDay(new Date());
+    const productsMap = new Map<string, Product>(products.map((product) => [product.barcode, product]));
+    let totalValue = 0;
+    let addedToday = 0;
+    let expiringSoon = 0;
+    const supplierStock: Record<string, number> = {};
+
+    inventoryItems.forEach((item) => {
+      if (item.quantity <= 0) return;
+
+      const product = productsMap.get(item.barcode);
+      if (product?.costPrice) totalValue += item.quantity * product.costPrice;
+
+      const supplier = item.supplierName || 'Unknown';
+      supplierStock[supplier] = (supplierStock[supplier] || 0) + item.quantity;
+
+      if (item.timestamp && isSameDay(startOfDay(parseISO(item.timestamp)), today)) {
+        addedToday += item.quantity;
+      }
+
+      if (item.itemType === 'Expiry' && item.expiryDate) {
+        try {
+          const expiry = startOfDay(parseISO(item.expiryDate));
+          if (!isBefore(expiry, today) && isBefore(expiry, addDays(today, 7))) {
+            expiringSoon++;
+          }
+        } catch {
+          // Ignore malformed dates in dashboard aggregation.
+        }
+      }
+    });
+
+    const trend: StockTrendData[] = [];
+    const currentTotalStock = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    for (let daysAgo = 14; daysAgo >= 0; daysAgo--) {
+      const day = subDays(today, daysAgo);
+      const addedAfterDay = inventoryItems
+        .filter((item) => item.timestamp && isAfter(parseISO(item.timestamp), endOfDay(day)))
+        .reduce((sum, item) => sum + item.quantity, 0);
+
+      trend.push({
+        date: format(day, 'MMM dd'),
+        totalStock: Math.max(0, currentTotalStock - addedAfterDay),
+      });
+    }
+
+    return {
+      totalProducts: products.length,
+      totalStockQuantity: currentTotalStock,
+      itemsExpiringSoon: expiringSoon,
+      damagedItemsCount: inventoryItems
+        .filter((item) => item.itemType === 'Damage')
+        .reduce((sum, item) => sum + item.quantity, 0),
+      totalSuppliers: new Set(products.map((product) => product.supplierName)).size,
+      totalStockValue: totalValue,
+      stockBySupplier: Object.entries(supplierStock)
+        .map(([name, totalStock]) => ({ name, totalStock }))
+        .sort((a, b) => b.totalStock - a.totalStock),
+      netItemsAddedToday: addedToday,
+      dailyStockChangeDirection: addedToday > 0 ? 'increase' : 'none',
+      stockTrend: trend,
+    };
   }, [inventoryItems, products, isMounted]);
 
-  if (!isCacheReady || !isMounted) return (<div className="space-y-8 pt-4"><h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none px-2">MISSION CONTROL</h1><DashboardSkeleton /></div>);
+  if (!isCacheReady || !isMounted) {
+    return (
+      <div className="pb-24 pt-2">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 pb-32 pt-2 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <div className="flex flex-col gap-3 px-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">MISSION CONTROL</h1>
-                <div className="flex flex-col items-start sm:items-end gap-1"><span className="hidden md:inline text-[10px] font-black text-primary uppercase tracking-[0.4em]">{mountedDate}</span><div className="md:hidden flex flex-col items-end">{isSyncing ? (<span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] animate-pulse">Syncing...</span>) : (<span className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Synced</span>)}</div></div>
+    <div className="space-y-6 pb-28 pt-2 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      <section className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-card/70 p-6 sm:p-10 shadow-sm backdrop-blur-xl">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/[0.08] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-primary/[0.04] blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-primary/20 bg-primary/[0.07] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-primary">
+                SheetSync Registry Control
+              </Badge>
+              <div
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em]',
+                  isSyncing
+                    ? 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                )}
+              >
+                <span className={cn('h-1.5 w-1.5 rounded-full', isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
+                {isSyncing ? 'Transmission Link Active' : 'Registry Synchronized'}
+              </div>
             </div>
-            <div className="flex items-center gap-6 border-t border-white/10 pt-3 opacity-40"><p className="text-[8px] font-black uppercase tracking-[0.5em]">{metrics.totalSuppliers} VENDORS</p><p className="text-[8px] font-black uppercase tracking-[0.5em]">{metrics.totalProducts} SKUS</p></div>
+
+            <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white sm:text-6xl uppercase leading-none">Industrial Control</h1>
+            <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground/60 sm:text-base uppercase tracking-tight">
+              Real-time telemetry for stock volume, asset valuation, risk identification, and authorized session monitoring.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
+            <div className="rounded-2xl border border-border/60 bg-background/60 px-5 py-4 shadow-sm backdrop-blur-md">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-1">Today</p>
+              <p className="text-xs font-black text-slate-900 dark:text-white truncate">{mountedDate}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-background/60 px-5 py-4 shadow-sm backdrop-blur-md">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-1">Suppliers</p>
+              <p className="text-xl font-black leading-none text-slate-900 dark:text-white tabular-nums">{metrics.totalSuppliers.toLocaleString()}</p>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-          <VolumeGaugeCard title="Registry Volume" value={metrics.totalStockQuantity} description={<Badge variant="outline" className="font-black text-[9px] uppercase tracking-widest px-2 py-0.5 border-none bg-primary/10 text-primary"><ArrowUp className="h-2.5 w-2.5 mr-1" strokeWidth={4} /> {metrics.netItemsAddedToday} RECENT</Badge>} href="/inventory" onIconClick={() => setIsStockTrendDialogOpen(true)} />
-          <MetricCard title="Total Valuation" value={`QAR ${Math.round(metrics.totalStockValue).toLocaleString()}`} iconNode={<Wallet />} description="ACTIVE ASSET VALUE" />
-          <MetricCard title="Priority Alerts" value={metrics.itemsExpiringSoon} iconNode={<CalendarClock />} description="7-DAY PROTOCOL" href="/inventory?filterType=expiringSoon" className={cn("hidden sm:flex", metrics.itemsExpiringSoon > 0 && "bg-yellow-500/5 dark:bg-yellow-500/[0.02] border-yellow-500/10")} />
-          <MetricCard title="Damage Reports" value={metrics.damagedItemsCount || 0} iconNode={<AlertTriangle />} description="AUDIT REQUIRED" href="/inventory?filterType=damaged" className={cn("hidden sm:flex", (metrics.damagedItemsCount || 0) > 0 ? "bg-destructive/5 dark:bg-destructive/[0.02] border-destructive/10" : "")} />
-          <div className="col-span-2 lg:col-span-1"><QuickAuthorizeCard /></div>
-        </div>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <VolumeGaugeCard
+          value={metrics.totalStockQuantity}
+          description={
+            <div className="flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-widest">
+              <span className="text-muted-foreground/40">Daily Log Entry</span>
+              <span className="inline-flex items-center gap-1 text-primary">
+                <ArrowUp className="h-3 w-3" />
+                {metrics.netItemsAddedToday.toLocaleString()}
+              </span>
+            </div>
+          }
+          href="/inventory"
+          onIconClick={() => setIsStockTrendDialogOpen(true)}
+        />
 
-        <PendingApprovalsSummary /><ActiveAuthorizations />
+        <MetricCard
+          title="Asset Valuation"
+          value={`QAR ${Math.round(metrics.totalStockValue).toLocaleString()}`}
+          iconNode={<Wallet />}
+          description="Estimated Registry Cost Value"
+        />
 
-        <Card className="shadow-none rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden group">
-            <CardHeader className="p-6 pb-2"><div className="flex items-center gap-4"><div className="p-2 bg-primary/10 rounded-xl group-hover:scale-110 transition-all"><TrendingUp className="h-5 w-5 text-primary" strokeWidth={3} /></div><div><CardTitle className="text-lg font-black uppercase tracking-tighter">Vendor Analytics</CardTitle><p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Live Supplier Distribution</p></div></div></CardHeader>
-            <CardContent className="p-6 pt-0"><div className="h-[350px] w-full"><StockBySupplierChart data={metrics.stockBySupplier} /></div></CardContent>
-        </Card>
+        <MetricCard
+          title="Lifecycle Alerts"
+          value={metrics.itemsExpiringSoon.toLocaleString()}
+          iconNode={<CalendarClock />}
+          description="Threshold Expiry < 7 Days"
+          href="/inventory?filterType=expiringSoon"
+          tone={metrics.itemsExpiringSoon > 0 ? 'warning' : 'default'}
+        />
 
-        {metrics.stockTrend && (<StockTrendDetailedDialog isOpen={isStockTrendDialogOpen} onOpenChange={setIsStockTrendDialogOpen} initialData={metrics.stockTrend} />)}
-        <div className="pt-16 text-center"><p className="text-[9px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6"><span className="w-8 h-px bg-current opacity-20" /> SHEETSYNC INDUSTRIAL <span className="w-8 h-px bg-current opacity-20" /></p></div>
+        <MetricCard
+          title="Risk Trace"
+          value={(metrics.damagedItemsCount || 0).toLocaleString()}
+          iconNode={<AlertTriangle />}
+          description="Identified Damage Records"
+          href="/inventory?filterType=damaged"
+          tone={(metrics.damagedItemsCount || 0) > 0 ? 'danger' : 'default'}
+        />
+
+        <QuickAuthorizeCard />
+      </section>
+
+      <PendingApprovalsSummary />
+      <ActiveAuthorizations />
+      <VendorAnalytics data={metrics.stockBySupplier} />
+
+      {metrics.stockTrend && (
+        <StockTrendDetailedDialog
+          isOpen={isStockTrendDialogOpen}
+          onOpenChange={setIsStockTrendDialogOpen}
+          initialData={metrics.stockTrend}
+        />
+      )}
+
+      <footer className="pt-12 text-center">
+        <p className="text-[8px] font-black uppercase tracking-[0.8em] text-muted-foreground/10">SHEETSYNC INDUSTRIAL COMMAND TERMINAL • 2024</p>
+      </footer>
     </div>
   );
 }
