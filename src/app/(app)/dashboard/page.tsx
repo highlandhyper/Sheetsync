@@ -30,12 +30,12 @@ import { Separator } from '@/components/ui/separator';
 
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
-    <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
-        <div className="flex flex-row items-center justify-between w-full mb-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
+    <div className="relative z-20 flex flex-col h-full p-4 sm:p-5">
+        <div className="flex flex-row items-center justify-between w-full mb-1">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{title}</span>
             <div 
                 className={cn(
-                    "w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500", 
+                    "w-9 h-9 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500", 
                     onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
                 )}
                 onClick={(e) => {
@@ -46,27 +46,27 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
                     }
                 }}
             >
-                <div className="h-5 w-5">{iconNode}</div>
+                <div className="h-4 w-4">{iconNode}</div>
             </div>
         </div>
         
-        <div className="flex-1 flex flex-col justify-center min-h-[80px]">
+        <div className="flex-1 flex flex-col justify-center min-h-[60px]">
             {isLoading ? (
-                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-8 w-3/4" />
             ) : (
-                <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                <div className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                     {value}
                 </div>
             )}
         </div>
 
-        <div className="mt-2 pt-2 border-t border-white/5 h-10 flex items-center">
+        <div className="mt-1 pt-1 border-t border-white/5 h-8 flex items-center">
             {description && !isLoading && (
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
+                <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     {description}
                 </div>
             )}
-            {isLoading && <Skeleton className="h-4 w-1/2" />}
+            {isLoading && <Skeleton className="h-3 w-1/2" />}
         </div>
     </div>
   );
@@ -106,11 +106,11 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
     ];
 
     const cardContent = (
-        <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col">
-            <div className="w-full flex justify-between items-start z-20 mb-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
+        <div className="relative z-10 p-4 sm:p-5 h-full flex flex-col">
+            <div className="w-full flex justify-between items-start z-20 mb-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{title}</span>
                 <div 
-                    className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
+                    className="w-9 h-9 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
                     onClick={(e) => {
                         if (onIconClick) {
                             e.preventDefault();
@@ -119,18 +119,19 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                         }
                     }}
                 >
-                    <Warehouse className="h-5 w-5" />
+                    <Warehouse className="h-4 w-4" />
                 </div>
             </div>
             
-            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[80px] pb-2 pt-6">
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[60px] pt-2">
+                {/* ARCH GAUGE: POSITIONED ABOVE NUMBERS */}
+                <div className="absolute top-[-10px] inset-x-0 h-[60px] flex items-center justify-center pointer-events-none overflow-hidden">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                             <Pie
                                 data={data}
                                 cx="50%"
-                                cy="90%" 
+                                cy="100%" 
                                 startAngle={180}
                                 endAngle={0}
                                 innerRadius="70%"
@@ -148,15 +149,15 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                     </ResponsiveContainer>
                 </div>
                 
-                <div className="relative z-10 text-center mt-4">
-                    <div className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                <div className="relative z-10 text-center mt-2">
+                    <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                         {value.toLocaleString()}
                     </div>
                 </div>
             </div>
 
-            <div className="mt-2 pt-2 border-t border-white/5 h-10 flex items-center justify-center z-20">
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
+            <div className="mt-1 pt-1 border-t border-white/5 h-8 flex items-center justify-center z-20">
+                <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     {description}
                 </div>
             </div>
@@ -440,33 +441,33 @@ function QuickAuthorizeCard() {
     return (
         <>
         <Card className="shadow-none border border-white/5 bg-primary/5 dark:bg-primary/[0.02] h-full flex flex-col group overflow-hidden transition-all hover:bg-primary/[0.08] relative rounded-2xl">
-            <div className="absolute top-0 right-0 p-6 opacity-20">
-                <ShieldCheck className="h-12 w-12 text-primary" strokeWidth={1} />
+            <div className="absolute top-0 right-0 p-4 opacity-20">
+                <ShieldCheck className="h-8 w-8 text-primary" strokeWidth={1} />
             </div>
-            <CardHeader className="pb-1 px-6 pt-6 sm:px-7 sm:pt-7">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Terminal Access</CardTitle>
-                <CardDescription className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Proactive Authorization</CardDescription>
+            <CardHeader className="pb-1 px-4 pt-4 sm:px-5 sm:pt-5">
+                <CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Terminal Access</CardTitle>
+                <CardDescription className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Authorization</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-2 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[80px]">
+            <CardContent className="space-y-2 pt-1 flex-grow flex flex-col justify-center px-4 pb-4 sm:px-5 sm:pb-5 min-h-[60px]">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
                             variant="outline" 
                             role="combobox" 
-                            className="w-full h-12 text-xs justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-background/50 backdrop-blur-xl shadow-inner"
+                            className="w-full h-9 text-[10px] justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-background/50 backdrop-blur-xl shadow-inner"
                         >
-                            <div className="flex items-center gap-3 truncate">
-                                {selectedStaff === "ALL PERSONNEL (GLOBAL)" ? <Globe className="h-4 w-4 text-primary shrink-0" /> : <User className="h-4 w-4 text-primary shrink-0" />}
+                            <div className="flex items-center gap-2 truncate">
+                                {selectedStaff === "ALL PERSONNEL (GLOBAL)" ? <Globe className="h-3 w-3 text-primary shrink-0" /> : <User className="h-3 w-3 text-primary shrink-0" />}
                                 {selectedStaff || "SELECT PERSONNEL"}
                             </div>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />
+                            <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-30" />
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden border-primary/10" align="start">
                         <Command className="bg-background/95 backdrop-blur-3xl">
-                            <CommandInput placeholder="Search personnel registry..." className="h-14 text-sm font-bold" />
+                            <CommandInput placeholder="Search registry..." className="h-11 text-xs font-bold" />
                             <CommandList>
-                                <CommandEmpty className="text-[10px] font-black uppercase tracking-widest py-6 text-center opacity-40">Zero Results</CommandEmpty>
+                                <CommandEmpty className="text-[9px] font-black uppercase tracking-widest py-4 text-center opacity-40">Zero Results</CommandEmpty>
                                 <CommandGroup heading="Industrial Broadcast">
                                     <CommandItem
                                         value="ALL PERSONNEL (GLOBAL)"
@@ -474,11 +475,11 @@ function QuickAuthorizeCard() {
                                             setSelectedStaff("ALL PERSONNEL (GLOBAL)");
                                             setStaffPopoverOpen(false);
                                         }}
-                                        className="text-xs font-black text-primary h-12 px-6 hover:bg-primary/5"
+                                        className="text-[10px] font-black text-primary h-10 px-4 hover:bg-primary/5"
                                     >
-                                        <Globe className="mr-3 h-4 w-4" />
+                                        <Globe className="mr-2 h-3 w-3" />
                                         ALL PERSONNEL (GLOBAL)
-                                        <Check className={cn("ml-auto h-4 w-4", selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "opacity-100" : "opacity-0")} />
+                                        <Check className={cn("ml-auto h-3 w-3", selectedStaff === "ALL PERSONNEL (GLOBAL)" ? "opacity-100" : "opacity-0")} />
                                     </CommandItem>
                                 </CommandGroup>
                                 <CommandGroup heading="Individual Registry">
@@ -490,9 +491,9 @@ function QuickAuthorizeCard() {
                                                 setSelectedStaff(name);
                                                 setStaffPopoverOpen(false);
                                             }}
-                                            className="text-xs font-bold h-12 px-6"
+                                            className="text-[10px] font-bold h-10 px-4"
                                         >
-                                            <Check className={cn("mr-3 h-4 w-4", selectedStaff === name ? "opacity-100" : "opacity-0")} />
+                                            <Check className={cn("mr-2 h-3 w-3", selectedStaff === name ? "opacity-100" : "opacity-0")} />
                                             {name}
                                         </CommandItem>
                                     ))}
@@ -503,15 +504,15 @@ function QuickAuthorizeCard() {
                 </Popover>
                 
                 <Button 
-                    className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all active:scale-95 bg-primary hover:bg-primary/90 text-white" 
+                    className="w-full h-9 text-[10px] font-black uppercase tracking-[0.1em] rounded-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all active:scale-95 bg-primary hover:bg-primary/90 text-white" 
                     disabled={!selectedStaff}
                     onClick={handleActionClick}
                 >
                     AUTHORIZE
                 </Button>
             </CardContent>
-            <div className="h-10 flex items-center px-6 sm:px-7 mt-auto mb-2">
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
+            <div className="h-8 flex items-center px-4 sm:px-5 mt-auto mb-1">
+                <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     MANAGE PERMISSIONS
                 </div>
             </div>
@@ -845,10 +846,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-12 pb-32 pt-2 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+    <div className="space-y-8 pb-32 pt-2 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="flex flex-col gap-3 px-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
+                <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
                     MISSION CONTROL
                 </h1>
                 <div className="flex flex-col items-start sm:items-end gap-1">
@@ -860,20 +861,15 @@ export default function DashboardPage() {
                             <span className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Synced</span>
                         )}
                     </div>
-                    {isSyncing && (
-                        <Badge variant="outline" className="hidden md:flex border-none bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest px-2 animate-pulse">
-                            SYNCING SYSTEM CORE
-                        </Badge>
-                    )}
                 </div>
             </div>
-            <div className="flex items-center gap-6 border-t border-white/10 pt-4 opacity-40">
-                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.5em]">{metrics.totalSuppliers} VENDORS LINKED</p>
-                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.5em]">{metrics.totalProducts} MASTER SKUS</p>
+            <div className="flex items-center gap-6 border-t border-white/10 pt-3 opacity-40">
+                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.5em]">{metrics.totalSuppliers} VENDORS</p>
+                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.5em]">{metrics.totalProducts} SKUS</p>
             </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           <VolumeGaugeCard 
             title="Registry Volume" 
             value={metrics.totalStockQuantity} 
@@ -915,21 +911,21 @@ export default function DashboardPage() {
         <PendingApprovalsSummary />
         <ActiveAuthorizations />
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 pt-4">
             <Card className="shadow-none rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden group">
-                <CardHeader className="p-8 pb-4">
+                <CardHeader className="p-6 pb-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary/10 rounded-xl group-hover:scale-110 transition-all duration-500">
-                            <TrendingUp className="h-6 w-6 text-primary" strokeWidth={3} />
+                        <div className="p-2 bg-primary/10 rounded-xl group-hover:scale-110 transition-all duration-500">
+                            <TrendingUp className="h-5 w-5 text-primary" strokeWidth={3} />
                         </div>
                         <div>
-                            <CardTitle className="text-xl font-black uppercase tracking-tighter">Vendor Analytics</CardTitle>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mt-1">Live Supplier Distribution</p>
+                            <CardTitle className="text-lg font-black uppercase tracking-tighter">Vendor Analytics</CardTitle>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Live Supplier Distribution</p>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-8 pt-0">
-                    <div className="h-[400px] w-full">
+                <CardContent className="p-6 pt-0">
+                    <div className="h-[350px] w-full">
                         <StockBySupplierChart data={metrics.stockBySupplier} />
                     </div>
                 </CardContent>
@@ -944,11 +940,11 @@ export default function DashboardPage() {
             />
         )}
 
-        <div className="pt-24 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.8em] text-muted-foreground/10 flex items-center justify-center gap-8">
-                <span className="w-12 h-px bg-current opacity-20" />
-                SHEETSYNC INDUSTRIAL CORE
-                <span className="w-12 h-px bg-current opacity-20" />
+        <div className="pt-16 text-center">
+            <p className="text-[9px] font-black uppercase tracking-[0.6em] text-muted-foreground/10 flex items-center justify-center gap-6">
+                <span className="w-8 h-px bg-current opacity-20" />
+                SHEETSYNC INDUSTRIAL
+                <span className="w-8 h-px bg-current opacity-20" />
             </p>
         </div>
     </div>
