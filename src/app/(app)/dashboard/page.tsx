@@ -96,20 +96,19 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
 }
 
 function VolumeGaugeCard({ title, value, description, onIconClick, href }: { title: string, value: number, description: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void, href: string }) {
-    const MAX_CAPACITY = 6000;
-    const tier1 = Math.min(value, 3000);
-    const tier2 = Math.max(0, Math.min(value - 3000, 3000));
+    const MAX_CAPACITY = 10000; 
+    const tier1 = Math.min(value, 5000);
+    const tier2 = Math.max(0, Math.min(value - 5000, 5000));
     const remainder = Math.max(0, MAX_CAPACITY - value);
 
     const data = [
-        { name: 'Tier 1', value: tier1 },
-        { name: 'Tier 2', value: tier2 },
+        { name: 'Active', value: tier1 + tier2 },
         { name: 'Remainder', value: remainder },
     ];
 
     const cardContent = (
-        <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col justify-between pointer-events-none">
-            <div className="w-full flex justify-between items-start pointer-events-auto">
+        <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col justify-between">
+            <div className="w-full flex justify-between items-start z-20">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
                 <div 
                     className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
@@ -125,44 +124,41 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                 </div>
             </div>
             
-            <div className="relative flex flex-col items-center justify-center flex-1 py-4">
-                {/* IMPROVED VISIBILITY GAUGE */}
-                <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-80" style={{ top: '15%' }}>
+            <div className="relative flex flex-col items-center justify-center flex-1 py-0 min-h-[140px] -mt-4">
+                {/* LARGER, HIGH-VISIBILITY GAUGE */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ height: '220px', top: '10%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
-                                cy="50%"
+                                cy="70%" 
                                 startAngle={180}
                                 endAngle={0}
-                                innerRadius="84%"
-                                outerRadius="100%"
+                                innerRadius="72%"
+                                outerRadius="95%"
                                 paddingAngle={0}
                                 dataKey="value"
                                 stroke="none"
                                 isAnimationActive={true}
-                                animationDuration={2500}
+                                animationDuration={2000}
                             >
                                 <Cell fill="hsl(var(--primary))" />
-                                <Cell fill="hsl(var(--primary) / 0.6)" />
-                                <Cell fill="hsl(var(--primary) / 0.08)" />
+                                <Cell fill="hsl(var(--primary) / 0.1)" />
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
                 
-                <div className="relative z-10 text-center">
-                    <div className="text-4xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                <div className="relative z-10 text-center mt-12">
+                    <div className="text-5xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                         {value.toLocaleString()}
                     </div>
                 </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-center min-h-[1rem]">
-                <div className="pointer-events-auto">
-                    {description}
-                </div>
+            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-center z-20">
+                {description}
             </div>
         </div>
     );
