@@ -1,3 +1,42 @@
+# CRITICAL: CURRENT CODE IS SOURCE OF TRUTH
+
+The current files in this workspace are the authoritative version of this project.
+
+Manual changes may have been made outside the AI. Never restore, overwrite, reverse, or replace those changes based on previous AI-generated versions or previous conversation context.
+
+## DEFAULT MODE: READ ONLY
+
+Unless the user explicitly asks for a code modification, DO NOT modify any project file.
+
+Questions such as:
+
+* "check this"
+* "look at this"
+* "understand this"
+* "what do you think?"
+* "review this"
+* "why is this happening?"
+* "explain this"
+
+are READ-ONLY requests.
+
+Never interpret them as permission to edit code.
+
+Before every requested modification:
+
+1. Read the current relevant file(s).
+2. Treat current code as source of truth.
+3. Make only the explicitly requested change.
+4. Use the smallest possible diff.
+5. Preserve all unrelated logic, styling, behavior, APIs, routes, Firebase operations, schemas, caching, authentication, access control, and data handling.
+6. Never perform unrelated refactoring or cleanup.
+7. Never change dependencies/configuration unless explicitly requested.
+8. Never modify additional files because they "could be improved."
+9. If another file genuinely must change for the requested feature to work, explain why before modifying it.
+10. After changes, list every modified file and exactly what changed.
+
+DO NOT MODIFY CODE UNTIL THE USER EXPLICITLY AUTHORIZES A CHANGE.
+
 # PROJECT EDITING RULES
 
 You are assisting with an existing production web application.
