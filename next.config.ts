@@ -1,5 +1,9 @@
 import type { NextConfig } from 'next';
 
+/**
+ * NEXTJS CONFIGURATION
+ * Last Optimized: 2026-09-06T08:25:00Z
+ */
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   typescript: {
