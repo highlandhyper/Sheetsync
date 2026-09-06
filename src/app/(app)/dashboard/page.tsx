@@ -1,7 +1,7 @@
 'use client';
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type Product } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Activity,
   AlertTriangle,
@@ -117,26 +117,26 @@ function MetricCard({
   const content = (
     <Card
       className={cn(
-        'group relative min-h-[110px] overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-xl transition-all duration-300',
+        'group relative min-h-[95px] overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-xl transition-all duration-300',
         'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/[0.04] dark:hover:shadow-black/20',
         toneClasses.card,
         className,
       )}
     >
-      <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground/60">
+      <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/60">
             <span className={cn('h-1.5 w-1.5 rounded-full', toneClasses.dot)} />
             {title}
           </div>
-          <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105', toneClasses.icon)}>
-            <div className="flex h-4 w-4 items-center justify-center [&>svg]:h-4 [&>svg]:w-4">{iconNode}</div>
+          <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105', toneClasses.icon)}>
+            <div className="flex h-3.5 w-3.5 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5">{iconNode}</div>
           </div>
         </div>
 
         <div className="mt-auto">
-          <div className="text-2xl sm:text-3xl font-black tracking-tighter text-foreground leading-none">{value}</div>
-          <div className="mt-1.5 text-[9px] font-bold uppercase tracking-tight text-muted-foreground/50 truncate">
+          <div className="text-xl sm:text-2xl font-black tracking-tighter text-foreground leading-none">{value}</div>
+          <div className="mt-1 text-[8px] font-bold uppercase tracking-tight text-muted-foreground/50 truncate">
             {description}
           </div>
         </div>
@@ -175,24 +175,24 @@ function VolumeGaugeCard({
 
   return (
     <Link href={href} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <Card className="group relative min-h-[110px] overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/[0.06]">
-        <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
+      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/[0.06]">
+        <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
           <div className="flex items-start justify-between mb-1">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-primary">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               Volume
             </div>
             <div
               role="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onIconClick?.(e); }}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95"
             >
-              <Activity className="h-4 w-4" />
+              <Activity className="h-3.5 w-3.5" />
             </div>
           </div>
 
-          <div className="flex flex-col items-center mt-auto">
-            <div className="h-12 w-28 relative">
+          <div className="flex flex-col items-center justify-center flex-1 relative mt-1">
+            <div className="h-14 w-28 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
                   <Pie
@@ -201,8 +201,8 @@ function VolumeGaugeCard({
                     cy="100%"
                     startAngle={180}
                     endAngle={0}
-                    innerRadius={36}
-                    outerRadius={45}
+                    innerRadius={38}
+                    outerRadius={50}
                     dataKey="value"
                     stroke="none"
                     isAnimationActive
@@ -213,12 +213,13 @@ function VolumeGaugeCard({
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-x-0 bottom-0 text-center text-[8px] font-black text-primary/40 uppercase tracking-widest">{percentage}% CAP</div>
+              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-0.5">
+                <div className="text-xl sm:text-2xl font-black tracking-tighter text-foreground leading-none">
+                  {value.toLocaleString()}
+                </div>
+                <div className="text-[7px] font-black uppercase tracking-[0.1em] text-muted-foreground/40">{percentage}% CAP</div>
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black tracking-tighter text-foreground leading-none -mt-2">
-              {value.toLocaleString()}
-            </div>
-            <div className="mt-1 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{description}</div>
           </div>
         </CardContent>
       </Card>
@@ -467,15 +468,15 @@ function QuickAuthorizeCard() {
 
   return (
     <>
-      <Card className="group relative min-h-[110px] overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] shadow-sm">
-        <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-primary">
+      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] shadow-sm">
+        <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-4 mb-1">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               Quick Access
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <ShieldCheck className="h-4 w-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <ShieldCheck className="h-3.5 w-3.5" />
             </div>
           </div>
 
@@ -485,24 +486,24 @@ function QuickAuthorizeCard() {
                 <Button
                   variant="outline"
                   role="combobox"
-                  className="h-9 w-full justify-between rounded-xl border-primary/15 bg-background/70 px-3 text-[10px] font-black uppercase tracking-tight shadow-none"
+                  className="h-8 w-full justify-between rounded-lg border-primary/15 bg-background/70 px-2.5 text-[9px] font-black uppercase tracking-tight shadow-none"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
-                      <Globe className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <Globe className="h-3 w-3 shrink-0 text-primary" />
                     ) : (
-                      <User className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <User className="h-3 w-3 shrink-0 text-primary" />
                     )}
                     <span className="truncate">{selectedStaff || 'Select identity'}</span>
                   </div>
-                  <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-40" />
+                  <ChevronsUpDown className="ml-1.5 h-3 w-3 shrink-0 opacity-40" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] overflow-hidden rounded-xl border-border/70 p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search personnel..." className="h-11 text-sm" />
+                  <CommandInput placeholder="Search personnel..." className="h-10 text-xs" />
                   <CommandList>
-                    <CommandEmpty className="py-5 text-center text-xs text-muted-foreground">No personnel found.</CommandEmpty>
+                    <CommandEmpty className="py-4 text-center text-[10px] text-muted-foreground font-bold uppercase">No personnel found.</CommandEmpty>
                     <CommandGroup heading="Global access">
                       <CommandItem
                         value="ALL PERSONNEL (GLOBAL)"
@@ -510,11 +511,11 @@ function QuickAuthorizeCard() {
                           setSelectedStaff('ALL PERSONNEL (GLOBAL)');
                           setStaffPopoverOpen(false);
                         }}
-                        className="h-10 text-xs font-semibold text-primary"
+                        className="h-9 text-[10px] font-black uppercase text-primary"
                       >
-                        <Globe className="mr-2 h-4 w-4" />
+                        <Globe className="mr-2 h-3.5 w-3.5" />
                         All personnel
-                        <Check className={cn('ml-auto h-4 w-4', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} />
+                        <Check className={cn('ml-auto h-3.5 w-3.5', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} />
                       </CommandItem>
                     </CommandGroup>
                     <CommandGroup heading="Personnel">
@@ -526,9 +527,9 @@ function QuickAuthorizeCard() {
                             setSelectedStaff(name);
                             setStaffPopoverOpen(false);
                           }}
-                          className="h-10 text-xs"
+                          className="h-9 text-[10px] font-bold uppercase"
                         >
-                          <Check className={cn('mr-2 h-4 w-4', selectedStaff === name ? 'opacity-100' : 'opacity-0')} />
+                          <Check className={cn('mr-2 h-3.5 w-3.5', selectedStaff === name ? 'opacity-100' : 'opacity-0')} />
                           {name}
                         </CommandItem>
                       ))}
@@ -538,7 +539,7 @@ function QuickAuthorizeCard() {
               </PopoverContent>
             </Popover>
 
-            <Button className="h-9 w-full rounded-xl font-black uppercase tracking-widest text-[9px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
+            <Button className="h-8 w-full rounded-lg font-black uppercase tracking-widest text-[8px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
               Authorize Session
             </Button>
           </div>
@@ -836,7 +837,7 @@ function DashboardSkeleton() {
       <Skeleton className="h-[190px] w-full rounded-3xl" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={index} className="h-[110px] w-full rounded-2xl" />
+          <Skeleton key={index} className="h-[95px] w-full rounded-2xl" />
         ))}
       </div>
       <Skeleton className="h-[500px] w-full rounded-3xl" />

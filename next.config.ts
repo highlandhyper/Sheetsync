@@ -2,7 +2,8 @@ import type { NextConfig } from 'next';
 
 /**
  * NEXTJS CONFIGURATION
- * Last Optimized: 2026-09-06T08:25:00Z
+ * Optimized: 2026-09-06T08:30:00Z
+ * Note: Incremental timestamp to force clear webpack cache during Studio boot.
  */
 const nextConfig: NextConfig = {
   reactStrictMode: false,
@@ -25,6 +26,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Ensure development source maps are handled cleanly
+  productionBrowserSourceMaps: false,
 };
 
 export default nextConfig;
