@@ -1,22 +1,30 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, ShieldCheck, ShieldQuestion, KeyRound, User, Mail, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  KeyRound,
+  Loader2,
+  Mail,
+  ShieldCheck,
+  ShieldQuestion,
+  User,
+} from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,8 +41,8 @@ interface AuthorizeActionDialogProps {
 }
 
 const authSchema = z.object({
-  username: z.string().min(1, "Identity is required."),
-  password: z.string().min(1, "Access key is required."),
+  username: z.string().min(1, 'Identity is required.'),
+  password: z.string().min(1, 'Access key is required.'),
 });
 
 type AuthFormValues = z.infer<typeof authSchema>;
@@ -47,8 +55,9 @@ export function AuthorizeActionDialog({
   fixedIdentifier,
 }: AuthorizeActionDialogProps) {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyCredentials } = useLocalSettingsAuth();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -60,7 +69,10 @@ export function AuthorizeActionDialog({
     formState: { errors },
   } = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
-    defaultValues: { username: fixedIdentifier || '', password: '' },
+    defaultValues: {
+      username: fixedIdentifier || '',
+      password: '',
+    },
   });
 
   useEffect(() => {
@@ -72,6 +84,7 @@ export function AuthorizeActionDialog({
   const handleOpenChange = (open: boolean) => {
     if (!isSubmitting) {
       onOpenChange(open);
+
       if (!open) {
         reset();
       }
@@ -80,131 +93,244 @@ export function AuthorizeActionDialog({
 
   const onSubmit = async (data: AuthFormValues) => {
     setIsSubmitting(true);
+
     const identifier = fixedIdentifier || data.username;
     const isEmail = identifier.includes('@');
 
     try {
-        let isAuthorized = false;
+      let isAuthorized = false;
 
-        if (isEmail && auth) {
-            // FIREBASE RE-AUTHENTICATION: Use login password
-            try {
-                await signInWithEmailAndPassword(auth, identifier, data.password);
-                isAuthorized = true;
-            } catch (firebaseErr: any) {
-                console.error("Re-auth failed:", firebaseErr.code);
-                isAuthorized = false;
-            }
-        } else {
-            // LOCAL KEY FALLBACK: Use generic admin key
-            isAuthorized = verifyCredentials(identifier, data.password);
+      if (isEmail && auth) {
+        try {
+          await signInWithEmailAndPassword(
+            auth,
+            identifier,
+            data.password,
+          );
+
+          isAuthorized = true;
+        } catch (firebaseErr: any) {
+          console.error('Re-auth failed:', firebaseErr.code);
+          isAuthorized = false;
         }
+      } else {
+        isAuthorized = verifyCredentials(
+          identifier,
+          data.password,
+        );
+      }
 
-        // Simulate a small delay for user feedback
-        await new Promise(resolve => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
-        if (isAuthorized) {
-            toast({
-                title: "Identity Verified",
-                description: isEmail ? "Cloud credentials confirmed." : "Administrative access granted.",
-            });
-            onAuthorizationSuccess();
-        } else {
-            setError("password", { 
-                type: "manual", 
-                message: isEmail ? "Invalid password for this account." : "Invalid access key for this identity." 
-            });
-            toast({
-                variant: "destructive",
-                title: "Verification Failed",
-                description: isEmail ? "The password provided is incorrect." : "The access key is incorrect.",
-            });
-        }
-    } catch (e) {
+      if (isAuthorized) {
         toast({
-            variant: "destructive",
-            title: "System Error",
-            description: "An unexpected error occurred during verification.",
+          title: 'Identity Verified',
+          description: isEmail
+            ? 'Cloud credentials confirmed.'
+            : 'Administrative access granted.',
         });
+
+        onAuthorizationSuccess();
+      } else {
+        setError('password', {
+          type: 'manual',
+          message: isEmail
+            ? 'Invalid password for this account.'
+            : 'Invalid access key for this identity.',
+        });
+
+        toast({
+          variant: 'destructive',
+          title: 'Verification Failed',
+          description: isEmail
+            ? 'The password provided is incorrect.'
+            : 'The access key is incorrect.',
+        });
+      }
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'System Error',
+        description:
+          'An unexpected error occurred during verification.',
+      });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const { ref: passwordHookRef, ...passwordProps } = register('password');
+  const {
+    ref: passwordHookRef,
+    ...passwordProps
+  } = register('password');
+
+  const isFixedEmail = fixedIdentifier?.includes('@');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[360px] rounded-3xl border-none shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center text-primary text-xl font-black uppercase tracking-tight">
-            <ShieldQuestion className="mr-3 h-6 w-6 text-primary" />
-            Verification
-          </DialogTitle>
-          <DialogDescription className="text-xs font-medium leading-relaxed">
-            {actionDescription}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className="
+          w-[calc(100vw-1.5rem)] max-w-[360px]
+          overflow-hidden rounded-[26px]
+          border-0 bg-background p-0 shadow-2xl
+        "
+      >
+        <div className="px-4 pb-2 pt-5 sm:px-5 sm:pt-6">
+          <DialogHeader className="text-left">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <ShieldQuestion className="h-5 w-5" />
+              </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-                <Label htmlFor="authUsername" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Account Identity</Label>
-                <div className="relative">
-                    {fixedIdentifier?.includes('@') ? (
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                    ) : (
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    )}
-                    <Input 
-                        id="authUsername" 
-                        {...register('username')} 
-                        readOnly={!!fixedIdentifier}
-                        className={cn(
-                            'pl-9 h-11 text-sm font-bold', 
-                            fixedIdentifier ? 'bg-primary/5 border-primary/20 cursor-not-allowed text-primary' : '',
-                            errors.username && 'border-destructive'
-                        )} 
-                        placeholder="Identity (Email or Username)" 
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                passwordInputRef.current?.focus();
-                            }
-                        }}
-                    />
-                </div>
-                {errors.username && <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1">{errors.username.message}</p>}
+              <div className="min-w-0 pt-0.5">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
+                  Verification
+                </DialogTitle>
+
+                <DialogDescription className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {actionDescription}
+                </DialogDescription>
+              </div>
             </div>
-             <div className="space-y-1.5">
-                <Label htmlFor="authPassword" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                    {fixedIdentifier?.includes('@') ? "Login Password" : "Access Key"}
-                </Label>
-                <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        id="authPassword" 
-                        type="password" 
-                        {...passwordProps}
-                        ref={(e) => {
-                            passwordHookRef(e);
-                            (passwordInputRef as any).current = e;
-                        }}
-                        className={cn('pl-9 h-11 text-sm font-bold bg-muted/20 border-white/10', errors.password && 'border-destructive')} 
-                        placeholder="••••••••" 
-                        autoFocus={!!fixedIdentifier}
-                    />
-                </div>
-                {errors.password && <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1">{errors.password.message}</p>}
+          </DialogHeader>
+        </div>
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4 px-4 pb-4 pt-2 sm:px-5 sm:pb-5"
+        >
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="authUsername"
+              className="ml-0.5 text-[11px] font-semibold text-foreground"
+            >
+              Account
+            </Label>
+
+            <div className="relative">
+              {isFixedEmail ? (
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/70" />
+              ) : (
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              )}
+
+              <Input
+                id="authUsername"
+                {...register('username')}
+                readOnly={!!fixedIdentifier}
+                placeholder="Email or username"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    passwordInputRef.current?.focus();
+                  }
+                }}
+                className={cn(
+                  `
+                    h-11 w-full rounded-xl border-0
+                    bg-muted/40 pl-9 pr-3
+                    text-base font-medium shadow-none
+                    outline-none ring-0
+                    focus-visible:ring-0
+                    focus-visible:ring-offset-0
+                    sm:text-sm
+                  `,
+                  fixedIdentifier &&
+                    'cursor-not-allowed bg-primary/[0.06] text-primary',
+                  errors.username &&
+                    'bg-destructive/10',
+                )}
+              />
             </div>
 
-          <DialogFooter className="pt-2 grid grid-cols-2 gap-3">
+            {errors.username && (
+              <div className="flex items-center gap-1.5 px-0.5">
+                <AlertCircle className="h-3 w-3 shrink-0 text-destructive" />
+                <p className="text-[10px] leading-none text-destructive">
+                  {errors.username.message}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="authPassword"
+              className="ml-0.5 text-[11px] font-semibold text-foreground"
+            >
+              {isFixedEmail ? 'Login password' : 'Access key'}
+            </Label>
+
+            <div className="relative">
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+              <Input
+                id="authPassword"
+                type="password"
+                {...passwordProps}
+                ref={(element) => {
+                  passwordHookRef(element);
+                  passwordInputRef.current = element;
+                }}
+                placeholder="••••••••"
+                autoFocus={!!fixedIdentifier}
+                className={cn(
+                  `
+                    h-11 w-full rounded-xl border-0
+                    bg-muted/40 pl-9 pr-3
+                    text-base font-medium shadow-none
+                    outline-none ring-0
+                    focus-visible:ring-0
+                    focus-visible:ring-offset-0
+                    sm:text-sm
+                  `,
+                  errors.password &&
+                    'bg-destructive/10',
+                )}
+              />
+            </div>
+
+            {errors.password && (
+              <div className="flex items-center gap-1.5 px-0.5">
+                <AlertCircle className="h-3 w-3 shrink-0 text-destructive" />
+                <p className="text-[10px] leading-none text-destructive">
+                  {errors.password.message}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="h-11 font-bold rounded-xl" disabled={isSubmitting}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmitting}
+                className="
+                  h-11 rounded-xl
+                  bg-muted/35 text-xs font-semibold
+                  shadow-none hover:bg-muted/50
+                "
+              >
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" className="h-11 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="
+                h-11 rounded-xl
+                bg-primary text-xs font-semibold
+                shadow-none
+              "
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-4 w-4" />
+              )}
+
               Authorize
             </Button>
           </DialogFooter>

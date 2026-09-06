@@ -215,6 +215,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   
   const allFormValues = watch();
 
+  const {
+    ref: barcodeFormRef,
+    ...barcodeFieldProps
+  } = register('barcode');
+
   useEffect(() => {
     if (activeSession?.staffName && activeSession.staffName !== "ALL PERSONNEL (GLOBAL)" && !allFormValues.staffName) {
         setValue('staffName', activeSession.staffName);
@@ -436,74 +441,114 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   return (
     <>
-    <div className="w-full max-w-2xl mx-auto space-y-2 sm:space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-2 overflow-x-hidden px-3 pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:px-4 md:px-0 md:pb-4">
         <OfflineOutboxBanner count={pendingActions.length} onOpen={() => setIsOutboxOpen(true)} />
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 mb-1 sm:mb-4">
-            <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-tight truncate">
-                    Log <span className="text-primary">New Item</span>
-                </h1>
-                {!isOnline && (
-                    <Badge variant="destructive" className="animate-pulse shadow-sm h-4 py-0 px-1.5 text-[7px] font-black uppercase mt-0.5">
-                        <CloudOff className="h-2 w-2 mr-1" /> Offline
-                    </Badge>
-                )}
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-hide">
+        <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            {currentStep === 0 && (
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <FilePlus className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <h1 className="truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                                Log New Item
+                            </h1>
+                            {!isOnline && (
+                                <Badge variant="destructive" className="h-5 shrink-0 rounded-md px-1.5 py-0 text-[8px] font-semibold">
+                                    <CloudOff className="mr-1 h-2.5 w-2.5" /> Offline
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">
+                            Scan, verify, and add inventory in a few steps.
+                        </p>
+                    </div>
+                </div>
+            )}
+            <div className={cn(
+                "flex max-w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-hide",
+                currentStep !== 0 && "ml-auto"
+            )}>
                 {activeSession && (
                     <div className="flex items-center gap-1.5 shrink-0">
                         {activeSession.type === 'timed' && activeSession.expiresAt && <SessionTimer expiresAt={activeSession.expiresAt} />}
-                        <Badge variant="secondary" className="flex items-center gap-1 py-0.5 px-1.5 bg-primary/10 border-primary/20 text-primary text-[7px] font-black uppercase whitespace-nowrap">
+                        <Badge variant="secondary" className="flex items-center gap-1 rounded-lg border-0 bg-primary/10 px-2 py-1 text-[8px] font-semibold text-primary whitespace-nowrap">
                             {isGlobalSession ? <Globe className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
-                            Silent Mode
+                            Silent entry
                         </Badge>
                     </div>
                 )}
                 {pendingActivationSession && !activeSession && (
-                    <Button size="sm" variant="outline" className="h-7 px-2 bg-yellow-500/10 border-yellow-500/20 text-yellow-600 animate-pulse font-black text-[8px] uppercase tracking-widest shrink-0" onClick={() => setActivationDialogOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-lg border-0 bg-amber-500/10 px-2.5 text-[9px] font-semibold text-amber-600 shadow-none" onClick={() => setActivationDialogOpen(true)}>
                         <KeyRound className="mr-1 h-3 w-3" /> Activate
                     </Button>
                 )}
             </div>
         </div>
 
-        <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden">
-            <CardHeader className={cn("px-3 sm:px-6", currentStep !== 0 ? "pb-1 pt-2 sm:pt-4" : "pb-2 pt-3")}>
-                <div className="space-y-2 sm:space-y-3">
-                    <div className="space-y-1">
-                        <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1" />
-                        <div className="flex items-center justify-between text-[7px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                            <span className="flex items-center gap-1">
-                                {React.createElement(steps[currentStep].icon, { className: "h-2 w-2 sm:h-3 sm:w-3" })} 
-                                Step {currentStep + 1}: {steps[currentStep].name}
+        <Card className="w-full min-w-0 max-w-full overflow-visible rounded-none border-0 bg-transparent shadow-none">
+            <CardHeader className="bg-transparent px-0 pb-2 pt-1 sm:pb-3 sm:pt-2">
+                <div className="space-y-1.5 sm:space-y-2">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    {React.createElement(steps[currentStep].icon, { className: "h-3.5 w-3.5" })}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                        Step {currentStep + 1} of {steps.length}
+                                    </p>
+                                    <p className="truncate text-sm font-semibold text-foreground">
+                                        {steps[currentStep].name}
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+                                {Math.round(((currentStep + 1) / steps.length) * 100)}%
                             </span>
-                            <span className="opacity-30">{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+                        </div>
+                        <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1" />
+                        <div className="hidden grid-cols-4 gap-1.5 sm:grid">
+                            {steps.map((step, index) => (
+                                <div
+                                    key={step.id}
+                                    className={cn(
+                                        "h-1 rounded-full transition-colors",
+                                        index <= currentStep ? "bg-primary" : "bg-muted"
+                                    )}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 py-3 sm:py-6">
-                <div className="space-y-3 sm:space-y-4">
-                    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+            <CardContent className="min-w-0 px-0 py-2 sm:py-3">
+                <div className="min-w-0 space-y-2.5 sm:space-y-3">
+                    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="min-w-0 space-y-2.5 sm:space-y-3">
                         {/* STEP 1: BARCODE */}
-                        <div className={cn(currentStep !== 0 && "hidden", "space-y-3 sm:space-y-4")}>
-                            <Label htmlFor="barcode" className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1 block">Asset Identification Node</Label>
-                            <div className="flex gap-2 items-start">
-                                <div className="flex-grow group relative">
+                        <div className={cn(currentStep !== 0 && "hidden", "space-y-2.5 sm:space-y-3")}>
+                            <Label htmlFor="barcode" className="ml-0.5 block text-[11px] font-semibold text-foreground">Barcode</Label>
+                            <div className="flex w-full min-w-0 items-start gap-2">
+                                <div className="group relative min-w-0 flex-1">
                                     <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                                     <Input 
-                                        id="barcode" 
-                                        ref={(e) => { register('barcode').ref(e); (barcodeInputRef as any).current = e; }} 
-                                        placeholder="SCAN OR ENTER SKU..." 
-                                        {...register('barcode')} 
+                                        id="barcode"
+                                        placeholder="Scan or enter barcode"
+                                        {...barcodeFieldProps}
+                                        ref={(element) => {
+                                            barcodeFormRef(element);
+                                            barcodeInputRef.current = element;
+                                        }}
                                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} 
                                         autoFocus 
-                                        className={cn("h-11 sm:h-11 pl-9 text-base font-black bg-muted/10 border-white/5 rounded-xl uppercase shadow-inner", errors.barcode && 'border-destructive')} 
+                                        className={cn("h-11 w-full min-w-0 rounded-xl border-0 bg-muted/40 pl-10 pr-3 text-base font-semibold shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm", errors.barcode && "bg-destructive/10")} 
                                     />
                                     {errors.barcode && <p className="text-[9px] text-destructive mt-1 font-bold">{errors.barcode.message}</p>}
                                 </div>
-                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-11 w-11 sm:h-11 sm:w-11 shrink-0 bg-primary/5 border-primary/20 rounded-xl">
+                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-0 bg-primary/10 shadow-none hover:bg-primary/15">
                                     <Scan className="h-5 w-5 text-primary" />
                                 </Button>
                             </div>
@@ -513,22 +558,22 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     {!hasRequestedProduct ? (
                                         <div className="space-y-1.5">
                                             {foundInGlobalRegistry && suggestedProductName && (
-                                                <div className="flex items-center gap-2 mb-1 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg animate-pulse">
+                                                <div className="mb-1 flex items-center gap-2 rounded-xl border-0 bg-primary/5 px-3 py-2">
                                                     <Globe className="h-3 w-3 text-primary" />
-                                                    <span className="text-[7px] font-black uppercase tracking-widest text-primary">Registry Match Found</span>
+                                                    <span className="text-[7px] font-black uppercase tracking-widest text-primary">Product match found</span>
                                                 </div>
                                             )}
-                                            <Button type="button" variant="default" className="w-full h-10 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 rounded-xl bg-primary" onClick={handleRequestProductAdd}>
-                                                <SendHorizontal className="mr-2 h-3 w-3" />
-                                                {suggestedProductName ? `Request: ${suggestedProductName}` : "Notify Admin: New SKU"}
+                                            <Button type="button" variant="default" className="h-11 w-full min-w-0 rounded-xl bg-primary px-3 text-xs font-semibold shadow-sm" onClick={handleRequestProductAdd}>
+                                                <SendHorizontal className="mr-2 h-3 w-3 shrink-0" />
+                                                <span className="min-w-0 truncate">{suggestedProductName ? `Request: ${suggestedProductName}` : "Request new product"}</span>
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="py-2 px-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 flex items-center gap-2 animate-in zoom-in-95 duration-300">
+                                        <div className="flex items-center gap-2 rounded-xl border-0 bg-emerald-500/10 px-3 py-2.5 text-emerald-600 animate-in zoom-in-95 duration-300">
                                             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                                             <div className="flex-1">
-                                                <p className="text-[8px] font-black uppercase tracking-widest leading-none">Notification Sent</p>
-                                                <p className="text-[7px] font-medium opacity-80 leading-none uppercase mt-0.5">Awaiting Admin Catalog Update</p>
+                                                <p className="text-[8px] font-black uppercase tracking-widest leading-none">Request sent</p>
+                                                <p className="text-[7px] font-medium opacity-80 leading-none uppercase mt-0.5">Waiting for admin to add this product</p>
                                             </div>
                                         </div>
                                     )}
@@ -537,38 +582,50 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
 
                         {/* STEP 2: DETAILS */}
-                        <div className={cn(currentStep !== 1 && "hidden", "space-y-3 sm:space-y-5")}>
+                        <div className={cn(currentStep !== 1 && "hidden", "space-y-2.5 sm:space-y-3")}>
                             {productName && (
-                                <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/10 shadow-sm relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-tech-grid opacity-10" />
-                                    <div className="relative z-10 flex items-center gap-2.5">
-                                        <div className="p-1 bg-primary/10 rounded-lg">
-                                            <ShieldCheck className="h-4 w-4 text-primary" />
+                                <div className="relative overflow-hidden rounded-2xl border-0 bg-primary/[0.055] p-3">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                                            <PackageSearch className="h-4 w-4" />
                                         </div>
-                                        <div className="min-w-0">
-                                            <h3 className="font-black text-[11px] uppercase text-slate-900 dark:text-white truncate tracking-tight">{productName}</h3>
-                                            <p className="text-[8px] font-mono text-muted-foreground mt-0.5 tracking-widest uppercase">{getValues('barcode')}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-primary/70">
+                                                Product found
+                                            </p>
+                                            <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                                                {productName}
+                                            </h3>
+                                            <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
+                                                <span className="shrink-0 font-mono">{getValues('barcode')}</span>
+                                                {productSupplier && (
+                                                    <>
+                                                        <span className="opacity-40">•</span>
+                                                        <span className="truncate">{productSupplier}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             <div className="space-y-1">
-                                <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Operating Personnel</Label>
+                                <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Staff member</Label>
                                 <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }} modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className={cn("h-11 sm:h-10 w-full justify-between font-bold bg-muted/10 border-white/5 rounded-xl px-3 shadow-none", !allFormValues.staffName && "text-muted-foreground", errors.staffName && 'border-destructive')}>
-                                            <div className="flex items-center gap-2 truncate">
+                                        <Button variant="ghost" role="combobox" className={cn("h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0", !allFormValues.staffName && "text-muted-foreground", errors.staffName && "bg-destructive/10")}>
+                                            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                                                 <User className="h-4 w-4 text-primary/40 shrink-0" />
-                                                <span className="truncate text-xs">{allFormValues.staffName || "Select Personnel..."}</span>
+                                                <span className="truncate text-xs">{allFormValues.staffName || "Select staff member..."}</span>
                                             </div>
                                             <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-20" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1rem)] p-0 rounded-xl overflow-hidden shadow-2xl border-0" align="start">
                                         <Command>
                                             <CommandList>
-                                                <CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">Zero registry matches</CommandEmpty>
+                                                <CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">No staff members found</CommandEmpty>
                                                 <CommandGroup className="p-1.5">
                                                     {(uniqueStaffNames.length > 0 ? uniqueStaffNames : []).map((staff) => (
                                                         <CommandItem 
@@ -592,24 +649,24 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 {errors.staffName && <p className="text-[9px] text-destructive mt-0.5 font-bold uppercase">{errors.staffName.message}</p>}
                             </div>
 
-                            <div className="flex gap-2">
-                                <div className="w-1/3 space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Volume</Label>
+                            <div className="grid min-w-0 grid-cols-[minmax(88px,0.72fr)_minmax(0,1.45fr)] gap-2">
+                                <div className="min-w-0 space-y-1">
+                                    <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Quantity</Label>
                                     <div className="relative group">
                                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/30 group-focus-within:text-primary" />
-                                        <Input id="qty" type="number" min="1" {...register('quantity', { valueAsNumber: true })} onKeyDown={(e) => { if (['-', 'e', 'E', '+', '.'].includes(e.key)) e.preventDefault(); }} className={cn('h-11 sm:h-10 pl-8 font-black bg-muted/10 border-white/5 rounded-xl shadow-none text-base', errors.quantity && 'border-destructive')} />
+                                        <Input id="qty" type="number" min="1" inputMode="numeric" {...register('quantity', { valueAsNumber: true })} onKeyDown={(e) => { if (['-', 'e', 'E', '+', '.'].includes(e.key)) e.preventDefault(); }} className={cn('h-11 w-full min-w-0 rounded-xl border-0 bg-muted/40 pl-9 text-base font-semibold shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm', errors.quantity && 'bg-destructive/10')} />
                                     </div>
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Lifecycle Expiry</Label>
+                                <div className="min-w-0 space-y-1">
+                                    <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Expiry date</Label>
                                     <Popover modal={true}>
                                         <PopoverTrigger asChild>
-                                            <Button variant={'outline'} className={cn('h-11 sm:h-10 w-full px-3 text-left font-bold bg-muted/10 border-white/5 rounded-xl shadow-none', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'border-destructive')}>
+                                            <Button variant={'ghost'} className={cn('h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-2.5 text-left font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'bg-destructive/10')}>
                                                 <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary/40 shrink-0" />
                                                 <span className="text-xs truncate">{allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : "Pick Date"}</span>
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-2xl border-white/10" align="end">
+                                        <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] overflow-auto rounded-2xl border-0 p-0 shadow-2xl" align="center" sideOffset={6}>
                                             <Calendar mode="single" selected={allFormValues.expiryDate} onSelect={(date) => { setValue('expiryDate', date || new Date()); }} initialFocus captionLayout="dropdown" startMonth={new Date(2020, 0)} endMonth={new Date(2045, 11)} />
                                         </PopoverContent>
                                     </Popover>
@@ -618,66 +675,105 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
 
                         {/* STEP 3: LOCATION */}
-                        <div className={cn(currentStep !== 2 && "hidden", "space-y-3 sm:space-y-5")}>
+                        <div className={cn(currentStep !== 2 && "hidden", "space-y-2.5 sm:space-y-3")}>
                             <div className="space-y-1">
-                                <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Registry Storage Zone</Label>
+                                <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Storage location</Label>
                                 <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className={cn("h-11 sm:h-10 w-full justify-between font-bold bg-muted/10 border-white/5 rounded-xl px-3 shadow-none", !allFormValues.location && "text-muted-foreground", errors.location && 'border-destructive')}>
-                                            <div className="flex items-center gap-2 truncate">
+                                        <Button variant="ghost" role="combobox" className={cn("h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0", !allFormValues.location && "text-muted-foreground", errors.location && "bg-destructive/10")}>
+                                            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                                                 <MapPin className="h-4 w-4 text-primary/40 shrink-0" />
-                                                <span className="truncate text-xs">{allFormValues.location || "Identify Zone..."}</span>
+                                                <span className="truncate text-xs">{allFormValues.location || "Select location..."}</span>
                                             </div>
                                             <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-20" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10">
-                                        <Command><CommandList><CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">Zero location matches</CommandEmpty><CommandGroup className="p-1.5">{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-10 text-xs font-black uppercase cursor-pointer rounded-lg"><Check className={cn("mr-2 h-3.5 w-3.5", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1rem)] p-0 rounded-xl overflow-hidden shadow-2xl border-0" align="start">
+                                        <Command><CommandList><CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">No locations found</CommandEmpty><CommandGroup className="p-1.5">{(dynamicLocations.length > 0 ? dynamicLocations : []).map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { setValue("location", loc, { shouldValidate: true }); setLocationComboboxOpen(false);}} className="h-10 text-xs font-black uppercase cursor-pointer rounded-lg"><Check className={cn("mr-2 h-3.5 w-3.5", allFormValues.location === loc ? "opacity-100" : "opacity-0")}/>{loc}</CommandItem>))}</CommandGroup></CommandList></Command>
                                     </PopoverContent>
                                 </Popover>
                                 {errors.location && <p className="text-[9px] text-destructive mt-0.5 font-bold uppercase">{errors.location.message}</p>}
                             </div>
-                            <div className="flex items-center justify-between p-2.5 rounded-xl border border-white/5 bg-muted/10 shadow-inner transition-colors">
-                                <div className="space-y-0.5">
+                            <div className={cn("flex min-w-0 items-center justify-between gap-3 rounded-xl border-0 px-3 py-2.5 transition-colors", allFormValues.itemType === "Damage" ? "bg-destructive/10" : "bg-muted/35")}>
+                                <div className="min-w-0 space-y-0.5">
                                     <div className="flex items-center gap-1.5">
-                                        <Label htmlFor="damage-toggle" className="text-[10px] font-black uppercase tracking-tight">Industrial Damage</Label>
+                                        <Label htmlFor="damage-toggle" className="text-xs font-semibold text-foreground">Damaged item</Label>
                                         {allFormValues.itemType === 'Damage' && <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />}
                                     </div>
-                                    <p className="text-[7px] text-muted-foreground font-medium uppercase tracking-tighter opacity-60">Log as unusable stock</p>
+                                    <p className="text-[10px] text-muted-foreground">Mark this stock as damaged</p>
                                 </div>
-                                <Switch id="damage-toggle" checked={allFormValues.itemType === 'Damage'} onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })} className="scale-75 origin-right" />
+                                <Switch id="damage-toggle" checked={allFormValues.itemType === 'Damage'} onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })} className="shrink-0" />
                             </div>
                         </div>
                         
                         {/* STEP 4: REVIEW */}
                         <div className={cn(currentStep !== 3 && "hidden", "space-y-2.5")}>
-                            <div className="p-3 sm:p-5 rounded-xl bg-primary/5 border border-primary/20 space-y-2.5 shadow-inner relative overflow-hidden">
-                                <div className="absolute inset-0 bg-tech-grid opacity-10" />
-                                <h3 className="font-black text-xs uppercase text-primary text-center truncate relative z-10">{productName}</h3>
-                                <Separator className="bg-primary/10 relative z-10" />
-                                <div className="grid grid-cols-1 gap-1.5 text-[9px] relative z-10 font-bold">
-                                    <div className="flex items-center justify-between"><span className="text-muted-foreground uppercase text-[7px] tracking-widest">Volume</span><span className="font-black text-primary uppercase">{allFormValues.quantity} units</span></div>
-                                    <div className="flex items-center justify-between"><span className="text-muted-foreground uppercase text-[7px] tracking-widest">Identity</span><span className="uppercase truncate max-w-[120px]">{allFormValues.staffName}</span></div>
-                                    <div className="flex items-center justify-between"><span className="text-muted-foreground uppercase text-[7px] tracking-widest">Registry</span><span className={cn("px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase", allFormValues.itemType === 'Damage' ? "bg-destructive text-white" : "bg-primary text-white")}>{allFormValues.itemType}</span></div>
-                                    <div className="flex items-center justify-between"><span className="text-muted-foreground uppercase text-[7px] tracking-widest">Zone</span><span className="uppercase truncate max-w-[120px]">{allFormValues.location}</span></div>
-                                    {allFormValues.expiryDate && <div className="flex items-center justify-between"><span className="text-muted-foreground uppercase text-[7px] tracking-widest">Expiry</span><span className="uppercase">{format(allFormValues.expiryDate, "dd/MM/yyyy")}</span></div>}
+                            <div className="space-y-2 rounded-xl bg-muted/25 p-3">
+                                <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">{productName}</h3>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] text-muted-foreground">Quantity</p>
+                                        <p className="truncate font-semibold">{allFormValues.quantity} units</p>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] text-muted-foreground">Type</p>
+                                        <p className={cn("truncate font-semibold", allFormValues.itemType === 'Damage' && "text-destructive")}>{allFormValues.itemType}</p>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] text-muted-foreground">Staff</p>
+                                        <p className="truncate font-medium">{allFormValues.staffName}</p>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] text-muted-foreground">Location</p>
+                                        <p className="truncate font-medium">{allFormValues.location}</p>
+                                    </div>
+                                    {allFormValues.expiryDate && (
+                                        <div className="col-span-2 min-w-0">
+                                            <p className="text-[9px] text-muted-foreground">Expiry</p>
+                                            <p className="font-medium">{format(allFormValues.expiryDate, "dd/MM/yyyy")}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </form>
 
                     {/* ACTION CONTROLS */}
-                    <div className="flex gap-2 pt-1">
-                        <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-11 sm:h-10 px-3 font-black uppercase text-[8px] tracking-widest"><ArrowLeft className="mr-1 h-3 w-3" /> Back</Button>
+                    <div className="flex min-w-0 gap-2 pt-1">
+                        <Button
+                            type="button"
+                            onClick={prevStep}
+                            variant="ghost"
+                            disabled={isPending || isSubmitting || currentStep === 0}
+                            className="h-11 shrink-0 rounded-xl border-0 bg-muted/30 px-3 text-xs font-semibold shadow-none hover:bg-muted/45"
+                        >
+                            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                            Back
+                        </Button>
                         {currentStep < steps.length - 1 ? (
-                            <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending || isSubmitting} className="h-11 sm:h-10 flex-1 text-[9px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 bg-primary">
-                                {isFetchingProduct && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin"/>}
-                                Continue <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                            <Button
+                                type="button"
+                                onClick={nextStep}
+                                disabled={isFetchingProduct || isPending || isSubmitting}
+                                className="h-11 flex-1 rounded-xl bg-primary text-xs font-semibold shadow-none"
+                            >
+                                {isFetchingProduct && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                                Continue
+                                <ArrowRight className="ml-1.5 h-4 w-4" />
                             </Button>
                         ) : (
-                            <Button type="button" onClick={handleFormSubmit} disabled={isPending || isSubmitting} className="h-11 sm:h-10 flex-1 text-[9px] font-black uppercase tracking-widest rounded-xl shadow-xl shadow-primary/30 bg-primary">
-                                {isPending || isSubmitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-                                Finalize Log
+                            <Button
+                                type="button"
+                                onClick={handleFormSubmit}
+                                disabled={isPending || isSubmitting}
+                                className="h-11 flex-1 rounded-xl bg-primary text-xs font-semibold shadow-none"
+                            >
+                                {isPending || isSubmitting ? (
+                                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Check className="mr-1.5 h-4 w-4" />
+                                )}
+                                Log Item
                             </Button>
                         )}
                     </div>
@@ -685,19 +781,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             </CardContent>
         </Card>
         
-        <div className="pt-3 sm:pt-8 pb-4 text-center">
-            <p className="text-[6px] font-black uppercase tracking-[0.8em] text-muted-foreground/10">SheetSync Industrial Protocol • Secure Link</p>
+        <div className="hidden pt-4 text-center sm:block">
+            <p className="px-2 text-[10px] text-muted-foreground/60">SheetSync Inventory • Secure sync enabled</p>
         </div>
     </div>
 
     {/* SCANNER INTERFACE */}
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
-        <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black">
-            <DialogHeader className="p-4 pb-1 border-b border-white/10 bg-zinc-900/80 absolute top-0 left-0 right-0 z-20">
-                <DialogTitle className="text-base font-black uppercase tracking-tighter text-white">Visual Identification</DialogTitle>
-                <DialogDescription className="text-[7px] uppercase font-black tracking-widest text-primary">Align SKU barcode with registry window</DialogDescription>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md max-h-[calc(100dvh-1rem)] p-0 overflow-hidden rounded-2xl sm:rounded-3xl border-0 shadow-2xl bg-black">
+            <DialogHeader className="p-4 pb-1 border-b border-0 bg-zinc-900/80 absolute top-0 left-0 right-0 z-20">
+                <DialogTitle className="text-base font-black uppercase tracking-tighter text-white">Barcode Scanner</DialogTitle>
+                <DialogDescription className="text-[7px] uppercase font-black tracking-widest text-primary">Position the barcode inside the frame</DialogDescription>
             </DialogHeader>
-            <div className="relative scanner-container h-[450px] w-full">
+            <div className="relative scanner-container h-[min(450px,62dvh)] min-h-[300px] w-full">
                 <div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" />
                 <div className="scanner-overlay">
                     <div className="scanner-focus">
@@ -709,9 +805,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </div>
                 </div>
             </div>
-            <div className="p-2.5 bg-zinc-900/80 border-t border-white/10 flex justify-center relative z-20">
+            <div className="p-2.5 bg-zinc-900/80 border-t border-0 flex justify-center relative z-20">
                 <Button variant="ghost" onClick={() => setIsScannerDialogOpen(false)} className="h-9 w-full rounded-xl font-black uppercase tracking-widest text-[8px] text-destructive hover:bg-destructive/10 border-white/5">
-                    Abort Scanning Protocol
+                    Close Scanner
                 </Button>
             </div>
         </DialogContent>
@@ -738,38 +834,38 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
     {/* ERROR TERMINAL */}
     <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <DialogContent className="max-w-xs w-[85%] p-6 overflow-hidden rounded-3xl border-none shadow-3xl bg-destructive text-destructive-foreground flex flex-col items-center text-center">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-xs p-5 sm:p-6 overflow-hidden rounded-3xl border-none shadow-3xl bg-destructive text-destructive-foreground flex flex-col items-center text-center">
             <div className="bg-white/20 p-3 rounded-2xl mb-3 shadow-xl">
                 <XCircle className="h-8 w-8 text-white" />
             </div>
             <DialogHeader className="space-y-1">
-                <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none">Handshake Failure</DialogTitle>
-                <DialogDescription className="text-white/70 text-[8px] font-black uppercase tracking-widest">Protocol Sync Error 0x884</DialogDescription>
+                <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none">Couldn’t Log Item</DialogTitle>
+                <DialogDescription className="text-white/70 text-[8px] font-black uppercase tracking-widest">Inventory sync error</DialogDescription>
             </DialogHeader>
-            <div className="mt-5 p-3 bg-black/20 rounded-xl border border-white/10 w-full">
+            <div className="mt-5 p-3 bg-black/20 rounded-xl border border-0 w-full">
                 <p className="text-[9px] font-bold leading-relaxed italic text-white/90">"{errorMessage}"</p>
             </div>
             <Button onClick={() => setIsErrorDialogOpen(false)} variant="secondary" className="mt-6 w-full h-11 text-[9px] font-black uppercase tracking-widest rounded-xl shadow-xl">
-                Back to Terminal
+                Back to Form
             </Button>
         </DialogContent>
     </Dialog>
 
     {/* OUTBOX TERMINAL */}
     <Dialog open={isOutboxOpen} onOpenChange={setIsOutboxOpen}>
-        <DialogContent className="sm:max-w-2xl w-[95%] p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl bg-background">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[calc(100dvh-1rem)] p-0 overflow-hidden rounded-2xl sm:rounded-[2rem] border-0 shadow-3xl bg-background">
             <DialogHeader className="p-5 pb-1 bg-muted/20 border-b border-white/5">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-amber-500/10 rounded-2xl">
                         <CloudOff className="h-4 w-4 text-amber-500" />
                     </div>
                     <div>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-amber-600 leading-none">Sync Queue</DialogTitle>
-                        <DialogDescription className="font-bold text-[7px] uppercase tracking-[0.2em] text-muted-foreground/60 mt-1">Transmission Buffer</DialogDescription>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-amber-600 leading-none">Pending Sync</DialogTitle>
+                        <DialogDescription className="font-bold text-[7px] uppercase tracking-[0.2em] text-muted-foreground/60 mt-1">Items waiting to upload</DialogDescription>
                     </div>
                 </div>
             </DialogHeader>
-            <div className="p-4 sm:p-8 pt-1">
+            <div className="max-h-[70dvh] overflow-y-auto p-3 pt-1 sm:p-8 sm:pt-1">
                 <OfflineQueueTerminal />
             </div>
         </DialogContent>
