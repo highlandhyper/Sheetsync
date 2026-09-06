@@ -31,7 +31,7 @@ import { Separator } from '@/components/ui/separator';
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
-        <div className="flex flex-row items-center justify-between w-full mb-4">
+        <div className="flex flex-row items-center justify-between w-full mb-2">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
             <div 
                 className={cn(
@@ -50,7 +50,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             </div>
         </div>
         
-        <div className="flex-1 flex flex-col justify-center min-h-[110px]">
+        <div className="flex-1 flex flex-col justify-center min-h-[80px]">
             {isLoading ? (
                 <Skeleton className="h-10 w-3/4" />
             ) : (
@@ -60,7 +60,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             )}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-white/5 h-10 flex items-center">
+        <div className="mt-2 pt-2 border-t border-white/5 h-10 flex items-center">
             {description && !isLoading && (
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     {description}
@@ -123,15 +123,14 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                 </div>
             </div>
             
-            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[110px] pb-2 pt-6">
-                {/* BOLDER ARCH GAUGE - Adjusted for smaller height */}
+            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[80px] pb-2 pt-6">
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                             <Pie
                                 data={data}
                                 cx="50%"
-                                cy="80%" 
+                                cy="90%" 
                                 startAngle={180}
                                 endAngle={0}
                                 innerRadius="70%"
@@ -156,7 +155,7 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                 </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-white/5 h-10 flex items-center justify-center z-20">
+            <div className="mt-2 pt-2 border-t border-white/5 h-10 flex items-center justify-center z-20">
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     {description}
                 </div>
@@ -448,7 +447,7 @@ function QuickAuthorizeCard() {
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Terminal Access</CardTitle>
                 <CardDescription className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Proactive Authorization</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[110px]">
+            <CardContent className="space-y-4 pt-2 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[80px]">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
@@ -511,7 +510,7 @@ function QuickAuthorizeCard() {
                     AUTHORIZE
                 </Button>
             </CardContent>
-            <div className="h-10 flex items-center px-6 sm:px-7 mt-auto mb-4">
+            <div className="h-10 flex items-center px-6 sm:px-7 mt-auto mb-2">
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center">
                     MANAGE PERMISSIONS
                 </div>
@@ -745,7 +744,7 @@ function DashboardSkeleton() {
     <div className="space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-6"> 
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
