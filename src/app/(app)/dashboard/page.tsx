@@ -34,42 +34,52 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
       <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
         {children}
       </div>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 relative z-20 px-6 pt-6">
-        <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</CardTitle>
-        <div 
-            className={cn(
-                "w-10 h-10 flex items-center justify-center bg-primary/5 rounded-xl text-primary transition-all duration-500", 
-                onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
-            )}
-            onClick={(e) => {
-                if (onIconClick) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onIconClick(e);
-                }
-            }}
-        >
-            <div className="h-5 w-5">{iconNode}</div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col h-full relative z-20 px-6 pb-6 pt-2">
-        {isLoading ? (
-            <Skeleton className="h-12 w-3/4" />
-        ) : (
-            <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
-                {value}
+      <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
+        <div className="flex flex-row items-center justify-between w-full mb-6">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
+            <div 
+                className={cn(
+                    "w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500", 
+                    onIconClick ? "cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95 pointer-events-auto" : ""
+                )}
+                onClick={(e) => {
+                    if (onIconClick) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onIconClick(e);
+                    }
+                }}
+            >
+                <div className="h-5 w-5">{iconNode}</div>
             </div>
-        )}
-        {description && !isLoading && <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 pt-4 flex items-center min-h-[1.5rem]">{description}</div>}
-        {isLoading && <Skeleton className="h-4 w-1/2 mt-4" />}
-      </CardContent>
+        </div>
+        
+        <div className="flex-1 flex flex-col justify-center min-h-[80px]">
+            {isLoading ? (
+                <Skeleton className="h-12 w-3/4" />
+            ) : (
+                <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                    {value}
+                </div>
+            )}
+        </div>
+
+        <div className="mt-4">
+            {description && !isLoading && (
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center min-h-[1.5rem]">
+                    {description}
+                </div>
+            )}
+            {isLoading && <Skeleton className="h-4 w-1/2" />}
+        </div>
+      </div>
       {/* GLOW EFFECT */}
       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[40px] pointer-events-none" />
     </>
   );
 
   const cardContainerClassName = cn(
-    "group relative transition-all duration-700 rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden",
+    "group relative transition-all duration-700 rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden",
     href ? "hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]" : "",
     className
   );
@@ -104,8 +114,8 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
 
     const cardContent = (
         <>
-            <div className="absolute inset-0 z-0 flex items-center justify-center pt-20 pointer-events-none opacity-40">
-                <ResponsiveContainer width="100%" height="150%">
+            <div className="absolute inset-0 z-0 flex items-center justify-center pt-24 pointer-events-none opacity-40">
+                <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={data}
@@ -128,11 +138,11 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                     </PieChart>
                 </ResponsiveContainer>
             </div>
-            <div className="relative z-10 p-6 h-full flex flex-col items-center justify-between text-center pointer-events-none">
+            <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col items-center justify-between text-center pointer-events-none">
                 <div className="w-full flex justify-between items-start pointer-events-auto">
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
                     <div 
-                        className="w-8 h-8 flex items-center justify-center bg-primary/5 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
+                        className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
                         onClick={(e) => {
                             if (onIconClick) {
                                 e.preventDefault();
@@ -141,15 +151,15 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                             }
                         }}
                     >
-                        <Warehouse className="h-4 w-4" />
+                        <Warehouse className="h-5 w-5" />
                     </div>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center mt-2">
+                <div className="flex flex-col items-center justify-center flex-1">
                     <div className="text-5xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                         {value.toLocaleString()}
                     </div>
-                    <div className="mt-4 flex items-center justify-center">
+                    <div className="mt-4 flex items-center justify-center min-h-[1.5rem]">
                         {description}
                     </div>
                 </div>
@@ -161,7 +171,7 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
         </>
     );
 
-    const className = "group relative transition-all duration-700 rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]";
+    const className = "group relative transition-all duration-700 rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]";
 
     return (
         <Link href={href} className="col-span-2 lg:col-span-1 h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl">
@@ -434,15 +444,15 @@ function QuickAuthorizeCard() {
 
     return (
         <>
-        <Card className="shadow-none rounded-2xl border-white/5 bg-primary/5 dark:bg-primary/[0.02] h-full flex flex-col group overflow-hidden transition-all hover:bg-primary/[0.08] relative">
+        <Card className="shadow-none border border-white/5 bg-primary/5 dark:bg-primary/[0.02] h-full flex flex-col group overflow-hidden transition-all hover:bg-primary/[0.08] relative rounded-2xl">
             <div className="absolute top-0 right-0 p-6 opacity-20">
                 <ShieldCheck className="h-12 w-12 text-primary" strokeWidth={1} />
             </div>
-            <CardHeader className="pb-1 px-6 pt-6">
+            <CardHeader className="pb-1 px-6 pt-6 sm:px-7 sm:pt-7">
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Terminal Access</CardTitle>
                 <CardDescription className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Proactive Authorization</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6">
+            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
@@ -553,7 +563,7 @@ function ActiveAuthorizations() {
                 {activeSessions.map(session => {
                     const isGlobal = session.staffName === "ALL PERSONNEL (GLOBAL)";
                     return (
-                        <Card key={session.id} className={cn("border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl shadow-none rounded-xl overflow-hidden flex flex-col group hover:border-green-500/20 transition-all duration-500", isGlobal && "border-primary/20 bg-primary/[0.01]")}>
+                        <Card key={session.id} className={cn("border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl shadow-none rounded-xl overflow-hidden flex flex-col group hover:border-green-500/20 transition-all duration-500", isGlobal && "border-primary/20 bg-primary/[0.01]")}>
                             <CardContent className="p-6 space-y-6">
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-4">
@@ -602,7 +612,7 @@ function PendingApprovalsSummary() {
     if (pendingRequests.length === 0) return null;
 
     return (
-        <Card className="hidden sm:block border-primary/10 bg-primary/5 backdrop-blur-3xl shadow-3xl shadow-primary/5 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <Card className="hidden sm:block border border-primary/10 bg-primary/5 backdrop-blur-3xl shadow-3xl shadow-primary/5 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-6">
                     <div className="bg-primary p-5 rounded-xl shadow-2xl shadow-primary/30 relative">
@@ -675,14 +685,14 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'single' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('single')}
-                                className="h-24 flex flex-col gap-2 rounded-2xl border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
+                                className="h-24 flex flex-col gap-2 rounded-2xl border border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
                             >
                                 <span className="text-[10px]">Single</span>
                             </Button>
                             <Button 
                                 variant={selectedDuration === '10' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('10')}
-                                className="h-24 flex flex-col gap-2 rounded-2xl border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
+                                className="h-24 flex flex-col gap-2 rounded-2xl border border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
                             >
                                 <Clock className={cn("h-6 w-6 mb-1", selectedDuration === '10' ? "text-white" : "text-primary/40")} />
                                 <span className="text-[10px]">10 Min</span>
@@ -690,7 +700,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === '30' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('30')}
-                                className="h-24 flex flex-col gap-2 rounded-2xl border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
+                                className="h-24 flex flex-col gap-2 rounded-2xl border border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
                             >
                                 <Clock className={cn("h-6 w-6 mb-1", selectedDuration === '30' ? "text-white" : "text-primary/40")} />
                                 <span className="text-[10px]">30 Min</span>
@@ -698,7 +708,7 @@ function ProactiveGrantDialog({
                             <Button 
                                 variant={selectedDuration === 'custom' ? 'default' : 'outline'} 
                                 onClick={() => setSelectedDuration('custom')}
-                                className="h-24 flex flex-col gap-2 rounded-2xl border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
+                                className="h-24 flex flex-col gap-2 rounded-2xl border border-primary/5 font-black uppercase tracking-widest shadow-sm transition-all"
                             >
                                 <Plus className={cn("h-6 w-6 mb-1", selectedDuration === 'custom' ? "text-white" : "text-primary/40")} />
                                 <span className="text-[10px]">Custom</span>
@@ -744,8 +754,6 @@ function DashboardSkeleton() {
     </div>
   );
 }
-
-import { formatDistanceToNow } from 'date-fns';
 
 export default function DashboardPage() {
   const { isCacheReady, isSyncing, inventoryItems, products } = useDataCache();
@@ -908,7 +916,7 @@ export default function DashboardPage() {
         <ActiveAuthorizations />
 
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 pt-8">
-            <Card className="shadow-none rounded-2xl border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden group">
+            <Card className="shadow-none rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl overflow-hidden group">
                 <CardHeader className="p-8 pb-4">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 rounded-xl group-hover:scale-110 transition-all duration-500">
