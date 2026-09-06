@@ -1,7 +1,7 @@
 'use client';
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type Product } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Activity,
   AlertTriangle,
@@ -123,9 +123,9 @@ function MetricCard({
         className,
       )}
     >
-      <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-4 mb-1">
-          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/60">
+      <CardContent className="relative z-10 flex h-full flex-col justify-between p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
             <span className={cn('h-1.5 w-1.5 rounded-full', toneClasses.dot)} />
             {title}
           </div>
@@ -134,11 +134,9 @@ function MetricCard({
           </div>
         </div>
 
-        <div className="mt-auto">
-          <div className="text-xl sm:text-2xl font-black tracking-tighter text-foreground leading-none">{value}</div>
-          <div className="mt-1 text-[8px] font-bold uppercase tracking-tight text-muted-foreground/50 truncate">
-            {description}
-          </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="text-xl font-black tracking-tighter text-foreground">{value}</div>
+          <div className="text-[9px] font-bold text-muted-foreground truncate max-w-[50%]">{description}</div>
         </div>
       </CardContent>
     </Card>
@@ -147,7 +145,7 @@ function MetricCard({
   if (!href) return content;
 
   return (
-    <Link href={href} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <Link href={href} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       {content}
     </Link>
   );
@@ -155,75 +153,198 @@ function MetricCard({
 
 function VolumeGaugeCard({
   value,
-  description,
   onIconClick,
   href,
 }: {
   value: number;
-  description: React.ReactNode;
   onIconClick?: (e: React.MouseEvent) => void;
   href: string;
 }) {
   const MAX_CAPACITY = 10000;
   const active = Math.min(Math.max(value, 0), MAX_CAPACITY);
   const remainder = Math.max(0, MAX_CAPACITY - active);
-  const percentage = Math.min(100, Math.round((value / MAX_CAPACITY) * 100));
   const data = [
     { name: 'Active', value: active },
     { name: 'Remainder', value: remainder },
   ];
 
   return (
-    <Link href={href} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/[0.06]">
-        <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
-          <div className="flex items-start justify-between mb-1">
-            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
+    <Link href={href} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2">
+      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg">
+        <CardContent className="relative z-10 flex h-full flex-col p-4 justify-between">
+          <div className="flex items-start justify-between">
+             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Volume
+              REGISTRY VOLUME
             </div>
             <div
               role="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onIconClick?.(e); }}
+              aria-label="Open stock trend"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onIconClick?.(e);
+              }}
               className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95"
             >
               <Activity className="h-3.5 w-3.5" />
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center flex-1 relative mt-1">
-            <div className="h-14 w-28 relative">
+          <div className="relative flex flex-col items-center">
+            <div className="h-[45px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+                <PieChart>
                   <Pie
                     data={data}
                     cx="50%"
                     cy="100%"
                     startAngle={180}
                     endAngle={0}
-                    innerRadius={38}
-                    outerRadius={50}
+                    innerRadius="82%"
+                    outerRadius="108%"
                     dataKey="value"
                     stroke="none"
                     isAnimationActive
                     animationDuration={1000}
                   >
                     <Cell fill="hsl(var(--primary))" />
-                    <Cell fill="hsl(var(--primary) / 0.10)" />
+                    <Cell fill="hsl(var(--primary) / 0.15)" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-0.5">
-                <div className="text-xl sm:text-2xl font-black tracking-tighter text-foreground leading-none">
-                  {value.toLocaleString()}
-                </div>
-                <div className="text-[7px] font-black uppercase tracking-[0.1em] text-muted-foreground/40">{percentage}% CAP</div>
-              </div>
             </div>
+            <div className="text-xl font-black tracking-tighter text-slate-900 dark:text-white mt-[-18px] z-20">
+                {value.toLocaleString()}
+            </div>
+            <div className="text-[8px] font-black uppercase tracking-widest text-primary/40 mt-0.5">UNITS ACTIVE</div>
           </div>
         </CardContent>
       </Card>
     </Link>
+  );
+}
+
+function QuickAuthorizeCard() {
+  const { uniqueStaffNames } = useDataCache();
+  const { grantProactiveEntry } = useSpecialEntry();
+  const { toast } = useToast();
+  const [selectedStaff, setSelectedStaff] = useState('');
+  const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
+  const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
+
+  const handleOpenGrant = () => {
+    if (selectedStaff) setIsGrantDialogOpen(true);
+  };
+
+  const confirmGrant = (duration?: number) => {
+    setGrantParams({ duration });
+    setIsAuthDialogOpen(true);
+  };
+
+  const handleAuthorizationSuccess = () => {
+    setIsAuthDialogOpen(false);
+    grantProactiveEntry(selectedStaff, grantParams?.duration);
+    toast({ title: 'Access Granted', description: `Key sent to ${selectedStaff}.` });
+    setSelectedStaff('');
+    setGrantParams(null);
+  };
+
+  return (
+    <>
+      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] shadow-sm">
+        <CardContent className="relative z-10 flex h-full flex-col p-4 justify-between">
+          <div className="flex items-start justify-between gap-4">
+             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              QUICK ACCESS
+            </div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <ShieldCheck className="h-3.5 w-3.5" />
+            </div>
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="h-9 flex-1 justify-between rounded-xl border-primary/15 bg-background/70 px-3 text-[10px] font-black uppercase tracking-widest shadow-none"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
+                      <Globe className="h-3 w-3 shrink-0 text-primary" />
+                    ) : (
+                      <User className="h-3 w-3 shrink-0 text-primary" />
+                    )}
+                    <span className="truncate">{selectedStaff || 'SELECT STAFF'}</span>
+                  </div>
+                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] overflow-hidden rounded-xl border-border/70 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search personnel..." className="h-10 text-xs" />
+                  <CommandList>
+                    <CommandEmpty className="py-5 text-center text-xs text-muted-foreground">No personnel found.</CommandEmpty>
+                    <CommandGroup heading="Global access">
+                      <CommandItem
+                        value="ALL PERSONNEL (GLOBAL)"
+                        onSelect={() => {
+                          setSelectedStaff('ALL PERSONNEL (GLOBAL)');
+                          setStaffPopoverOpen(false);
+                        }}
+                        className="h-9 text-[10px] font-black uppercase text-primary"
+                      >
+                        <Globe className="mr-2 h-3.5 w-3.5" />
+                        All personnel
+                        <Check className={cn('ml-auto h-3.5 w-3.5', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} />
+                      </CommandItem>
+                    </CommandGroup>
+                    <CommandGroup heading="Personnel">
+                      {uniqueStaffNames.map((name) => (
+                        <CommandItem
+                          key={name}
+                          value={name}
+                          onSelect={() => {
+                            setSelectedStaff(name);
+                            setStaffPopoverOpen(false);
+                          }}
+                          className="h-9 text-[10px] font-black uppercase"
+                        >
+                          <Check className={cn('mr-2 h-3.5 w-3.5', selectedStaff === name ? 'opacity-100' : 'opacity-0')} />
+                          {name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Button size="sm" className="h-9 rounded-xl font-black uppercase tracking-widest text-[9px] px-3 shadow-lg shadow-primary/20" disabled={!selectedStaff} onClick={handleOpenGrant}>
+              GRANT
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ProactiveGrantDialog
+        isOpen={isGrantDialogOpen}
+        onOpenChange={setIsGrantDialogOpen}
+        staffName={selectedStaff}
+        onGrant={confirmGrant}
+      />
+      <AuthorizeActionDialog
+        isOpen={isAuthDialogOpen}
+        onOpenChange={setIsAuthDialogOpen}
+        onAuthorizationSuccess={handleAuthorizationSuccess}
+        actionDescription={`Authorizing access for ${selectedStaff}. Clearance required.`}
+      />
+    </>
   );
 }
 
@@ -240,7 +361,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   if (!data || data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20">
-        <p className="text-sm font-medium text-muted-foreground">No supplier stock data available.</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Zero supplier stock data.</p>
       </div>
     );
   }
@@ -276,7 +397,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
           accessibilityLayer
           data={chartDisplayData}
           layout="vertical"
-          margin={{ top: 4, right: 50, left: 0, bottom: 4 }}
+          margin={{ top: 4, right: 60, left: 0, bottom: 4 }}
           barCategoryGap={12}
         >
           <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.08} />
@@ -286,10 +407,10 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
             dataKey="name"
             axisLine={false}
             tickLine={false}
-            width={118}
+            width={110}
             tickMargin={10}
-            tickFormatter={(value) => (value.length > 17 ? `${value.slice(0, 17)}…` : value)}
-            className="text-[10px] font-medium text-muted-foreground"
+            tickFormatter={(value) => (value.length > 15 ? `${value.slice(0, 15)}…` : value)}
+            className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60"
           />
           <ChartTooltip
             cursor={{ fill: 'hsl(var(--primary))', opacity: 0.04 }}
@@ -303,7 +424,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
             className="cursor-pointer"
             animationDuration={1000}
           >
-            <LabelList dataKey="totalStock" position="right" offset={8} className="fill-foreground text-[10px] font-semibold" />
+            <LabelList dataKey="totalStock" position="right" offset={10} className="fill-foreground text-[10px] font-black tabular-nums" />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -439,129 +560,6 @@ function StockTrendDetailedDialog({
   );
 }
 
-function QuickAuthorizeCard() {
-  const { uniqueStaffNames } = useDataCache();
-  const { grantProactiveEntry } = useSpecialEntry();
-  const { toast } = useToast();
-  const [selectedStaff, setSelectedStaff] = useState('');
-  const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [grantParams, setGrantParams] = useState<{ duration?: number } | null>(null);
-  const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
-
-  const handleOpenGrant = () => {
-    if (selectedStaff) setIsGrantDialogOpen(true);
-  };
-
-  const confirmGrant = (duration?: number) => {
-    setGrantParams({ duration });
-    setIsAuthDialogOpen(true);
-  };
-
-  const handleAuthorizationSuccess = () => {
-    setIsAuthDialogOpen(false);
-    grantProactiveEntry(selectedStaff, grantParams?.duration);
-    toast({ title: 'Access Granted', description: `Key sent to ${selectedStaff}.` });
-    setSelectedStaff('');
-    setGrantParams(null);
-  };
-
-  return (
-    <>
-      <Card className="group relative min-h-[95px] overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] shadow-sm">
-        <CardContent className="relative z-10 flex h-full flex-col p-3 sm:p-4">
-          <div className="flex items-start justify-between gap-4 mb-1">
-            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Quick Access
-            </div>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <ShieldCheck className="h-3.5 w-3.5" />
-            </div>
-          </div>
-
-          <div className="mt-auto flex flex-col gap-2">
-            <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className="h-8 w-full justify-between rounded-lg border-primary/15 bg-background/70 px-2.5 text-[9px] font-black uppercase tracking-tight shadow-none"
-                >
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
-                      <Globe className="h-3 w-3 shrink-0 text-primary" />
-                    ) : (
-                      <User className="h-3 w-3 shrink-0 text-primary" />
-                    )}
-                    <span className="truncate">{selectedStaff || 'Select identity'}</span>
-                  </div>
-                  <ChevronsUpDown className="ml-1.5 h-3 w-3 shrink-0 opacity-40" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] overflow-hidden rounded-xl border-border/70 p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search personnel..." className="h-10 text-xs" />
-                  <CommandList>
-                    <CommandEmpty className="py-4 text-center text-[10px] text-muted-foreground font-bold uppercase">No personnel found.</CommandEmpty>
-                    <CommandGroup heading="Global access">
-                      <CommandItem
-                        value="ALL PERSONNEL (GLOBAL)"
-                        onSelect={() => {
-                          setSelectedStaff('ALL PERSONNEL (GLOBAL)');
-                          setStaffPopoverOpen(false);
-                        }}
-                        className="h-9 text-[10px] font-black uppercase text-primary"
-                      >
-                        <Globe className="mr-2 h-3.5 w-3.5" />
-                        All personnel
-                        <Check className={cn('ml-auto h-3.5 w-3.5', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} />
-                      </CommandItem>
-                    </CommandGroup>
-                    <CommandGroup heading="Personnel">
-                      {uniqueStaffNames.map((name) => (
-                        <CommandItem
-                          key={name}
-                          value={name}
-                          onSelect={() => {
-                            setSelectedStaff(name);
-                            setStaffPopoverOpen(false);
-                          }}
-                          className="h-9 text-[10px] font-bold uppercase"
-                        >
-                          <Check className={cn('mr-2 h-3.5 w-3.5', selectedStaff === name ? 'opacity-100' : 'opacity-0')} />
-                          {name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-
-            <Button className="h-8 w-full rounded-lg font-black uppercase tracking-widest text-[8px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
-              Authorize Session
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <ProactiveGrantDialog
-        isOpen={isGrantDialogOpen}
-        onOpenChange={setIsGrantDialogOpen}
-        staffName={selectedStaff}
-        onGrant={confirmGrant}
-      />
-      <AuthorizeActionDialog
-        isOpen={isAuthDialogOpen}
-        onOpenChange={setIsAuthDialogOpen}
-        onAuthorizationSuccess={handleAuthorizationSuccess}
-        actionDescription={`Authorizing access for ${selectedStaff}. Clearance required.`}
-      />
-    </>
-  );
-}
-
 function ActiveAuthorizations() {
   const { activeSessions, revokeRequest } = useSpecialEntry();
   const { toast } = useToast();
@@ -577,12 +575,12 @@ function ActiveAuthorizations() {
     <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-4 px-1">
         <div>
-          <h2 className="text-lg font-bold tracking-tight text-foreground">Active access</h2>
-          <p className="text-xs text-muted-foreground">Temporary authorization sessions currently in use.</p>
+          <h2 className="text-lg font-black uppercase tracking-tight text-foreground">Active Access</h2>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-40">Temporary authorization sessions currently in use.</p>
         </div>
-        <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-          <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {activeSessions.length} active
+        <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[9px] uppercase tracking-widest px-3 py-1">
+          <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {activeSessions.length} SESSIONS
         </Badge>
       </div>
 
@@ -592,39 +590,39 @@ function ActiveAuthorizations() {
 
           return (
             <Card key={session.id} className={cn('rounded-2xl border-border/60 bg-card/70 shadow-sm', isGlobal && 'border-primary/20 bg-primary/[0.025]')}>
-              <CardContent className="p-5">
+              <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', isGlobal ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}>
+                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-inner', isGlobal ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}>
                       {isGlobal ? <Globe className="h-5 w-5" /> : <User className="h-5 w-5" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">{isGlobal ? 'Universal grant' : session.staffName}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{session.type} access</p>
+                      <p className="truncate text-sm font-black uppercase tracking-tight text-foreground">{isGlobal ? 'Universal Grant' : session.staffName}</p>
+                      <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{session.type} PROTOCOL</p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-center">
-                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Passkey</p>
-                    <p className="mt-0.5 font-mono text-sm font-bold tracking-[0.16em] text-primary">{session.otp || '----'}</p>
+                  <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-center shadow-sm">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Key</p>
+                    <p className="mt-0.5 font-mono text-sm font-black tracking-[0.2em] text-primary">{session.otp || '----'}</p>
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between border-t border-border/50 pt-4">
+                <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-9 rounded-lg px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="h-8 rounded-lg px-2.5 text-[9px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => handleRevoke(session.id, session.staffName)}
                   >
-                    <Ban className="mr-1.5 h-4 w-4" />
+                    <Ban className="mr-1.5 h-3.5 w-3.5" />
                     Revoke
                   </Button>
 
                   {session.expiresAt && (
-                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-xs font-semibold text-muted-foreground">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
                       <Timer className="h-3.5 w-3.5 text-primary" />
-                      Ends {format(parseISO(session.expiresAt), 'HH:mm')}
+                      {format(parseISO(session.expiresAt), 'HH:mm')}
                     </div>
                   )}
                 </div>
@@ -643,26 +641,26 @@ function PendingApprovalsSummary() {
   if (pendingRequests.length === 0) return null;
 
   return (
-    <Card className="overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/[0.08] via-primary/[0.045] to-card/70 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="flex items-center gap-4">
-          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-            <ShieldQuestion className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-foreground px-1 text-[9px] font-bold text-background">
+    <Card className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-r from-primary/[0.08] via-primary/[0.045] to-card/70 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-5">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <ShieldQuestion className="h-6 w-6" />
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-background bg-slate-900 px-1 text-[10px] font-black text-white">
               {pendingRequests.length}
             </span>
           </div>
           <div>
-            <p className="text-base font-bold text-foreground">Approvals need attention</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {pendingRequests.length} access {pendingRequests.length === 1 ? 'request is' : 'requests are'} waiting for review.
+            <p className="text-base font-black uppercase tracking-tight text-foreground">Pending Authorizations</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              {pendingRequests.length} access {pendingRequests.length === 1 ? 'request' : 'requests'} awaiting security clearance.
             </p>
           </div>
         </div>
 
-        <Button asChild className="h-10 rounded-xl px-5 font-semibold shadow-sm">
+        <Button asChild className="h-11 rounded-xl px-6 font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20">
           <Link href="/approvals">
-            Review approvals
+            Review Protocol
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -704,28 +702,28 @@ function ProactiveGrantDialog({
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <DialogTitle className="text-2xl font-bold tracking-tight">Authorize access</DialogTitle>
-            <DialogDescription className="pt-1 text-sm">
-              Choose how long <span className="font-semibold text-foreground">{staffName}</span> should have access.
+            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Authorize Access</DialogTitle>
+            <DialogDescription className="pt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              Identifying session duration for <span className="text-foreground">{staffName}</span>.
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="space-y-5 p-6">
           <div className="space-y-3">
-            <Label className="text-xs font-semibold text-muted-foreground">Duration</Label>
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Session Protocol</Label>
             <div className="grid grid-cols-2 gap-3">
               {['single', '10', '30', 'custom'].map((option) => (
                 <Button
                   key={option}
                   variant={selectedDuration === option ? 'default' : 'outline'}
                   onClick={() => setSelectedDuration(option)}
-                  className="h-14 rounded-xl font-semibold"
+                  className="h-14 rounded-xl font-black uppercase tracking-widest text-[9px]"
                 >
-                  {option === 'single' ? 'Single use' : option === 'custom' ? 'Custom' : (
+                  {option === 'single' ? 'Single Use' : option === 'custom' ? 'Custom' : (
                     <span className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      {option} min
+                      {option} Min
                     </span>
                   )}
                 </Button>
@@ -735,25 +733,25 @@ function ProactiveGrantDialog({
 
           {selectedDuration === 'custom' && (
             <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-              <Label htmlFor="custom-mins" className="text-xs font-semibold text-muted-foreground">Custom minutes</Label>
+              <Label htmlFor="custom-mins" className="text-[10px] font-black uppercase tracking-widest ml-1">Temporal Value (Mins)</Label>
               <Input
                 id="custom-mins"
                 type="number"
                 min={1}
                 value={customMins}
                 onChange={(event) => setCustomMins(event.target.value)}
-                className="h-11 rounded-xl bg-muted/20 text-base font-semibold"
+                className="h-12 rounded-xl bg-muted/20 text-base font-black shadow-inner"
               />
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t border-border/60 bg-muted/20 p-5 sm:p-6">
-          <Button variant="ghost" className="h-10 rounded-xl font-semibold" onClick={() => onOpenChange(false)}>
-            Cancel
+        <DialogFooter className="border-t border-border/60 bg-muted/20 p-5 sm:p-6 gap-3">
+          <Button variant="ghost" className="h-12 rounded-xl font-black uppercase tracking-widest text-[9px] opacity-40 hover:opacity-100" onClick={() => onOpenChange(false)}>
+            Abort
           </Button>
-          <Button onClick={handleGrant} className="h-10 rounded-xl px-5 font-semibold shadow-sm">
-            Continue
+          <Button onClick={handleGrant} className="h-12 rounded-xl px-8 font-black uppercase tracking-widest text-[9px] shadow-xl shadow-primary/20">
+            Confirm Grant
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -766,57 +764,57 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
   const maxSupplierStock = topSuppliers[0]?.totalStock || 1;
 
   return (
-    <Card className="overflow-hidden rounded-3xl border-border/60 bg-card/70 shadow-sm backdrop-blur-xl">
-      <CardHeader className="border-b border-border/50 p-5 sm:p-6">
+    <Card className="overflow-hidden rounded-[2.5rem] border-border/60 bg-card/70 shadow-sm backdrop-blur-xl">
+      <CardHeader className="border-b border-border/50 p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <TrendingUp className="h-5 w-5" />
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
+              <TrendingUp className="h-6 w-6" strokeWidth={3} />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight">Supplier distribution</CardTitle>
-              <CardDescription className="mt-0.5 text-xs">Click any bar to open that supplier in inventory.</CardDescription>
+              <CardTitle className="text-xl font-black uppercase tracking-tighter">Supplier Matrix</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 mt-1">Industrial stock distribution analysis.</CardDescription>
             </div>
           </div>
-          <Badge variant="outline" className="w-fit border-border/70 bg-background/60 font-medium text-muted-foreground">
-            {data.length} suppliers with stock
+          <Badge variant="outline" className="w-fit border-primary/20 bg-primary/5 px-4 py-1.5 font-black text-[9px] uppercase tracking-widest text-primary">
+            {data.length} VENDORS IDENTIFIED
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-5 sm:p-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_290px]">
-          <div className="h-[360px] min-w-0">
+      <CardContent className="p-6 sm:p-8">
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="h-[380px] min-w-0">
             <StockBySupplierChart data={data} />
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-muted/[0.18] p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-foreground">Top suppliers</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">By current stock units</p>
+          <div className="rounded-[2rem] border-2 border-muted bg-muted/5 p-6 shadow-inner flex flex-col h-full">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4 text-primary" />
+                <p className="text-xs font-black uppercase tracking-widest">Master Suppliers</p>
               </div>
-              <Warehouse className="h-4 w-4 text-muted-foreground" />
+              <p className="text-[8px] font-black uppercase text-muted-foreground/30 tracking-widest">BY VOLUME</p>
             </div>
 
             {topSuppliers.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground">No supplier data.</p>
+              <p className="py-12 text-center text-[9px] font-black uppercase tracking-widest text-muted-foreground/20">Zero Registry Data</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6 flex-1">
                 {topSuppliers.map((supplier, index) => (
-                  <div key={supplier.name} className="space-y-2">
+                  <div key={supplier.name} className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-background text-[10px] font-bold text-muted-foreground shadow-sm">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-background border border-muted shadow-sm text-[10px] font-black text-muted-foreground">
                           {index + 1}
                         </span>
-                        <span className="truncate text-xs font-semibold text-foreground">{supplier.name}</span>
+                        <span className="truncate text-[11px] font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">{supplier.name}</span>
                       </div>
-                      <span className="shrink-0 text-xs font-bold tabular-nums text-foreground">{supplier.totalStock.toLocaleString()}</span>
+                      <span className="shrink-0 text-xs font-black tabular-nums text-primary">{supplier.totalStock.toLocaleString()}</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-primary/10">
+                    <div className="h-2 overflow-hidden rounded-full bg-primary/5 border border-primary/10">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-700"
+                        className="h-full rounded-full bg-primary shadow-[0_0_8px_rgba(41,171,226,0.5)] transition-all duration-1000"
                         style={{ width: `${Math.max(6, (supplier.totalStock / maxSupplierStock) * 100)}%` }}
                       />
                     </div>
@@ -824,6 +822,10 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
                 ))}
               </div>
             )}
+            
+            <div className="mt-8 pt-6 border-t border-muted-foreground/10 text-center">
+                <p className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 italic">Click bar to inspect log traces</p>
+            </div>
           </div>
         </div>
       </CardContent>
@@ -834,13 +836,13 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-[190px] w-full rounded-3xl" />
+      <Skeleton className="h-[140px] w-full rounded-[2.5rem]" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, index) => (
           <Skeleton key={index} className="h-[95px] w-full rounded-2xl" />
         ))}
       </div>
-      <Skeleton className="h-[500px] w-full rounded-3xl" />
+      <Skeleton className="h-[500px] w-full rounded-[2.5rem]" />
     </div>
   );
 }
@@ -946,48 +948,44 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 pb-28 pt-2 animate-in fade-in slide-in-from-bottom-3 duration-500">
-      <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/70 p-6 shadow-sm backdrop-blur-xl sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/[0.08] blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-primary/[0.04] blur-3xl" />
+    <div className="space-y-6 pb-28 pt-2 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      <section className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-card/70 p-6 sm:p-10 shadow-2xl backdrop-blur-xl group">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-primary/[0.12] blur-[120px] transition-all duration-1000 group-hover:bg-primary/[0.2]" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-primary/[0.04] blur-[80px]" />
 
-        <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+        <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
-                SheetSync overview
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <Badge variant="outline" className="border-primary/20 bg-primary/[0.07] px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.3em] text-primary shadow-sm">
+                Industrial Meta-Core
               </Badge>
               <div
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]',
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-sm',
                   isSyncing
                     ? 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400'
                     : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                 )}
               >
-                <span className={cn('h-1.5 w-1.5 rounded-full', isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
-                {isSyncing ? 'Syncing' : 'Synced'}
+                <span className={cn('h-2 w-2 rounded-full shadow-sm', isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
+                {isSyncing ? 'Linking Registry' : 'Identity Synced'}
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-5xl">Mission Control</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Real-time registry volume, asset valuation, and forensic risk analysis.
+            <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white sm:text-6xl uppercase leading-none">Mission <span className="text-primary">Control</span></h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed font-medium text-muted-foreground/60 sm:text-lg uppercase tracking-tight">
+                Operational status overview for industrial stock volume, asset valuation, and personnel clearances.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 shadow-sm">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Today</p>
-              <p className="mt-1 text-xs font-bold text-foreground">{mountedDate}</p>
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap xl:justify-end shrink-0">
+            <div className="rounded-2xl border border-white/5 bg-background/60 p-5 shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center min-w-[120px]">
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mb-1">Temporal Node</p>
+              <p className="text-sm font-black text-foreground text-center leading-none">{mountedDate}</p>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 shadow-sm">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Suppliers</p>
-              <p className="mt-1 text-lg font-bold leading-none text-foreground">{metrics.totalSuppliers.toLocaleString()}</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 shadow-sm">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Products</p>
-              <p className="mt-1 text-lg font-bold leading-none text-foreground">{metrics.totalProducts.toLocaleString()}</p>
+            <div className="rounded-2xl border border-white/5 bg-background/60 p-5 shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center min-w-[120px]">
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mb-1">Vendor Total</p>
+              <p className="text-2xl font-black text-primary leading-none">{metrics.totalSuppliers}</p>
             </div>
           </div>
         </div>
@@ -996,32 +994,31 @@ export default function DashboardPage() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <VolumeGaugeCard
           value={metrics.totalStockQuantity}
-          description="Registry items"
           href="/inventory"
           onIconClick={() => setIsStockTrendDialogOpen(true)}
         />
 
         <MetricCard
-          title="Valuation"
+          title="Stock Valuation"
           value={`QAR ${Math.round(metrics.totalStockValue).toLocaleString()}`}
           iconNode={<Wallet />}
-          description="Estimated inventory cost"
+          description="Registry Asset Value"
         />
 
         <MetricCard
-          title="Expiring"
+          title="Priority Alerts"
           value={metrics.itemsExpiringSoon.toLocaleString()}
           iconNode={<CalendarClock />}
-          description="Threshold hit: 7 days"
+          description="Expiry Threshold [7D]"
           href="/inventory?filterType=expiringSoon"
           tone={metrics.itemsExpiringSoon > 0 ? 'warning' : 'default'}
         />
 
         <MetricCard
-          title="Risks"
+          title="Damage Reports"
           value={(metrics.damagedItemsCount || 0).toLocaleString()}
           iconNode={<AlertTriangle />}
-          description="Identified damage traces"
+          description="Registry Risk Units"
           href="/inventory?filterType=damaged"
           tone={(metrics.damagedItemsCount || 0) > 0 ? 'danger' : 'default'}
         />
@@ -1041,8 +1038,8 @@ export default function DashboardPage() {
         />
       )}
 
-      <footer className="pt-8 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/40">SheetSync inventory control</p>
+      <footer className="pt-12 text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.8em] text-muted-foreground/10">SheetSync Industrial Protocol • Secure Link Active</p>
       </footer>
     </div>
   );

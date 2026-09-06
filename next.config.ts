@@ -2,8 +2,8 @@ import type { NextConfig } from 'next';
 
 /**
  * NEXTJS CONFIGURATION
- * Optimized: 2026-09-06T08:30:00Z
- * Note: Incremental timestamp to force clear webpack cache during Studio boot.
+ * Optimized: 2026-09-06T08:35:00Z
+ * Note: Forced refresh for Registry Compilation.
  */
 const nextConfig: NextConfig = {
   reactStrictMode: false,
@@ -26,8 +26,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Ensure development source maps are handled cleanly
+  // Ensure development source maps are handled cleanly and resolve ENOENT errors
   productionBrowserSourceMaps: false,
+  webpack: (config, { isServer }) => {
+    // Optimization to handle source map issues in restricted environments
+    if (!isServer) {
+      config.devtool = false;
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
