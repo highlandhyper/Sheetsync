@@ -1,7 +1,7 @@
 'use client';
 
 import { type DashboardMetrics, type StockBySupplier, type StockTrendData, type Product } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Activity,
   AlertTriangle,
@@ -117,7 +117,7 @@ function MetricCard({
   const content = (
     <Card
       className={cn(
-        'group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-xl transition-all duration-300',
+        'group relative h-full min-h-[110px] overflow-hidden rounded-3xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-xl transition-all duration-300',
         'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/[0.04] dark:hover:shadow-black/20',
         toneClasses.card,
         className,
@@ -136,11 +136,11 @@ function MetricCard({
           </div>
         </div>
 
-        <div className="mt-2 flex flex-1 items-end">
-          <div className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">{value}</div>
+        <div className="mt-1 flex flex-1 items-end">
+          <div className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{value}</div>
         </div>
 
-        <div className="mt-3 border-t border-border/50 pt-2 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-tight truncate">
+        <div className="mt-2 border-t border-border/50 pt-1.5 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-tight truncate">
           {description}
         </div>
       </CardContent>
@@ -170,7 +170,6 @@ function VolumeGaugeCard({
   const MAX_CAPACITY = 10000;
   const active = Math.min(Math.max(value, 0), MAX_CAPACITY);
   const remainder = Math.max(0, MAX_CAPACITY - active);
-  const percentage = Math.min(100, Math.round((value / MAX_CAPACITY) * 100));
   const data = [
     { name: 'Active', value: active },
     { name: 'Remainder', value: remainder },
@@ -178,7 +177,7 @@ function VolumeGaugeCard({
 
   return (
     <Link href={href} className="block h-full rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <Card className="group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg">
+      <Card className="group relative h-full min-h-[110px] overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card/80 to-card/70 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg">
         <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
           <div className="flex items-start justify-between">
             <div>
@@ -198,8 +197,8 @@ function VolumeGaugeCard({
             </div>
           </div>
 
-          <div className="mt-2 flex flex-1 flex-col items-center justify-center relative">
-             <div className="absolute inset-x-0 -top-1 h-14 w-full">
+          <div className="mt-1 flex flex-1 flex-col items-center justify-center relative">
+             <div className="absolute inset-x-0 top-0 h-16 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -208,8 +207,8 @@ function VolumeGaugeCard({
                       cy="100%"
                       startAngle={180}
                       endAngle={0}
-                      innerRadius="75%"
-                      outerRadius="100%"
+                      innerRadius="82%"
+                      outerRadius="105%"
                       paddingAngle={0}
                       dataKey="value"
                       stroke="none"
@@ -221,12 +220,12 @@ function VolumeGaugeCard({
                   </PieChart>
                 </ResponsiveContainer>
              </div>
-             <div className="pt-5 text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+             <div className="pt-7 text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
                 {value.toLocaleString()}
              </div>
           </div>
 
-          <div className="mt-3 border-t border-primary/10 pt-2">{description}</div>
+          <div className="mt-2 border-t border-primary/10 pt-1.5">{description}</div>
         </CardContent>
       </Card>
     </Link>
@@ -261,10 +260,10 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
     chartDisplayData = [...topSuppliers, { name: 'Other Suppliers', totalStock: otherStock }];
   }
 
-  const handleBarClick = (barPayload: any) => {
-    if (!barPayload || !barPayload.activePayload || barPayload.activePayload.length === 0) return;
+  const handleBarClick = (data: any) => {
+    if (!data || !data.activePayload || data.activePayload.length === 0) return;
     
-    const payload = barPayload.activePayload[0].payload;
+    const payload = data.activePayload[0].payload;
     const name = payload.name;
 
     if (name === 'Other Suppliers' && otherSuppliersData) {
@@ -479,7 +478,7 @@ function QuickAuthorizeCard() {
 
   return (
     <>
-      <Card className="group relative h-full min-h-[130px] overflow-hidden rounded-3xl border border-primary/20 bg-primary/[0.045] shadow-sm">
+      <Card className="group relative h-full min-h-[110px] overflow-hidden rounded-3xl border border-primary/20 bg-primary/[0.045] shadow-sm">
         <CardContent className="relative z-10 flex h-full flex-col p-4 sm:p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -490,23 +489,23 @@ function QuickAuthorizeCard() {
             </div>
           </div>
 
-          <div className="mt-2 flex flex-1 flex-col justify-center gap-2">
+          <div className="mt-1 flex flex-1 flex-col justify-center gap-1.5">
             <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
-                  className="h-10 w-full justify-between rounded-xl border-primary/15 bg-background/70 px-3 text-xs font-black uppercase tracking-tight shadow-none"
+                  className="h-8 w-full justify-between rounded-xl border-primary/15 bg-background/70 px-3 text-[10px] font-black uppercase tracking-tight shadow-none"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
-                      <Globe className="h-4 w-4 shrink-0 text-primary" />
+                      <Globe className="h-3.5 w-3.5 shrink-0 text-primary" />
                     ) : (
-                      <User className="h-4 w-4 shrink-0 text-primary" />
+                      <User className="h-3.5 w-3.5 shrink-0 text-primary" />
                     )}
                     <span className="truncate">{selectedStaff || 'IDENTIFY...'}</span>
                   </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
+                  <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-20" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] overflow-hidden rounded-xl border-border/70 p-0 shadow-3xl" align="start">
@@ -549,12 +548,11 @@ function QuickAuthorizeCard() {
               </PopoverContent>
             </Popover>
 
-            <Button className="h-10 w-full rounded-xl font-black uppercase tracking-widest text-[9px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
+            <Button className="h-8 w-full rounded-xl font-black uppercase tracking-widest text-[8px] shadow-sm" disabled={!selectedStaff} onClick={handleOpenGrant}>
               Authorize Access
             </Button>
           </div>
         </CardContent>
-        <div className="pointer-events-none absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
       </Card>
 
       <ProactiveGrantDialog
@@ -1004,7 +1002,7 @@ export default function DashboardPage() {
         <VolumeGaugeCard
           value={metrics.totalStockQuantity}
           description={
-            <div className="flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-widest">
+            <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-widest">
               <span className="text-muted-foreground/40">Daily Log Entry</span>
               <span className="inline-flex items-center gap-1 text-primary">
                 <ArrowUp className="h-3 w-3" />
