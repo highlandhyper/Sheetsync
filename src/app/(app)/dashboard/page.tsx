@@ -28,13 +28,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
 
-function MetricCard({ title, value, iconNode, description, isLoading, href, className, children, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, children?: React.ReactNode, onIconClick?: (e: React.MouseEvent) => void }) {
+function MetricCard({ title, value, iconNode, description, isLoading, href, className, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
-    <>
-      <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
-        {children}
-      </div>
-      <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
+    <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
         <div className="flex flex-row items-center justify-between w-full mb-6">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
             <div 
@@ -54,9 +50,9 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             </div>
         </div>
         
-        <div className="flex-1 flex flex-col justify-center min-h-[80px]">
+        <div className="flex-1 flex flex-col justify-center min-h-[70px]">
             {isLoading ? (
-                <Skeleton className="h-12 w-3/4" />
+                <Skeleton className="h-10 w-3/4" />
             ) : (
                 <div className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                     {value}
@@ -64,18 +60,15 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             )}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 pt-4 border-t border-white/5">
             {description && !isLoading && (
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center min-h-[1.5rem]">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 flex items-center min-h-[1rem]">
                     {description}
                 </div>
             )}
             {isLoading && <Skeleton className="h-4 w-1/2" />}
         </div>
-      </div>
-      {/* GLOW EFFECT */}
-      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[40px] pointer-events-none" />
-    </>
+    </div>
   );
 
   const cardContainerClassName = cn(
@@ -89,6 +82,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
       <Link href={href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl block h-full">
         <Card className={cardContainerClassName}>
           {cardInnerContent}
+          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
         </Card>
       </Link>
     );
@@ -96,6 +90,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
   return (
     <Card className={cardContainerClassName}>
         {cardInnerContent}
+        <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
     </Card>
   );
 }
@@ -113,69 +108,73 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
     ];
 
     const cardContent = (
-        <>
-            <div className="absolute inset-0 z-0 flex items-center justify-center pt-24 pointer-events-none opacity-40">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            startAngle={180}
-                            endAngle={0}
-                            innerRadius="70%"
-                            outerRadius="90%"
-                            paddingAngle={0}
-                            dataKey="value"
-                            stroke="none"
-                            isAnimationActive={true}
-                            animationDuration={2500}
-                        >
-                            <Cell fill="hsl(var(--primary))" />
-                            <Cell fill="hsl(var(--primary) / 0.5)" />
-                            <Cell fill="hsl(var(--primary) / 0.1)" />
-                        </Pie>
-                    </PieChart>
-                </ResponsiveContainer>
+        <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col justify-between pointer-events-none">
+            <div className="w-full flex justify-between items-start pointer-events-auto">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
+                <div 
+                    className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
+                    onClick={(e) => {
+                        if (onIconClick) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onIconClick(e);
+                        }
+                    }}
+                >
+                    <Warehouse className="h-5 w-5" />
+                </div>
             </div>
-            <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col items-center justify-between text-center pointer-events-none">
-                <div className="w-full flex justify-between items-start pointer-events-auto">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
-                    <div 
-                        className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary transition-all duration-500 cursor-pointer hover:bg-primary/20 hover:scale-110 active:scale-95"
-                        onClick={(e) => {
-                            if (onIconClick) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onIconClick(e);
-                            }
-                        }}
-                    >
-                        <Warehouse className="h-5 w-5" />
-                    </div>
+            
+            <div className="relative flex flex-col items-center justify-center flex-1 py-4">
+                {/* IMPROVED VISIBILITY GAUGE */}
+                <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-80" style={{ top: '15%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                cx="50%"
+                                cy="50%"
+                                startAngle={180}
+                                endAngle={0}
+                                innerRadius="84%"
+                                outerRadius="100%"
+                                paddingAngle={0}
+                                dataKey="value"
+                                stroke="none"
+                                isAnimationActive={true}
+                                animationDuration={2500}
+                            >
+                                <Cell fill="hsl(var(--primary))" />
+                                <Cell fill="hsl(var(--primary) / 0.6)" />
+                                <Cell fill="hsl(var(--primary) / 0.08)" />
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center flex-1">
-                    <div className="text-5xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                <div className="relative z-10 text-center">
+                    <div className="text-4xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                         {value.toLocaleString()}
                     </div>
-                    <div className="mt-4 flex items-center justify-center min-h-[1.5rem]">
-                        {description}
-                    </div>
                 </div>
-                
-                <div className="w-full h-2" />
             </div>
-            {/* GLOW EFFECT */}
-            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[40px] pointer-events-none" />
-        </>
+
+            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-center min-h-[1rem]">
+                <div className="pointer-events-auto">
+                    {description}
+                </div>
+            </div>
+        </div>
     );
 
     const className = "group relative transition-all duration-700 rounded-2xl border border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl h-full shadow-2xl shadow-black/[0.03] overflow-hidden hover:border-primary/20 hover:shadow-primary/5 cursor-pointer active:scale-[0.98]";
 
     return (
         <Link href={href} className="col-span-2 lg:col-span-1 h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl">
-            <Card className={className}>{cardContent}</Card>
+            <Card className={className}>
+                {cardContent}
+                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[40px] pointer-events-none" />
+            </Card>
         </Link>
     );
 }
