@@ -50,7 +50,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             </div>
         </div>
         
-        <div className="flex-1 flex flex-col justify-center min-h-[100px]">
+        <div className="flex-1 flex flex-col justify-center min-h-[130px]">
             {isLoading ? (
                 <Skeleton className="h-10 w-3/4" />
             ) : (
@@ -123,7 +123,7 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                 </div>
             </div>
             
-            <div className="relative flex flex-col items-center justify-end flex-1 min-h-[100px] pb-2 pt-6">
+            <div className="relative flex flex-col items-center justify-end flex-1 min-h-[130px] pb-2 pt-10">
                 {/* HIGH-FIDELITY ARCH GAUGE - Centered Over Text */}
                 <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
                     <ResponsiveContainer width="100%" height="100%">
@@ -134,8 +134,8 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                                 cy="100%" 
                                 startAngle={180}
                                 endAngle={0}
-                                innerRadius="80%"
-                                outerRadius="105%"
+                                innerRadius="88%"
+                                outerRadius="115%"
                                 paddingAngle={0}
                                 dataKey="value"
                                 stroke="none"
@@ -448,7 +448,7 @@ function QuickAuthorizeCard() {
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Terminal Access</CardTitle>
                 <CardDescription className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Proactive Authorization</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[100px]">
+            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[130px]">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
