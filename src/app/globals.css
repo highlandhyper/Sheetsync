@@ -2,36 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------------------------------------
+   ROOT / APP BASE
+------------------------------------------------------- */
+
 html {
-  font-size: 90%;
+  font-size: 100%;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
+  min-height: 100vh;
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
 }
+
+/* -------------------------------------------------------
+   THEME TOKENS
+------------------------------------------------------- */
 
 @layer base {
   :root {
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
+
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
+
     --primary: 199 89% 48%;
     --primary-foreground: 210 40% 98%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
+
     --accent: 210 40% 96.1%;
     --accent-foreground: 222 47% 11.2%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 199 89% 48%;
-    --radius: 1.5rem;
+
+    --radius: 1rem;
 
     --sidebar-background: 210 40% 98%;
     --sidebar-foreground: 222 47% 11.2%;
@@ -46,20 +67,28 @@ body {
   .dark {
     --background: 222 47% 4%;
     --foreground: 210 40% 98%;
+
     --card: 222 47% 6%;
     --card-foreground: 210 40% 98%;
+
     --popover: 222 47% 6%;
     --popover-foreground: 210 40% 98%;
+
     --primary: 199 89% 48%;
     --primary-foreground: 222 47% 11%;
+
     --secondary: 222.2 47.4% 11.2%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 222.2 47.4% 11.2%;
     --muted-foreground: 215 20.2% 65.1%;
+
     --accent: 222.2 47.4% 11.2%;
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 222.2 47.4% 11.2%;
     --input: 222.2 47.4% 11.2%;
     --ring: 199 89% 48%;
@@ -75,39 +104,170 @@ body {
   }
 }
 
+/* -------------------------------------------------------
+   GLOBAL ELEMENT STYLING
+------------------------------------------------------- */
+
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: inherit;
+    }
+  }
 }
 
-/* HIGH-END GLASSMORPHISM */
+/* -------------------------------------------------------
+   APP SURFACES
+------------------------------------------------------- */
+
 .glass-panel {
-  @apply bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl border border-white/20 shadow-2xl;
+  @apply border border-border/60 bg-background/80 shadow-lg backdrop-blur-xl;
 }
+
+.dark .glass-panel {
+  @apply bg-card/80;
+}
+
+.surface-card {
+  @apply rounded-2xl border border-border/60 bg-card/80 shadow-sm;
+}
+
+.soft-panel {
+  @apply rounded-2xl border border-border/50 bg-muted/20;
+}
+
+/* -------------------------------------------------------
+   SHADOW HELPERS
+------------------------------------------------------- */
 
 .shadow-3xl {
-  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 24px 48px -12px rgba(15, 23, 42, 0.18),
+    0 8px 20px -12px rgba(15, 23, 42, 0.12);
 }
 
-/* Technical Precision Grid Background */
+.dark .shadow-3xl {
+  box-shadow:
+    0 28px 56px -16px rgba(0, 0, 0, 0.55),
+    0 8px 24px -12px rgba(0, 0, 0, 0.35);
+}
+
+/* -------------------------------------------------------
+   TECH GRID BACKGROUND
+------------------------------------------------------- */
+
 .bg-tech-grid {
-  background-size: 60px 60px;
-  background-image: 
-    linear-gradient(to right, hsl(var(--primary) / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-image:
+    linear-gradient(
+      to right,
+      hsl(var(--primary) / 0.035) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      hsl(var(--primary) / 0.035) 1px,
+      transparent 1px
+    );
 }
 
 .dark .bg-tech-grid {
-  background-image: 
-    linear-gradient(to right, hsl(var(--primary) / 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--primary) / 0.08) 1px, transparent 1px);
+  background-image:
+    linear-gradient(
+      to right,
+      hsl(var(--primary) / 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      hsl(var(--primary) / 0.05) 1px,
+      transparent 1px
+    );
 }
 
-/* Print Optimization */
+/* -------------------------------------------------------
+   SCROLLBARS
+------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color:
+      hsl(var(--muted-foreground) / 0.22)
+      transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.18);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+}
+
+/* -------------------------------------------------------
+   MOTION / ACCESSIBILITY
+------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* -------------------------------------------------------
+   PRINT OPTIMIZATION
+------------------------------------------------------- */
+
 @media print {
   @page {
     margin: 1cm;
@@ -119,18 +279,22 @@ body {
     --sidebar-width-icon: 0px !important;
   }
 
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  body {
+    font-size: 10pt !important;
+  }
+
   * {
     color: black !important;
     background: transparent !important;
     border-color: #333 !important;
     box-shadow: none !important;
     text-shadow: none !important;
-  }
-
-  body {
-    background: white !important;
-    color: black !important;
-    font-size: 10pt !important;
   }
 
   .noprint,
@@ -177,13 +341,13 @@ body {
   .printable-area::before {
     content: "SheetSync Inventory System - Official Report";
     display: block;
-    font-size: 18pt;
-    font-weight: 900;
+    margin-bottom: 5mm;
+    padding-bottom: 2mm;
+    border-bottom: 2px solid #29abe2 !important;
     color: #29abe2 !important;
     text-align: center;
-    margin-bottom: 5mm;
-    border-bottom: 2px solid #29abe2 !important;
-    padding-bottom: 2mm;
+    font-size: 18pt;
+    font-weight: 800;
   }
 
   table {
@@ -193,12 +357,12 @@ body {
   }
 
   th {
+    border: 1px solid #000 !important;
     background-color: #f0f0f0 !important;
     color: black !important;
-    font-weight: 900 !important;
-    text-transform: uppercase !important;
-    border: 1px solid #000 !important;
     padding: 8px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
   }
 
   td {
@@ -208,11 +372,16 @@ body {
   }
 
   .card {
-    border: 1px solid #eee !important;
+    border: 1px solid #ddd !important;
     box-shadow: none !important;
   }
-  
-  span, p, h1, h2, h3, h4 {
+
+  span,
+  p,
+  h1,
+  h2,
+  h3,
+  h4 {
     color: black !important;
   }
 }

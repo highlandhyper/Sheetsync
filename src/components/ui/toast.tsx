@@ -3,20 +3,19 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { 
-  AlertCircle, 
-  Info, 
-  X, 
-  CheckCircle2, 
-  RefreshCw, 
-  Bell, 
-  ShieldCheck, 
-  KeyRound, 
-  CloudOff, 
-  Wifi, 
-  Trash2, 
-  Save, 
-  Pencil 
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+  CloudOff,
+  Info,
+  KeyRound,
+  Pencil,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+  Wifi,
+  X,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -30,48 +29,56 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-4 z-[100] flex max-h-screen w-full flex-col items-center p-4 sm:top-4 sm:right-4 sm:items-end md:max-w-[380px]",
-      className
+      "fixed inset-x-0 top-2 z-[100] flex max-h-screen w-full flex-col gap-2 px-2 sm:inset-x-auto sm:right-4 sm:top-4 sm:w-[390px] sm:px-0",
+      className,
     )}
     {...props}
   />
 ))
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
-/**
- * CLEAN macOS VENTURA/SONOMA STYLE TOAST
- */
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border border-white/20 bg-white/70 dark:bg-zinc-900/70 p-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] dark:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full",
+  [
+    "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden",
+    "rounded-2xl border p-4 pr-10",
+    "bg-background/95 text-foreground shadow-xl shadow-black/[0.08]",
+    "supports-[backdrop-filter]:bg-background/80 supports-[backdrop-filter]:backdrop-blur-xl",
+    "transition-all",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
+    "data-[state=open]:slide-in-from-top-2",
+    "data-[state=closed]:slide-out-to-top-2",
+    "sm:data-[state=open]:slide-in-from-right-4",
+    "sm:data-[state=closed]:slide-out-to-right-full",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "text-foreground",
+        default:
+          "border-border/60",
         destructive:
-          "destructive border-destructive/10 bg-destructive/5 text-destructive-foreground dark:bg-destructive/10",
+          "destructive border-destructive/20 bg-destructive/[0.06] text-foreground",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 )
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
-  return (
-    <ToastPrimitives.Root
-      ref={ref}
-      className={cn(toastVariants({ variant }), className)}
-      {...props}
-    >
-      {props.children}
-    </ToastPrimitives.Root>
-  )
-})
+>(({ className, variant, ...props }, ref) => (
+  <ToastPrimitives.Root
+    ref={ref}
+    className={cn(toastVariants({ variant }), className)}
+    {...props}
+  >
+    {props.children}
+  </ToastPrimitives.Root>
+))
 Toast.displayName = ToastPrimitives.Root.displayName
 
 const ToastAction = React.forwardRef<
@@ -81,8 +88,11 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-lg border bg-background/50 px-3 text-[10px] font-bold uppercase tracking-widest ring-offset-background transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      className
+      "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/70 px-3 text-xs font-semibold",
+      "transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "disabled:pointer-events-none disabled:opacity-50",
+      "group-[.destructive]:border-destructive/20 group-[.destructive]:hover:bg-destructive/10 group-[.destructive]:hover:text-destructive",
+      className,
     )}
     {...props}
   />
@@ -95,63 +105,121 @@ const ToastClose = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Close
     ref={ref}
-    className={cn(
-      "absolute right-2 top-2 rounded-full p-1 text-muted-foreground/30 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
-      className
-    )}
     toast-close=""
+    className={cn(
+      "absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-lg",
+      "text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground",
+      "focus:outline-none focus:ring-2 focus:ring-ring",
+      className,
+    )}
     {...props}
   >
-    <X className="h-3 w-3" />
+    <X className="h-4 w-4" />
+    <span className="sr-only">Close notification</span>
   </ToastPrimitives.Close>
 ))
 ToastClose.displayName = ToastPrimitives.Close.displayName
 
+function getToastIcon(
+  children: React.ReactNode,
+  variant?: "default" | "destructive",
+) {
+  if (variant === "destructive") {
+    return AlertCircle
+  }
+
+  const text = String(children ?? "").toLowerCase()
+
+  if (
+    text.includes("success") ||
+    text.includes("saved") ||
+    text.includes("registered") ||
+    text.includes("applied") ||
+    text.includes("complete") ||
+    text.includes("logged")
+  ) {
+    return CheckCircle2
+  }
+
+  if (text.includes("sync") || text.includes("processing")) {
+    return RefreshCw
+  }
+
+  if (text.includes("unlocked") || text.includes("authorized")) {
+    return ShieldCheck
+  }
+
+  if (
+    text.includes("locked") ||
+    text.includes("password") ||
+    text.includes("credential")
+  ) {
+    return KeyRound
+  }
+
+  if (text.includes("alert") || text.includes("request")) {
+    return Bell
+  }
+
+  if (
+    text.includes("delete") ||
+    text.includes("deleted") ||
+    text.includes("removed")
+  ) {
+    return Trash2
+  }
+
+  if (
+    text.includes("edit") ||
+    text.includes("edited") ||
+    text.includes("updated")
+  ) {
+    return Pencil
+  }
+
+  if (text.includes("cloud") || text.includes("offline")) {
+    return CloudOff
+  }
+
+  if (text.includes("online")) {
+    return Wifi
+  }
+
+  return Info
+}
+
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { variant?: 'default' | 'destructive' }
->(({ className, variant, ...props }, ref) => {
-  const { children, ...cleanProps } = props as any;
-  
-  let Icon = Info;
-  if (variant === 'destructive') {
-    Icon = AlertCircle;
-  } else {
-    const text = String(children || '').toLowerCase();
-    if (text.includes('success') || text.includes('saved') || text.includes('registered') || text.includes('applied') || text.includes('complete') || text.includes('logged')) {
-      Icon = CheckCircle2;
-    } else if (text.includes('sync') || text.includes('processing')) {
-      Icon = RefreshCw;
-    } else if (text.includes('unlocked') || text.includes('authorized')) {
-      Icon = ShieldCheck;
-    } else if (text.includes('locked') || text.includes('password') || text.includes('credential')) {
-      Icon = KeyRound;
-    } else if (text.includes('alert') || text.includes('request')) {
-      Icon = Bell;
-    } else if (text.includes('delete') || text.includes('removed')) {
-      Icon = Trash2;
-    } else if (text.includes('edit') || text.includes('updated')) {
-      Icon = Pencil;
-    } else if (text.includes('cloud') || text.includes('offline')) {
-      Icon = CloudOff;
-    } else if (text.includes('online')) {
-      Icon = Wifi;
-    }
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & {
+    variant?: "default" | "destructive"
   }
-  
+>(({ className, variant, children, ...props }, ref) => {
+  const Icon = getToastIcon(children, variant)
+  const isRefreshing = Icon === RefreshCw
+
   return (
     <ToastPrimitives.Title
       ref={ref}
-      className={cn("text-[13px] font-bold flex items-center gap-3 leading-none", className)}
-      {...cleanProps}
+      className={cn(
+        "flex min-w-0 items-start gap-3 text-sm font-semibold leading-5",
+        className,
+      )}
+      {...props}
     >
-      <div className={cn(
-        "p-1.5 rounded-xl shadow-sm border shrink-0 bg-white/40 dark:bg-black/40",
-        variant === 'destructive' ? "text-destructive border-destructive/10" : "text-primary border-primary/10"
-      )}>
-        <Icon className={cn("h-4 w-4", Icon === RefreshCw && "animate-spin")} />
+      <div
+        className={cn(
+          "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
+          variant === "destructive"
+            ? "border-destructive/15 bg-destructive/10 text-destructive"
+            : "border-primary/15 bg-primary/10 text-primary",
+        )}
+      >
+        <Icon className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
       </div>
-      <span className="truncate">{children}</span>
+
+      <span className="min-w-0 flex-1 break-words pr-1">
+        {children}
+      </span>
     </ToastPrimitives.Title>
   )
 })
@@ -163,14 +231,16 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-[11px] font-medium text-muted-foreground leading-tight mt-1.5 ml-11", className)}
+    className={cn(
+      "ml-12 -mt-1 text-xs leading-5 text-muted-foreground",
+      className,
+    )}
     {...props}
   />
 ))
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
 type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
-
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export {

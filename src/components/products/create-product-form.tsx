@@ -11,13 +11,11 @@ import {
     Save, 
     Check, 
     ChevronsUpDown, 
-    DollarSign, 
     Edit, 
     Package, 
     Building, 
     Barcode, 
     ShieldCheck, 
-    Tag,
     Trash2,
     Undo2,
     AlertTriangle,
@@ -30,7 +28,6 @@ import {
     Image as ImageIcon,
     Box,
     Clock,
-    ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
@@ -50,7 +47,6 @@ import {
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
@@ -264,7 +260,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     formData.append('productName', data.productName);
     formData.append('supplierName', data.supplierName);
     formData.append('userEmail', user?.email || 'Admin');
-    formData.append('uniqueId', product.uniqueId || '');
+    formData.append('uniqueId', barcodeMap.get(searchedBarcode)?.uniqueId || '');
     
     const costValue = (data.costPrice === undefined || Number.isNaN(data.costPrice)) ? '' : String(data.costPrice);
     formData.append('costPrice', costValue);
@@ -324,304 +320,483 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   };
 
   return (
-    <div className={cn(
-        "grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-10 items-start relative z-10",
-        showForm && "xl:h-[calc(100vh-12rem)]"
-    )}>
-        <div className={cn(
-            "xl:col-span-6 space-y-4 sm:space-y-6 flex flex-col h-full", 
-            !showForm && "xl:col-span-12 max-w-4xl mx-auto w-full"
-        )}>
-            <Card className="shadow-2xl border-white/5 bg-card/60 backdrop-blur-3xl overflow-hidden rounded-[2rem] sm:rounded-[3rem] flex flex-col h-full">
-                <CardHeader className="bg-muted/10 pb-4 sm:pb-6 pt-6 sm:pt-10 px-6 sm:px-12 border-b border-white/5 shrink-0">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">Catalog Identity</CardTitle>
-                            <CardDescription className="font-bold text-[8px] sm:text-[9px] uppercase tracking-[0.4em] text-muted-foreground/30">Secure SKU Authority Terminal</CardDescription>
-                        </div>
-                        {showForm && (
-                            <Button variant="ghost" size="icon" onClick={handleReset} className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-all">
-                                <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </Button>
-                        )}
-                    </div>
-                </CardHeader>
-                
-                <CardContent className={cn("px-6 sm:px-12 py-6 sm:py-10 flex flex-col flex-grow", showForm ? "overflow-y-auto" : "")}>
-                    <div className="space-y-4 sm:space-y-6 mb-8 sm:mb-12 shrink-0">
-                        <div className="flex items-center justify-between px-1">
-                            <Label className="text-[9px] sm:text-[10px] font-black uppercase text-primary tracking-[0.4em] opacity-60">Identification Terminal</Label>
-                            <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black tracking-widest bg-primary/5 border-primary/10 text-primary px-3 py-1 rounded-full uppercase">
-                                SKU Mode
-                            </Badge>
-                        </div>
-                        
-                        <div className="relative group p-1 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 rounded-2xl sm:rounded-[2rem] transition-all duration-700 hover:from-primary/40 hover:to-primary/40">
-                            <div className="flex flex-col sm:flex-row gap-0 bg-background/80 backdrop-blur-xl rounded-xl sm:rounded-[1.9rem] overflow-hidden border border-white/10 shadow-2xl">
-                                <div className="relative flex-grow">
-                                    <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                                        <div className="h-8 w-8 sm:h-10 sm:w-10 bg-primary/10 rounded-lg sm:rounded-xl flex items-center justify-center border border-primary/10 transition-transform duration-500 group-focus-within:rotate-[15deg]">
-                                            <Barcode className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                                        </div>
-                                    </div>
-                                    <Input
-                                        ref={searchInputRef}
-                                        placeholder="IDENTIFY ASSET..."
-                                        value={barcodeToSearch}
-                                        onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                                        className="pl-14 sm:pl-20 border-none bg-transparent h-14 sm:h-20 text-lg sm:text-2xl font-black tracking-tighter placeholder:text-muted-foreground/10 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                    />
-                                </div>
-                                <div className="p-2 shrink-0 flex items-center">
-                                    <Button 
-                                        onClick={() => handleSearchBarcode()} 
-                                        disabled={isFetchPending || !barcodeToSearch.trim()} 
-                                        className="h-12 sm:h-16 w-full sm:px-12 font-black uppercase tracking-[0.3em] text-[9px] sm:text-[10px] rounded-xl sm:rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-white border-none"
-                                    >
-                                        {isFetchPending ? (
-                                            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                        ) : (
-                                            <div className="flex items-center justify-center gap-3">
-                                                <Search className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={3} />
-                                                <span>Initialize</span>
-                                            </div>
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+    <div
+      className={cn(
+        "relative z-10 grid grid-cols-1 items-start gap-5 lg:gap-6 xl:grid-cols-12",
+        showForm && "xl:min-h-[calc(100vh-13rem)]"
+      )}
+    >
+      {/* PRODUCT EDITOR */}
+      <section
+        className={cn(
+          "flex min-w-0 flex-col xl:col-span-7",
+          !showForm && "mx-auto w-full max-w-5xl xl:col-span-12"
+        )}
+      >
+        <Card className="overflow-hidden rounded-2xl border-border/60 bg-card shadow-sm sm:rounded-3xl">
+          <CardHeader className="border-b border-border/60 bg-muted/20 p-4 sm:p-6 lg:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12 sm:rounded-2xl">
+                  <Package className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Product catalog</CardTitle>
                     {showForm && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                                        <Badge variant="outline" className={cn("px-3 sm:px-4 py-1.5 font-black text-[8px] sm:text-[9px] uppercase tracking-widest rounded-lg sm:rounded-xl border-none shadow-md", productNotFound ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary")}>
-                                            {productNotFound ? <PlusCircle className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> : <ShieldCheck className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />}
-                                            {productNotFound ? 'Unregistered Identity' : 'Registry Verified'}
-                                        </Badge>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-2">
-                                                <Box className="h-3 w-3 text-primary/40" />
-                                                <span className="text-[9px] font-black text-primary">{skuStats.total} Units</span>
-                                            </div>
-                                            {skuStats.damaged > 0 && (
-                                                <div className="px-3 py-1.5 rounded-lg bg-orange-500/5 border border-orange-500/10 flex items-center gap-2">
-                                                    <AlertTriangle className="h-3 w-3 text-orange-500/40" />
-                                                    <span className="text-[9px] font-black text-orange-600">{skuStats.damaged} Damaged</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <Button type="button" variant="ghost" onClick={() => handleMagicLookup(searchedBarcode)} disabled={isMagicLoading} className="h-9 w-full sm:w-auto text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-lg border border-primary/10 transition-all">
-                                        <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isMagicLoading && "animate-spin")} />
-                                        Visual Sync
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-6 sm:space-y-8">
-                                <div className="space-y-6 sm:space-y-8">
-                                    <div className="space-y-2 sm:space-y-3">
-                                        <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Authoritative Designation</Label>
-                                        <div className="relative group">
-                                            <Package className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 text-primary/20 group-focus-within:text-primary transition-colors" />
-                                            <Input
-                                                id="productName"
-                                                placeholder="ENTER PRODUCT NAME..."
-                                                {...nameProps}
-                                                ref={(e) => { nameFormRef(e); (nameInputRef as any).current = e; }}
-                                                onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
-                                                className={cn("h-14 sm:h-16 pl-12 sm:pl-16 text-lg sm:text-xl font-black tracking-tighter rounded-xl sm:rounded-2xl bg-background border-white/5 shadow-inner focus:border-primary/20", formErrors.productName && 'border-destructive')}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                                        <div className="space-y-2 sm:space-y-3">
-                                            <div className="flex items-center justify-between h-4 ml-1">
-                                                <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] opacity-30">Primary Vendor</Label>
-                                                <Button type="button" variant="ghost" size="sm" onClick={handleEditSupplierClick} disabled={!supplierNameValue || !sortedSuppliers.some(s => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())} className="text-[8px] sm:text-[9px] uppercase font-black h-4 px-2 text-primary hover:bg-primary/10 rounded-md opacity-30 hover:opacity-100 transition-opacity">
-                                                    Rename
-                                                </Button>
-                                            </div>
-                                            <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button ref={supplierTriggerRef} variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className={cn("w-full h-12 sm:h-14 justify-between font-black text-sm bg-muted/5 border-white/5 rounded-xl sm:rounded-2xl pl-10 sm:pl-14 shadow-sm", !supplierNameValue && "text-muted-foreground")}>
-                                                        <Building className="absolute left-4 sm:left-6 h-4 w-4 sm:h-5 sm:w-5 text-primary/20" />
-                                                        <span className="truncate uppercase tracking-wider">{supplierNameValue || "SELECT VENDOR..."}</span>
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-3xl border-white/10">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search Registry..." value={supplierSearchTerm} onValueChange={setSupplierSearchTerm} />
-                                                        <CommandList>
-                                                            <CommandEmpty>
-                                                                {supplierSearchTerm ? (
-                                                                    <Button variant="ghost" className="w-full justify-start text-[10px] h-12 font-black uppercase rounded-none px-8" onClick={() => { setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }}>
-                                                                        <PlusCircle className="mr-3 h-4 w-4" /> Create "{supplierSearchTerm}"
-                                                                    </Button>
-                                                                ) : <p className="p-6 text-[10px] font-black uppercase text-muted-foreground/40 text-center tracking-widest">Searching Master List...</p>}
-                                                            </CommandEmpty>
-                                                            <CommandGroup className="px-3 pb-3">
-                                                                {sortedSuppliers.map((supplier) => (
-                                                                    <CommandItem key={supplier.id} value={supplier.name} onSelect={() => { setValue("supplierName", supplier.name, { shouldValidate: true, shouldDirty: true }); setSupplierComboboxOpen(false); setTimeout(() => costInputRef.current?.focus(), 100); }} className="font-bold text-xs h-11 px-4 rounded-xl">
-                                                                        <Check className={cn("mr-2 h-4 w-4", supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                                        {supplier.name}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-
-                                        <div className="space-y-2 sm:space-y-3">
-                                            <Label className="text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground tracking-[0.5em] ml-1 opacity-30">Unit Value (QAR)</Label>
-                                            <div className="relative">
-                                                <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-[10px] sm:text-[11px] font-black text-primary/30 uppercase tracking-tighter">QAR</div>
-                                                <Input
-                                                    id="costPrice"
-                                                    type="number"
-                                                    step="0.01"
-                                                    placeholder="0.00"
-                                                    {...costProps}
-                                                    ref={(e) => { costFormRef(e); (costInputRef as any).current = e; }}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
-                                                    className={cn('h-12 sm:h-14 pl-12 sm:pl-16 font-black text-lg sm:text-xl bg-muted/10 border-white/5 rounded-xl sm:rounded-2xl text-right pr-6 sm:pr-8 shadow-sm focus:border-primary/20', formErrors.costPrice && 'border-destructive')}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                                    <Button type="submit" disabled={isSavePending || !isDirty} className="flex-1 h-14 sm:h-16 font-black uppercase tracking-[0.4em] text-[10px] sm:text-[11px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] shadow-primary/30 rounded-xl sm:rounded-2xl transition-all hover:scale-[1.01] active:scale-95 bg-primary text-white border-none">
-                                        {isSavePending ? <Loader2 className="mr-4 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Save className="mr-4 h-4 w-4 sm:h-5 sm:w-5" />}
-                                        {editMode === 'create' ? 'REGISTER IDENTITY' : 'UPDATE MASTER CATALOG'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+                          productNotFound
+                            ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        {productNotFound ? "New product" : "Existing product"}
+                      </Badge>
                     )}
-                </CardContent>
-            </Card>
-        </div>
+                  </div>
+                  <CardDescription className="max-w-xl text-xs leading-5 sm:text-sm">
+                    Search by barcode, review the product, and update the master catalog.
+                  </CardDescription>
+                </div>
+              </div>
 
-        {showForm && (
-            <div className="xl:col-span-6 space-y-4 sm:space-y-6 flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-700">
-                <Card className="border-white/5 bg-card/40 backdrop-blur-3xl rounded-2xl sm:rounded-[3rem] overflow-hidden shadow-2xl flex flex-col h-full">
-                    <CardHeader className="bg-muted/10 p-6 sm:p-10 border-b border-white/5 shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2 sm:p-3 bg-primary/10 rounded-xl">
-                                <History className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg sm:text-xl font-black uppercase tracking-tighter">Forensic Node History</CardTitle>
-                                <CardDescription className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/30">SKU Trace Logs & Forensic Audit</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow overflow-hidden">
-                        <ScrollArea className="h-full w-full">
-                            {currentHistory.length > 0 ? (
-                                <div className="divide-y divide-white/5">
-                                    {currentHistory.map((log, index) => (
-                                        <div key={`${log.id}-${index}`} className="p-6 sm:p-8 hover:bg-primary/[0.02] transition-colors group">
-                                            <div className="flex items-center justify-between mb-3 sm:mb-4">
-                                                <Badge variant="outline" className={cn("px-2 sm:px-3 py-1 font-black text-[7px] sm:text-[8px] uppercase tracking-[0.1em] rounded-lg border-none shadow-sm", getActionColor(log.action))}>
-                                                    {getActionIcon(log.action)}
-                                                    <span className="ml-1.5 sm:ml-2">{log.action.replace('_', ' ')}</span>
-                                                </Badge>
-                                                <div className="flex items-center gap-1.5 sm:gap-2 text-[8px] sm:text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">
-                                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                    {format(parseISO(log.timestamp), 'dd MMM yy • HH:mm')}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-start gap-3 sm:gap-5">
-                                                <div className="p-2 sm:p-2.5 bg-muted/40 rounded-lg sm:rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500">
-                                                    <Fingerprint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                                </div>
-                                                <div className="space-y-2 sm:space-y-1.5 flex-1 min-w-0">
-                                                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Operating Personnel</p>
-                                                    <p className="text-xs sm:sm:text-sm font-black truncate uppercase text-slate-700 dark:text-slate-300">{log.user}</p>
-                                                    <div className="mt-2 sm:mt-3 p-3 sm:p-4 bg-muted/20 rounded-xl sm:rounded-2xl border border-white/5">
-                                                        <p className="text-[10px] sm:text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
-                                                            "{log.details}"
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-center opacity-20 grayscale min-h-[300px]">
-                                    <div className="p-6 sm:p-8 bg-muted/20 rounded-[2rem] sm:rounded-[3rem] mb-4 sm:mb-6 border-4 border-dashed border-white/5">
-                                        <Layers className="h-12 w-12 sm:h-16 sm:w-16" />
-                                    </div>
-                                    <h4 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Zero Traces</h4>
-                                    <p className="text-xs sm:sm:text-sm font-medium mt-2 max-w-[240px] sm:max-w-[280px]">No historical forensic logs match this identity node in the registry core.</p>
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </CardContent>
-                    <div className="p-6 sm:p-8 bg-muted/5 border-t border-white/5 shrink-0 text-center">
-                        <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.6em] text-muted-foreground/20">Secure Registry Tunnel • AES-256 Protocol</p>
-                    </div>
-                </Card>
+              {showForm && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleReset}
+                  aria-label="Clear product"
+                  className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-        )}
+          </CardHeader>
 
-        <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-            <DialogContent className="max-w-md w-[95%] p-0 overflow-hidden bg-white border-none shadow-3xl rounded-[2.5rem]">
-                <DialogHeader className="p-8 pb-4 bg-slate-50 border-b">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <DialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900">Visual Identification</DialogTitle>
-                            <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Verified SKU Registry Asset</DialogDescription>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => setIsImageDialogOpen(false)} className="rounded-full">
-                            <X className="h-5 w-5" />
-                        </Button>
+          <CardContent className="p-4 sm:p-6 lg:p-7">
+            {/* BARCODE SEARCH */}
+            <div className="rounded-2xl border border-border/60 bg-muted/[0.18] p-3 sm:p-4">
+              <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+                <div>
+                  <Label htmlFor="catalog-barcode-search" className="text-xs font-semibold text-foreground">
+                    Barcode
+                  </Label>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Scan or enter a product barcode.</p>
+                </div>
+                <Badge variant="outline" className="hidden rounded-lg border-border/70 bg-background/70 text-[9px] font-medium text-muted-foreground sm:inline-flex">
+                  MASTER LOOKUP
+                </Badge>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative min-w-0 flex-1">
+                  <Barcode className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
+                  <Input
+                    id="catalog-barcode-search"
+                    ref={searchInputRef}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="Enter barcode"
+                    value={barcodeToSearch}
+                    onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
+                    className="h-12 rounded-xl border-border/70 bg-background pl-11 pr-3 text-base font-semibold tracking-wide shadow-none sm:h-11"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => handleSearchBarcode()}
+                  disabled={isFetchPending || !barcodeToSearch.trim()}
+                  className="h-12 min-w-[130px] rounded-xl px-5 font-semibold shadow-sm sm:h-11"
+                >
+                  {isFetchPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Find product
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {!showForm ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center px-4 py-10 text-center sm:min-h-[320px]">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/15 bg-primary/[0.06] text-primary sm:h-20 sm:w-20 sm:rounded-3xl">
+                  <Barcode className="h-7 w-7 sm:h-9 sm:w-9" />
+                </div>
+                <h3 className="text-base font-bold text-foreground sm:text-lg">Search for a product to begin</h3>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground sm:text-sm">
+                  Existing products will load immediately. Unknown barcodes open a new product form using the same barcode.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300 sm:mt-6 sm:space-y-6">
+                {/* STATUS / QUICK STATS */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "h-8 rounded-lg px-2.5 text-[10px] font-semibold",
+                        productNotFound
+                          ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      {productNotFound ? <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> : <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />}
+                      {productNotFound ? "Not yet registered" : "Catalog verified"}
+                    </Badge>
+                    <span className="truncate font-mono text-[11px] text-muted-foreground">{searchedBarcode}</span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleMagicLookup(searchedBarcode)}
+                    disabled={isMagicLoading}
+                    className="h-10 w-full rounded-xl border-primary/20 bg-primary/[0.035] text-xs font-semibold text-primary hover:bg-primary/10 sm:w-auto"
+                  >
+                    <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isMagicLoading && "animate-spin")} />
+                    Visual lookup
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Box className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[9px] font-semibold uppercase tracking-wide">Stock</span>
                     </div>
-                </DialogHeader>
-                <div className="relative aspect-square w-full bg-white p-10">
-                    {externalData?.image ? (
-                        <Image 
-                            src={externalData.image} 
-                            alt="Product Visual" 
-                            fill 
-                            className="object-contain"
-                            unoptimized
-                            priority
-                        />
-                    ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                            <ImageIcon className="h-16 w-16 opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-widest">No Visual Data Identified</p>
-                        </div>
-                    )}
+                    <p className="mt-2 text-lg font-bold tabular-nums sm:text-xl">{skuStats.total.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <AlertTriangle className={cn("h-3.5 w-3.5", skuStats.damaged > 0 ? "text-amber-500" : "text-muted-foreground")} />
+                      <span className="text-[9px] font-semibold uppercase tracking-wide">Damaged</span>
+                    </div>
+                    <p className={cn("mt-2 text-lg font-bold tabular-nums sm:text-xl", skuStats.damaged > 0 && "text-amber-600 dark:text-amber-400")}>
+                      {skuStats.damaged.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Layers className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[9px] font-semibold uppercase tracking-wide">Locations</span>
+                    </div>
+                    <p className="mt-2 text-lg font-bold tabular-nums sm:text-xl">{skuStats.zones.toLocaleString()}</p>
+                  </div>
                 </div>
-                <div className="p-6 bg-slate-50 border-t flex flex-col items-center text-center gap-1">
-                    <p className="font-bold text-sm text-slate-900">{externalData?.name || 'Unknown Product'}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{searchedBarcode}</p>
-                </div>
-            </DialogContent>
-        </Dialog>
 
-        {isSupplierEditDialogOpen && supplierToEdit && (
-            <EditSupplierDialog 
-                isOpen={isSupplierEditDialogOpen} 
-                onOpenChange={setIsSupplierEditDialogOpen} 
-                supplier={supplierToEdit} 
-            />
-        )}
+                {/* PRODUCT FORM */}
+                <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-5 sm:space-y-6">
+                  <div className="rounded-2xl border border-border/60 bg-background p-4 sm:p-5">
+                    <div className="mb-5">
+                      <h3 className="text-sm font-bold text-foreground">Product information</h3>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Keep the product name, supplier and cost accurate.</p>
+                    </div>
+
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="productName" className="text-xs font-semibold">
+                          Product name
+                        </Label>
+                        <div className="relative">
+                          <Package className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            id="productName"
+                            placeholder="Enter product name"
+                            {...nameProps}
+                            ref={(e) => {
+                              nameFormRef(e);
+                              (nameInputRef as any).current = e;
+                            }}
+                            onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
+                            className={cn(
+                              "h-12 rounded-xl border-border/70 bg-muted/[0.12] pl-10 text-sm font-semibold shadow-none focus:bg-background sm:h-11",
+                              formErrors.productName && "border-destructive focus-visible:ring-destructive/20"
+                            )}
+                          />
+                        </div>
+                        {formErrors.productName && (
+                          <p className="text-xs font-medium text-destructive">{formErrors.productName.message}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <Label className="text-xs font-semibold">Supplier</Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleEditSupplierClick}
+                              disabled={!supplierNameValue || !sortedSuppliers.some((s) => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())}
+                              className="h-7 rounded-lg px-2 text-[10px] font-semibold text-primary"
+                            >
+                              <Edit className="mr-1 h-3 w-3" />
+                              Rename
+                            </Button>
+                          </div>
+
+                          <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                ref={supplierTriggerRef}
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={supplierComboboxOpen}
+                                className={cn(
+                                  "relative h-12 w-full justify-between rounded-xl border-border/70 bg-muted/[0.12] pl-10 pr-3 text-sm font-semibold shadow-none sm:h-11",
+                                  !supplierNameValue && "text-muted-foreground",
+                                  formErrors.supplierName && "border-destructive"
+                                )}
+                              >
+                                <Building className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+                                <span className="truncate">{supplierNameValue || "Select supplier"}</span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border-border/70 p-0 shadow-xl"
+                              align="start"
+                            >
+                              <Command>
+                                <CommandInput
+                                  placeholder="Search suppliers..."
+                                  value={supplierSearchTerm}
+                                  onValueChange={setSupplierSearchTerm}
+                                  className="h-11"
+                                />
+                                <CommandList className="max-h-[260px]">
+                                  <CommandEmpty>
+                                    {supplierSearchTerm ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="h-12 w-full justify-start rounded-none px-4 text-xs font-semibold"
+                                        onClick={() => {
+                                          setValue('supplierName', supplierSearchTerm, { shouldValidate: true, shouldDirty: true });
+                                          setSupplierComboboxOpen(false);
+                                          setTimeout(() => costInputRef.current?.focus(), 100);
+                                        }}
+                                      >
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Create “{supplierSearchTerm}”
+                                      </Button>
+                                    ) : (
+                                      <p className="p-5 text-center text-xs text-muted-foreground">No suppliers found.</p>
+                                    )}
+                                  </CommandEmpty>
+                                  <CommandGroup>
+                                    {sortedSuppliers.map((supplier) => (
+                                      <CommandItem
+                                        key={supplier.id}
+                                        value={supplier.name}
+                                        onSelect={() => {
+                                          setValue('supplierName', supplier.name, { shouldValidate: true, shouldDirty: true });
+                                          setSupplierComboboxOpen(false);
+                                          setTimeout(() => costInputRef.current?.focus(), 100);
+                                        }}
+                                        className="min-h-10 rounded-lg text-xs font-medium"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            supplierNameValue?.toLowerCase() === supplier.name.toLowerCase() ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <span className="truncate">{supplier.name}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          {formErrors.supplierName && (
+                            <p className="text-xs font-medium text-destructive">{formErrors.supplierName.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="costPrice" className="text-xs font-semibold">
+                            Cost price
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary">QAR</span>
+                            <Input
+                              id="costPrice"
+                              type="number"
+                              inputMode="decimal"
+                              step="0.01"
+                              placeholder="0.00"
+                              {...costProps}
+                              ref={(e) => {
+                                costFormRef(e);
+                                (costInputRef as any).current = e;
+                              }}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
+                              className={cn(
+                                "h-12 rounded-xl border-border/70 bg-muted/[0.12] pl-12 pr-4 text-right text-base font-bold tabular-nums shadow-none focus:bg-background sm:h-11",
+                                formErrors.costPrice && "border-destructive focus-visible:ring-destructive/20"
+                              )}
+                            />
+                          </div>
+                          {formErrors.costPrice && (
+                            <p className="text-xs font-medium text-destructive">{formErrors.costPrice.message}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[11px] text-muted-foreground">
+                      {isDirty ? "You have unsaved changes." : "Product information is up to date."}
+                    </p>
+                    <Button
+                      type="submit"
+                      disabled={isSavePending || !isDirty}
+                      className="h-12 w-full rounded-xl px-6 font-semibold shadow-sm sm:h-11 sm:w-auto sm:min-w-[180px]"
+                    >
+                      {isSavePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      {editMode === 'create' ? "Create product" : "Save changes"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ACTIVITY / HISTORY */}
+      {showForm && (
+        <aside className="min-w-0 xl:col-span-5 xl:self-stretch animate-in fade-in slide-in-from-bottom-3 duration-300 xl:slide-in-from-right-3">
+          <Card className="flex h-full max-h-[720px] min-h-[360px] flex-col overflow-hidden rounded-2xl border-border/60 bg-card shadow-sm sm:rounded-3xl xl:max-h-[calc(100vh-13rem)]">
+            <CardHeader className="shrink-0 border-b border-border/60 bg-muted/20 p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <History className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-base font-bold tracking-tight sm:text-lg">Product activity</CardTitle>
+                    <CardDescription className="mt-0.5 text-[11px]">Recent audit events for this barcode.</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="shrink-0 rounded-lg border-border/70 bg-background/70 text-[10px] font-semibold">
+                  {currentHistory.length}
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent className="min-h-0 flex-1 p-0">
+              <ScrollArea className="h-[440px] w-full xl:h-full">
+                {currentHistory.length > 0 ? (
+                  <div className="divide-y divide-border/50">
+                    {currentHistory.map((log, index) => (
+                      <div key={`${log.id}-${index}`} className="p-4 transition-colors hover:bg-muted/20 sm:p-5">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <Badge
+                            variant="outline"
+                            className={cn("rounded-md px-2 py-1 text-[9px] font-semibold", getActionColor(log.action))}
+                          >
+                            {getActionIcon(log.action)}
+                            <span className="ml-1.5">{log.action.replace(/_/g, ' ')}</span>
+                          </Badge>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {format(parseISO(log.timestamp), 'dd MMM yy • HH:mm')}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                            <Fingerprint className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-foreground">{log.user}</p>
+                            <p className="mt-2 rounded-xl bg-muted/30 p-3 text-[11px] leading-5 text-muted-foreground sm:text-xs">
+                              {log.details}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex h-full min-h-[360px] flex-col items-center justify-center px-6 py-12 text-center">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground/60">
+                      <History className="h-6 w-6" />
+                    </div>
+                    <h4 className="text-sm font-bold">No activity yet</h4>
+                    <p className="mt-1.5 max-w-xs text-xs leading-5 text-muted-foreground">
+                      Audit events related to this product will appear here.
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </aside>
+      )}
+
+      {/* PRODUCT IMAGE */}
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="w-[94%] max-w-md overflow-hidden rounded-2xl border-border/60 bg-background p-0 shadow-2xl sm:rounded-3xl">
+          <DialogHeader className="border-b border-border/60 bg-muted/20 p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-lg font-bold tracking-tight sm:text-xl">Product image</DialogTitle>
+                <DialogDescription className="mt-1 text-xs">Image returned by the external product lookup.</DialogDescription>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsImageDialogOpen(false)}
+                className="h-9 w-9 shrink-0 rounded-xl"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="relative aspect-square w-full bg-white p-8 sm:p-10">
+            {externalData?.image ? (
+              <Image src={externalData.image} alt="Product visual" fill className="object-contain p-8" unoptimized priority />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-slate-300">
+                <ImageIcon className="h-14 w-14 opacity-30" />
+                <p className="text-xs font-semibold">No image available</p>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border/60 bg-muted/20 p-4 text-center sm:p-5">
+            <p className="truncate text-sm font-semibold text-foreground">{externalData?.name || 'Unknown product'}</p>
+            <p className="mt-1 font-mono text-[11px] text-muted-foreground">{searchedBarcode}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {isSupplierEditDialogOpen && supplierToEdit && (
+        <EditSupplierDialog
+          isOpen={isSupplierEditDialogOpen}
+          onOpenChange={setIsSupplierEditDialogOpen}
+          supplier={supplierToEdit}
+        />
+      )}
     </div>
   );
 }
