@@ -33,7 +33,8 @@ import {
     Zap,
     XCircle,
     Wifi,
-    ShieldAlert
+    ShieldAlert,
+    MapPin
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -111,7 +112,7 @@ function OfflineOutboxBanner({ count, onOpen }: { count: number; onOpen: () => v
     return (
         <div 
             onClick={onOpen}
-            className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500 cursor-pointer hover:bg-amber-500/20 transition-all group shadow-sm active:scale-[0.98]"
+            className="mb-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500 cursor-pointer hover:bg-amber-500/20 transition-all group shadow-sm active:scale-[0.98]"
         >
             <div className="flex items-center gap-3">
                 <div className="relative h-8 w-8 flex items-center justify-center bg-amber-500/20 rounded-lg overflow-hidden shrink-0 transition-transform group-hover:scale-110">
@@ -474,7 +475,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
         <Card className="shadow-none border-0 sm:border sm:shadow-xl bg-transparent sm:bg-card rounded-2xl overflow-hidden">
             <CardHeader className={cn("px-3 sm:px-6", currentStep !== 0 ? "pb-1 pt-3 sm:pt-4" : "pb-3")}>
-                <div className="space-y-3">
+                <div className="space-y-2.5 sm:space-y-3">
                     <div className="space-y-1.5">
                         <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1" />
                         <div className="flex items-center justify-between text-[8px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -487,11 +488,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 py-4 sm:py-6">
-                <div className="space-y-4">
-                    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <CardContent className="px-3 sm:px-6 py-3 sm:py-6">
+                <div className="space-y-3.5 sm:space-y-4">
+                    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 sm:space-y-4">
                         {/* STEP 1: BARCODE */}
-                        <div className={cn(currentStep !== 0 && "hidden", "space-y-4")}>
+                        <div className={cn(currentStep !== 0 && "hidden", "space-y-3 sm:space-y-4")}>
                             <Label htmlFor="barcode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1 block">Asset Identification Node</Label>
                             <div className="flex gap-2 items-start">
                                 <div className="flex-grow group relative">
@@ -503,11 +504,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         {...register('barcode')} 
                                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} 
                                         autoFocus 
-                                        className={cn("h-12 sm:h-11 pl-10 text-base font-black bg-muted/10 border-white/5 rounded-xl uppercase shadow-inner", errors.barcode && 'border-destructive')} 
+                                        className={cn("h-11 sm:h-11 pl-10 text-base font-black bg-muted/10 border-white/5 rounded-xl uppercase shadow-inner", errors.barcode && 'border-destructive')} 
                                     />
                                     {errors.barcode && <p className="text-[10px] text-destructive mt-1 font-bold">{errors.barcode.message}</p>}
                                 </div>
-                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-12 w-12 sm:h-11 sm:w-11 shrink-0 bg-primary/5 border-primary/20 rounded-xl">
+                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="outline" size="icon" className="h-11 w-11 sm:h-11 sm:w-11 shrink-0 bg-primary/5 border-primary/20 rounded-xl">
                                     <Scan className="h-5 w-5 text-primary" />
                                 </Button>
                             </div>
@@ -541,7 +542,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
 
                         {/* STEP 2: DETAILS */}
-                        <div className={cn(currentStep !== 1 && "hidden", "space-y-4 sm:space-y-5")}>
+                        <div className={cn(currentStep !== 1 && "hidden", "space-y-3.5 sm:space-y-5")}>
                             {productName && (
                                 <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 shadow-sm relative overflow-hidden">
                                     <div className="absolute inset-0 bg-tech-grid opacity-10" />
@@ -622,7 +623,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
 
                         {/* STEP 3: LOCATION */}
-                        <div className={cn(currentStep !== 2 && "hidden", "space-y-4 sm:space-y-5")}>
+                        <div className={cn(currentStep !== 2 && "hidden", "space-y-3.5 sm:space-y-5")}>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Registry Storage Zone</Label>
                                 <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
@@ -654,7 +655,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         </div>
                         
                         {/* STEP 4: REVIEW */}
-                        <div className={cn(currentStep !== 3 && "hidden", "space-y-4")}>
+                        <div className={cn(currentStep !== 3 && "hidden", "space-y-3.5")}>
                             <div className="p-4 sm:p-5 rounded-xl bg-primary/5 border border-primary/20 space-y-3.5 shadow-inner relative overflow-hidden">
                                 <div className="absolute inset-0 bg-tech-grid opacity-10" />
                                 <h3 className="font-black text-sm uppercase text-primary text-center truncate relative z-10">{productName}</h3>
@@ -671,7 +672,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     </form>
 
                     {/* ACTION CONTROLS */}
-                    <div className="flex gap-2.5 pt-2">
+                    <div className="flex gap-2.5 pt-1.5 sm:pt-2">
                         <Button type="button" onClick={prevStep} variant="ghost" disabled={isPending || isSubmitting || currentStep === 0} className="h-11 sm:h-10 px-4 font-black uppercase text-[9px] tracking-widest"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back</Button>
                         {currentStep < steps.length - 1 ? (
                             <Button type="button" onClick={nextStep} disabled={isFetchingProduct || isPending || isSubmitting} className="h-11 sm:h-10 flex-1 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 bg-primary">
@@ -689,7 +690,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             </CardContent>
         </Card>
         
-        <div className="pt-8 pb-4 text-center">
+        <div className="pt-6 sm:pt-8 pb-4 text-center">
             <p className="text-[7px] font-black uppercase tracking-[0.8em] text-muted-foreground/10">SheetSync Industrial Protocol • Secure Link</p>
         </div>
     </div>
