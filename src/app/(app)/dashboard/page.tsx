@@ -31,7 +31,7 @@ import { Separator } from '@/components/ui/separator';
 function MetricCard({ title, value, iconNode, description, isLoading, href, className, onIconClick }: { title: string; value: string | number; iconNode: React.ReactNode; description?: React.ReactNode, isLoading?: boolean, href?: string, className?: string, onIconClick?: (e: React.MouseEvent) => void }) {
   const cardInnerContent = (
     <div className="relative z-20 flex flex-col h-full p-6 sm:p-7">
-        <div className="flex flex-row items-center justify-between w-full mb-6">
+        <div className="flex flex-row items-center justify-between w-full mb-4">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">{title}</span>
             <div 
                 className={cn(
@@ -50,7 +50,7 @@ function MetricCard({ title, value, iconNode, description, isLoading, href, clas
             </div>
         </div>
         
-        <div className="flex-1 flex flex-col justify-center min-h-[140px]">
+        <div className="flex-1 flex flex-col justify-center min-h-[110px]">
             {isLoading ? (
                 <Skeleton className="h-10 w-3/4" />
             ) : (
@@ -123,15 +123,15 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                 </div>
             </div>
             
-            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[140px] pb-2 pt-8">
-                {/* BOLDER ARCH GAUGE - Top Frame Over Text */}
+            <div className="relative flex flex-col items-center justify-center flex-1 min-h-[110px] pb-2 pt-6">
+                {/* BOLDER ARCH GAUGE - Adjusted for smaller height */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                             <Pie
                                 data={data}
                                 cx="50%"
-                                cy="70%" 
+                                cy="80%" 
                                 startAngle={180}
                                 endAngle={0}
                                 innerRadius="70%"
@@ -149,8 +149,8 @@ function VolumeGaugeCard({ title, value, description, onIconClick, href }: { tit
                     </ResponsiveContainer>
                 </div>
                 
-                <div className="relative z-10 text-center mt-6">
-                    <div className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                <div className="relative z-10 text-center mt-4">
+                    <div className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
                         {value.toLocaleString()}
                     </div>
                 </div>
@@ -448,13 +448,13 @@ function QuickAuthorizeCard() {
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Terminal Access</CardTitle>
                 <CardDescription className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Proactive Authorization</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[140px]">
+            <CardContent className="space-y-4 pt-4 flex-grow flex flex-col justify-center px-6 pb-6 sm:px-7 sm:pb-7 min-h-[110px]">
                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                         <Button 
                             variant="outline" 
                             role="combobox" 
-                            className="w-full h-14 text-xs justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-background/50 backdrop-blur-xl shadow-inner"
+                            className="w-full h-12 text-xs justify-between font-black uppercase tracking-tight rounded-xl border-primary/10 bg-background/50 backdrop-blur-xl shadow-inner"
                         >
                             <div className="flex items-center gap-3 truncate">
                                 {selectedStaff === "ALL PERSONNEL (GLOBAL)" ? <Globe className="h-4 w-4 text-primary shrink-0" /> : <User className="h-4 w-4 text-primary shrink-0" />}
@@ -504,7 +504,7 @@ function QuickAuthorizeCard() {
                 </Popover>
                 
                 <Button 
-                    className="w-full h-14 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all active:scale-95 bg-primary hover:bg-primary/90 text-white" 
+                    className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all active:scale-95 bg-primary hover:bg-primary/90 text-white" 
                     disabled={!selectedStaff}
                     onClick={handleActionClick}
                 >
