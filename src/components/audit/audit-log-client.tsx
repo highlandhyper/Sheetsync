@@ -1,627 +1,594 @@
 'use client';
 
-import * as React from 'react';
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import type { AuditLogEntry } from '@/lib/types';
+import { useDataCache } from '@/context/data-cache-context';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { AuditLogEntry } from '@/lib/types';
-import { 
-    Search, 
-    FilterX, 
-    CalendarIcon, 
-    User, 
-    Tag, 
-    Crosshair, 
-    Info, 
-    FileText, 
-    ChevronLeft, 
-    ChevronRight, 
-    ChevronsLeft, 
-    ChevronsRight,
-    AlertTriangle,
-    ShieldAlert,
-    Trash2,
-    Edit,
-    History,
-    Activity,
-    PlusCircle,
-    Undo2,
-    Database,
-    Fingerprint,
-    Terminal,
-    BarChart3,
-    ShieldX,
-    Loader2,
-    Barcode
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Search,
+  FilterX,
+  RefreshCw,
+  ShieldCheck,
+  UserRound,
+  Activity,
+  Clock3,
+  FileText,
+  Database,
+  ChevronRight,
 } from 'lucide-react';
-import { parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { DateRange } from 'react-day-picker';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Badge } from '../ui/badge';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useDataCache } from '@/context/data-cache-context';
-import { useAuth } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
-import { Calendar } from '../ui/calendar';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '../ui/label';
-import { deleteAuditLogsByBarcodeAction } from '@/app/actions';
-import { AuthorizeActionDialog } from '../inventory/authorize-action-dialog';
+import { format, isValid, parseISO, subDays, isAfter } from 'date-fns';
 
-const ALL_USERS_VALUE = "___ALL_USERS___";
-const ALL_ACTIONS_VALUE = "___ALL_ACTIONS___";
-const ITEMS_PER_PAGE = 50;
+type TimeFilter = 'all' | '24h' | '7d' | '30d';
 
-const getActionIcon = (action: string) => {
-    if (action.includes('DELETE') || action.includes('WIPE') || action.includes('FORENSIC')) return <Trash2 className="h-3 w-3" />;
-    if (action.includes('UPDATE') || action.includes('EDIT')) return <Edit className="h-3 w-3" />;
-    if (action.includes('CREATE') || action.includes('LOG') || action.includes('REGISTER')) return <PlusCircle className="h-3 w-3" />;
-    if (action.includes('RETURN')) return <Undo2 className="h-3 w-3" />;
-    return <Activity className="h-3 w-3" />;
-};
+function getActionTone(action: string) {
+  const value = action.toUpperCase();
 
-const getActionColor = (action: string) => {
-    if (action.includes('DELETE') || action.includes('WIPE') || action.includes('FORENSIC')) return "bg-red-500/10 text-red-600 border-red-500/20";
-    if (action.includes('UPDATE') || action.includes('EDIT')) return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-    if (action.includes('CREATE') || action.includes('LOG') || action.includes('REGISTER')) return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
-    if (action.includes('RETURN')) return "bg-amber-500/10 text-amber-600 border-amber-500/20";
-    return "bg-slate-500/10 text-slate-600 border-slate-500/20";
-};
+  if (
+    value.includes('DELETE') ||
+    value.includes('REMOVE') ||
+    value.includes('WIPE') ||
+    value.includes('PURGE')
+  ) {
+    return {
+      badge: 'bg-destructive/10 text-destructive border-destructive/15',
+      dot: 'bg-destructive',
+    };
+  }
 
-const formatActionString = (action: string) => {
-  if (!action) return '';
-  return action
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
+  if (
+    value.includes('CREATE') ||
+    value.includes('ADD') ||
+    value.includes('REGISTER') ||
+    value.includes('LOG')
+  ) {
+    return {
+      badge: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/15',
+      dot: 'bg-emerald-500',
+    };
+  }
 
-function MetricCard({ title, value, subValue, icon: Icon, variant = 'default' }: { title: string, value: number, subValue?: string, icon: any, variant?: 'default' | 'destructive' | 'warning' }) {
-    return (
-        <Card className={cn(
-            "group shadow-none border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-3xl overflow-hidden transition-all hover:border-primary/20",
-            variant === 'destructive' && "border-red-500/10 bg-red-500/[0.01]"
-        )}>
-            <CardContent className="p-7">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground/40 tracking-[0.3em] leading-none mb-2">{title}</p>
-                        <div className="flex items-baseline gap-2">
-                            <h4 className={cn(
-                                "text-4xl font-black tracking-tighter leading-none", 
-                                variant === 'destructive' ? "text-red-500" : "text-slate-900 dark:text-white"
-                            )}>
-                                {value.toLocaleString()}
-                            </h4>
-                            {subValue && <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-widest">{subValue}</span>}
-                        </div>
-                    </div>
-                    <div className={cn(
-                        "w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg",
-                        variant === 'destructive' ? "bg-red-500/10 text-red-500 group-hover:shadow-red-500/20" : "bg-primary/10 text-primary group-hover:shadow-primary/20"
-                    )}>
-                        <Icon className="h-6 w-6" strokeWidth={2.5} />
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
+  if (
+    value.includes('UPDATE') ||
+    value.includes('EDIT') ||
+    value.includes('RESOLVE')
+  ) {
+    return {
+      badge: 'bg-amber-500/10 text-amber-600 border-amber-500/15',
+      dot: 'bg-amber-500',
+    };
+  }
+
+  if (value.includes('RETURN')) {
+    return {
+      badge: 'bg-blue-500/10 text-blue-600 border-blue-500/15',
+      dot: 'bg-blue-500',
+    };
+  }
+
+  return {
+    badge: 'bg-muted text-muted-foreground border-border/50',
+    dot: 'bg-muted-foreground/50',
+  };
+}
+
+function formatTimestamp(timestamp: string) {
+  const parsed = parseISO(timestamp);
+
+  if (!isValid(parsed)) {
+    const fallback = new Date(timestamp);
+
+    if (Number.isNaN(fallback.getTime())) {
+      return {
+        date: 'Unknown date',
+        time: '',
+        full: timestamp || 'Unknown',
+      };
+    }
+
+    return {
+      date: format(fallback, 'dd MMM yyyy'),
+      time: format(fallback, 'HH:mm'),
+      full: format(fallback, 'dd MMM yyyy, HH:mm'),
+    };
+  }
+
+  return {
+    date: format(parsed, 'dd MMM yyyy'),
+    time: format(parsed, 'HH:mm'),
+    full: format(parsed, 'dd MMM yyyy, HH:mm'),
+  };
+}
+
+function AuditMobileCard({ log }: { log: AuditLogEntry }) {
+  const tone = getActionTone(log.action);
+  const timestamp = formatTimestamp(log.timestamp);
+
+  return (
+    <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      <CardContent className="min-w-0 p-3.5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <Activity className="h-4 w-4" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-semibold tracking-tight text-foreground">
+                  {log.user || 'Unknown user'}
+                </p>
+
+                <p className="mt-0.5 text-[9px] font-medium text-muted-foreground">
+                  {timestamp.date}
+                  {timestamp.time ? ` • ${timestamp.time}` : ''}
+                </p>
+              </div>
+
+              <Badge
+                variant="outline"
+                className={cn(
+                  'max-w-[120px] shrink-0 truncate rounded-lg px-2 py-0.5 text-[8px] font-semibold',
+                  tone.badge
+                )}
+              >
+                {log.action || 'Unknown action'}
+              </Badge>
+            </div>
+
+            <div className="mt-3 grid min-w-0 gap-2">
+              <div className="min-w-0 rounded-xl bg-muted/30 px-3 py-2.5">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Target
+                </p>
+                <p className="mt-0.5 break-words text-[10px] font-medium leading-4 text-foreground">
+                  {log.target || '—'}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <p className="line-clamp-3 break-words text-[10px] leading-4 text-muted-foreground">
+                  {log.details || 'No additional details.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function AuditLogClient() {
-  const { auditLogs: allLogs, refreshData } = useDataCache();
-  const { user, role } = useAuth();
-  const { toast } = useToast();
+  const { auditLogs, refreshData } = useDataCache();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string>(ALL_USERS_VALUE);
-  const [selectedAction, setSelectedAction] = useState<string>(ALL_ACTIONS_VALUE);
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>();
-  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
-  
-  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  
-  const [isWipeDialogOpen, setIsWipeDialogOpen] = useState(false);
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [wipeBarcode, setWipeBarcode] = useState('');
-  const [isWiping, setIsWiping] = useState(false);
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const isMobile = useIsMobile();
+  const [userFilter, setUserFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
-  const metrics = useMemo(() => {
-    if (!allLogs) return { total: 0, critical: 0, distinctUsers: 0, recent: 0 };
-    const now = new Date();
-    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-    
-    return {
-        total: allLogs.length,
-        critical: allLogs.filter(l => l.action.includes('DELETE') || l.action.includes('WIPE') || l.action.includes('FORENSIC')).length,
-        distinctUsers: new Set(allLogs.map(l => l.user)).size,
-        recent: allLogs.filter(l => parseISO(l.timestamp) > sixHoursAgo).length
-    };
-  }, [allLogs]);
+  const users = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          auditLogs
+            .map((log) => log.user?.trim())
+            .filter((value): value is string => Boolean(value))
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [auditLogs]
+  );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedUser, selectedAction, selectedDateRange]);
-
-  const { uniqueUsers, uniqueActions } = useMemo(() => {
-    if (!allLogs) return { uniqueUsers: [], uniqueActions: [] };
-    const users = new Set<string>();
-    const actions = new Set<string>();
-    allLogs.forEach(log => {
-      users.add(log.user);
-      actions.add(log.action);
-    });
-    return {
-      uniqueUsers: Array.from(users).sort(),
-      uniqueActions: Array.from(actions).sort(),
-    };
-  }, [allLogs]);
+  const actions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          auditLogs
+            .map((log) => log.action?.trim())
+            .filter((value): value is string => Boolean(value))
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [auditLogs]
+  );
 
   const filteredLogs = useMemo(() => {
-    let logs = allLogs || [];
+    const query = searchTerm.trim().toLowerCase();
 
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      logs = logs.filter(log =>
-        log.user.toLowerCase().includes(lowerSearch) ||
-        log.action.toLowerCase().includes(lowerSearch) ||
-        log.target.toLowerCase().includes(lowerSearch) ||
-        log.details.toLowerCase().includes(lowerSearch)
-      );
-    }
+    return auditLogs.filter((log) => {
+      if (query) {
+        const haystack = [
+          log.user,
+          log.action,
+          log.target,
+          log.details,
+        ]
+          .join(' ')
+          .toLowerCase();
 
-    if (selectedUser !== ALL_USERS_VALUE) {
-      logs = logs.filter(log => log.user === selectedUser);
-    }
-
-    if (selectedAction !== ALL_ACTIONS_VALUE) {
-      logs = logs.filter(log => log.action === selectedAction);
-    }
-
-    if (selectedDateRange?.from && selectedDateRange.to) {
-      const fromDate = startOfDay(selectedDateRange.from);
-      const toDate = endOfDay(selectedDateRange.to);
-      logs = logs.filter(log => {
-        try {
-          const logDate = parseISO(log.timestamp);
-          return isValid(logDate) && !isBefore(logDate, fromDate) && !isAfter(logDate, toDate);
-        } catch {
+        if (!haystack.includes(query)) {
           return false;
         }
-      });
-    }
+      }
 
-    return logs;
-  }, [allLogs, searchTerm, selectedUser, selectedAction, selectedDateRange]);
+      if (userFilter !== 'all' && log.user !== userFilter) {
+        return false;
+      }
 
-  const paginatedLogs = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredLogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredLogs, currentPage]);
+      if (actionFilter !== 'all' && log.action !== actionFilter) {
+        return false;
+      }
 
-  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+      if (timeFilter !== 'all') {
+        const parsed = parseISO(log.timestamp);
+
+        if (!isValid(parsed)) {
+          return false;
+        }
+
+        const days =
+          timeFilter === '24h' ? 1 : timeFilter === '7d' ? 7 : 30;
+
+        if (!isAfter(parsed, subDays(new Date(), days))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [auditLogs, searchTerm, userFilter, actionFilter, timeFilter]);
+
+  const uniqueUsers = useMemo(
+    () => new Set(filteredLogs.map((log) => log.user)).size,
+    [filteredLogs]
+  );
+
+  const uniqueActions = useMemo(
+    () => new Set(filteredLogs.map((log) => log.action)).size,
+    [filteredLogs]
+  );
+
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    userFilter !== 'all' ||
+    actionFilter !== 'all' ||
+    timeFilter !== 'all';
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedUser(ALL_USERS_VALUE);
-    setSelectedAction(ALL_ACTIONS_VALUE);
-    setSelectedDateRange(undefined);
-  };
-  
-  const handleOpenDetails = (log: AuditLogEntry) => {
-    setSelectedLog(log);
-    setIsDetailsDialogOpen(true);
+    setUserFilter('all');
+    setActionFilter('all');
+    setTimeFilter('all');
   };
 
-  const handleWipeClick = () => {
-    if (role !== 'admin') return;
-    setIsWipeDialogOpen(true);
-  };
-
-  const initiateWipe = () => {
-      if (!wipeBarcode.trim()) return;
-      setIsWipeDialogOpen(false);
-      setIsAuthDialogOpen(true);
-  };
-
-  const handleAuthorizationSuccess = async () => {
-      setIsAuthDialogOpen(false);
-      setIsWiping(true);
-      
-      toast({ title: "Forensic Wipe Initiated", description: `Purging registry traces for barcode ${wipeBarcode}...` });
-
-      try {
-          const res = await deleteAuditLogsByBarcodeAction(user?.email || 'Admin', wipeBarcode);
-          if (res.success) {
-              toast({ title: "Registry Purged", description: "All historical traces for the target SKU have been removed." });
-              setWipeBarcode('');
-              refreshData();
-          } else {
-              toast({ variant: "destructive", title: "Wipe Failed", description: "Could not finalize security purge on server." });
-          }
-      } catch (e) {
-          toast({ variant: "destructive", title: "Error", description: "Communication failure with security core." });
-      } finally {
-          setIsWiping(false);
-      }
-  };
-
-  const PaginationControls = () => {
-      if (totalPages <= 1) return null;
-      return (
-          <div className="flex items-center justify-center gap-3 py-10 bg-muted/5 border-t border-white/5">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-10 w-10 rounded-xl border-white/5 bg-background shadow-sm hover:bg-primary/5 transition-all"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                  <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-10 w-10 rounded-xl border-white/5 bg-background shadow-sm hover:bg-primary/5 transition-all"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                  <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <div className="flex items-center gap-2 mx-6">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">Page</span>
-                  <span className="text-lg font-black text-primary tabular-nums">{currentPage}</span>
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">of {totalPages}</span>
-              </div>
-
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-10 w-10 rounded-xl border-white/5 bg-background shadow-sm hover:bg-primary/5 transition-all"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                  <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-10 w-10 rounded-xl border-white/5 bg-background shadow-sm hover:bg-primary/5 transition-all"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                  <ChevronsRight className="h-4 w-4" />
-              </Button>
-          </div>
-      );
-  };
-  
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-32">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <MetricCard title="Forensic Evidence" value={metrics.total} icon={Database} subValue="TOTAL TRACES" />
-          <MetricCard title="High-Risk Removal" value={metrics.critical} icon={ShieldAlert} variant="destructive" subValue="SECURITY" />
-          <MetricCard title="Unique Identities" value={metrics.distinctUsers} icon={Fingerprint} subValue=" PERSONNEL" />
-          <MetricCard title="Temporal Activity" value={metrics.recent} icon={Activity} subValue="RECENT 6H" />
+    <div className="min-w-0 space-y-4">
+      {/* Summary */}
+      <div className="grid min-w-0 grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="p-3.5 sm:p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Visible events
+                </p>
+                <p className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                  {filteredLogs.length}
+                </p>
+              </div>
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="p-3.5 sm:p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Users
+                </p>
+                <p className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                  {uniqueUsers}
+                </p>
+              </div>
+              <UserRound className="h-4 w-4 shrink-0 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="p-3.5 sm:p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Actions
+                </p>
+                <p className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                  {uniqueActions}
+                </p>
+              </div>
+              <Activity className="h-4 w-4 shrink-0 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="p-3.5 sm:p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Registry
+                </p>
+                <p className="mt-1 text-sm font-semibold tracking-tight text-foreground sm:text-base">
+                  Secure
+                </p>
+              </div>
+              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="p-2 sm:p-2 border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/[0.02]">
-        <CardContent className="p-4 sm:p-6 flex flex-col gap-6">
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors" strokeWidth={3} />
-            <Input
-              type="search"
-              placeholder="SEARCH FORENSIC REGISTRY (SKU, NAME, OR STAFF)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-16 w-full h-16 bg-muted/10 border-white/5 rounded-2xl font-black uppercase tracking-tight text-xl placeholder:text-muted-foreground/10 shadow-inner focus:border-primary/20"
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row flex-wrap gap-4">
-            <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger className="w-full sm:w-auto sm:min-w-64 h-14 rounded-2xl bg-background/50 border-white/5 font-black uppercase text-[10px] tracking-[0.2em] shadow-sm">
-                <div className="flex items-center"><User className="mr-3 h-4 w-4 text-primary/40" /><SelectValue placeholder="PERSONNEL FILTER" /></div>
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-white/10 shadow-3xl">
-                <SelectItem value={ALL_USERS_VALUE} className="text-[10px] font-black uppercase py-3">ALL PERSONNEL</SelectItem>
-                {uniqueUsers.map(user => <SelectItem key={user} value={user} className="text-[10px] font-black uppercase py-3">{user}</SelectItem>)}
-              </SelectContent>
-            </Select>
+      {/* Search / filters */}
+      <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+        <CardContent className="min-w-0 p-3.5 sm:p-4">
+          <div className="flex min-w-0 flex-col gap-2.5 xl:flex-row xl:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
 
-            <Select value={selectedAction} onValueChange={setSelectedAction}>
-              <SelectTrigger className="w-full sm:w-auto sm:min-w-64 h-14 rounded-2xl bg-background/50 border-white/5 font-black uppercase text-[10px] tracking-[0.2em] shadow-sm">
-                <div className="flex items-center"><Tag className="mr-3 h-4 w-4 text-primary/40" /><SelectValue placeholder="OPERATION TYPE" /></div>
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-white/10 shadow-3xl">
-                <SelectItem value={ALL_ACTIONS_VALUE} className="text-[10px] font-black uppercase py-3">ALL OPERATIONS</SelectItem>
-                {uniqueActions.map(action => (
-                    <SelectItem key={action} value={action} className="text-[10px] font-black uppercase py-3">
-                        {formatActionString(action)}
-                    </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left h-14 rounded-2xl bg-background/50 border-white/5 font-black uppercase text-[10px] tracking-[0.2em] sm:min-w-72 shadow-sm", !selectedDateRange && "text-muted-foreground/30")}>
-                  <CalendarIcon className="mr-3 h-4 w-4 text-primary/40" />
-                  {selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "MMM dd, yy")} — {format(selectedDateRange.to, "MMM dd, yy")}</> : format(selectedDateRange.from, "MMM dd, yy")) : <span>TEMPORAL WINDOW</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 rounded-[2rem] overflow-hidden border-white/10 shadow-3xl" align="start">
-                <Calendar initialFocus mode="range" defaultMonth={selectedDateRange?.from} selected={selectedDateRange} onSelect={setSelectedDateRange} numberOfMonths={2} />
-              </PopoverContent>
-            </Popover>
-
-            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
-                {(searchTerm || selectedUser !== ALL_USERS_VALUE || selectedAction !== ALL_ACTIONS_VALUE || selectedDateRange) && (
-                    <Button variant="ghost" onClick={clearFilters} className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[9px] text-red-500 hover:bg-red-500/5 transition-all"><FilterX className="mr-2 h-4 w-4" /> RESET TERMINAL</Button>
-                )}
-                
-                {role === 'admin' && (
-                    <Button 
-                        variant="outline" 
-                        onClick={handleWipeClick} 
-                        className="h-14 px-8 rounded-2xl border-destructive/20 bg-destructive/5 text-destructive font-black uppercase tracking-widest text-[9px] hover:bg-destructive/10 transition-all ml-auto"
-                    >
-                        {isWiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldX className="h-4 w-4 mr-2" />}
-                        FORENSIC WIPE
-                    </Button>
-                )}
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search user, action, target or details"
+                className="h-10 min-w-0 rounded-xl border-border/60 bg-background pl-10 pr-3 text-xs shadow-none"
+              />
             </div>
+
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto">
+              <Select value={userFilter} onValueChange={setUserFilter}>
+                <SelectTrigger className="h-10 min-w-0 rounded-xl border-border/60 bg-background text-[10px] shadow-none sm:w-[150px]">
+                  <SelectValue placeholder="User" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All users</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user} value={user}>
+                      {user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger className="h-10 min-w-0 rounded-xl border-border/60 bg-background text-[10px] shadow-none sm:w-[170px]">
+                  <SelectValue placeholder="Action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All actions</SelectItem>
+                  {actions.map((action) => (
+                    <SelectItem key={action} value={action}>
+                      {action}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={timeFilter}
+                onValueChange={(value) => setTimeFilter(value as TimeFilter)}
+              >
+                <SelectTrigger className="h-10 min-w-0 rounded-xl border-border/60 bg-background text-[10px] shadow-none sm:w-[140px]">
+                  <SelectValue placeholder="Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="24h">Last 24 hours</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => refreshData()}
+                  className="h-10 rounded-xl border-border/60 px-3 text-[9px] font-semibold shadow-none"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                  className="h-10 rounded-xl px-3 text-[9px] font-semibold text-muted-foreground"
+                >
+                  <FilterX className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
+            <p className="text-[9px] text-muted-foreground sm:text-[10px]">
+              Showing{' '}
+              <span className="font-semibold text-foreground">
+                {filteredLogs.length}
+              </span>{' '}
+              of {auditLogs.length} audit events
+            </p>
+
+            {hasActiveFilters && (
+              <Badge
+                variant="secondary"
+                className="rounded-lg border-0 px-2 py-0.5 text-[8px] font-semibold"
+              >
+                Filters active
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                    <Terminal className="h-5 w-5 text-primary" />
-                </div>
-                <h2 className="text-xl font-black uppercase tracking-tighter">Forensic Trace Registry</h2>
-            </div>
-            <Badge variant="outline" className="font-black uppercase tracking-widest text-[8px] bg-primary/5 text-primary border-primary/20 py-1.5 px-4 rounded-full">
-                {filteredLogs.length} TRACES IDENTIFIED
-            </Badge>
-        </div>
+      {filteredLogs.length > 0 ? (
+        <>
+          {/* Mobile feed */}
+          <div className="space-y-2.5 md:hidden">
+            {filteredLogs.map((log) => (
+              <AuditMobileCard key={log.id} log={log} />
+            ))}
+          </div>
 
-        <Card className="shadow-2xl border-white/5 overflow-hidden rounded-[2.5rem] bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl">
-            {isMobile ? (
-            <div className="divide-y divide-white/5">
-                {paginatedLogs.length > 0 ? (
-                paginatedLogs.map(log => (
-                    <div key={log.id} className="p-8 space-y-6 hover:bg-primary/[0.03] transition-all group" onClick={() => handleOpenDetails(log)}>
-                    <div className="flex items-center justify-between">
-                        <Badge variant="outline" className={cn("font-black uppercase tracking-[0.1em] text-[8px] px-3 py-1 rounded-lg border-none shadow-sm", getActionColor(log.action))}>
-                            {getActionIcon(log.action)}
-                            <span className="ml-2">{formatActionString(log.action)}</span>
-                        </Badge>
-                        <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-tighter tabular-nums">{format(parseISO(log.timestamp), 'PPp')}</span>
-                    </div>
-                    <div className="flex items-center gap-5">
-                        <div className="p-3 bg-background rounded-2xl border border-white/5 shadow-inner transition-transform group-hover:scale-110">
-                            <Fingerprint className="h-6 w-6 text-primary/40" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 leading-none mb-1.5">PERSONNEL ID</p>
-                            <p className="text-base font-black truncate text-slate-900 dark:text-white uppercase tracking-tight">{log.user}</p>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5">
-                        <p className="text-xs font-medium text-muted-foreground leading-relaxed italic opacity-80">
-                            "{log.details}"
-                        </p>
-                    </div>
-                    </div>
-                ))
-                ) : (
-                <div className="py-32 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground/20">Zero Traces Match Identification</p>
-                </div>
-                )}
-            </div>
-            ) : (
-            <Table>
-                <TableHeader className="bg-muted/10 border-b border-white/5">
-                <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] pl-10 h-16 text-muted-foreground/40">Timestamp</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Identity Node</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Operation</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 text-muted-foreground/40">Impact Details</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] h-16 pr-10 text-right text-muted-foreground/40">Action</TableHead>
-                </TableRow>
+          {/* Desktop table */}
+          <Card className="hidden min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm md:block">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[980px]">
+                <TableHeader className="bg-muted/25">
+                  <TableRow className="h-11 border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[150px] pl-4 text-[9px] font-semibold text-muted-foreground">
+                      Time
+                    </TableHead>
+                    <TableHead className="w-[180px] text-[9px] font-semibold text-muted-foreground">
+                      User
+                    </TableHead>
+                    <TableHead className="w-[180px] text-[9px] font-semibold text-muted-foreground">
+                      Action
+                    </TableHead>
+                    <TableHead className="w-[220px] text-[9px] font-semibold text-muted-foreground">
+                      Target
+                    </TableHead>
+                    <TableHead className="pr-4 text-[9px] font-semibold text-muted-foreground">
+                      Details
+                    </TableHead>
+                  </TableRow>
                 </TableHeader>
+
                 <TableBody>
-                {paginatedLogs.length > 0 ? (
-                    paginatedLogs.map(log => (
-                    <TableRow key={log.id} className="group hover:bg-primary/[0.02] transition-colors h-20 border-white/5">
-                        <TableCell className="text-[10px] font-mono font-black text-muted-foreground/40 pl-10 tracking-tighter">
-                            {format(parseISO(log.timestamp), 'dd/MM/yy HH:mm:ss')}
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-muted/40 rounded-xl border border-white/5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500 group-hover:rotate-[15deg]">
-                                    <Fingerprint className="h-5 w-5" />
-                                </div>
-                                <span className="font-black text-sm tracking-tight uppercase text-slate-800 dark:text-slate-200">{log.user}</span>
+                  {filteredLogs.map((log) => {
+                    const tone = getActionTone(log.action);
+                    const timestamp = formatTimestamp(log.timestamp);
+
+                    return (
+                      <TableRow
+                        key={log.id}
+                        className="group border-border/50 transition-colors hover:bg-muted/20"
+                      >
+                        <TableCell className="pl-4 align-top">
+                          <div className="flex items-start gap-2">
+                            <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                            <div>
+                              <p className="whitespace-nowrap text-[10px] font-medium text-foreground">
+                                {timestamp.date}
+                              </p>
+                              <p className="mt-0.5 text-[9px] text-muted-foreground">
+                                {timestamp.time}
+                              </p>
                             </div>
+                          </div>
                         </TableCell>
-                        <TableCell>
-                            <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.1em] border shadow-sm", getActionColor(log.action))}>
-                                {getActionIcon(log.action)}
-                                {formatActionString(log.action)}
+
+                        <TableCell className="align-top">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-[9px] font-bold text-muted-foreground">
+                              {(log.user || 'U').slice(0, 1).toUpperCase()}
                             </div>
+                            <span className="max-w-[150px] truncate text-[10px] font-medium text-foreground">
+                              {log.user || 'Unknown user'}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell className="max-w-[400px]">
-                            <p className="text-[11px] font-bold text-muted-foreground/60 truncate group-hover:text-foreground transition-colors leading-relaxed">
-                                {log.details}
+
+                        <TableCell className="align-top">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'max-w-[160px] truncate rounded-lg px-2 py-0.5 text-[8px] font-semibold',
+                              tone.badge
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'mr-1.5 inline-block h-1.5 w-1.5 rounded-full',
+                                tone.dot
+                              )}
+                            />
+                            {log.action || 'Unknown action'}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="align-top">
+                          <p className="max-w-[210px] break-words text-[10px] font-medium leading-4 text-foreground">
+                            {log.target || '—'}
+                          </p>
+                        </TableCell>
+
+                        <TableCell className="pr-4 align-top">
+                          <div className="flex min-w-0 items-start gap-2">
+                            <p className="line-clamp-2 min-w-0 flex-1 break-words text-[10px] leading-4 text-muted-foreground">
+                              {log.details || 'No additional details.'}
                             </p>
+                            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/25 opacity-0 transition-opacity group-hover:opacity-100" />
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right pr-10">
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetails(log)} className="h-10 w-10 rounded-2xl opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground">
-                                <Info className="h-5 w-5" />
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                    <TableCell colSpan={5} className="h-96 text-center">
-                        <div className="flex flex-col items-center gap-4 opacity-10 grayscale">
-                            <BarChart3 className="h-16 w-16" strokeWidth={1} />
-                            <p className="text-[11px] font-black uppercase tracking-[0.6em]">Zero Forensic Matches Identified</p>
-                        </div>
-                    </TableCell>
-                    </TableRow>
-                )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
-            </Table>
+              </Table>
+            </div>
+          </Card>
+        </>
+      ) : (
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <Database className="h-5 w-5" />
+            </div>
+
+            <h3 className="mt-3 text-sm font-semibold text-foreground">
+              No audit events found
+            </h3>
+
+            <p className="mt-1 max-w-[280px] text-[10px] leading-4 text-muted-foreground">
+              Try clearing or changing the current search and filters.
+            </p>
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearFilters}
+                className="mt-3 h-9 rounded-xl border-border/60 px-3 text-[9px] font-semibold shadow-none"
+              >
+                <FilterX className="mr-1.5 h-3.5 w-3.5" />
+                Clear filters
+              </Button>
             )}
-            <PaginationControls />
+          </CardContent>
         </Card>
-      </div>
-      
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-[3rem] border-none shadow-3xl bg-background">
-            <div className="p-10 pb-6 bg-muted/20 border-b border-white/5">
-                <DialogHeader>
-                    <div className="flex items-center gap-6 mb-6">
-                        <div className={cn("p-6 rounded-[1.5rem] shadow-xl transition-transform duration-700", selectedLog ? getActionColor(selectedLog.action) : "bg-muted")}>
-                            {selectedLog && React.cloneElement(getActionIcon(selectedLog.action) as React.ReactElement, { className: "h-8 w-8" })}
-                        </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-4xl font-black uppercase tracking-tighter leading-none">
-                                Forensic Node
-                            </DialogTitle>
-                            <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-background border-white/10 text-primary">
-                                    TRACE ID: {selectedLog?.id.toUpperCase()}
-                                </Badge>
-                                <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest border-none">
-                                    VERIFIED LOG
-                                </Badge>
-                            </div>
-                        </div>
-                    </div>
-                    <DialogDescription className="font-bold text-sm leading-relaxed tracking-tight text-muted-foreground/60 pr-8">
-                        Secure breakdown of selected security event. All timestamps and personnel identities are cryptographically synced with the master registry.
-                    </DialogDescription>
-                </DialogHeader>
-            </div>
-            
-            {selectedLog && (
-                <div className="p-10 pt-6 space-y-10">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="p-6 rounded-3xl bg-muted/10 border border-white/5 space-y-2 shadow-inner">
-                            <div className="flex items-center gap-2">
-                                <Fingerprint className="h-3 w-3 text-primary" />
-                                <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-[0.2em]">Personnel Identity</p>
-                            </div>
-                            <p className="text-xl font-black uppercase truncate text-slate-900 dark:text-white">{selectedLog.user}</p>
-                        </div>
-                        <div className="p-6 rounded-3xl bg-muted/10 border border-white/5 space-y-2 shadow-inner">
-                            <div className="flex items-center gap-2">
-                                <Activity className="h-3 w-3 text-primary" />
-                                <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-[0.2em]">Registry Timestamp</p>
-                            </div>
-                            <p className="text-xl font-black uppercase text-slate-900 dark:text-white">{format(parseISO(selectedLog.timestamp), 'dd MMM yy • HH:mm')}</p>
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-primary/5 border border-primary/20 rounded-[2rem] flex items-center gap-6 shadow-sm relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-tech-grid opacity-20" />
-                        <Crosshair className="h-10 w-10 text-primary/60 shrink-0 relative z-10 transition-transform group-hover:scale-110 duration-700" strokeWidth={3} />
-                        <div className="relative z-10 min-w-0">
-                            <p className="text-[9px] font-black uppercase text-primary tracking-[0.3em] leading-none mb-2">Impact Target ID</p>
-                            <p className="text-lg font-mono font-black text-primary tracking-tighter truncate">{selectedLog.target}</p>
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 ml-2">
-                            <Info className="h-4 w-4 text-muted-foreground/40" />
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.4em]">Event Breakdown</Label>
-                        </div>
-                        <div className="p-8 bg-background rounded-[2.5rem] border-2 border-muted shadow-2xl shadow-black/[0.01] relative">
-                            <p className="text-sm font-bold leading-relaxed italic text-slate-700 dark:text-slate-300 relative z-10">
-                                "{selectedLog.details}"
-                            </p>
-                            <History className="absolute bottom-6 right-8 h-16 w-16 text-muted-foreground/5 pointer-events-none" />
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <div className="p-8 bg-muted/20 border-t border-white/5 flex justify-center">
-                <Button variant="ghost" onClick={() => setIsDetailsDialogOpen(false)} className="h-12 px-12 text-[10px] font-black uppercase tracking-[0.4em] opacity-40 hover:opacity-100 hover:bg-transparent transition-all">
-                    TERMINATE INVESTIGATION SESSION
-                </Button>
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isWipeDialogOpen} onOpenChange={setIsWipeDialogOpen}>
-        <DialogContent className="sm:max-w-md p-6 rounded-[2rem] border-none shadow-3xl bg-background">
-            <DialogHeader>
-                <div className="mx-auto bg-destructive/10 p-4 rounded-2xl mb-4">
-                    <ShieldX className="h-8 w-8 text-destructive" strokeWidth={2.5} />
-                </div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center">Forensic Purge</DialogTitle>
-                <DialogDescription className="text-center font-medium text-xs">
-                    Initiating permanent removal of security traces for a specific target. This action bypasses standard archiving.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-6 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="wipe-barcode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Target SKU / Barcode</Label>
-                    <div className="relative">
-                        <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                        <Input 
-                            id="wipe-barcode"
-                            placeholder="IDENTIFY SKU FOR PURGE..."
-                            value={wipeBarcode}
-                            onChange={(e) => setWipeBarcode(e.target.value.toUpperCase())}
-                            className="pl-12 h-14 rounded-2xl bg-muted/10 font-black border-destructive/20 focus:border-destructive"
-                        />
-                    </div>
-                </div>
-                <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl flex items-start gap-3">
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-red-700/80 font-bold leading-relaxed">
-                        CRITICAL: This will erase ALL historical logs mentioning this barcode. This process is cryptographic and irreversible.
-                    </p>
-                </div>
-            </div>
-            <DialogFooter className="grid grid-cols-2 gap-3">
-                <Button variant="outline" onClick={() => setIsWipeDialogOpen(false)} className="rounded-xl font-bold h-12">Abort</Button>
-                <Button 
-                    onClick={initiateWipe} 
-                    disabled={!wipeBarcode.trim()}
-                    className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-destructive/20 h-12"
-                >
-                    Initialize Purge
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AuthorizeActionDialog 
-          isOpen={isAuthDialogOpen}
-          onOpenChange={setIsAuthDialogOpen}
-          onAuthorizationSuccess={handleAuthorizationSuccess}
-          actionDescription={`Authorized Forensic Wipe for barcode: ${wipeBarcode}. Administrator clearance required.`}
-      />
+      )}
     </div>
   );
 }
