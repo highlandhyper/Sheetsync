@@ -428,8 +428,8 @@ function InventoryItemCardMobileComponent({
             </div>
           )
         ) : isProductFound ? (
-          <div className="grid w-full min-w-0 grid-cols-4 gap-1.5 max-[420px]:grid-cols-2">
-            {onViewImage ? (
+          <div className="grid w-full min-w-0 grid-cols-4 gap-1.5 max-[420px]:grid-cols-3">
+            {onViewImage && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -439,11 +439,9 @@ function InventoryItemCardMobileComponent({
               >
                 <ImageIcon className="h-4 w-4" />
               </Button>
-            ) : (
-              <div />
             )}
 
-            {onEdit ? (
+            {onEdit && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -453,11 +451,9 @@ function InventoryItemCardMobileComponent({
               >
                 <Pencil className="h-4 w-4" />
               </Button>
-            ) : (
-              <div />
             )}
 
-            {onReturn ? (
+            {onReturn && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -468,22 +464,18 @@ function InventoryItemCardMobileComponent({
               >
                 <Undo2 className="h-4 w-4" />
               </Button>
-            ) : (
-              <div />
             )}
 
-            {onDelete ? (
+            {onDelete && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onDelete}
                 aria-label={`Delete ${item.productName}`}
-                className="h-10 w-full rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="h-10 w-full rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive max-[420px]:col-span-3"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-            ) : (
-              <div />
             )}
           </div>
         ) : (
@@ -507,3 +499,5 @@ function InventoryItemCardMobileComponent({
 export const InventoryItemCardMobile = memo(
   InventoryItemCardMobileComponent,
 );
+
+export default InventoryItemCardMobile;

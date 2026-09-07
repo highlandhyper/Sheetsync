@@ -266,52 +266,75 @@ export function ReturnableInventoryByStaffClient() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 sm:space-y-6">
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <Card className="shadow-md">
+      <div className="mx-auto w-full min-w-0 max-w-none space-y-3 overflow-x-hidden px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:px-4 md:px-5 md:pb-8 lg:px-4 xl:px-5 2xl:px-6">
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <div className="grid gap-3 md:hidden">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden rounded-2xl border-0 shadow-none ring-1 ring-border/50">
+              <CardContent className="space-y-3 p-3">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+                <div className="grid grid-cols-3 gap-2">
+                  <Skeleton className="h-12 rounded-xl" />
+                  <Skeleton className="h-12 rounded-xl" />
+                  <Skeleton className="h-12 rounded-xl" />
+                </div>
+                <Skeleton className="h-10 rounded-xl" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="hidden overflow-hidden rounded-2xl border-0 shadow-none ring-1 ring-border/50 md:block">
           <Table><TableHeader><TableRow><TableHead>Identity</TableHead><TableHead>Barcode</TableHead><TableHead>Vendor</TableHead><TableHead className="text-right">Volume</TableHead><TableHead className="w-36 text-center">Protocol</TableHead></TableRow></TableHeader>
-          <TableBody>{Array.from({ length: 3 }).map((_, i) => (<TableRow key={i}><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell className="text-right"><Skeleton className="h-5 w-1/2 ml-auto" /></TableCell><TableCell><Skeleton className="h-9 w-24 mx-auto" /></TableCell></TableRow>))}</TableBody></Table>
+          <TableBody>{Array.from({ length: 3 }).map((_, i) => (<TableRow key={i}><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell><Skeleton className="h-5 w-full" /></TableCell><TableCell className="text-right"><Skeleton className="ml-auto h-5 w-1/2" /></TableCell><TableCell><Skeleton className="mx-auto h-9 w-24" /></TableCell></TableRow>))}</TableBody></Table>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 pb-24 sm:pb-8">
-      <Card className="p-3 sm:p-4 shadow-md filters-card-noprint border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-2xl sm:rounded-3xl">
-        <CardContent className="p-0 space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-none space-y-3 overflow-x-hidden px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] animate-in fade-in duration-300 sm:space-y-4 sm:px-4 md:px-5 md:pb-8 lg:px-4 xl:px-5 2xl:px-6">
+      <Card className="filters-card-noprint w-full min-w-0 overflow-hidden rounded-2xl border-0 bg-muted/20 p-2.5 shadow-none ring-1 ring-border/50 sm:p-3">
+        <CardContent className="min-w-0 space-y-3 p-0">
           {selectedItemIds.size > 0 && isMultiSelectEnabled && logCategory === 'normal' ? (
-             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-               <div className="flex items-center gap-3 flex-wrap">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{selectedItemIds.size} Linked Nodes</div>
-                    <div className="flex items-center text-sm font-black text-primary border-l pl-3 uppercase tracking-tighter">
-                        <Wallet className="mr-2 h-4 w-4" />
-                        <span className="truncate">Valuation: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+             <div className="grid min-w-0 gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+               <div className="min-w-0 rounded-xl bg-background/70 px-3 py-2.5">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                        {selectedItemIds.size} selected
+                      </p>
+                      <span className="shrink-0 text-[10px] font-semibold text-primary">Bulk mode</span>
+                    </div>
+                    <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                      <Wallet className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="min-w-0 truncate text-xs font-bold tabular-nums text-foreground">
+                        QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" size="sm" className="font-bold rounded-xl h-10 text-[11px]" onClick={() => setIsBulkReturnOpen(true)}>Bulk Return</Button>
-                    {canDelete && <Button variant="destructive" size="sm" className="font-bold rounded-xl h-10 text-[11px]" onClick={() => setIsBulkDeleteOpen(true)}>Bulk Purge</Button>}
+                    <Button variant="outline" size="sm" className="h-10 min-w-0 rounded-xl px-3 text-[10px] font-semibold" onClick={() => setIsBulkReturnOpen(true)}>Bulk Return</Button>
+                    {canDelete && <Button variant="destructive" size="sm" className="h-10 min-w-0 rounded-xl px-3 text-[10px] font-semibold" onClick={() => setIsBulkDeleteOpen(true)}>Bulk Purge</Button>}
                 </div>
              </div>
           ) : (
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,280px)_minmax(0,240px)]">
                     <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
                         <PopoverTrigger asChild>
                             <Button 
                                 variant="outline" 
                                 role="combobox" 
-                                className="w-full sm:w-[280px] h-11 justify-between font-bold bg-background shadow-sm rounded-xl px-4 text-xs"
+                                className="h-11 w-full min-w-0 justify-between rounded-xl border-border/60 bg-background px-3 text-xs font-semibold shadow-none"
                             >
-                                <div className="flex items-center truncate">
+                                <div className="flex min-w-0 flex-1 items-center overflow-hidden">
                                     <User className="mr-2 h-4 w-4 text-primary/40 shrink-0" />
                                     <span className="truncate">{selectedStaffName || "Identify Personnel..."}</span>
                                 </div>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-white/10" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border-border/60 p-0 shadow-xl" align="start">
                             <Command>
                                 <CommandInput placeholder="Search personnel..." />
                                 <CommandList className="max-h-72">
@@ -347,26 +370,26 @@ export function ReturnableInventoryByStaffClient() {
                         </PopoverContent>
                     </Popover>
                     
-                    <Tabs value={logCategory} onValueChange={(v: any) => setLogCategory(v)} className="w-full sm:w-auto">
-                        <TabsList className="h-11 p-1 bg-muted/20 border rounded-xl grid grid-cols-2 w-full sm:w-[240px]">
-                            <TabsTrigger value="normal" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Normal Log</TabsTrigger>
-                            <TabsTrigger value="diary" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Diary Log</TabsTrigger>
+                    <Tabs value={logCategory} onValueChange={(v: any) => setLogCategory(v)} className="w-full min-w-0">
+                        <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl border-0 bg-background/70 p-1">
+                            <TabsTrigger value="normal" className="min-w-0 rounded-lg px-2 text-[9px] font-bold uppercase tracking-[0.1em] data-[state=active]:bg-background data-[state=active]:shadow-sm">Normal Log</TabsTrigger>
+                            <TabsTrigger value="diary" className="min-w-0 rounded-lg px-2 text-[9px] font-bold uppercase tracking-[0.1em] data-[state=active]:bg-background data-[state=active]:shadow-sm">Diary Log</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>
 
-                <div className="flex items-center justify-between lg:justify-end gap-2">
+                <div className="flex min-w-0 items-center justify-between gap-2 lg:justify-end">
                     {selectedStaffName && (
-                        <Badge variant="secondary" className="bg-primary/5 text-primary border-none px-3 py-1.5 font-black uppercase text-[8px] tracking-widest">
+                        <Badge variant="secondary" className="max-w-[110px] shrink-0 truncate rounded-lg border-0 bg-primary/10 px-2.5 py-1.5 text-[8px] font-bold uppercase tracking-[0.08em] text-primary">
                             {totalItemsCount} TRACES
                         </Badge>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1.5">
                         {canExport && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-11 rounded-xl px-3 font-bold border-white/5 bg-background shadow-sm text-xs" disabled={filteredItems.length === 0}>
-                                        <FileText className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Export</span>
+                                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border/60 bg-background px-2.5 text-xs font-semibold shadow-none sm:h-11 sm:px-3" disabled={filteredItems.length === 0}>
+                                        <FileText className="h-4 w-4 shrink-0 sm:mr-2" /> <span className="hidden sm:inline">Export</span>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-xl shadow-3xl">
@@ -376,8 +399,8 @@ export function ReturnableInventoryByStaffClient() {
                             </DropdownMenu>
                         )}
                         {canPrint && (
-                            <Button onClick={handlePrint} variant="outline" size="sm" className="h-11 rounded-xl px-3 font-bold border-white/5 bg-background shadow-sm text-xs" disabled={filteredItems.length === 0}>
-                                <Printer className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Print</span>
+                            <Button onClick={handlePrint} variant="outline" size="sm" className="h-10 rounded-xl border-border/60 bg-background px-2.5 text-xs font-semibold shadow-none sm:h-11 sm:px-3" disabled={filteredItems.length === 0}>
+                                <Printer className="h-4 w-4 shrink-0 sm:mr-2" /> <span className="hidden sm:inline">Print</span>
                             </Button>
                         )}
                     </div>
@@ -388,31 +411,44 @@ export function ReturnableInventoryByStaffClient() {
       </Card>
       
       {selectedStaffName && logCategory === 'normal' && filteredItems.length > 0 && (
-        <Card className="p-4 sm:p-5 shadow-md border-primary/10 bg-primary/5 rounded-2xl animate-in zoom-in-95 duration-500">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="p-2.5 sm:p-3 bg-primary/10 rounded-xl flex-shrink-0"><Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /></div>
-                    <div>
-                        <h3 className="text-sm sm:text-lg font-black uppercase tracking-tight leading-none">Active Contribution</h3>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-1">Registry value identification.</p>
-                    </div>
-                </div>
-                <p className="text-2xl sm:text-3xl font-black text-primary tabular-nums w-full sm:w-auto text-right sm:text-left leading-none">
-                    QAR {totalValueForView.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </p>
-            </div>
+        <Card className="w-full min-w-0 overflow-hidden rounded-2xl border-0 bg-primary/[0.06] shadow-none ring-1 ring-primary/10 animate-in zoom-in-95 duration-300">
+            <CardContent className="min-w-0 p-3 sm:p-4">
+              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[420px]:grid-cols-[auto_minmax(0,1fr)_auto]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:h-11 sm:w-11">
+                    <Wallet className="h-5 w-5 text-primary" />
+                  </div>
+
+                  <div className="min-w-0">
+                      <h3 className="text-[13px] font-bold leading-tight text-foreground sm:text-sm">Active contribution</h3>
+                      <p className="mt-0.5 truncate text-[9px] text-muted-foreground sm:text-[10px]">
+                        Inventory value logged by this staff member
+                      </p>
+                  </div>
+
+                  <div className="col-span-2 min-w-0 border-t border-primary/10 pt-2 min-[420px]:col-span-1 min-[420px]:border-0 min-[420px]:pt-0 min-[420px]:text-right">
+                    <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/70">Total value</p>
+                    <p className="mt-0.5 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold leading-none tabular-nums text-primary sm:text-2xl">
+                      QAR {totalValueForView.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+              </div>
+            </CardContent>
         </Card>
       )}
 
       {!selectedStaffName ? (
-         <div className="text-center py-20 sm:py-32 flex flex-col items-center justify-center opacity-20 grayscale px-4">
-          <User className="h-12 w-12 sm:h-16 sm:w-16 mb-4" strokeWidth={1.5} />
-          <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter">Personnel Required</h3>
-          <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Identify staff member to initiate audit trace.</p>
+         <div className="flex min-h-[260px] flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[340px]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground sm:h-16 sm:w-16">
+            <User className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.7} />
+          </div>
+          <h3 className="mt-4 text-base font-bold tracking-tight text-foreground sm:text-lg">Select a staff member</h3>
+          <p className="mt-1 max-w-xs text-[11px] leading-5 text-muted-foreground sm:text-xs">
+            Choose a staff member above to view normal inventory logs or Diary reminders.
+          </p>
         </div>
       ) : filteredItems.length > 0 ? (
         <>
-            <Card className="shadow-2xl border-white/5 overflow-hidden rounded-[2rem] hidden md:block bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl">
+            <Card className="hidden overflow-hidden rounded-2xl border-0 bg-card shadow-none ring-1 ring-border/50 md:block">
                 <Table>
                     <TableHeader className="bg-muted/10 border-b border-white/5">
                         <TableRow className="h-14 hover:bg-transparent">
@@ -427,7 +463,7 @@ export function ReturnableInventoryByStaffClient() {
                             <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-right">Valuation</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-[0.3em]">Zone</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-[0.3em]">Expiry</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-center pr-8">Protocol</TableHead>
+                            <TableHead className="w-[128px] min-w-[128px] max-w-[128px] text-center text-[10px] font-black uppercase tracking-[0.2em]">Protocol</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -482,7 +518,7 @@ export function ReturnableInventoryByStaffClient() {
                 </Table>
             </Card>
 
-            <div className="grid grid-cols-1 gap-4 md:hidden px-1">
+            <div className="grid min-w-0 grid-cols-1 gap-3 md:hidden">
                 {filteredItems.map((item) => {
                     if (logCategory === 'normal') {
                         const inv = item as InventoryItem;
@@ -503,32 +539,34 @@ export function ReturnableInventoryByStaffClient() {
                     } else {
                         const r = item as ExpiryReminder;
                         return (
-                            <Card key={`mob-diary-${r.id}`} className="border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-2xl overflow-hidden shadow-sm">
-                                <CardContent className="p-5 space-y-4">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="space-y-1 min-w-0">
-                                            <h4 className="text-base font-black uppercase truncate text-slate-800 dark:text-white leading-tight">{r.productName}</h4>
-                                            <p className="text-[10px] font-mono text-muted-foreground tracking-widest">{r.barcode}</p>
+                            <Card key={`mob-diary-${r.id}`} className="w-full min-w-0 overflow-hidden rounded-2xl border-0 bg-card shadow-none ring-1 ring-border/50">
+                                <CardContent className="min-w-0 space-y-3 p-3">
+                                    <div className="flex min-w-0 items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="line-clamp-2 break-words [overflow-wrap:anywhere] text-[13px] font-bold leading-tight text-foreground sm:text-sm">{r.productName}</h4>
+                                            <p className="mt-1 truncate font-mono text-[9px] text-muted-foreground">{r.barcode}</p>
                                         </div>
-                                        <Badge variant="outline" className="bg-primary/5 text-primary border-none text-[8px] font-black px-2 py-0.5 shrink-0">DIARY LOG</Badge>
+                                        <Badge variant="outline" className="shrink-0 rounded-lg border-0 bg-primary/10 px-2 py-1 text-[8px] font-bold text-primary">DIARY</Badge>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-[8px] font-black uppercase text-muted-foreground/40">Expiry Target</p>
-                                            <p className="text-xs font-black text-slate-700 dark:text-slate-300">{format(parseISO(r.expiryDate), 'dd MMM yy')}</p>
+
+                                    <div className="grid min-w-0 grid-cols-2 gap-2 max-[340px]:grid-cols-1">
+                                        <div className="min-w-0 rounded-xl bg-muted/40 px-2.5 py-2">
+                                            <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Expiry</p>
+                                            <p className="mt-0.5 truncate text-[11px] font-bold text-foreground">{format(parseISO(r.expiryDate), 'dd MMM yy')}</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[8px] font-black uppercase text-muted-foreground/40">Registry Sync</p>
-                                            <p className="text-xs font-bold text-muted-foreground">{format(parseISO(r.timestamp), 'dd/MM/yy')}</p>
+                                        <div className="min-w-0 rounded-xl bg-muted/40 px-2.5 py-2">
+                                            <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Logged</p>
+                                            <p className="mt-0.5 truncate text-[11px] font-semibold text-muted-foreground">{format(parseISO(r.timestamp), 'dd/MM/yy')}</p>
                                         </div>
                                     </div>
+
                                     <Button 
-                                        className="w-full h-12 font-black uppercase text-[10px] tracking-widest rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white border-none transition-all shadow-none"
+                                        className="h-10 w-full rounded-xl border-0 bg-primary/10 text-[10px] font-semibold text-primary shadow-none hover:bg-primary hover:text-primary-foreground"
                                         onClick={() => handleResolveDiary(r.id, r.productName)}
                                         disabled={isResolvingDiary === r.id}
                                     >
-                                        {isResolvingDiary === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Check className="h-3.5 w-3.5 mr-2" />}
-                                        Initialize Resolve
+                                        {isResolvingDiary === r.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                                        Resolve reminder
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -538,10 +576,14 @@ export function ReturnableInventoryByStaffClient() {
             </div>
         </>
       ) : (
-        <div className="py-20 sm:py-32 flex flex-col items-center justify-center text-center opacity-20 grayscale px-4">
-          <PackageOpen className="h-12 w-12 sm:h-16 sm:w-16 mb-4" strokeWidth={1} />
-          <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest">Nominal State</h3>
-          <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Zero active {logCategory} traces identified for this node.</p>
+        <div className="flex min-h-[240px] flex-col items-center justify-center px-4 py-12 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
+            <PackageOpen className="h-6 w-6" strokeWidth={1.7} />
+          </div>
+          <h3 className="mt-4 text-base font-bold tracking-tight text-foreground">No active {logCategory} logs</h3>
+          <p className="mt-1 max-w-xs text-[11px] leading-5 text-muted-foreground">
+            There are no active records for {selectedStaffName} in this view.
+          </p>
         </div>
       )}
       
@@ -554,3 +596,5 @@ export function ReturnableInventoryByStaffClient() {
     </div>
   );
 }
+
+export default ReturnableInventoryByStaffClient;

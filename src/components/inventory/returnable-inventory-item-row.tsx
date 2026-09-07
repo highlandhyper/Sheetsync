@@ -92,7 +92,7 @@ const ReturnableInventoryItemRowComponent = ({
       data-state={isSelected ? 'selected' : ''}
       className={cn(
         'group transition-colors hover:bg-muted/30 data-[state=selected]:bg-primary/[0.06]',
-        'max-[520px]:h-auto border-white/5',
+        'max-[520px]:h-auto',
         isProcessing && 'pointer-events-none opacity-50',
       )}
     >
@@ -117,30 +117,30 @@ const ReturnableInventoryItemRowComponent = ({
         )}
       >
         <div className="min-w-0">
-          <p className="line-clamp-2 break-words text-[13px] font-black uppercase leading-snug text-slate-800 dark:text-white sm:text-sm max-[520px]:text-[12px] max-[520px]:leading-[1.25] tracking-tight">
+          <p className="line-clamp-2 break-words text-[13px] font-semibold leading-snug text-foreground sm:text-sm max-[520px]:text-[12px] max-[520px]:leading-[1.25]">
             {item.productName}
           </p>
 
           {/* 480px summary */}
-          <div className="mt-1.5 hidden min-w-0 space-y-1.5 max-[520px]:block">
-            <div className="flex min-w-0 items-center gap-1.5 text-[9px] leading-none text-muted-foreground font-bold">
-              <span className="min-w-0 truncate font-mono tracking-widest bg-muted/50 px-1 py-0.5 rounded">
+          <div className="mt-1 hidden min-w-0 space-y-1 max-[520px]:block">
+            <div className="flex min-w-0 items-center gap-1.5 text-[9px] leading-none text-muted-foreground">
+              <span className="min-w-0 truncate font-mono">
                 {item.barcode}
               </span>
 
               <span className="shrink-0 text-muted-foreground/40">•</span>
 
-              <span className="shrink-0 font-black text-primary">
-                {item.quantity} UNITS
+              <span className="shrink-0 font-semibold text-foreground">
+                Qty {item.quantity}
               </span>
 
               <span className="shrink-0 text-muted-foreground/40">•</span>
 
               <span
                 className={cn(
-                  'shrink-0 uppercase',
+                  'shrink-0',
                   isExpired && isValidExpiry
-                    ? 'font-black text-destructive'
+                    ? 'font-semibold text-destructive'
                     : 'text-muted-foreground',
                 )}
               >
@@ -148,7 +148,7 @@ const ReturnableInventoryItemRowComponent = ({
               </span>
             </div>
 
-            <div className="flex min-w-0 items-center gap-1.5 text-[9px] leading-none text-muted-foreground font-bold uppercase tracking-tighter">
+            <div className="flex min-w-0 items-center gap-1.5 text-[9px] leading-none text-muted-foreground">
               {showSupplierName && (
                 <>
                   <span className="min-w-0 truncate">
@@ -166,10 +166,10 @@ const ReturnableInventoryItemRowComponent = ({
 
               <span
                 className={cn(
-                  'shrink-0 font-black',
+                  'shrink-0 font-medium',
                   item.itemType === 'Damage'
                     ? 'text-orange-600 dark:text-orange-400'
-                    : 'text-primary/60',
+                    : 'text-muted-foreground',
                 )}
               >
                 {item.itemType}
@@ -177,25 +177,25 @@ const ReturnableInventoryItemRowComponent = ({
             </div>
 
             {showCost && costPrice !== undefined && (
-              <div className="text-[9px] leading-none text-muted-foreground font-black uppercase tracking-tighter">
-                COST QAR {costPrice.toFixed(2)}
+              <div className="text-[9px] leading-none text-muted-foreground">
+                Cost QAR {costPrice.toFixed(2)}
                 <span className="px-1 text-muted-foreground/40">•</span>
-                TOTAL QAR {(costPrice * item.quantity).toFixed(2)}
+                Total QAR {(costPrice * item.quantity).toFixed(2)}
               </div>
             )}
 
-            <div className="text-[8px] tabular-nums leading-none text-muted-foreground/60 font-medium">
+            <div className="text-[8px] tabular-nums leading-none text-muted-foreground/60">
               {formattedTimestamp}
             </div>
           </div>
 
           {/* Normal mobile/tablet quick glance */}
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-tight text-muted-foreground sm:hidden max-[520px]:hidden font-bold uppercase">
-            <span className="font-mono tracking-widest">{item.barcode}</span>
-            <span aria-hidden="true" className="opacity-30">•</span>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-tight text-muted-foreground sm:hidden max-[520px]:hidden">
+            <span className="font-mono">{item.barcode}</span>
+            <span aria-hidden="true">•</span>
             <span
               className={cn(
-                isExpired && isValidExpiry && 'font-black text-destructive',
+                isExpired && isValidExpiry && 'font-semibold text-destructive',
               )}
             >
               {compactExpiry}
@@ -206,27 +206,27 @@ const ReturnableInventoryItemRowComponent = ({
 
       {/* Secondary columns collapse completely at 480px.
           All of their useful information is already shown in the primary cell. */}
-      <TableCell className="whitespace-nowrap px-2.5 py-2.5 font-mono text-[11px] text-muted-foreground/60 sm:px-4 sm:py-3 sm:text-xs max-[520px]:hidden font-black tracking-widest uppercase">
+      <TableCell className="whitespace-nowrap px-2.5 py-2.5 font-mono text-[11px] text-muted-foreground sm:px-4 sm:py-3 sm:text-xs max-[520px]:hidden">
         {item.barcode}
       </TableCell>
 
       {showSupplierName && (
-        <TableCell className="min-w-[150px] max-w-[220px] px-2.5 py-2.5 text-[11px] text-muted-foreground sm:px-4 sm:py-3 max-[520px]:hidden font-bold uppercase tracking-tight">
+        <TableCell className="min-w-[150px] max-w-[220px] px-2.5 py-2.5 text-xs text-muted-foreground sm:px-4 sm:py-3 max-[520px]:hidden">
           <span className="line-clamp-2">{item.supplierName || 'N/A'}</span>
         </TableCell>
       )}
 
-      <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-[13px] font-black tabular-nums sm:px-4 sm:py-3 sm:text-sm max-[520px]:hidden text-primary">
+      <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-[13px] font-semibold tabular-nums sm:px-4 sm:py-3 sm:text-sm max-[520px]:hidden">
         {item.quantity}
       </TableCell>
 
       {showCost && (
         <>
-          <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-[11px] tabular-nums text-muted-foreground/60 sm:px-4 sm:py-3 max-[520px]:hidden font-bold">
+          <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-xs tabular-nums text-muted-foreground sm:px-4 sm:py-3 max-[520px]:hidden">
             {costPrice !== undefined ? `QAR ${costPrice.toFixed(2)}` : 'N/A'}
           </TableCell>
 
-          <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-[11px] font-black tabular-nums sm:px-4 sm:py-3 max-[520px]:hidden">
+          <TableCell className="whitespace-nowrap px-2.5 py-2.5 text-right text-xs font-semibold tabular-nums sm:px-4 sm:py-3 max-[520px]:hidden">
             {totalCost !== undefined ? `QAR ${totalCost.toFixed(2)}` : 'N/A'}
           </TableCell>
         </>
@@ -235,7 +235,7 @@ const ReturnableInventoryItemRowComponent = ({
       <TableCell className="min-w-[130px] px-2.5 py-2.5 sm:px-4 sm:py-3 max-[520px]:hidden">
         <span
           className={cn(
-            'inline-flex rounded-lg px-2 py-1 text-[10px] font-black leading-none uppercase tracking-widest',
+            'inline-flex rounded-lg px-2 py-1 text-[11px] font-medium leading-none',
             isExpired && isValidExpiry
               ? 'bg-destructive/10 text-destructive'
               : 'bg-muted/50 text-muted-foreground',
@@ -245,17 +245,17 @@ const ReturnableInventoryItemRowComponent = ({
         </span>
       </TableCell>
 
-      <TableCell className="min-w-[110px] px-2.5 py-2.5 text-[11px] text-muted-foreground sm:px-4 sm:py-3 max-[520px]:hidden font-bold uppercase tracking-tighter">
+      <TableCell className="min-w-[110px] px-2.5 py-2.5 text-xs text-muted-foreground sm:px-4 sm:py-3 max-[520px]:hidden">
         <span className="line-clamp-2">{item.location || 'N/A'}</span>
       </TableCell>
 
       <TableCell className="whitespace-nowrap px-2.5 py-2.5 sm:px-4 sm:py-3 max-[520px]:hidden">
         <span
           className={cn(
-            'inline-flex rounded-lg px-2 py-1 text-[10px] font-black leading-none uppercase tracking-widest',
+            'inline-flex rounded-lg px-2 py-1 text-[11px] font-medium leading-none',
             item.itemType === 'Damage'
               ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-              : 'bg-primary/10 text-primary',
+              : 'bg-muted/50 text-muted-foreground',
           )}
         >
           {item.itemType}
@@ -264,13 +264,15 @@ const ReturnableInventoryItemRowComponent = ({
 
       {/* Actions stay visible on touch devices. On a 480px screen they become
           a compact 2-column control block taking only ~76px. */}
-      <TableCell className="min-w-[116px] px-2 py-2 text-right align-middle noprint sm:px-3 max-[520px]:min-w-[76px] max-[520px]:w-[76px] max-[520px]:px-1.5">
-        <div className="flex min-h-9 items-center justify-end max-[520px]:min-h-0">
-          <span className="hidden whitespace-nowrap text-[10px] tabular-nums text-muted-foreground/40 lg:inline lg:group-hover:hidden font-bold">
+      <TableCell className="relative min-w-[116px] px-2 py-2 text-right align-middle noprint sm:px-3 lg:w-[128px] lg:min-w-[128px] lg:max-w-[128px] max-[520px]:w-[76px] max-[520px]:min-w-[76px] max-[520px]:px-1.5">
+        <div className="relative flex min-h-9 items-center justify-end max-[520px]:min-h-0 lg:h-9">
+          {/* Desktop timestamp and actions occupy the SAME fixed area.
+              Opacity changes on hover instead of display, so table width never changes. */}
+          <span className="hidden whitespace-nowrap text-[11px] tabular-nums text-muted-foreground transition-opacity duration-150 lg:absolute lg:inset-0 lg:flex lg:items-center lg:justify-end lg:opacity-100 lg:group-hover:opacity-0">
             {formattedTimestamp}
           </span>
 
-          <div className="flex items-center justify-end gap-1 lg:hidden lg:group-hover:flex max-[520px]:grid max-[520px]:grid-cols-2 max-[520px]:gap-1">
+          <div className="flex items-center justify-end gap-0.5 transition-opacity duration-150 lg:absolute lg:inset-0 lg:flex lg:items-center lg:justify-end lg:opacity-0 lg:pointer-events-none lg:group-hover:pointer-events-auto lg:group-hover:opacity-100 max-[520px]:grid max-[520px]:grid-cols-2 max-[520px]:gap-0.5">
             <Button
               variant="ghost"
               size="icon"
@@ -283,7 +285,7 @@ const ReturnableInventoryItemRowComponent = ({
               }
               aria-label={`Return ${item.productName}`}
               title="Return item"
-              className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary lg:h-8 lg:w-8 max-[520px]:h-8 max-[520px]:w-8 bg-muted/10 border border-white/5"
+              className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary lg:h-8 lg:w-8 max-[520px]:h-8 max-[520px]:w-8"
             >
               <Undo2 className="h-4 w-4 max-[520px]:h-3.5 max-[520px]:w-3.5" />
             </Button>
@@ -294,7 +296,7 @@ const ReturnableInventoryItemRowComponent = ({
               onClick={() => onViewDetails(item)}
               aria-label={`View details for ${item.productName}`}
               title="View details"
-              className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground lg:h-8 lg:w-8 max-[520px]:h-8 max-[520px]:w-8 bg-muted/10 border border-white/5"
+              className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:h-8 lg:w-8 max-[520px]:h-8 max-[520px]:w-8"
             >
               <Eye className="h-4 w-4 max-[520px]:h-3.5 max-[520px]:w-3.5" />
             </Button>
@@ -306,7 +308,7 @@ const ReturnableInventoryItemRowComponent = ({
                 onClick={() => onEditItem(item)}
                 aria-label={`Edit ${item.productName}`}
                 title="Edit item"
-                className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground lg:h-8 lg:w-8 max-[520px]:col-span-2 max-[520px]:h-7 max-[520px]:w-full bg-muted/10 border border-white/5"
+                className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:h-8 lg:w-8 max-[520px]:col-span-2 max-[520px]:h-7 max-[520px]:w-full"
                 disabled={isProcessing}
               >
                 <Pencil className="h-4 w-4 max-[520px]:h-3.5 max-[520px]:w-3.5" />
@@ -315,7 +317,7 @@ const ReturnableInventoryItemRowComponent = ({
           </div>
         </div>
 
-        <p className="mt-0.5 whitespace-nowrap text-[9px] tabular-nums text-muted-foreground/30 lg:hidden max-[520px]:hidden font-medium">
+        <p className="mt-0.5 whitespace-nowrap text-[9px] tabular-nums text-muted-foreground/70 lg:hidden max-[520px]:hidden">
           {formattedTimestamp}
         </p>
       </TableCell>
