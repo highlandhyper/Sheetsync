@@ -11,7 +11,7 @@ import {
     AlertTriangle, Edit, PackagePlus, MessageSquare, 
     ArrowRight, Info, Key, CheckCircle2, Ban,
     Search, FilterX, Hash, MapPin, Tag, Calendar as CalendarIcon,
-    ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink
+    ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink, Eye
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
