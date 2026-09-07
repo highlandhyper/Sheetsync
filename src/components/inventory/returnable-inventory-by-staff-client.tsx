@@ -266,7 +266,7 @@ export function ReturnableInventoryByStaffClient() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-10 w-full rounded-xl" />
         <Card className="shadow-md">
           <Table><TableHeader><TableRow><TableHead>Identity</TableHead><TableHead>Barcode</TableHead><TableHead>Vendor</TableHead><TableHead className="text-right">Volume</TableHead><TableHead className="w-36 text-center">Protocol</TableHead></TableRow></TableHeader>
@@ -277,32 +277,32 @@ export function ReturnableInventoryByStaffClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-4 shadow-md filters-card-noprint">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 pb-24 sm:pb-8">
+      <Card className="p-3 sm:p-4 shadow-md filters-card-noprint border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-2xl sm:rounded-3xl">
         <CardContent className="p-0 space-y-4">
           {selectedItemIds.size > 0 && isMultiSelectEnabled && logCategory === 'normal' ? (
-             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
-               <div className="flex items-center gap-4 flex-wrap">
-                    <div className="text-sm font-black uppercase tracking-widest text-muted-foreground">{selectedItemIds.size} Linked Nodes</div>
-                    <div className="flex items-center text-sm font-black text-primary border-l pl-4 uppercase tracking-tighter">
+             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+               <div className="flex items-center gap-3 flex-wrap">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{selectedItemIds.size} Linked Nodes</div>
+                    <div className="flex items-center text-sm font-black text-primary border-l pl-3 uppercase tracking-tighter">
                         <Wallet className="mr-2 h-4 w-4" />
-                        <span>Valuation: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        <span className="truncate">Valuation: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="font-bold rounded-lg" onClick={() => setIsBulkReturnOpen(true)}>Bulk Return</Button>
-                    {canDelete && <Button variant="destructive" size="sm" className="font-bold rounded-lg" onClick={() => setIsBulkDeleteOpen(true)}>Bulk Purge</Button>}
+                <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="font-bold rounded-xl h-10 text-[11px]" onClick={() => setIsBulkReturnOpen(true)}>Bulk Return</Button>
+                    {canDelete && <Button variant="destructive" size="sm" className="font-bold rounded-xl h-10 text-[11px]" onClick={() => setIsBulkDeleteOpen(true)}>Bulk Purge</Button>}
                 </div>
              </div>
           ) : (
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                     <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
                         <PopoverTrigger asChild>
                             <Button 
                                 variant="outline" 
                                 role="combobox" 
-                                className="w-full sm:w-[300px] h-11 justify-between font-bold bg-background shadow-sm rounded-xl px-4"
+                                className="w-full sm:w-[280px] h-11 justify-between font-bold bg-background shadow-sm rounded-xl px-4 text-xs"
                             >
                                 <div className="flex items-center truncate">
                                     <User className="mr-2 h-4 w-4 text-primary/40 shrink-0" />
@@ -348,17 +348,16 @@ export function ReturnableInventoryByStaffClient() {
                     </Popover>
                     
                     <Tabs value={logCategory} onValueChange={(v: any) => setLogCategory(v)} className="w-full sm:w-auto">
-                        <TabsList className="h-11 p-1 bg-muted/20 border rounded-xl grid grid-cols-2 w-full sm:w-[260px]">
+                        <TabsList className="h-11 p-1 bg-muted/20 border rounded-xl grid grid-cols-2 w-full sm:w-[240px]">
                             <TabsTrigger value="normal" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Normal Log</TabsTrigger>
                             <TabsTrigger value="diary" className="text-[9px] font-black uppercase tracking-widest rounded-lg data-[state=active]:shadow-sm">Diary Log</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>
 
-                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center justify-between lg:justify-end gap-2">
                     {selectedStaffName && (
-                        <Badge variant="secondary" className="bg-primary/5 text-primary border-none px-4 py-1.5 font-black uppercase text-[9px] tracking-widest hidden sm:flex">
-                            <History className="mr-2 h-3 w-3" />
+                        <Badge variant="secondary" className="bg-primary/5 text-primary border-none px-3 py-1.5 font-black uppercase text-[8px] tracking-widest">
                             {totalItemsCount} TRACES
                         </Badge>
                     )}
@@ -366,8 +365,8 @@ export function ReturnableInventoryByStaffClient() {
                         {canExport && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-11 rounded-xl px-4 font-bold border-white/5 bg-background shadow-sm" disabled={filteredItems.length === 0}>
-                                        <FileText className="mr-2 h-4 w-4" /> Export
+                                    <Button variant="outline" size="sm" className="h-11 rounded-xl px-3 font-bold border-white/5 bg-background shadow-sm text-xs" disabled={filteredItems.length === 0}>
+                                        <FileText className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Export</span>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-xl shadow-3xl">
@@ -377,8 +376,8 @@ export function ReturnableInventoryByStaffClient() {
                             </DropdownMenu>
                         )}
                         {canPrint && (
-                            <Button onClick={handlePrint} variant="outline" size="sm" className="h-11 rounded-xl px-4 font-bold border-white/5 bg-background shadow-sm" disabled={filteredItems.length === 0}>
-                                <Printer className="mr-2 h-4 w-4" /> Print
+                            <Button onClick={handlePrint} variant="outline" size="sm" className="h-11 rounded-xl px-3 font-bold border-white/5 bg-background shadow-sm text-xs" disabled={filteredItems.length === 0}>
+                                <Printer className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Print</span>
                             </Button>
                         )}
                     </div>
@@ -389,16 +388,16 @@ export function ReturnableInventoryByStaffClient() {
       </Card>
       
       {selectedStaffName && logCategory === 'normal' && filteredItems.length > 0 && (
-        <Card className="p-6 shadow-md border-primary/10 bg-primary/5 rounded-2xl animate-in zoom-in-95 duration-500">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-xl"><Wallet className="h-6 w-6 text-primary" /></div>
+        <Card className="p-4 sm:p-5 shadow-md border-primary/10 bg-primary/5 rounded-2xl animate-in zoom-in-95 duration-500">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="p-2.5 sm:p-3 bg-primary/10 rounded-xl flex-shrink-0"><Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /></div>
                     <div>
-                        <h3 className="text-lg font-black uppercase tracking-tight">Active Asset Contribution</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Total value of inventory logged by this identity.</p>
+                        <h3 className="text-sm sm:text-lg font-black uppercase tracking-tight leading-none">Active Contribution</h3>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-1">Registry value identification.</p>
                     </div>
                 </div>
-                <p className="text-3xl font-black text-primary tabular-nums">
+                <p className="text-2xl sm:text-3xl font-black text-primary tabular-nums w-full sm:w-auto text-right sm:text-left leading-none">
                     QAR {totalValueForView.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
             </div>
@@ -406,14 +405,14 @@ export function ReturnableInventoryByStaffClient() {
       )}
 
       {!selectedStaffName ? (
-         <div className="text-center py-32 flex flex-col items-center justify-center opacity-20 grayscale">
-          <User className="h-16 w-16 mb-4" strokeWidth={1.5} />
-          <h3 className="text-2xl font-black uppercase tracking-tighter">Personnel Selection Required</h3>
-          <p className="text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Identify staff member to initiate audit trace.</p>
+         <div className="text-center py-20 sm:py-32 flex flex-col items-center justify-center opacity-20 grayscale px-4">
+          <User className="h-12 w-12 sm:h-16 sm:w-16 mb-4" strokeWidth={1.5} />
+          <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter">Personnel Required</h3>
+          <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Identify staff member to initiate audit trace.</p>
         </div>
       ) : filteredItems.length > 0 ? (
         <>
-            <Card className="shadow-2xl border-white/5 overflow-hidden rounded-[2rem] hidden md:block bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl">
+            <Card className="shadow-2xl border-white/5 overflow-hidden rounded-[2rem] hidden md:block bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl">
                 <Table>
                     <TableHeader className="bg-muted/10 border-b border-white/5">
                         <TableRow className="h-14 hover:bg-transparent">
@@ -483,7 +482,7 @@ export function ReturnableInventoryByStaffClient() {
                 </Table>
             </Card>
 
-            <div className="grid grid-cols-1 gap-4 md:hidden px-2">
+            <div className="grid grid-cols-1 gap-4 md:hidden px-1">
                 {filteredItems.map((item) => {
                     if (logCategory === 'normal') {
                         const inv = item as InventoryItem;
@@ -504,14 +503,14 @@ export function ReturnableInventoryByStaffClient() {
                     } else {
                         const r = item as ExpiryReminder;
                         return (
-                            <Card key={`mob-diary-${r.id}`} className="border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-xl overflow-hidden">
+                            <Card key={`mob-diary-${r.id}`} className="border-white/5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-2xl overflow-hidden shadow-sm">
                                 <CardContent className="p-5 space-y-4">
                                     <div className="flex justify-between items-start gap-4">
                                         <div className="space-y-1 min-w-0">
                                             <h4 className="text-base font-black uppercase truncate text-slate-800 dark:text-white leading-tight">{r.productName}</h4>
                                             <p className="text-[10px] font-mono text-muted-foreground tracking-widest">{r.barcode}</p>
                                         </div>
-                                        <Badge variant="outline" className="bg-primary/5 text-primary border-none text-[8px] font-black px-2 py-0.5">DIARY LOG</Badge>
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-none text-[8px] font-black px-2 py-0.5 shrink-0">DIARY LOG</Badge>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
@@ -524,7 +523,7 @@ export function ReturnableInventoryByStaffClient() {
                                         </div>
                                     </div>
                                     <Button 
-                                        className="w-full h-11 font-black uppercase text-[10px] tracking-widest rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border-none transition-all shadow-none"
+                                        className="w-full h-12 font-black uppercase text-[10px] tracking-widest rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white border-none transition-all shadow-none"
                                         onClick={() => handleResolveDiary(r.id, r.productName)}
                                         disabled={isResolvingDiary === r.id}
                                     >
@@ -539,10 +538,10 @@ export function ReturnableInventoryByStaffClient() {
             </div>
         </>
       ) : (
-        <div className="py-32 flex flex-col items-center justify-center text-center opacity-20 grayscale">
-          <PackageOpen className="h-16 w-16 mb-4" strokeWidth={1} />
-          <h3 className="text-xl font-black uppercase tracking-widest">Registry Nominal</h3>
-          <p className="text-[10px] font-medium uppercase tracking-[0.3em] mt-2">Zero active {logCategory} traces identified for this node.</p>
+        <div className="py-20 sm:py-32 flex flex-col items-center justify-center text-center opacity-20 grayscale px-4">
+          <PackageOpen className="h-12 w-12 sm:h-16 sm:w-16 mb-4" strokeWidth={1} />
+          <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest">Nominal State</h3>
+          <p className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.4em] mt-2">Zero active {logCategory} traces identified for this node.</p>
         </div>
       )}
       

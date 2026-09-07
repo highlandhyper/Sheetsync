@@ -72,14 +72,14 @@ export default function ReturnByStaffPage() {
   const { isCacheReady } = useDataCache();
 
   return (
-    <div className="printable-area mx-auto w-full max-w-[1700px] px-1 py-1 sm:px-0 sm:py-2">
-      <div className="noprint mb-4 sm:mb-8">
-        <h1 className="text-xl font-bold tracking-tight text-primary sm:text-3xl">
+    <div className="printable-area mx-auto w-full max-w-full lg:max-w-[1700px] px-0 py-1 sm:py-2">
+      <div className="noprint mb-4 sm:mb-8 px-2 sm:px-0">
+        <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tighter text-primary truncate leading-none">
           Return Inventory by Staff
         </h1>
 
-        <p className="mt-1 text-xs text-muted-foreground sm:hidden">
-          View and manage returnable inventory by staff member.
+        <p className="mt-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-40">
+          Personnel Audit & Return Protocol
         </p>
       </div>
 
