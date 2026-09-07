@@ -494,149 +494,910 @@ export function InventoryListClient() {
     }
   }, [isScannerDialogOpen, onScanSuccess, toast]);
 
+  const inventorySummary = useMemo(() => {
+    let totalUnits = 0;
+    let totalValue = 0;
+
+    groupedItems.forEach((group) => {
+      totalUnits += group.totalQuantity;
+      const cost = productsByBarcode.get(group.mainItem.barcode)?.costPrice ?? 0;
+      totalValue += cost * group.totalQuantity;
+    });
+
+    return {
+      products: groupedItems.length,
+      totalUnits,
+      totalValue,
+    };
+  }, [groupedItems, productsByBarcode]);
+
+  const hasActiveFilters = Boolean(
+    searchTerm ||
+    selectedSupplier ||
+    selectedLocation ||
+    activeDashboardFilter ||
+    selectedDateRange ||
+    typeFilter !== 'all'
+  );
+
   return (
-    <div className="space-y-6">
-      <Card className="p-4 shadow-md filters-card-noprint">
-        <CardContent className="p-0">
-          {selectedBarcodes.size > 0 && role === 'admin' && isMultiSelectEnabled ? (
-             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
-               <div className="flex items-center gap-4 flex-wrap">
-                    <div className="text-sm font-medium text-muted-foreground">{selectedBarcodes.size} products selected</div>
-                    <div className="flex items-center text-sm font-semibold text-primary border-l pl-4">
-                        <Wallet className="mr-2 h-4 w-4" />
-                        <span>Selected Value: QAR {totalValueOfSelectedItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkReturnOpen(true)}>Return All Selected</Button>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>Delete All Selected</Button>
-                </div>
-             </div>
-          ) : (
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2 w-full">
-                <div className="relative flex-grow">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input type="search" placeholder="Search records by name, barcode or personnel..." value={searchTerm} onChange={handleSearchChange} className="pl-10 w-full h-11" />
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setIsScannerDialogOpen(true)} className="h-11 w-11 shrink-0 bg-muted/20 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all rounded-xl"><Scan className="h-5 w-5" /></Button>
+    <div className="mx-auto w-full min-w-0 max-w-[1680px] space-y-4 overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
+      {/* OVERVIEW */}
+      <section className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
+        <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="min-w-0 p-3 sm:p-4">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Products
+                </p>
+                <p className="mt-1 truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                  {inventorySummary.products}
+                </p>
+              </div>
+              <Barcode className="h-4 w-4 shrink-0 text-primary sm:h-[18px] sm:w-[18px]" />
             </div>
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
-              <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={supplierComboboxOpen} className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal">
-                    <div className="flex items-center truncate"><Building className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />{selectedSupplier ? selectedSupplier : "All Suppliers"}</div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search supplier..." />
-                    <CommandList>
-                      <CommandEmpty>No supplier found.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem value={ALL_SUPPLIERS_VALUE} onSelect={() => { handleSupplierChange(ALL_SUPPLIERS_VALUE); setSupplierComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", !selectedSupplier ? "opacity-100" : "opacity-0")} />All Suppliers</CommandItem>
-                        {suppliers.map((s) => (<CommandItem key={s.id} value={s.name} onSelect={() => { handleSupplierChange(s.name); setSupplierComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", selectedSupplier === s.name ? "opacity-100" : "opacity-0")} />{s.name}</CommandItem>))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+          </CardContent>
+        </Card>
 
-              <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={locationComboboxOpen} className="w-full sm:w-auto sm:min-w-40 flex-1 justify-between text-left font-normal">
-                    <div className="flex items-center truncate"><MapPin className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />{selectedLocation ? selectedLocation : "All Locations"}</div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search location..." />
-                    <CommandList>
-                      <CommandEmpty>No location found.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem value={ALL_LOCATIONS_VALUE} onSelect={() => { handleLocationChange(ALL_LOCATIONS_VALUE); setLocationComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", !selectedLocation ? "opacity-100" : "opacity-0")} />All Locations</CommandItem>
-                        {uniqueLocations.map((loc) => (<CommandItem key={loc} value={loc} onSelect={() => { handleLocationChange(loc); setLocationComboboxOpen(false); }}><Check className={cn("mr-2 h-4 w-4", selectedLocation === loc ? "opacity-100" : "opacity-0")} />{loc}</CommandItem>))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-auto sm:min-w-32 flex-1"><div className="flex items-center"><Tag className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue placeholder="Type" /></div></SelectTrigger>
-                <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="expiry">Expiry</SelectItem><SelectItem value="damage">Damage</SelectItem><SelectItem value="expired">Expired</SelectItem></SelectContent>
-              </Select>
+        <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="min-w-0 p-3 sm:p-4">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Units
+                </p>
+                <p className="mt-1 truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                  {inventorySummary.totalUnits.toLocaleString()}
+                </p>
+              </div>
+              <PackageOpen className="h-4 w-4 shrink-0 text-primary sm:h-[18px] sm:w-[18px]" />
+            </div>
+          </CardContent>
+        </Card>
 
-              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen} modal={true}>
-                <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-full sm:w-auto justify-start text-left font-normal sm:min-w-40 flex-1", !selectedDateRange && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{selectedDateRange?.from ? (selectedDateRange.to ? <>{format(selectedDateRange.from, "LLL dd")} - {format(selectedDateRange.to, "LLL dd")}</> : format(selectedDateRange.from, "LLL dd")) : <span>Range</span>}</Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="range" selected={selectedDateRange} onSelect={handleDateRangeSelect} numberOfMonths={1} /></PopoverContent>
-              </Popover>
+        <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="min-w-0 p-3 sm:p-4">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                  Value
+                </p>
+                <p className="mt-1 truncate text-[13px] font-bold tracking-tight text-foreground sm:text-xl">
+                  QAR {inventorySummary.totalValue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+              <Wallet className="h-4 w-4 shrink-0 text-primary sm:h-[18px] sm:w-[18px]" />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                 {(searchTerm || selectedSupplier || selectedLocation || activeDashboardFilter || selectedDateRange || typeFilter !== 'all') && (<Button variant="ghost" onClick={clearFilters} className="flex-grow sm:flex-grow-0"><FilterX className="mr-2 h-4 w-4" /> Clear</Button>)}
-                   <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><FileText className="mr-2 h-4 w-4" /> Export <ChevronDown className="ml-1 h-3 w-3" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleExportPDF('portrait')}>Portrait</DropdownMenuItem><DropdownMenuItem onClick={() => handleExportPDF('landscape')}>Landscape</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-                   <Button onClick={() => window.print()} variant="outline" size="sm" className="flex-1 sm:flex-none" disabled={groupedItems.length === 0}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+      {/* SEARCH + FILTER WORKSPACE */}
+      <Card className="filters-card-noprint min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+        <CardContent className="min-w-0 p-3 sm:p-4">
+          {selectedBarcodes.size > 0 && role === 'admin' && isMultiSelectEnabled ? (
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Check className="h-4 w-4" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-foreground sm:text-sm">
+                      {selectedBarcodes.size} products selected
+                    </p>
+                    <p className="mt-0.5 truncate text-[9px] font-medium text-muted-foreground sm:text-[10px]">
+                      Selected value: QAR{' '}
+                      {totalValueOfSelectedItems.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 lg:flex">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsBulkReturnOpen(true)}
+                  className="h-10 rounded-xl border-border/60 px-3 text-[10px] font-semibold shadow-none"
+                >
+                  <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                  Return selected
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsBulkDeleteOpen(true)}
+                  className="h-10 rounded-xl px-3 text-[10px] font-semibold shadow-none"
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Delete selected
+                </Button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="min-w-0 space-y-3">
+              {/* Primary search */}
+              <div className="flex min-w-0 gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+                  <Input
+                    type="search"
+                    placeholder="Search product name, barcode or personnel"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="h-11 min-w-0 rounded-xl border-border/60 bg-background pl-10 pr-3 text-xs shadow-none sm:text-sm"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsScannerDialogOpen(true)}
+                  className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-background text-primary shadow-none"
+                  aria-label="Scan barcode"
+                >
+                  <Scan className="h-[18px] w-[18px]" />
+                </Button>
+              </div>
+
+              {/* Filters */}
+              <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-[minmax(180px,1.2fr)_minmax(160px,1fr)_minmax(130px,.7fr)_minmax(160px,.9fr)_auto]">
+                <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={supplierComboboxOpen}
+                      className="h-10 min-w-0 justify-between rounded-xl border-border/60 bg-background px-3 text-left text-[10px] font-medium shadow-none"
+                    >
+                      <div className="flex min-w-0 items-center">
+                        <Building className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">
+                          {selectedSupplier || 'All suppliers'}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-40" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] p-0"
+                    align="start"
+                  >
+                    <Command>
+                      <CommandInput placeholder="Search supplier..." />
+                      <CommandList>
+                        <CommandEmpty>No supplier found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value={ALL_SUPPLIERS_VALUE}
+                            onSelect={() => {
+                              handleSupplierChange(ALL_SUPPLIERS_VALUE);
+                              setSupplierComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                !selectedSupplier ? 'opacity-100' : 'opacity-0'
+                              )}
+                            />
+                            All Suppliers
+                          </CommandItem>
+
+                          {suppliers.map((supplier) => (
+                            <CommandItem
+                              key={supplier.id}
+                              value={supplier.name}
+                              onSelect={() => {
+                                handleSupplierChange(supplier.name);
+                                setSupplierComboboxOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  selectedSupplier === supplier.name
+                                    ? 'opacity-100'
+                                    : 'opacity-0'
+                                )}
+                              />
+                              {supplier.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={locationComboboxOpen} onOpenChange={setLocationComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={locationComboboxOpen}
+                      className="h-10 min-w-0 justify-between rounded-xl border-border/60 bg-background px-3 text-left text-[10px] font-medium shadow-none"
+                    >
+                      <div className="flex min-w-0 items-center">
+                        <MapPin className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">
+                          {selectedLocation || 'All locations'}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-40" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] p-0"
+                    align="start"
+                  >
+                    <Command>
+                      <CommandInput placeholder="Search location..." />
+                      <CommandList>
+                        <CommandEmpty>No location found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value={ALL_LOCATIONS_VALUE}
+                            onSelect={() => {
+                              handleLocationChange(ALL_LOCATIONS_VALUE);
+                              setLocationComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                !selectedLocation ? 'opacity-100' : 'opacity-0'
+                              )}
+                            />
+                            All Locations
+                          </CommandItem>
+
+                          {uniqueLocations.map((location) => (
+                            <CommandItem
+                              key={location}
+                              value={location}
+                              onSelect={() => {
+                                handleLocationChange(location);
+                                setLocationComboboxOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  selectedLocation === location
+                                    ? 'opacity-100'
+                                    : 'opacity-0'
+                                )}
+                              />
+                              {location}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="h-10 min-w-0 rounded-xl border-border/60 bg-background px-3 text-[10px] shadow-none">
+                    <div className="flex min-w-0 items-center">
+                      <Tag className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <SelectValue placeholder="Type" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="expiry">Expiry</SelectItem>
+                    <SelectItem value="damage">Damage</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Popover
+                  open={isDatePopoverOpen}
+                  onOpenChange={setIsDatePopoverOpen}
+                  modal={true}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'col-span-2 h-10 min-w-0 justify-start rounded-xl border-border/60 bg-background px-3 text-left text-[10px] font-medium shadow-none lg:col-span-1',
+                        !selectedDateRange && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {selectedDateRange?.from ? (
+                          selectedDateRange.to ? (
+                            <>
+                              {format(selectedDateRange.from, 'LLL dd')} –{' '}
+                              {format(selectedDateRange.to, 'LLL dd')}
+                            </>
+                          ) : (
+                            format(selectedDateRange.from, 'LLL dd')
+                          )
+                        ) : (
+                          'Expiry range'
+                        )}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={selectedDateRange}
+                      onSelect={handleDateRangeSelect}
+                      numberOfMonths={1}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <div className="col-span-2 grid grid-cols-3 gap-2 lg:col-span-1 lg:flex">
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      onClick={clearFilters}
+                      className="h-10 rounded-xl px-2 text-[9px] font-semibold text-muted-foreground lg:w-10"
+                      aria-label="Clear filters"
+                    >
+                      <FilterX className="h-3.5 w-3.5 lg:mr-0" />
+                      <span className="ml-1 lg:hidden">Clear</span>
+                    </Button>
+                  )}
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'h-10 rounded-xl border-border/60 px-2 text-[9px] font-semibold shadow-none',
+                          !hasActiveFilters && 'col-span-2 lg:col-span-1'
+                        )}
+                        disabled={groupedItems.length === 0}
+                      >
+                        <FileText className="mr-1.5 h-3.5 w-3.5" />
+                        Export
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleExportPDF('portrait')}>
+                        Portrait
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportPDF('landscape')}>
+                        Landscape
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    onClick={() => window.print()}
+                    variant="outline"
+                    className="h-10 rounded-xl border-border/60 px-2 text-[9px] font-semibold shadow-none"
+                    disabled={groupedItems.length === 0}
+                  >
+                    <Printer className="mr-1.5 h-3.5 w-3.5" />
+                    Print
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border/50 pt-3">
+                <p className="truncate text-[9px] font-medium text-muted-foreground sm:text-[10px]">
+                  Showing{' '}
+                  <span className="font-semibold text-foreground">
+                    {groupedItems.length}
+                  </span>{' '}
+                  active product groups
+                </p>
+
+                {hasActiveFilters && (
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 rounded-lg border-0 px-2 py-0.5 text-[8px] font-semibold"
+                  >
+                    Filtered
+                  </Badge>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
+      {/* INVENTORY RESULTS */}
       {groupedItems.length > 0 ? (
         <>
-            <Card className="shadow-md hidden md:block overflow-hidden">
-            <Table>
-                <TableHeader className="bg-muted/50">
-                <TableRow>
-                    {role === 'admin' && isMultiSelectEnabled && (<TableHead className="w-12 text-center noprint"><Checkbox checked={selectedBarcodes.size > 0 && selectedBarcodes.size === groupedItems.length} onCheckedChange={(checked) => checked ? setSelectedBarcodes(new Set(groupedItems.map(g => g.mainItem.barcode))) : setSelectedBarcodes(new Set())} /></TableHead>)}
-                    <TableHead>Product Name</TableHead><TableHead>Barcode</TableHead><TableHead className="text-right">In Stock</TableHead><TableHead className="text-right">Unit Cost</TableHead><TableHead className="text-right font-semibold">Total Value</TableHead><TableHead>Location</TableHead><TableHead>Expiry</TableHead><TableHead>Type</TableHead><TableHead className="w-[160px] text-right noprint">Last Logged</TableHead>
-                </TableRow>
+          {/* Desktop */}
+          <Card className="hidden min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm md:block">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1180px]">
+                <TableHeader className="bg-muted/25">
+                  <TableRow className="h-11 border-border/50 hover:bg-transparent">
+                    {role === 'admin' && isMultiSelectEnabled && (
+                      <TableHead className="w-11 pl-3 text-center noprint">
+                        <Checkbox
+                          checked={
+                            selectedBarcodes.size > 0 &&
+                            selectedBarcodes.size === groupedItems.length
+                          }
+                          onCheckedChange={(checked) =>
+                            checked
+                              ? setSelectedBarcodes(
+                                  new Set(
+                                    groupedItems.map(
+                                      (group) => group.mainItem.barcode
+                                    )
+                                  )
+                                )
+                              : setSelectedBarcodes(new Set())
+                          }
+                        />
+                      </TableHead>
+                    )}
+
+                    <TableHead className="min-w-[240px] text-[9px] font-semibold text-muted-foreground">
+                      Product
+                    </TableHead>
+                    <TableHead className="w-[145px] text-[9px] font-semibold text-muted-foreground">
+                      Barcode
+                    </TableHead>
+                    <TableHead className="w-[85px] text-right text-[9px] font-semibold text-muted-foreground">
+                      Stock
+                    </TableHead>
+                    <TableHead className="w-[100px] text-right text-[9px] font-semibold text-muted-foreground">
+                      Unit cost
+                    </TableHead>
+                    <TableHead className="w-[115px] text-right text-[9px] font-semibold text-muted-foreground">
+                      Value
+                    </TableHead>
+                    <TableHead className="w-[125px] text-[9px] font-semibold text-muted-foreground">
+                      Location
+                    </TableHead>
+                    <TableHead className="w-[135px] text-[9px] font-semibold text-muted-foreground">
+                      Expiry
+                    </TableHead>
+                    <TableHead className="w-[90px] text-[9px] font-semibold text-muted-foreground">
+                      Type
+                    </TableHead>
+                    <TableHead className="w-[132px] pr-3 text-right text-[9px] font-semibold text-muted-foreground noprint">
+                      Activity
+                    </TableHead>
+                  </TableRow>
                 </TableHeader>
+
                 <TableBody>
-                {groupedItems.map((group) => {
+                  {groupedItems.map((group) => {
                     const { mainItem, totalQuantity, individualItems } = group;
                     const product = productsByBarcode.get(mainItem.barcode);
                     const cost = product?.costPrice;
-                    const hasMultipleExpiry = new Set(individualItems.map(i => i.expiryDate)).size > 1;
-                    const hasMultipleLocs = new Set(individualItems.map(i => i.location)).size > 1;
-                    const hasMultipleTypes = new Set(individualItems.map(i => i.itemType)).size > 1;
+                    const hasMultipleExpiry =
+                      new Set(individualItems.map((item) => item.expiryDate)).size > 1;
+                    const hasMultipleLocs =
+                      new Set(individualItems.map((item) => item.location)).size > 1;
+                    const hasMultipleTypes =
+                      new Set(individualItems.map((item) => item.itemType)).size > 1;
+
+                    const isExpired =
+                      !hasMultipleExpiry &&
+                      mainItem.expiryDate &&
+                      (() => {
+                        try {
+                          const expiry = startOfDay(parseISO(mainItem.expiryDate));
+                          const today = startOfDay(new Date());
+                          return (
+                            isValid(expiry) &&
+                            (isBefore(expiry, today) || isSameDay(expiry, today))
+                          );
+                        } catch {
+                          return false;
+                        }
+                      })();
+
                     return (
-                    <TableRow key={`row-${mainItem.barcode}`} data-state={selectedBarcodes.has(mainItem.barcode) ? "selected" : ""} className="group">
-                        {role === 'admin' && isMultiSelectEnabled && (<TableCell className="text-center noprint"><Checkbox checked={selectedBarcodes.has(mainItem.barcode)} onCheckedChange={() => setSelectedBarcodes(prev => { const n = new Set(prev); if (n.has(mainItem.barcode)) n.delete(mainItem.barcode); else n.add(mainItem.barcode); return n; })} /></TableCell>)}
-                        <TableCell className="py-2.5"><div className="flex flex-col min-w-0 px-2"><span className="font-bold text-sm truncate leading-none mb-1">{mainItem.productName}</span><span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate">{mainItem.supplierName || 'No Registered Supplier'}</span></div></TableCell>
-                        <TableCell className="font-mono text-[11px] text-muted-foreground">{mainItem.barcode}</TableCell>
-                        <TableCell className="text-right font-black text-primary/80">{totalQuantity}</TableCell>
-                        <TableCell className="text-right text-xs">{cost ? `QAR ${cost.toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-right font-semibold">{cost ? `QAR ${(cost * totalQuantity).toFixed(2)}` : 'N/A'}</TableCell>
-                        <TableCell className="text-xs">{hasMultipleLocs ? "Multiple" : mainItem.location}</TableCell>
-                        <TableCell className={cn("text-xs", mainItem.expiryDate && (isBefore(startOfDay(parseISO(mainItem.expiryDate)), startOfDay(new Date())) || isSameDay(parseISO(mainItem.expiryDate), new Date())) ? "text-destructive font-bold" : "")}>{hasMultipleExpiry ? "Multiple" : (mainItem.expiryDate ? format(parseISO(mainItem.expiryDate), 'PP') : 'N/A')}</TableCell>
-                        <TableCell className={cn("text-xs font-bold", !hasMultipleTypes && mainItem.itemType === 'Damage' ? "text-orange-500" : "text-primary/60")}>{hasMultipleTypes ? (<Badge variant="outline" className="text-[8px] font-black uppercase bg-muted/30">Multiple</Badge>) : mainItem.itemType}</TableCell>
-                        <TableCell className="text-right noprint"><div className="relative h-8 flex items-center justify-end"><span className="text-[10px] text-muted-foreground group-hover:hidden transition-all duration-200 whitespace-nowrap opacity-70">{mainItem.timestamp ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm') : 'N/A'}</span><div className="hidden group-hover:flex justify-end items-center gap-1 transition-all duration-200">{individualItems.length === 1 ? (<><Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>{role !== 'viewer' && <Button variant="ghost" size="icon" onClick={() => handleOpenReturnDialog(mainItem)} disabled={mainItem.quantity <= 0} className="h-8 w-8 text-muted-foreground hover:text-primary"><Undo2 className="h-4 w-4" /></Button>}{role === 'admin' && <Button variant="ghost" size="icon" onClick={() => handleOpenDeleteDialog(mainItem)} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>}</>) : (<Button variant="outline" size="sm" onClick={() => handleOpenGroupDetails(group)} className="h-8 px-2 text-xs font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"><Eye className="mr-1.5 h-3.5 w-3.5" /> {individualItems.length} Logs</Button>)}</div></div></TableCell>
-                    </TableRow>
+                      <TableRow
+                        key={`row-${mainItem.barcode}`}
+                        data-state={
+                          selectedBarcodes.has(mainItem.barcode)
+                            ? 'selected'
+                            : undefined
+                        }
+                        className="group h-[58px] border-border/50 transition-colors hover:bg-muted/20"
+                      >
+                        {role === 'admin' && isMultiSelectEnabled && (
+                          <TableCell className="w-11 pl-3 text-center noprint">
+                            <Checkbox
+                              checked={selectedBarcodes.has(mainItem.barcode)}
+                              onCheckedChange={() =>
+                                setSelectedBarcodes((previous) => {
+                                  const next = new Set(previous);
+                                  if (next.has(mainItem.barcode)) {
+                                    next.delete(mainItem.barcode);
+                                  } else {
+                                    next.add(mainItem.barcode);
+                                  }
+                                  return next;
+                                })
+                              }
+                            />
+                          </TableCell>
+                        )}
+
+                        <TableCell className="min-w-0 py-2.5">
+                          <div className="min-w-0">
+                            <p className="max-w-[360px] truncate text-[11px] font-semibold tracking-tight text-foreground">
+                              {mainItem.productName}
+                            </p>
+                            <p className="mt-0.5 max-w-[320px] truncate text-[9px] font-medium text-muted-foreground">
+                              {mainItem.supplierName || 'No registered supplier'}
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="font-mono text-[9px] text-muted-foreground">
+                          {mainItem.barcode}
+                        </TableCell>
+
+                        <TableCell className="text-right text-[11px] font-bold tabular-nums text-primary">
+                          {totalQuantity}
+                        </TableCell>
+
+                        <TableCell className="text-right text-[10px] tabular-nums text-muted-foreground">
+                          {cost !== undefined ? `QAR ${cost.toFixed(2)}` : 'N/A'}
+                        </TableCell>
+
+                        <TableCell className="text-right text-[10px] font-semibold tabular-nums text-foreground">
+                          {cost !== undefined
+                            ? `QAR ${(cost * totalQuantity).toFixed(2)}`
+                            : 'N/A'}
+                        </TableCell>
+
+                        <TableCell className="text-[10px] text-muted-foreground">
+                          <span className="line-clamp-2">
+                            {hasMultipleLocs ? 'Multiple' : mainItem.location || 'N/A'}
+                          </span>
+                        </TableCell>
+
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex max-w-[126px] truncate rounded-lg px-2 py-1 text-[9px] font-medium',
+                              isExpired
+                                ? 'bg-destructive/10 text-destructive'
+                                : 'bg-muted/50 text-muted-foreground'
+                            )}
+                          >
+                            {hasMultipleExpiry
+                              ? 'Multiple'
+                              : mainItem.expiryDate
+                                ? format(parseISO(mainItem.expiryDate), 'dd MMM yyyy')
+                                : 'N/A'}
+                          </span>
+                        </TableCell>
+
+                        <TableCell>
+                          {hasMultipleTypes ? (
+                            <Badge
+                              variant="outline"
+                              className="rounded-lg border-border/60 bg-muted/30 px-2 py-0.5 text-[8px] font-semibold text-muted-foreground"
+                            >
+                              Multiple
+                            </Badge>
+                          ) : (
+                            <span
+                              className={cn(
+                                'inline-flex rounded-lg px-2 py-1 text-[9px] font-medium',
+                                mainItem.itemType === 'Damage'
+                                  ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                                  : 'bg-primary/10 text-primary'
+                              )}
+                            >
+                              {mainItem.itemType}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Fixed-width activity/action area prevents row content from shifting on hover */}
+                        <TableCell className="relative w-[132px] min-w-[132px] max-w-[132px] pr-3 text-right noprint">
+                          <div className="relative h-9 w-full">
+                            <span className="absolute inset-0 flex items-center justify-end whitespace-nowrap text-[9px] tabular-nums text-muted-foreground transition-opacity duration-150 group-hover:opacity-0">
+                              {mainItem.timestamp
+                                ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm')
+                                : 'N/A'}
+                            </span>
+
+                            <div className="absolute inset-0 flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                              {individualItems.length === 1 ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenDetailsDialog(mainItem)}
+                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                    aria-label="View details"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+
+                                  {role !== 'viewer' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleOpenReturnDialog(mainItem)}
+                                      disabled={mainItem.quantity <= 0}
+                                      className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                      aria-label="Return item"
+                                    >
+                                      <Undo2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+
+                                  {role === 'admin' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleOpenDeleteDialog(mainItem)}
+                                      className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                      aria-label="Delete item"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenGroupDetails(group)}
+                                  className="h-8 rounded-lg border-primary/20 bg-primary/5 px-2 text-[9px] font-semibold text-primary shadow-none hover:bg-primary/10"
+                                >
+                                  <Eye className="mr-1 h-3.5 w-3.5" />
+                                  {individualItems.length} Logs
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     );
-                })}
+                  })}
                 </TableBody>
-            </Table>
-            </Card>
-            <div className="grid grid-cols-1 gap-4 md:hidden">{groupedItems.map((group) => (<InventoryItemCardMobile key={`card-${group.mainItem.barcode}`} item={group.mainItem} product={productsByBarcode.get(group.mainItem.barcode)} totalQuantity={group.totalQuantity} individualItemCount={group.individualItems.length} onDetails={group.individualItems.length === 1 ? () => handleOpenDetailsDialog(group.mainItem) : () => handleOpenGroupDetails(group)} onViewImage={() => handleOpenDetailsDialog(group.mainItem, true)} onReturn={role !== 'viewer' ? () => handleOpenReturnDialog(group.mainItem) : undefined} onDelete={role === 'admin' ? () => handleOpenDeleteDialog(group.mainItem) : undefined} isSelected={isMultiSelectEnabled && selectedBarcodes.has(group.mainItem.barcode)} onSelect={isMultiSelectEnabled && role ==='admin' ? () => { const n = new Set(selectedBarcodes); if (n.has(group.mainItem.barcode)) n.delete(group.mainItem.barcode); else n.add(group.mainItem.barcode); setSelectedBarcodes(n); } : undefined} context="inventory" />))}</div>
+              </Table>
+            </div>
+          </Card>
+
+          {/* Mobile */}
+          <div className="grid min-w-0 grid-cols-1 gap-3 md:hidden">
+            {groupedItems.map((group) => (
+              <InventoryItemCardMobile
+                key={`card-${group.mainItem.barcode}`}
+                item={group.mainItem}
+                product={productsByBarcode.get(group.mainItem.barcode)}
+                totalQuantity={group.totalQuantity}
+                individualItemCount={group.individualItems.length}
+                onDetails={
+                  group.individualItems.length === 1
+                    ? () => handleOpenDetailsDialog(group.mainItem)
+                    : () => handleOpenGroupDetails(group)
+                }
+                onViewImage={() => handleOpenDetailsDialog(group.mainItem, true)}
+                onReturn={
+                  role !== 'viewer'
+                    ? () => handleOpenReturnDialog(group.mainItem)
+                    : undefined
+                }
+                onDelete={
+                  role === 'admin'
+                    ? () => handleOpenDeleteDialog(group.mainItem)
+                    : undefined
+                }
+                isSelected={
+                  isMultiSelectEnabled &&
+                  selectedBarcodes.has(group.mainItem.barcode)
+                }
+                onSelect={
+                  isMultiSelectEnabled && role === 'admin'
+                    ? () => {
+                        const next = new Set(selectedBarcodes);
+                        if (next.has(group.mainItem.barcode)) {
+                          next.delete(group.mainItem.barcode);
+                        } else {
+                          next.add(group.mainItem.barcode);
+                        }
+                        setSelectedBarcodes(next);
+                      }
+                    : undefined
+                }
+                context="inventory"
+              />
+            ))}
+          </div>
         </>
       ) : (
-        <div className="text-center py-12"><PackageOpen className="mx-auto h-16 w-16 text-muted-foreground" /><h3 className="mt-4 text-xl font-semibold">No inventory items found</h3><p className="mt-1 text-sm text-muted-foreground">Log new items to see them here.</p></div>
+        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <CardContent className="flex min-h-[280px] flex-col items-center justify-center px-5 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <PackageOpen className="h-6 w-6" />
+            </div>
+
+            <h3 className="mt-4 text-sm font-semibold text-foreground">
+              No inventory items found
+            </h3>
+
+            <p className="mt-1 max-w-xs text-[10px] leading-4 text-muted-foreground">
+              {hasActiveFilters
+                ? 'No active inventory records match the current filters.'
+                : 'Log new inventory items to see them here.'}
+            </p>
+
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                onClick={clearFilters}
+                className="mt-3 h-9 rounded-xl border-border/60 px-3 text-[9px] font-semibold shadow-none"
+              >
+                <FilterX className="mr-1.5 h-3.5 w-3.5" />
+                Clear filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
-       <InventoryItemGroupDetailsDialog key={selectedGroup ? `group-${selectedGroup.mainItem.barcode}` : 'group-none'} group={selectedGroup} isOpen={isGroupDetailsOpen} onOpenChange={setIsGroupDetailsOpen} onActionSuccess={handleActionSuccess} onOpenReturnDialog={handleOpenReturnDialog} onOpenEditDialog={handleOpenEditDialog} onOpenDeleteDialog={handleOpenDeleteDialog} />
-      <InventoryItemDetailsDialog key={selectedItemForDetails ? `details-${selectedItemForDetails.id}` : 'details-none'} item={selectedItemForDetails} isOpen={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} autoFetchImage={shouldAutoFetchImage} onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined} />
-      <ReturnQuantityDialog key={selectedItemForReturn ? `return-${selectedItemForReturn.id}` : 'return-none'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
-      <EditInventoryItemDialog key={currentItemToEdit ? `edit-${currentItemToEdit.id}` : 'edit-none'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
-      <DeleteConfirmationDialog key={selectedItemForDeletion ? `delete-${selectedItemForDeletion.id}` : 'delete-none'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
-      {barcodeToCreate && (<CreateProductFromInventoryDialog barcode={barcodeToCreate} allSuppliers={suppliers} isOpen={isCreateProductDialogOpen} onSuccess={(p) => { addProductToCache(p); onDataNeeded(); }} onOpenChange={setIsCreateProductDialogOpen} />)}
-      <BulkReturnDialog isOpen={isBulkReturnOpen} onOpenChange={setIsBulkReturnOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
-      <BulkDeleteDialog isOpen={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen} itemIds={getItemsForBulkAction()} onSuccess={handleActionSuccess} itemCount={getItemsForBulkAction().length} />
-      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}><DialogContent className="max-w-md w-[95%] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-black"><DialogHeader className="p-8 pb-4 bg-zinc-900/50 absolute top-0 left-0 right-0 z-20"><DialogTitle className="text-2xl font-black tracking-tighter flex items-center gap-3 uppercase text-primary"><Scan className="h-8 w-8" /> Visual Filter</DialogTitle><DialogDescription className="text-xs font-medium text-zinc-400">Position barcode to instantly filter records.</DialogDescription></DialogHeader><div className="relative scanner-container h-[400px] w-full"><div id={SCANNER_REGION_ID} className="h-full w-full bg-black relative [&>span]:hidden" /><div className="scanner-overlay"><div className="scanner-focus"><div className="scanner-laser" /><div className="scanner-corner scanner-corner-tl" /><div className="scanner-corner scanner-corner-tr" /><div className="scanner-corner scanner-corner-bl" /><div className="scanner-corner scanner-corner-br" /></div></div></div><div className="p-6 bg-zinc-900/50 border-t border-white/10 relative z-20"><Button variant="outline" onClick={() => setIsScannerDialogOpen(false)} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-destructive border-white/5 transition-all">Cancel Scan</Button></div></DialogContent></Dialog>
+
+      <InventoryItemGroupDetailsDialog
+        key={
+          selectedGroup
+            ? `group-${selectedGroup.mainItem.barcode}`
+            : 'group-none'
+        }
+        group={selectedGroup}
+        isOpen={isGroupDetailsOpen}
+        onOpenChange={setIsGroupDetailsOpen}
+        onActionSuccess={handleActionSuccess}
+        onOpenReturnDialog={handleOpenReturnDialog}
+        onOpenEditDialog={handleOpenEditDialog}
+        onOpenDeleteDialog={handleOpenDeleteDialog}
+      />
+
+      <InventoryItemDetailsDialog
+        key={
+          selectedItemForDetails
+            ? `details-${selectedItemForDetails.id}`
+            : 'details-none'
+        }
+        item={selectedItemForDetails}
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        autoFetchImage={shouldAutoFetchImage}
+        onStartEdit={role === 'admin' ? handleOpenEditDialog : undefined}
+      />
+
+      <ReturnQuantityDialog
+        key={
+          selectedItemForReturn
+            ? `return-${selectedItemForReturn.id}`
+            : 'return-none'
+        }
+        item={selectedItemForReturn}
+        isOpen={isReturnDialogOpen}
+        onOpenChange={setIsReturnDialogOpen}
+        onReturnSuccess={handleActionSuccess}
+      />
+
+      <EditInventoryItemDialog
+        key={
+          currentItemToEdit
+            ? `edit-${currentItemToEdit.id}`
+            : 'edit-none'
+        }
+        item={currentItemToEdit}
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={handleActionSuccess}
+        uniqueLocationsFromDb={uniqueLocations}
+      />
+
+      <DeleteConfirmationDialog
+        key={
+          selectedItemForDeletion
+            ? `delete-${selectedItemForDeletion.id}`
+            : 'delete-none'
+        }
+        item={selectedItemForDeletion}
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onSuccess={handleActionSuccess}
+      />
+
+      {barcodeToCreate && (
+        <CreateProductFromInventoryDialog
+          barcode={barcodeToCreate}
+          allSuppliers={suppliers}
+          isOpen={isCreateProductDialogOpen}
+          onSuccess={(product) => {
+            addProductToCache(product);
+            onDataNeeded();
+          }}
+          onOpenChange={setIsCreateProductDialogOpen}
+        />
+      )}
+
+      <BulkReturnDialog
+        isOpen={isBulkReturnOpen}
+        onOpenChange={setIsBulkReturnOpen}
+        itemIds={getItemsForBulkAction()}
+        onSuccess={handleActionSuccess}
+        itemCount={getItemsForBulkAction().length}
+      />
+
+      <BulkDeleteDialog
+        isOpen={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        itemIds={getItemsForBulkAction()}
+        onSuccess={handleActionSuccess}
+        itemCount={getItemsForBulkAction().length}
+      />
+
+      <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-border/60 bg-background p-0 shadow-2xl">
+          <DialogHeader className="border-b border-border/50 bg-muted/20 p-4 pb-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Scan className="h-4 w-4" />
+              </div>
+
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-base font-semibold tracking-tight">
+                  Scan barcode
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
+                  Position the barcode inside the camera frame.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="relative h-[58dvh] min-h-[300px] max-h-[440px] w-full bg-black">
+            <div
+              id={SCANNER_REGION_ID}
+              className="relative h-full w-full bg-black [&>span]:hidden"
+            />
+            <div className="scanner-overlay">
+              <div className="scanner-focus">
+                <div className="scanner-laser" />
+                <div className="scanner-corner scanner-corner-tl" />
+                <div className="scanner-corner scanner-corner-tr" />
+                <div className="scanner-corner scanner-corner-bl" />
+                <div className="scanner-corner scanner-corner-br" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border/50 p-3">
+            <Button
+              variant="ghost"
+              onClick={() => setIsScannerDialogOpen(false)}
+              className="h-10 w-full rounded-xl text-[10px] font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <X className="mr-1.5 h-4 w-4" />
+              Close scanner
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

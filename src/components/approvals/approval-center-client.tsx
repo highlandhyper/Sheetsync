@@ -137,136 +137,334 @@ export function ApprovalCenterClient() {
         }
     };
 
-    const ComparisonRow = ({ label, original, updated, icon: Icon }: { label: string, original: any, updated: any, icon: any }) => {
+    const ComparisonRow = ({
+        label,
+        original,
+        updated,
+        icon: Icon,
+    }: {
+        label: string;
+        original: any;
+        updated: any;
+        icon: any;
+    }) => {
         const isChanged = String(original) !== String(updated);
-        return (
-            <div className={cn("grid grid-cols-3 gap-2 items-center p-3 rounded-lg border border-transparent transition-all", isChanged ? "bg-primary/[0.03] border-primary/10 shadow-sm" : "bg-muted/30 opacity-60")}>
-                <div className="flex items-center gap-2">
-                    <div className={cn("p-1.5 rounded-md", isChanged ? "bg-primary/10" : "bg-muted")}>
-                        <Icon className={cn("h-3.5 w-3.5", isChanged ? "text-primary" : "text-muted-foreground")} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tight">{label}</span>
-                </div>
-                
-                <div className="relative group/orig">
-                    <span className="absolute -top-4 left-0 text-[8px] font-black text-destructive uppercase opacity-0 group-hover/orig:opacity-100 transition-opacity">Current</span>
-                    <div className={cn("text-xs font-medium text-muted-foreground line-through decoration-destructive/40", !isChanged && "no-underline")}>
-                        {original || 'N/A'}
-                    </div>
-                </div>
 
-                <div className="relative group/new">
-                    <span className="absolute -top-4 left-0 text-[8px] font-black text-primary uppercase opacity-0 group-hover/new:opacity-100 transition-opacity">Proposed</span>
-                    <div className={cn("text-sm font-black flex items-center gap-2", isChanged ? "text-primary" : "text-foreground")}>
-                        <ArrowRight className={cn("h-3 w-3 shrink-0", isChanged ? "opacity-100 animate-pulse" : "opacity-0")} />
-                        <span className="truncate">{updated || 'N/A'}</span>
+        return (
+            <div
+                className={cn(
+                    "min-w-0 rounded-xl border px-3 py-3 sm:px-4",
+                    isChanged
+                        ? "border-primary/15 bg-primary/[0.025]"
+                        : "border-border/50 bg-muted/20"
+                )}
+            >
+                <div className="flex min-w-0 items-center gap-2">
+                    <div
+                        className={cn(
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                            isChanged
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                        )}
+                    >
+                        <Icon className="h-3.5 w-3.5" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                            <span className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                {label}
+                            </span>
+
+                            {isChanged && (
+                                <Badge
+                                    variant="outline"
+                                    className="shrink-0 rounded-md border-primary/15 bg-primary/5 px-1.5 py-0 text-[7px] font-semibold text-primary"
+                                >
+                                    Changed
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
+                            <div className="min-w-0 rounded-lg bg-background px-2.5 py-2">
+                                <p className="text-[7px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                    Current
+                                </p>
+                                <p
+                                    className={cn(
+                                        "mt-0.5 truncate text-[9px] font-medium",
+                                        isChanged
+                                            ? "text-muted-foreground line-through decoration-destructive/40"
+                                            : "text-foreground"
+                                    )}
+                                >
+                                    {original || "N/A"}
+                                </p>
+                            </div>
+
+                            <div className="min-w-0 rounded-lg bg-background px-2.5 py-2">
+                                <p className="text-[7px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                    Requested
+                                </p>
+                                <p
+                                    className={cn(
+                                        "mt-0.5 truncate text-[9px] font-semibold",
+                                        isChanged ? "text-primary" : "text-foreground"
+                                    )}
+                                >
+                                    {updated || "N/A"}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         );
     };
 
+    const requestTypeMeta = (req: SpecialEntryRequest) => {
+        if (req.type === "inventory_edit") {
+            return {
+                label: "Inventory Edit",
+                icon: Edit,
+                badge: "border-primary/15 bg-primary/10 text-primary",
+                iconClass: "bg-primary/10 text-primary",
+            };
+        }
+
+        if (req.type === "product_add") {
+            return {
+                label: "New Product",
+                icon: PackagePlus,
+                badge: "border-orange-500/15 bg-orange-500/10 text-orange-600 dark:text-orange-400",
+                iconClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+            };
+        }
+
+        return {
+            label: "Special Entry",
+            icon: Key,
+            badge: "border-emerald-500/15 bg-emerald-500/10 text-emerald-600",
+            iconClass: "bg-emerald-500/10 text-emerald-600",
+        };
+    };
+
+    const requestSummary = (req: SpecialEntryRequest) => {
+        if (req.type === "inventory_edit" && req.editDetails) {
+            return req.editDetails.productName;
+        }
+
+        if (req.type === "product_add") {
+            return req.suggestedProductName || req.reason || "Unregistered barcode";
+        }
+
+        return req.reason || "No reason provided";
+    };
+
     return (
-        <div className="space-y-8">
-            <Card className="p-4 shadow-sm border-primary/10">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by personnel, email, product or barcode..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 h-12 bg-muted/20"
-                    />
-                </div>
+        <div className="min-w-0 space-y-4">
+            {/* Summary */}
+            <section className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
+                <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+                    <CardContent className="p-3 sm:p-4">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                                    Pending
+                                </p>
+                                <p className="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                                    {pendingRequests.length}
+                                </p>
+                            </div>
+                            <Clock className="h-4 w-4 shrink-0 text-amber-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+                    <CardContent className="p-3 sm:p-4">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                                    Processed
+                                </p>
+                                <p className="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                                    {processedRequests.length}
+                                </p>
+                            </div>
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+                    <CardContent className="p-3 sm:p-4">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[9px]">
+                                    Visible
+                                </p>
+                                <p className="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                                    {filteredPending.length}
+                                </p>
+                            </div>
+                            <Search className="h-4 w-4 shrink-0 text-primary" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* Search */}
+            <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+                <CardContent className="p-3 sm:p-4">
+                    <div className="relative min-w-0">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+                        <Input
+                            placeholder="Search personnel, email, product or barcode"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            className="h-11 min-w-0 rounded-xl border-border/60 bg-background pl-10 pr-10 text-xs shadow-none sm:text-sm"
+                        />
+
+                        {searchTerm && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setSearchTerm("")}
+                                className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg text-muted-foreground"
+                                aria-label="Clear search"
+                            >
+                                <FilterX className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+                    </div>
+                </CardContent>
             </Card>
 
-            <Tabs defaultValue="pending" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50 p-1">
-                    <TabsTrigger value="pending" className="font-bold uppercase tracking-widest text-[10px] data-[state=active]:bg-background data-[state=active]:text-primary">
-                        Active Requests ({pendingRequests.length})
+            <Tabs defaultValue="pending" className="w-full min-w-0">
+                <TabsList className="grid h-10 w-full grid-cols-2 rounded-xl border border-border/60 bg-muted/30 p-1">
+                    <TabsTrigger
+                        value="pending"
+                        className="min-w-0 rounded-lg px-2 text-[9px] font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-[10px]"
+                    >
+                        Active Requests
+                        <Badge
+                            variant="secondary"
+                            className="ml-1.5 rounded-md border-0 px-1.5 py-0 text-[7px]"
+                        >
+                            {pendingRequests.length}
+                        </Badge>
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="font-bold uppercase tracking-widest text-[10px] data-[state=active]:bg-background">
-                        Decision History
+
+                    <TabsTrigger
+                        value="history"
+                        className="min-w-0 rounded-lg px-2 text-[9px] font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-[10px]"
+                    >
+                        History
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="pending" className="pt-6 animate-in fade-in duration-500">
+                {/* Pending */}
+                <TabsContent
+                    value="pending"
+                    className="mt-3 min-w-0 outline-none animate-in fade-in duration-200"
+                >
                     {filteredPending.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredPending.map(req => {
-                                const isEdit = req.type === 'inventory_edit';
-                                const isProduct = req.type === 'product_add';
+                        <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {filteredPending.map((req) => {
+                                const meta = requestTypeMeta(req);
+                                const Icon = meta.icon;
+
                                 return (
-                                    <Card key={req.id} className="group relative border-2 border-transparent hover:border-primary/20 transition-all shadow-lg overflow-hidden flex flex-col">
-                                        <CardHeader className={cn("pb-4 shrink-0", isEdit ? "bg-accent/5" : isProduct ? "bg-orange-500/5" : "bg-primary/5")}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-1">
-                                                    <CardTitle className="text-xl font-black tracking-tight">{req.staffName}</CardTitle>
-                                                    <Badge variant="secondary" className="text-[9px] uppercase font-black tracking-tighter">
-                                                        {req.userEmail}
-                                                    </Badge>
+                                    <Card
+                                        key={req.id}
+                                        className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
+                                    >
+                                        <CardHeader className="min-w-0 border-b border-border/50 bg-muted/[0.16] p-3.5 pb-3 sm:p-4 sm:pb-3">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div
+                                                    className={cn(
+                                                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                                                        meta.iconClass
+                                                    )}
+                                                >
+                                                    <Icon className="h-4 w-4" />
                                                 </div>
-                                                <Badge className={cn("font-black uppercase tracking-widest text-[10px] py-1", 
-                                                    isEdit ? "bg-accent text-accent-foreground" : 
-                                                    isProduct ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground")}>
-                                                    {isEdit ? 'Data Edit' : isProduct ? 'New SKU' : 'Silent Entry'}
-                                                </Badge>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex min-w-0 items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <CardTitle className="truncate text-[13px] font-semibold tracking-tight text-foreground sm:text-sm">
+                                                                {req.staffName}
+                                                            </CardTitle>
+                                                            <CardDescription className="mt-0.5 truncate text-[9px] font-medium text-muted-foreground">
+                                                                {req.userEmail}
+                                                            </CardDescription>
+                                                        </div>
+
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={cn(
+                                                                "max-w-[108px] shrink-0 truncate rounded-lg px-2 py-0.5 text-[7px] font-semibold",
+                                                                meta.badge
+                                                            )}
+                                                        >
+                                                            {meta.label}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="pt-6 space-y-4 flex-grow">
-                                            {isEdit && req.editDetails ? (
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border">
-                                                        <Edit className="h-4 w-4 text-accent-foreground" />
-                                                        <span className="text-xs font-bold truncate">{req.editDetails.productName}</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-muted-foreground font-medium italic line-clamp-2">"Authorizing modification of quantity, location or properties."</p>
+
+                                        <CardContent className="flex min-w-0 flex-1 flex-col p-3.5 sm:p-4">
+                                            <div className="min-w-0 flex-1 space-y-3">
+                                                <div className="rounded-xl bg-muted/30 px-3 py-2.5">
+                                                    <p className="text-[7px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                                        Request
+                                                    </p>
+                                                    <p className="mt-1 line-clamp-2 break-words text-[10px] font-medium leading-4 text-foreground">
+                                                        {requestSummary(req)}
+                                                    </p>
                                                 </div>
-                                            ) : isProduct ? (
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl">
-                                                        <PackagePlus className="h-5 w-5 text-orange-600" />
-                                                        <span className="text-sm font-black font-mono tracking-tight">{req.reason}</span>
+
+                                                {req.type === "product_add" && req.reason && (
+                                                    <div className="flex min-w-0 items-center gap-2 text-[9px] text-muted-foreground">
+                                                        <Hash className="h-3.5 w-3.5 shrink-0" />
+                                                        <span className="truncate font-mono">
+                                                            {req.reason}
+                                                        </span>
                                                     </div>
-                                                    {req.suggestedProductName && (
-                                                        <div className="px-3 py-2 bg-muted/50 rounded-lg border flex items-start gap-2">
-                                                            <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
-                                                            <div className="space-y-0.5">
-                                                                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Suggested Name</p>
-                                                                <p className="text-xs font-bold">{req.suggestedProductName}</p>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                )}
+
+                                                <div className="flex min-w-0 items-center gap-1.5 text-[8px] font-medium text-muted-foreground">
+                                                    <Clock className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">
+                                                        {format(parseISO(req.requestedAt), "PPp")}
+                                                    </span>
                                                 </div>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
-                                                        <MessageSquare className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                                        <span className="text-xs font-medium italic leading-relaxed">"{req.reason || 'No reason specified'}"</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase pt-2 border-t mt-auto">
-                                                <Clock className="h-3 w-3" />
-                                                <span>Requested {format(parseISO(req.requestedAt), 'PPp')}</span>
                                             </div>
 
-                                            <div className="pt-4 flex gap-2">
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="flex-1 text-destructive hover:bg-destructive/5 font-black uppercase tracking-tighter h-10"
+                                            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-3">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 rounded-xl border-destructive/20 px-2 text-[9px] font-semibold text-destructive shadow-none hover:bg-destructive/10 hover:text-destructive"
                                                     onClick={() => handleRejectRequest(req.id)}
                                                 >
-                                                    <X className="mr-1.5 h-4 w-4" /> Decline
+                                                    <X className="mr-1.5 h-3.5 w-3.5" />
+                                                    Decline
                                                 </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    className="flex-1 font-black uppercase tracking-tighter shadow-lg shadow-primary/20 h-10"
+
+                                                <Button
+                                                    size="sm"
+                                                    className="h-9 rounded-xl px-2 text-[9px] font-semibold shadow-none"
                                                     onClick={() => handleActionClick(req)}
                                                 >
-                                                    <ArrowLeftRight className="mr-1.5 h-4 w-4" /> Review
+                                                    <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                                    Review
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -275,163 +473,281 @@ export function ApprovalCenterClient() {
                             })}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-24 text-center">
-                            <div className="bg-muted p-6 rounded-full mb-4">
-                                <CheckCircle2 className="h-12 w-12 text-muted-foreground/30" />
-                            </div>
-                            <h3 className="text-xl font-black text-muted-foreground uppercase tracking-widest">Inbox Zero</h3>
-                            <p className="text-sm text-muted-foreground mt-2">All personnel requests have been processed.</p>
-                        </div>
+                        <Card className="rounded-2xl border border-border/60 bg-card shadow-sm">
+                            <CardContent className="flex min-h-[260px] flex-col items-center justify-center px-5 text-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                </div>
+
+                                <h3 className="mt-3 text-sm font-semibold text-foreground">
+                                    No pending requests
+                                </h3>
+
+                                <p className="mt-1 max-w-xs text-[10px] leading-4 text-muted-foreground">
+                                    {searchTerm
+                                        ? "No active approval request matches this search."
+                                        : "All current approval requests have been processed."}
+                                </p>
+                            </CardContent>
+                        </Card>
                     )}
                 </TabsContent>
 
-                <TabsContent value="history" className="pt-6">
-                    <Card className="shadow-lg overflow-hidden border-primary/10">
-                        <div className="divide-y">
-                            {processedRequests.map(req => (
-                                <div key={req.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn("p-2 rounded-full", req.status === 'approved' ? "bg-green-500/10" : "bg-destructive/10")}>
-                                            {req.status === 'approved' ? <Check className="h-4 w-4 text-green-600" /> : <Ban className="h-4 w-4 text-destructive" />}
+                {/* History */}
+                <TabsContent
+                    value="history"
+                    className="mt-3 min-w-0 outline-none animate-in fade-in duration-200"
+                >
+                    <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+                        {processedRequests.length > 0 ? (
+                            <div className="divide-y divide-border/50">
+                                {processedRequests.map((req) => {
+                                    const isApproved = req.status === "approved";
+                                    const meta = requestTypeMeta(req);
+
+                                    return (
+                                        <div
+                                            key={req.id}
+                                            className="flex min-w-0 items-center gap-3 px-3.5 py-3 transition-colors hover:bg-muted/20 sm:px-4"
+                                        >
+                                            <div
+                                                className={cn(
+                                                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                                                    isApproved
+                                                        ? "bg-emerald-500/10 text-emerald-600"
+                                                        : "bg-destructive/10 text-destructive"
+                                                )}
+                                            >
+                                                {isApproved ? (
+                                                    <Check className="h-4 w-4" />
+                                                ) : (
+                                                    <Ban className="h-4 w-4" />
+                                                )}
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <p className="truncate text-[11px] font-semibold text-foreground sm:text-[12px]">
+                                                        {req.staffName}
+                                                    </p>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="hidden shrink-0 rounded-md border-border/60 px-1.5 py-0 text-[7px] font-medium text-muted-foreground sm:inline-flex"
+                                                    >
+                                                        {meta.label}
+                                                    </Badge>
+                                                </div>
+
+                                                <p className="mt-0.5 truncate text-[8px] text-muted-foreground sm:text-[9px]">
+                                                    {req.userEmail}
+                                                </p>
+                                            </div>
+
+                                            <div className="shrink-0 text-right">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "rounded-lg px-2 py-0.5 text-[7px] font-semibold capitalize",
+                                                        isApproved
+                                                            ? "border-emerald-500/15 bg-emerald-500/10 text-emerald-600"
+                                                            : "border-destructive/15 bg-destructive/10 text-destructive"
+                                                    )}
+                                                >
+                                                    {req.status}
+                                                </Badge>
+
+                                                <p className="mt-1 whitespace-nowrap text-[7px] tabular-nums text-muted-foreground">
+                                                    {format(
+                                                        parseISO(req.approvedAt || req.requestedAt),
+                                                        "dd MMM yy • HH:mm"
+                                                    )}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-sm">{req.staffName}</p>
-                                            <p className="text-[10px] text-muted-foreground uppercase font-black">{req.type?.replace('_', ' ') || 'Special Request'} • {req.status}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-medium text-muted-foreground">{format(parseISO(req.approvedAt || req.requestedAt), 'PPp')}</p>
-                                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest">{req.userEmail}</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {processedRequests.length === 0 && (
-                                <div className="p-12 text-center text-muted-foreground">No recent decisions found.</div>
-                            )}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex min-h-[220px] flex-col items-center justify-center px-5 text-center">
+                                <History className="h-6 w-6 text-muted-foreground/40" />
+                                <p className="mt-3 text-sm font-semibold text-foreground">
+                                    No recent decisions
+                                </p>
+                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                    Processed requests will appear here.
+                                </p>
+                            </div>
+                        )}
                     </Card>
                 </TabsContent>
             </Tabs>
 
+            {/* Review dialog */}
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-                <DialogContent 
-                    className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden"
-                    onPointerDownOutside={(e) => e.preventDefault()}
-                    onEscapeKeyDown={(e) => e.preventDefault()}
+                <DialogContent
+                    className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-background p-0 shadow-2xl"
+                    onPointerDownOutside={(event) => event.preventDefault()}
+                    onEscapeKeyDown={(event) => event.preventDefault()}
                 >
-                    <div className="p-6 pb-2 shrink-0">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter">
-                                <ShieldCheck className="h-6 w-6 text-primary" />
-                                Request Verification
-                            </DialogTitle>
-                            <DialogDescription>
-                                Secure review of submission from <span className="font-bold text-foreground">{selectedRequest?.userEmail}</span>.
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
+                    <DialogHeader className="shrink-0 border-b border-border/50 bg-muted/20 p-4 pb-3 sm:p-5 sm:pb-4">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <ShieldCheck className="h-4 w-4" />
+                            </div>
 
-                    <div className="flex-grow overflow-y-auto px-6 py-4 space-y-6">
+                            <div className="min-w-0 flex-1">
+                                <DialogTitle className="truncate text-base font-semibold tracking-tight sm:text-lg">
+                                    Review request
+                                </DialogTitle>
+                                <DialogDescription className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-muted-foreground">
+                                    Secure review of submission from{" "}
+                                    <span className="font-medium text-foreground">
+                                        {selectedRequest?.userEmail}
+                                    </span>
+                                    .
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
                         {selectedRequest && (
                             <>
-                                {selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails && selectedRequest.originalDetails ? (
-                                    <div className="space-y-6">
-                                        <div className="p-5 rounded-2xl border-2 border-primary/20 bg-primary/5 flex items-center justify-between shadow-inner">
-                                            <div>
-                                                <Label className="text-[10px] uppercase font-black text-primary tracking-widest bg-primary/10 px-2 py-0.5 rounded-full mb-1 inline-block">Target Asset</Label>
-                                                <h4 className="text-xl font-black leading-tight">{selectedRequest.editDetails.productName}</h4>
-                                                <p className="text-[10px] text-muted-foreground font-mono mt-1">ID: {selectedRequest.editDetails.itemId}</p>
+                                {selectedRequest.type === "inventory_edit" &&
+                                selectedRequest.editDetails &&
+                                selectedRequest.originalDetails ? (
+                                    <div className="space-y-4">
+                                        <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-primary/15 bg-primary/[0.035] p-3.5">
+                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                                <Edit className="h-4 w-4" />
                                             </div>
-                                            <Edit className="h-10 w-10 text-primary/20" />
+
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-primary">
+                                                    Inventory item
+                                                </p>
+                                                <h4 className="mt-0.5 truncate text-[12px] font-semibold text-foreground sm:text-[13px]">
+                                                    {selectedRequest.editDetails.productName}
+                                                </h4>
+                                                <p className="mt-0.5 truncate font-mono text-[8px] text-muted-foreground">
+                                                    {selectedRequest.editDetails.itemId}
+                                                </p>
+                                            </div>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
-                                            <div className="grid grid-cols-3 gap-2 px-3 mb-2">
-                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Property</span>
-                                                <span className="text-[9px] font-black uppercase text-destructive tracking-widest">Current (OLD)</span>
-                                                <span className="text-[9px] font-black uppercase text-primary tracking-widest">Requested (NEW)</span>
-                                            </div>
-                                            <Separator className="mb-4" />
-                                            <div className="space-y-3">
-                                                <ComparisonRow 
-                                                    label="Quantity" 
-                                                    original={`${selectedRequest.originalDetails.quantity} Units`} 
-                                                    updated={`${selectedRequest.editDetails.quantity} Units`} 
-                                                    icon={Hash}
-                                                />
-                                                <ComparisonRow 
-                                                    label="Location" 
-                                                    original={selectedRequest.originalDetails.location} 
-                                                    updated={selectedRequest.editDetails.location} 
-                                                    icon={MapPin}
-                                                />
-                                                <ComparisonRow 
-                                                    label="Classification" 
-                                                    original={selectedRequest.originalDetails.itemType} 
-                                                    updated={selectedRequest.editDetails.itemType} 
-                                                    icon={Tag}
-                                                />
-                                                <ComparisonRow 
-                                                    label="Expiry Date" 
-                                                    original={selectedRequest.originalDetails.expiryDate || 'None'} 
-                                                    updated={selectedRequest.editDetails.expiryDate || 'None'} 
-                                                    icon={CalendarIcon}
-                                                />
-                                            </div>
+                                            <ComparisonRow
+                                                label="Quantity"
+                                                original={`${selectedRequest.originalDetails.quantity} Units`}
+                                                updated={`${selectedRequest.editDetails.quantity} Units`}
+                                                icon={Hash}
+                                            />
+                                            <ComparisonRow
+                                                label="Location"
+                                                original={selectedRequest.originalDetails.location}
+                                                updated={selectedRequest.editDetails.location}
+                                                icon={MapPin}
+                                            />
+                                            <ComparisonRow
+                                                label="Classification"
+                                                original={selectedRequest.originalDetails.itemType}
+                                                updated={selectedRequest.editDetails.itemType}
+                                                icon={Tag}
+                                            />
+                                            <ComparisonRow
+                                                label="Expiry Date"
+                                                original={
+                                                    selectedRequest.originalDetails.expiryDate ||
+                                                    "None"
+                                                }
+                                                updated={
+                                                    selectedRequest.editDetails.expiryDate || "None"
+                                                }
+                                                icon={CalendarIcon}
+                                            />
                                         </div>
                                     </div>
-                                ) : selectedRequest.type === 'product_add' ? (
-                                    <div className="space-y-6">
-                                        <Alert className="bg-orange-500/10 border-orange-500/20 py-6 rounded-3xl">
-                                            <PackagePlus className="h-8 w-8 text-orange-600" />
-                                            <AlertTitle className="font-black uppercase tracking-tighter text-xl ml-2">Unregistered SKU Identified</AlertTitle>
-                                            <AlertDescription className="text-sm mt-3 ml-2 space-y-4">
-                                                <p>The barcode <span className="font-mono font-black text-orange-600 bg-orange-500/10 px-2 py-0.5 rounded text-base">{selectedRequest.reason}</span> was scanned but is not in your catalog.</p>
-                                                
-                                                {selectedRequest.suggestedProductName && (
-                                                    <div className="bg-background/80 p-4 rounded-2xl border-2 border-orange-500/10 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">User Identified As:</p>
-                                                        <p className="text-lg font-black text-foreground">{selectedRequest.suggestedProductName}</p>
-                                                    </div>
-                                                )}
-                                            </AlertDescription>
-                                        </Alert>
+                                ) : selectedRequest.type === "product_add" ? (
+                                    <div className="space-y-4">
+                                        <div className="rounded-2xl border border-orange-500/15 bg-orange-500/[0.045] p-4">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                                                    <PackagePlus className="h-4 w-4" />
+                                                </div>
 
-                                        <div className="grid grid-cols-1 gap-3">
-                                            <Button 
-                                                className="h-16 text-lg font-black uppercase tracking-tighter shadow-xl shadow-orange-500/20 bg-orange-500 hover:bg-orange-600"
-                                                onClick={() => handleQuickRegister(selectedRequest.reason!)}
-                                            >
-                                                <PlusCircle className="mr-2 h-6 w-6" />
-                                                Register Product Now
-                                            </Button>
-                                            <div className="p-4 rounded-2xl bg-muted/20 border-2 border-dashed flex items-center justify-center gap-2">
-                                                <Info className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-xs font-bold text-muted-foreground">Registering the product will allow future logs for this SKU.</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-orange-600">
+                                                        Unregistered product
+                                                    </p>
+
+                                                    <p className="mt-1 break-all font-mono text-[12px] font-semibold text-foreground">
+                                                        {selectedRequest.reason}
+                                                    </p>
+
+                                                    {selectedRequest.suggestedProductName && (
+                                                        <div className="mt-3 rounded-xl bg-background px-3 py-2.5">
+                                                            <p className="text-[7px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                                                Suggested name
+                                                            </p>
+                                                            <p className="mt-0.5 text-[10px] font-semibold text-foreground">
+                                                                {selectedRequest.suggestedProductName}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        <Button
+                                            className="h-11 w-full rounded-xl bg-orange-500 text-[10px] font-semibold text-white shadow-none hover:bg-orange-600"
+                                            onClick={() =>
+                                                handleQuickRegister(selectedRequest.reason!)
+                                            }
+                                        >
+                                            <PlusCircle className="mr-1.5 h-4 w-4" />
+                                            Register product
+                                        </Button>
+
+                                        <div className="flex items-start gap-2 rounded-xl bg-muted/30 px-3 py-2.5">
+                                            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            <p className="text-[9px] leading-4 text-muted-foreground">
+                                                Registering this barcode allows future inventory logs
+                                                to identify the product automatically.
+                                            </p>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        <div className="p-8 rounded-3xl bg-primary/5 border-2 border-primary/10 space-y-6 shadow-sm">
-                                            <div className="flex items-center gap-5">
-                                                <div className="bg-primary/10 p-4 rounded-2xl">
-                                                    <Key className="h-8 w-8 text-primary" />
+                                        <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                                    <Key className="h-4 w-4" />
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-black text-xl uppercase tracking-tighter">Silent Entry Access</h4>
-                                                    <p className="text-sm text-muted-foreground font-medium">{selectedRequest.staffName} needs authorization to bypass log alerts.</p>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-primary">
+                                                        Special entry
+                                                    </p>
+                                                    <h4 className="mt-0.5 text-[12px] font-semibold text-foreground sm:text-[13px]">
+                                                        {selectedRequest.staffName}
+                                                    </h4>
+                                                    <p className="mt-0.5 text-[9px] leading-4 text-muted-foreground">
+                                                        Requests authorization to bypass standard log
+                                                        alerts.
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <Separator />
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                                                    <MessageSquare className="h-3.5 w-3.5" /> Justification Provided
-                                                </Label>
-                                                <div className="text-sm italic font-medium p-4 bg-background rounded-2xl border-2 border-muted shadow-inner leading-relaxed">
-                                                    "{selectedRequest.reason || 'No specific reason given by the user.'}"
-                                                </div>
+                                        </div>
+
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <div className="flex items-center gap-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                                                <MessageSquare className="h-3 w-3" />
+                                                Reason
                                             </div>
+                                            <p className="mt-2 break-words text-[10px] leading-4 text-foreground">
+                                                {selectedRequest.reason ||
+                                                    "No specific reason given by the user."}
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -439,25 +755,50 @@ export function ApprovalCenterClient() {
                         )}
                     </div>
 
-                    <DialogFooter className="p-6 border-t bg-background shrink-0 gap-3">
-                        <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)} className="font-bold">Close Review</Button>
-                        <Button onClick={handleConfirmApproval} className="font-black shadow-lg shadow-primary/30 px-8 bg-primary hover:bg-primary/90">
-                            <ShieldCheck className="mr-2 h-4 w-4" /> 
-                            {selectedRequest?.type === 'product_add' ? 'Mark as Processed' : 'Authorize Submission'}
-                        </Button>
+                    <DialogFooter className="shrink-0 border-t border-border/50 bg-background p-3 sm:p-4">
+                        <div className="grid w-full grid-cols-2 gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDetailDialogOpen(false)}
+                                className="h-10 rounded-xl border-border/60 text-[9px] font-semibold shadow-none"
+                            >
+                                Close
+                            </Button>
+
+                            <Button
+                                onClick={handleConfirmApproval}
+                                disabled={isProcessing}
+                                className="h-10 rounded-xl text-[9px] font-semibold shadow-none"
+                            >
+                                {isProcessing ? (
+                                    <AlertCircle className="mr-1.5 h-3.5 w-3.5" />
+                                ) : (
+                                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+                                )}
+                                {selectedRequest?.type === "product_add"
+                                    ? "Mark processed"
+                                    : "Authorize"}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <AuthorizeActionDialog 
+            <AuthorizeActionDialog
                 isOpen={isAuthDialogOpen}
                 onOpenChange={setIsAuthDialogOpen}
                 onAuthorizationSuccess={handleAuthorizationSuccess}
-                actionDescription={selectedRequest?.type === 'inventory_edit' ? `Finalizing data override for ${selectedRequest?.editDetails?.productName}. Credentials required.` : selectedRequest?.type === 'product_add' ? 'Confirming barcode registration request is handled. Administrator credentials required.' : `Approving authorization request. This will generate a 4-digit OTP.`}
+                actionDescription={
+                    selectedRequest?.type === "inventory_edit"
+                        ? `Finalizing data override for ${selectedRequest?.editDetails?.productName}. Credentials required.`
+                        : selectedRequest?.type === "product_add"
+                          ? "Confirming barcode registration request is handled. Administrator credentials required."
+                          : "Approving authorization request. This will generate a 4-digit OTP."
+                }
             />
 
             {productBarcodeForDialog && (
-                <CreateProductFromInventoryDialog 
+                <CreateProductFromInventoryDialog
                     isOpen={isCreateProductDialogOpen}
                     onOpenChange={setIsCreateProductDialogOpen}
                     barcode={productBarcodeForDialog}
