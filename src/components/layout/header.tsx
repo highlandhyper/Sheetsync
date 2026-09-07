@@ -264,7 +264,7 @@ export function Header({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="hidden h-9 w-9 rounded-xl text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 xl:inline-flex"
+                        className="relative hidden h-9 w-9 rounded-xl text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 xl:inline-flex"
                       >
                         <BellOff className="h-4 w-4" />
 
