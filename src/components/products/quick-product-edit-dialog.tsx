@@ -29,7 +29,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -68,6 +67,7 @@ export function QuickProductEditDialog({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
+  const supplierSearchInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -87,10 +87,17 @@ export function QuickProductEditDialog({
       setSearchTerm('');
       setMatchedProduct(null);
       reset();
+      setSupplierComboboxOpen(false);
       setSupplierSearch('');
       setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [isOpen, reset]);
+
+  useEffect(() => {
+    if (supplierComboboxOpen) {
+      requestAnimationFrame(() => supplierSearchInputRef.current?.focus());
+    }
+  }, [supplierComboboxOpen]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -179,9 +186,6 @@ export function QuickProductEditDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* The supplier popover is portaled outside of DialogContent. Preventing
-          both pointer and focus dismissal keeps the dialog open while allowing
-          the popover's search input to receive focus and keyboard input. */}
       <DialogContent
         className="
           flex max-h-[92dvh] w-[calc(100vw-1rem)] flex-col gap-0
@@ -190,7 +194,6 @@ export function QuickProductEditDialog({
           sm:max-w-lg sm:rounded-3xl
         "
         onPointerDownOutside={(event) => event.preventDefault()}
-        onFocusOutside={(event) => event.preventDefault()}
       >
         {/* Header */}
         <div className="relative overflow-hidden border-b border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
@@ -343,17 +346,18 @@ export function QuickProductEditDialog({
                     Supplier
                   </Label>
 
-                  <Popover
-                    open={supplierComboboxOpen}
-                    onOpenChange={setSupplierComboboxOpen}
-                  >
-                    <PopoverTrigger asChild>
+                  <div className="relative">
                       <Button
                         ref={supplierTriggerRef}
                         type="button"
                         variant="outline"
                         role="combobox"
                         aria-expanded={supplierComboboxOpen}
+                        aria-controls="quick-product-supplier-options"
+                        onClick={() => {
+                          setSupplierComboboxOpen((isOpen) => !isOpen);
+                          setSupplierSearch('');
+                        }}
                         className={cn(
                           `
                             h-11 w-full justify-between rounded-xl
@@ -373,14 +377,15 @@ export function QuickProductEditDialog({
 
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                       </Button>
-                    </PopoverTrigger>
 
-                    <PopoverContent
-                      className="w-[--radix-popover-trigger-width] overflow-hidden rounded-2xl border-border/60 p-0 shadow-xl"
-                      align="start"
-                    >
+                    {supplierComboboxOpen && (
+                      <div
+                        id="quick-product-supplier-options"
+                        className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border/60 bg-popover p-0 text-popover-foreground shadow-xl"
+                      >
                       <Command>
                         <CommandInput
+                          ref={supplierSearchInputRef}
                           placeholder="Search or enter supplier..."
                           value={supplierSearch}
                           onValueChange={setSupplierSearch}
@@ -400,6 +405,7 @@ export function QuickProductEditDialog({
                                     shouldDirty: true,
                                     shouldValidate: true,
                                   });
+                                  setSupplierSearch('');
                                   setSupplierComboboxOpen(false);
                                 }}
                               >
@@ -423,6 +429,7 @@ export function QuickProductEditDialog({
                                     shouldValidate: true,
                                     shouldDirty: true,
                                   });
+                                  setSupplierSearch('');
                                   setSupplierComboboxOpen(false);
                                 }}
                                 className="h-10 rounded-lg text-xs font-medium"
@@ -442,8 +449,9 @@ export function QuickProductEditDialog({
                           </CommandGroup>
                         </CommandList>
                       </Command>
-                    </PopoverContent>
-                  </Popover>
+                      </div>
+                    )}
+                  </div>
 
                   {errors.supplierName?.message && (
                     <p className="text-xs text-destructive">
