@@ -67,6 +67,7 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const steps = [
   { id: 1, name: 'Identify SKU', icon: Barcode },
@@ -77,6 +78,7 @@ export function AddReminderStepperForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { permissions } = useAccessControl();
+  const isMobile = useIsMobile();
   const { 
     products: cachedProducts, 
     uniqueStaffNames,
@@ -105,6 +107,8 @@ export function AddReminderStepperForm() {
   const [errorMessage, setErrorMessage] = useState('');
   
   const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
+  const [isMobileStaffPickerOpen, setIsMobileStaffPickerOpen] = useState(false);
+  const [isMobileDatePickerOpen, setIsMobileDatePickerOpen] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -356,9 +360,22 @@ export function AddReminderStepperForm() {
                         <div className="space-y-3">
                             <div className="space-y-1.5">
                                 <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Staff member</Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    role="combobox"
+                                    onClick={() => setIsMobileStaffPickerOpen(true)}
+                                    className="h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+                                >
+                                    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                                        <User className="h-4 w-4 shrink-0 text-primary/40" />
+                                        <span className="truncate">{staffName || "Select staff member..."}</span>
+                                    </div>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-20" />
+                                </Button>
                                 <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen} modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="ghost" role="combobox" className="h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0">
+                                        <Button variant="ghost" role="combobox" className="hidden h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:flex">
                                             <div className="flex min-w-0 items-center gap-2 overflow-hidden">
                                                 <User className="h-4 w-4 text-primary/40 shrink-0" />
                                                 <span className="truncate">{staffName || "Select staff member..."}</span>
@@ -392,9 +409,13 @@ export function AddReminderStepperForm() {
 
                             <div className="space-y-1.5">
                                 <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Expiry date</Label>
+                                <Button type="button" variant="ghost" onClick={() => setIsMobileDatePickerOpen(true)} className={cn("h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-3 text-left text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden", !expiryDate && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-3 h-4 w-4 shrink-0 text-primary/40" />
+                                    <span className="truncate">{expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Select date..."}</span>
+                                </Button>
                                 <Popover modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="ghost" className={cn("h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-3 text-left text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0", !expiryDate && "text-muted-foreground")}>
+                                        <Button variant="ghost" className={cn("hidden h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-3 text-left text-sm font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:flex", !expiryDate && "text-muted-foreground")}>
                                             <CalendarIcon className="mr-3 h-4 w-4 text-primary/40 shrink-0" />
                                             {expiryDate ? format(expiryDate, 'dd MMM yyyy') : "Select date..."}
                                         </Button>
@@ -424,6 +445,76 @@ export function AddReminderStepperForm() {
             </CardContent>
         </Card>
     </div>
+
+    {isMobile && (
+        <>
+            <Dialog open={isMobileStaffPickerOpen} onOpenChange={setIsMobileStaffPickerOpen}>
+                <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
+                    <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
+                        <DialogTitle className="text-base font-bold">Select staff member</DialogTitle>
+                        <DialogDescription className="text-xs">Search and select the person creating this diary entry.</DialogDescription>
+                    </DialogHeader>
+                    <Command className="min-h-0 flex-1 rounded-none bg-transparent">
+                        <CommandInput placeholder="Search staff members..." className="h-12" />
+                        <CommandList className="max-h-[min(52dvh,360px)] p-1.5">
+                            <CommandEmpty className="py-8 text-xs text-muted-foreground">No staff members found.</CommandEmpty>
+                            <CommandGroup>
+                                {uniqueStaffNames.map((name) => (
+                                    <CommandItem
+                                        key={name}
+                                        value={name}
+                                        onSelect={() => {
+                                            setStaffName(name);
+                                            setIsMobileStaffPickerOpen(false);
+                                        }}
+                                        className="h-12 rounded-xl text-sm font-semibold"
+                                    >
+                                        <Check className={cn('mr-3 h-4 w-4', staffName === name ? 'opacity-100' : 'opacity-0')} />
+                                        <span className="truncate">{name}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    <div className="border-t bg-muted/15 p-3">
+                        <Button type="button" variant="ghost" onClick={() => setIsMobileStaffPickerOpen(false)} className="h-10 w-full rounded-xl text-sm font-semibold">
+                            Cancel
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isMobileDatePickerOpen} onOpenChange={setIsMobileDatePickerOpen}>
+                <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
+                    <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
+                        <DialogTitle className="text-base font-bold">Select expiry date</DialogTitle>
+                        <DialogDescription className="text-xs">Choose when this diary item should be reviewed.</DialogDescription>
+                    </DialogHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                        <Calendar
+                            mode="single"
+                            selected={expiryDate}
+                            onSelect={(date) => {
+                                if (!date) return;
+                                setExpiryDate(date);
+                                setIsMobileDatePickerOpen(false);
+                            }}
+                            initialFocus
+                            captionLayout="dropdown"
+                            startMonth={new Date()}
+                            endMonth={new Date(2045, 11)}
+                            className="mx-auto"
+                        />
+                    </div>
+                    <div className="border-t bg-muted/15 p-3">
+                        <Button type="button" variant="ghost" onClick={() => setIsMobileDatePickerOpen(false)} className="h-10 w-full rounded-xl text-sm font-semibold">
+                            Cancel
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
+    )}
 
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border-0 bg-black p-0 shadow-2xl sm:rounded-3xl">

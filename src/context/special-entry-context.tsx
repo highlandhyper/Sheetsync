@@ -21,6 +21,7 @@ interface SpecialEntryContextType {
   requestInventoryEdit: (item: InventoryItem, updatedValues: Partial<InventoryItem>) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
+  completeProductAddRequest: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   revokeRequest: (id: string) => Promise<void>;
   consumeSpecialEntry: () => void;
@@ -192,6 +193,20 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     }
   }, [user, refreshData, toast]);
 
+  const completeProductAddRequest = useCallback(async (id: string) => {
+    const updated = specialRequests.map(request =>
+      request.id === id && request.type === 'product_add'
+        ? {
+            ...request,
+            status: 'used' as const,
+            approvedAt: new Date().toISOString(),
+            isDismissedByAdmin: true,
+          }
+        : request,
+    );
+    await updateSpecialRequests(updated);
+  }, [specialRequests, updateSpecialRequests]);
+
   const rejectRequest = useCallback(async (id: string) => {
     const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);
     await updateSpecialRequests(updated);
@@ -252,12 +267,13 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     requestInventoryEdit,
     grantProactiveEntry, 
     approveRequest, 
+    completeProductAddRequest,
     rejectRequest, 
     revokeRequest,
     consumeSpecialEntry,
     activateSession,
     resendOtp
-  }), [pendingRequestsList, processedRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession, resendOtp]);
+  }), [pendingRequestsList, processedRequestsList, activeSessionsList, activeSession, pendingActivationSession, isActivationDialogOpen, requestSpecialEntry, requestInventoryEdit, grantProactiveEntry, approveRequest, completeProductAddRequest, rejectRequest, revokeRequest, consumeSpecialEntry, activateSession, resendOtp]);
 
   return (
     <SpecialEntryContext.Provider value={value}>
