@@ -179,6 +179,9 @@ export function QuickProductEditDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      {/* The supplier popover is portaled outside of DialogContent. Preventing
+          both pointer and focus dismissal keeps the dialog open while allowing
+          the popover's search input to receive focus and keyboard input. */}
       <DialogContent
         className="
           flex max-h-[92dvh] w-[calc(100vw-1rem)] flex-col gap-0
@@ -187,6 +190,7 @@ export function QuickProductEditDialog({
           sm:max-w-lg sm:rounded-3xl
         "
         onPointerDownOutside={(event) => event.preventDefault()}
+        onFocusOutside={(event) => event.preventDefault()}
       >
         {/* Header */}
         <div className="relative overflow-hidden border-b border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
