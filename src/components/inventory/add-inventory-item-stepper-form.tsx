@@ -72,6 +72,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useSpecialEntry } from '@/context/special-entry-context';
 import { useAuth } from '@/context/auth-context';
 import { useAccessControl } from '@/context/access-control-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { OfflineQueueTerminal } from '@/components/inventory/offline-queue-terminal';
 import type { InventoryItem } from '@/lib/types';
 
@@ -136,6 +137,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const { toast } = useToast();
   const { user } = useAuth();
   const { permissions } = useAccessControl();
+  const isMobile = useIsMobile();
   const { 
     products: cachedProducts, 
     uniqueLocations: dynamicLocations, 
@@ -178,6 +180,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   const [locationComboboxOpen, setLocationComboboxOpen] = useState(false);
   const [staffComboboxOpen, setStaffComboboxOpen] = useState(false);
+  const [isMobileStaffPickerOpen, setIsMobileStaffPickerOpen] = useState(false);
+  const [isMobileDatePickerOpen, setIsMobileDatePickerOpen] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [productName, setProductName] = useState('');
   const [productSupplier, setProductSupplier] = useState('');
@@ -612,9 +616,25 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
                             <div className="space-y-1">
                                 <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Staff member</Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    role="combobox"
+                                    onClick={() => {
+                                        playIdentityAudio();
+                                        setIsMobileStaffPickerOpen(true);
+                                    }}
+                                    className={cn("h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden", !allFormValues.staffName && "text-muted-foreground", errors.staffName && "bg-destructive/10")}
+                                >
+                                    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                                        <User className="h-4 w-4 shrink-0 text-primary/40" />
+                                        <span className="truncate text-xs">{allFormValues.staffName || "Select staff member..."}</span>
+                                    </div>
+                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-20" />
+                                </Button>
                                 <Popover open={staffComboboxOpen} onOpenChange={(open) => { setStaffComboboxOpen(open); if (open) playIdentityAudio(); }} modal={true}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="ghost" role="combobox" className={cn("h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0", !allFormValues.staffName && "text-muted-foreground", errors.staffName && "bg-destructive/10")}>
+                                        <Button variant="ghost" role="combobox" className={cn("hidden h-11 w-full min-w-0 justify-between rounded-xl border-0 bg-muted/40 px-3 font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:flex", !allFormValues.staffName && "text-muted-foreground", errors.staffName && "bg-destructive/10")}>
                                             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                                                 <User className="h-4 w-4 text-primary/40 shrink-0" />
                                                 <span className="truncate text-xs">{allFormValues.staffName || "Select staff member..."}</span>
@@ -659,9 +679,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 </div>
                                 <div className="min-w-0 space-y-1">
                                     <Label className="ml-0.5 text-[11px] font-semibold text-foreground">Expiry date</Label>
+                                    <Button type="button" variant="ghost" onClick={() => setIsMobileDatePickerOpen(true)} className={cn('h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-2.5 text-left font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'bg-destructive/10')}>
+                                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-primary/40" />
+                                        <span className="truncate text-xs">{allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : "Pick Date"}</span>
+                                    </Button>
                                     <Popover modal={true}>
                                         <PopoverTrigger asChild>
-                                            <Button variant={'ghost'} className={cn('h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-2.5 text-left font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'bg-destructive/10')}>
+                                            <Button variant={'ghost'} className={cn('hidden h-11 w-full min-w-0 justify-start rounded-xl border-0 bg-muted/40 px-2.5 text-left font-medium shadow-none hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 md:flex', !allFormValues.expiryDate && 'text-muted-foreground', errors.expiryDate && 'bg-destructive/10')}>
                                                 <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary/40 shrink-0" />
                                                 <span className="text-xs truncate">{allFormValues.expiryDate ? format(allFormValues.expiryDate, 'dd/MM/yyyy') : "Pick Date"}</span>
                                             </Button>
@@ -785,6 +809,76 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             <p className="px-2 text-[10px] text-muted-foreground/60">SheetSync Inventory • Secure sync enabled</p>
         </div>
     </div>
+
+    {isMobile && (
+        <>
+            <Dialog open={isMobileStaffPickerOpen} onOpenChange={setIsMobileStaffPickerOpen}>
+                <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
+                    <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
+                        <DialogTitle className="text-base font-bold">Select staff member</DialogTitle>
+                        <DialogDescription className="text-xs">Search and select the staff member logging this item.</DialogDescription>
+                    </DialogHeader>
+                    <Command className="min-h-0 flex-1 rounded-none bg-transparent">
+                        <CommandInput placeholder="Search staff members..." className="h-12" />
+                        <CommandList className="max-h-[min(52dvh,360px)] p-1.5">
+                            <CommandEmpty className="py-8 text-xs text-muted-foreground">No staff members found.</CommandEmpty>
+                            <CommandGroup>
+                                {uniqueStaffNames.map((staff) => (
+                                    <CommandItem
+                                        key={staff}
+                                        value={staff}
+                                        onSelect={() => {
+                                            setValue('staffName', staff, { shouldValidate: true });
+                                            setIsMobileStaffPickerOpen(false);
+                                        }}
+                                        className="h-12 rounded-xl text-sm font-semibold"
+                                    >
+                                        <Check className={cn('mr-3 h-4 w-4', allFormValues.staffName === staff ? 'opacity-100' : 'opacity-0')} />
+                                        <span className="truncate">{staff}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    <DialogFooter className="border-t bg-muted/15 p-3 sm:justify-end">
+                        <Button type="button" variant="ghost" onClick={() => setIsMobileStaffPickerOpen(false)} className="h-10 w-full rounded-xl text-sm font-semibold">
+                            Cancel
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isMobileDatePickerOpen} onOpenChange={setIsMobileDatePickerOpen}>
+                <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
+                    <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
+                        <DialogTitle className="text-base font-bold">Select expiry date</DialogTitle>
+                        <DialogDescription className="text-xs">Choose when this inventory item expires.</DialogDescription>
+                    </DialogHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                        <Calendar
+                            mode="single"
+                            selected={allFormValues.expiryDate}
+                            onSelect={(date) => {
+                                if (!date) return;
+                                setValue('expiryDate', date, { shouldValidate: true });
+                                setIsMobileDatePickerOpen(false);
+                            }}
+                            initialFocus
+                            captionLayout="dropdown"
+                            startMonth={new Date(2020, 0)}
+                            endMonth={new Date(2045, 11)}
+                            className="mx-auto"
+                        />
+                    </div>
+                    <DialogFooter className="border-t bg-muted/15 p-3 sm:justify-end">
+                        <Button type="button" variant="ghost" onClick={() => setIsMobileDatePickerOpen(false)} className="h-10 w-full rounded-xl text-sm font-semibold">
+                            Cancel
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    )}
 
     {/* SCANNER INTERFACE */}
     <Dialog open={isScannerDialogOpen} onOpenChange={setIsScannerDialogOpen}>
