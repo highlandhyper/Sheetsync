@@ -448,41 +448,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     <div className="mx-auto w-full min-w-0 max-w-2xl space-y-2 overflow-x-hidden px-3 pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:px-4 md:px-0 md:pb-4">
         <OfflineOutboxBanner count={pendingActions.length} onOpen={() => setIsOutboxOpen(true)} />
 
-        <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => pendingActions.length > 0 && setIsOutboxOpen(true)}
-            className={cn(
-                'ml-auto flex h-6 rounded-full px-2 text-[8px] font-semibold md:hidden',
-                !isOnline && 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/15',
-                isOnline && pendingActions.length > 0 && 'bg-primary/10 text-primary hover:bg-primary/15',
-                isOnline && pendingActions.length === 0 && 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15',
-            )}
-            aria-label={
-                !isOnline
-                    ? 'Offline: changes will be queued'
-                    : pendingActions.length > 0
-                      ? `${pendingActions.length} changes waiting to sync`
-                      : 'Inventory is synced'
-            }
-        >
-            {isSubmitting || isPending ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            ) : !isOnline ? (
-                <CloudOff className="mr-1 h-3 w-3" />
-            ) : (
-                <Wifi className="mr-1 h-3 w-3" />
-            )}
-            {isSubmitting || isPending
-                ? 'Syncing'
-                : !isOnline
-                  ? 'Offline'
-                  : pendingActions.length > 0
-                    ? `${pendingActions.length} queued`
-                    : 'Synced'}
-        </Button>
-
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             {currentStep === 0 && (
                 <div className="flex min-w-0 items-center gap-3">
@@ -494,8 +459,44 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             <h1 className="truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">
                                 Log New Item
                             </h1>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => pendingActions.length > 0 && setIsOutboxOpen(true)}
+                                className={cn(
+                                    'flex h-5 shrink-0 rounded-full px-1.5 text-[7px] font-semibold md:hidden',
+                                    !isOnline && 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/15',
+                                    isOnline && pendingActions.length > 0 && 'bg-primary/10 text-primary hover:bg-primary/15',
+                                    isOnline && pendingActions.length === 0 && 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15',
+                                )}
+                                aria-label={
+                                    isSubmitting || isPending
+                                        ? 'Inventory changes are syncing'
+                                        : !isOnline
+                                          ? 'Offline: changes will be queued'
+                                          : pendingActions.length > 0
+                                            ? `${pendingActions.length} changes waiting to sync`
+                                            : 'Inventory is synced'
+                                }
+                            >
+                                {isSubmitting || isPending ? (
+                                    <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
+                                ) : !isOnline ? (
+                                    <CloudOff className="mr-1 h-2.5 w-2.5" />
+                                ) : (
+                                    <Wifi className="mr-1 h-2.5 w-2.5" />
+                                )}
+                                {isSubmitting || isPending
+                                    ? 'Syncing'
+                                    : !isOnline
+                                      ? 'Offline'
+                                      : pendingActions.length > 0
+                                        ? `${pendingActions.length} queued`
+                                        : 'Synced'}
+                            </Button>
                             {!isOnline && (
-                                <Badge variant="destructive" className="h-5 shrink-0 rounded-md px-1.5 py-0 text-[8px] font-semibold">
+                                <Badge variant="destructive" className="hidden h-5 shrink-0 rounded-md px-1.5 py-0 text-[8px] font-semibold md:inline-flex">
                                     <CloudOff className="mr-1 h-2.5 w-2.5" /> Offline
                                 </Badge>
                             )}
