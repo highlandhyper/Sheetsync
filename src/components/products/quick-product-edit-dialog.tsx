@@ -29,7 +29,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -68,6 +67,7 @@ export function QuickProductEditDialog({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
+  const supplierSearchInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -87,10 +87,17 @@ export function QuickProductEditDialog({
       setSearchTerm('');
       setMatchedProduct(null);
       reset();
+      setSupplierComboboxOpen(false);
       setSupplierSearch('');
       setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [isOpen, reset]);
+
+  useEffect(() => {
+    if (supplierComboboxOpen) {
+      requestAnimationFrame(() => supplierSearchInputRef.current?.focus());
+    }
+  }, [supplierComboboxOpen]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -105,7 +112,8 @@ export function QuickProductEditDialog({
     const match = products.find(
       (product) =>
         product.barcode.toLowerCase() === termLower ||
-        product.productName.toLowerCase().includes(termLower),
+        product.productName.toLowerCase().includes(termLower) ||
+        product.supplierName?.toLowerCase().includes(termLower),
     );
 
     if (match) {
@@ -237,7 +245,7 @@ export function QuickProductEditDialog({
                   variant="outline"
                   className="border-border/60 bg-muted/30 text-[10px] font-medium text-muted-foreground"
                 >
-                  Barcode or name
+                  Barcode, name, or supplier
                 </Badge>
               </div>
 
@@ -249,7 +257,7 @@ export function QuickProductEditDialog({
                   ref={searchInputRef}
                   value={searchTerm}
                   onChange={(event) => handleSearch(event.target.value)}
-                  placeholder="Scan barcode or search product..."
+                  placeholder="Scan barcode or search product, supplier..."
                   className="
                     h-12 rounded-xl border-border/60 bg-muted/20
                     pl-10 pr-10 text-sm font-medium shadow-none
@@ -338,18 +346,18 @@ export function QuickProductEditDialog({
                     Supplier
                   </Label>
 
-                  <Popover
-                    open={supplierComboboxOpen}
-                    onOpenChange={setSupplierComboboxOpen}
-                    modal
-                  >
-                    <PopoverTrigger asChild>
+                  <div className="relative">
                       <Button
                         ref={supplierTriggerRef}
                         type="button"
                         variant="outline"
                         role="combobox"
                         aria-expanded={supplierComboboxOpen}
+                        aria-controls="quick-product-supplier-options"
+                        onClick={() => {
+                          setSupplierComboboxOpen((isOpen) => !isOpen);
+                          setSupplierSearch('');
+                        }}
                         className={cn(
                           `
                             h-11 w-full justify-between rounded-xl
@@ -369,14 +377,15 @@ export function QuickProductEditDialog({
 
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                       </Button>
-                    </PopoverTrigger>
 
-                    <PopoverContent
-                      className="w-[--radix-popover-trigger-width] overflow-hidden rounded-2xl border-border/60 p-0 shadow-xl"
-                      align="start"
-                    >
+                    {supplierComboboxOpen && (
+                      <div
+                        id="quick-product-supplier-options"
+                        className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border/60 bg-popover p-0 text-popover-foreground shadow-xl"
+                      >
                       <Command>
                         <CommandInput
+                          ref={supplierSearchInputRef}
                           placeholder="Search or enter supplier..."
                           value={supplierSearch}
                           onValueChange={setSupplierSearch}
@@ -396,6 +405,7 @@ export function QuickProductEditDialog({
                                     shouldDirty: true,
                                     shouldValidate: true,
                                   });
+                                  setSupplierSearch('');
                                   setSupplierComboboxOpen(false);
                                 }}
                               >
@@ -419,6 +429,7 @@ export function QuickProductEditDialog({
                                     shouldValidate: true,
                                     shouldDirty: true,
                                   });
+                                  setSupplierSearch('');
                                   setSupplierComboboxOpen(false);
                                 }}
                                 className="h-10 rounded-lg text-xs font-medium"
@@ -438,8 +449,9 @@ export function QuickProductEditDialog({
                           </CommandGroup>
                         </CommandList>
                       </Command>
-                    </PopoverContent>
-                  </Popover>
+                      </div>
+                    )}
+                  </div>
 
                   {errors.supplierName?.message && (
                     <p className="text-xs text-destructive">
@@ -516,7 +528,7 @@ export function QuickProductEditDialog({
                   </h4>
 
                   <p className="mt-1 max-w-[280px] text-xs leading-5 text-muted-foreground">
-                    No product matches “{searchTerm}”. Try the exact barcode or another product name.
+                    No product matches “{searchTerm}”. Try the exact barcode, product name, or supplier name.
                   </p>
                 </div>
               </div>
@@ -531,7 +543,7 @@ export function QuickProductEditDialog({
                 </p>
 
                 <p className="mt-1 max-w-[280px] text-xs leading-5 text-muted-foreground">
-                  Scan a barcode or enter a product name to load its editable details.
+                  Scan a barcode or enter a product or supplier name to load its editable details.
                 </p>
               </div>
             )}
