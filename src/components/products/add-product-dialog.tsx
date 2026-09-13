@@ -32,10 +32,11 @@ import { saveProductAction, fetchProductExternalDataAction } from '@/app/actions
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
+import type { Product } from '@/lib/types';
 
 export function AddProductDialog() {
   const { toast } = useToast();
-  const { suppliers, addProduct: addProductToCache } = useDataCache();
+  const { suppliers, addProduct: addProductToCache, removeProducts } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
   const [isMagicLoading, setIsMagicLoading] = useState(false);
@@ -102,6 +103,14 @@ export function AddProductDialog() {
   };
 
   const processFormSubmit = (data: AddProductFormValues) => {
+    const optimisticProduct: Product = {
+      id: `pending-${data.barcode}`,
+      barcode: data.barcode,
+      productName: data.productName,
+      supplierName: data.supplierName,
+      costPrice: data.costPrice,
+    };
+
     const formData = new FormData();
     formData.append('barcode', data.barcode);
     formData.append('productName', data.productName);
@@ -111,16 +120,29 @@ export function AddProductDialog() {
         formData.append('costPrice', String(data.costPrice));
     }
 
+    addProductToCache(optimisticProduct);
+    setIsOpen(false);
+    toast({ title: 'Product added', description: 'Saved locally. Syncing with the catalog...' });
+
     startActionTransition(async () => {
-      const result = await saveProductAction(undefined, formData);
-      if (result.success && result.data) {
-        toast({ title: 'Success!', description: result.message });
-        addProductToCache(result.data);
-        setIsOpen(false);
-      } else {
+      try {
+        const result = await saveProductAction(undefined, formData);
+        if (result.success && result.data) {
+          addProductToCache(result.data);
+          return;
+        }
+
+        removeProducts([data.barcode]);
         toast({
-          title: 'Error Adding Product',
-          description: result.message || 'Validation failed.',
+          title: 'Product sync failed',
+          description: result.message || 'The local product was removed because it could not be saved.',
+          variant: 'destructive',
+        });
+      } catch {
+        removeProducts([data.barcode]);
+        toast({
+          title: 'Product sync failed',
+          description: 'The local product was removed because it could not be saved.',
           variant: 'destructive',
         });
       }

@@ -355,7 +355,12 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
             inventoryItems: p.inventoryItems.map(i => i.supplierName === oldName ? { ...i, supplierName: newName } : i)
         }));
     },
-    addProduct: (pr: any) => setData(p => ({ ...p, products: [pr, ...p.products] })),
+    addProduct: (pr: any) => setData(p => ({
+        ...p,
+        products: p.products.some(product => product.barcode === pr.barcode)
+            ? p.products.map(product => product.barcode === pr.barcode ? { ...product, ...pr } : product)
+            : [pr, ...p.products],
+    })),
     updateProduct: (pr: any) => {
         setData(p => ({ 
             ...p, 

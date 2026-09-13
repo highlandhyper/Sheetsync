@@ -31,7 +31,7 @@ import { useRouter } from 'next/navigation';
 import { CreateProductFromInventoryDialog } from '@/components/products/create-product-from-inventory-dialog';
 
 export function ApprovalCenterClient() {
-    const { pendingRequests, processedRequests, approveRequest, rejectRequest } = useSpecialEntry();
+    const { pendingRequests, processedRequests, approveRequest, completeProductAddRequest, rejectRequest } = useSpecialEntry();
     const { updateInventoryItem, refreshData, suppliers, addProduct } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
@@ -91,7 +91,7 @@ export function ApprovalCenterClient() {
         addProduct(p);
         
         if (selectedRequest) {
-            await approveRequest(selectedRequest.id);
+            await completeProductAddRequest(selectedRequest.id);
             toast({ title: 'Product Registered', description: `Request for barcode ${p.barcode} has been processed.` });
             setIsDetailDialogOpen(false);
             setSelectedRequest(null);
