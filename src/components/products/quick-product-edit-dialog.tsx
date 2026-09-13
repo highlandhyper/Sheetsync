@@ -105,7 +105,8 @@ export function QuickProductEditDialog({
     const match = products.find(
       (product) =>
         product.barcode.toLowerCase() === termLower ||
-        product.productName.toLowerCase().includes(termLower),
+        product.productName.toLowerCase().includes(termLower) ||
+        product.supplierName?.toLowerCase().includes(termLower),
     );
 
     if (match) {
@@ -237,7 +238,7 @@ export function QuickProductEditDialog({
                   variant="outline"
                   className="border-border/60 bg-muted/30 text-[10px] font-medium text-muted-foreground"
                 >
-                  Barcode or name
+                  Barcode, name, or supplier
                 </Badge>
               </div>
 
@@ -249,7 +250,7 @@ export function QuickProductEditDialog({
                   ref={searchInputRef}
                   value={searchTerm}
                   onChange={(event) => handleSearch(event.target.value)}
-                  placeholder="Scan barcode or search product..."
+                  placeholder="Scan barcode or search product, supplier..."
                   className="
                     h-12 rounded-xl border-border/60 bg-muted/20
                     pl-10 pr-10 text-sm font-medium shadow-none
@@ -341,7 +342,6 @@ export function QuickProductEditDialog({
                   <Popover
                     open={supplierComboboxOpen}
                     onOpenChange={setSupplierComboboxOpen}
-                    modal
                   >
                     <PopoverTrigger asChild>
                       <Button
@@ -516,7 +516,7 @@ export function QuickProductEditDialog({
                   </h4>
 
                   <p className="mt-1 max-w-[280px] text-xs leading-5 text-muted-foreground">
-                    No product matches “{searchTerm}”. Try the exact barcode or another product name.
+                    No product matches “{searchTerm}”. Try the exact barcode, product name, or supplier name.
                   </p>
                 </div>
               </div>
@@ -531,7 +531,7 @@ export function QuickProductEditDialog({
                 </p>
 
                 <p className="mt-1 max-w-[280px] text-xs leading-5 text-muted-foreground">
-                  Scan a barcode or enter a product name to load its editable details.
+                  Scan a barcode or enter a product or supplier name to load its editable details.
                 </p>
               </div>
             )}
