@@ -87,16 +87,113 @@ export function ExpiryWatchClient() {
         });
     }, [expiryReminders, searchTerm]);
 
+    /**
+     * IMPORTANT:
+     * These must point to the same Apps Script deployment used by your app.
+     *
+     * Recommended .env.local:
+     * NEXT_PUBLIC_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+     * NEXT_PUBLIC_ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD
+     *
+     * Do NOT hard-code the admin password in this file.
+     */
+    const GOOGLE_SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || '';
+    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
+
+    const triggerResolvedSms = async (reminderId: string) => {
+        if (!GOOGLE_SCRIPT_URL) {
+            throw new Error("NEXT_PUBLIC_GOOGLE_SCRIPT_URL is not configured.");
+        }
+
+        if (!ADMIN_PASSWORD) {
+            throw new Error("NEXT_PUBLIC_ADMIN_PASSWORD is not configured.");
+        }
+
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify({
+                action: 'triggerWatchResolvedSms',
+                reminderId,
+                password: ADMIN_PASSWORD,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Resolved SMS request failed (${response.status}).`);
+        }
+
+        const result = await response.json();
+
+        if (result?.status !== 'success') {
+            throw new Error(result?.message || 'Resolved SMS request failed.');
+        }
+
+        return result?.sms;
+    };
+
     const handleResolve = async (id: string, name: string) => {
         setIsResolving(id);
-        toast({ title: "Resolving Entry", description: `Clearing ${name} from Diary Reminders...` });
+        toast({
+            title: "Resolving Entry",
+            description: `Clearing ${name} from Diary Reminders...`,
+        });
 
         try {
+            // STEP 1: Change Expiry Watch status to resolved.
             await resolveExpiryReminder(id);
-            toast({ title: "Task Completed", description: "Product removed from active observation." });
+
+            // STEP 2: Only after the resolve operation succeeds,
+            // ask Apps Script to send the resolved SMS immediately.
+            let smsResult: any = null;
+
+            try {
+                smsResult = await triggerResolvedSms(id);
+            } catch (smsError) {
+                console.error("Resolved expiry SMS failed:", smsError);
+
+                toast({
+                    variant: "destructive",
+                    title: "Resolved, SMS Failed",
+                    description:
+                        "The expiry entry was resolved, but the notification could not be sent.",
+                });
+            }
+
+            // STEP 3: Refresh the app regardless of SMS result.
             await refreshData();
+
+            if (smsResult?.status === 'sent') {
+                toast({
+                    title: "Task Completed",
+                    description: "Entry resolved and SMS sent immediately.",
+                });
+            } else if (
+                smsResult?.status === 'already-sent' ||
+                smsResult?.status === 'skipped'
+            ) {
+                toast({
+                    title: "Task Completed",
+                    description: "Entry resolved. SMS was already processed.",
+                });
+            } else if (!smsResult) {
+                // An SMS error toast was already shown above.
+            } else {
+                toast({
+                    title: "Task Completed",
+                    description: "Product removed from active observation.",
+                });
+            }
         } catch (e) {
-            toast({ variant: "destructive", title: "Sync Failure", description: "Registry core connection interrupted." });
+            console.error("Expiry Watch resolve failed:", e);
+
+            toast({
+                variant: "destructive",
+                title: "Sync Failure",
+                description: "Registry core connection interrupted.",
+            });
         } finally {
             setIsResolving(null);
         }
