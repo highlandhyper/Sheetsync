@@ -81,6 +81,7 @@ export async function readSheetData(range: string): Promise<any[][] | null> {
     const response = await currentSheetsClient.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       range: range,
+      valueRenderOption: 'UNFORMATTED_VALUE', // CRITICAL: Avoid scientific notation and localized number formatting
     });
     return response.data.values || [];
   } catch (error: any) {

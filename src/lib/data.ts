@@ -1,4 +1,3 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -98,7 +97,10 @@ function parseFlexibleTimestamp(val: any): Date | null {
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
   
-  const barcode = String(row[DB_COL_BARCODE_A] || row[DB_COL_BARCODE_B] || '').trim();
+  const barcodeA = String(row[DB_COL_BARCODE_A] || '').trim();
+  const barcodeB = String(row[DB_COL_BARCODE_B] || '').trim();
+  const barcode = barcodeA || barcodeB;
+  
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
   const uniqueIdFromSheet = String(row[DB_COL_UNIQUE_ID] || '').trim();
   
@@ -121,7 +123,8 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
   if (!row || row.length < 2) return null;
   const barcode = String(row[INV_COL_BARCODE] || '').trim();
   const qtyRaw = String(row[INV_COL_QTY] || '0');
-  const qty = parseInt(qtyRaw, 10);
+  // Use parseFloat for industrial quantities (e.g. 0.5 kg)
+  const qty = parseFloat(qtyRaw.replace(/[^0-9.-]+/g,""));
   if (!barcode || isNaN(qty)) return null;
   
   const exp = parseFlexibleTimestamp(row[INV_COL_EXPIRY]);
