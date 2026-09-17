@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDataCache } from '@/context/data-cache-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,8 @@ import {
     ShieldAlert,
     Smartphone,
     Info,
-    LayoutDashboard
+    LayoutDashboard,
+    Search
 } from 'lucide-react';
 import {
   Command,
@@ -39,6 +40,12 @@ export function ManualOnDisplaySmsTerminal() {
     const [selectedStaff, setSelectedStaff] = useState('');
     const [isTriggering, setIsTriggering] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
+
+    // Ensure we have a valid array to map over
+    const staffList = useMemo(() => {
+        if (!uniqueStaffNames || !Array.isArray(uniqueStaffNames)) return [];
+        return [...uniqueStaffNames].sort((a, b) => a.localeCompare(b));
+    }, [uniqueStaffNames]);
 
     const handleTrigger = async () => {
         if (!selectedStaff) return;
@@ -88,24 +95,24 @@ export function ManualOnDisplaySmsTerminal() {
                             <Button
                                 variant="outline"
                                 role="combobox"
-                                className="w-full h-12 justify-between rounded-xl font-bold bg-background border-primary/10"
+                                className="w-full h-12 justify-between rounded-xl font-bold bg-background border-primary/10 px-4"
                             >
-                                <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-primary/40" />
-                                    <span className={cn(!selectedStaff && "text-muted-foreground")}>
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <User className="h-4 w-4 text-primary/40 shrink-0" />
+                                    <span className={cn("truncate", !selectedStaff && "text-muted-foreground")}>
                                         {selectedStaff || "Select personnel..."}
                                     </span>
                                 </div>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl">
-                            <Command>
-                                <CommandInput placeholder="Search registry..." />
-                                <CommandList>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-border/60" align="start">
+                            <Command className="w-full">
+                                <CommandInput placeholder="Search personnel..." className="h-11" />
+                                <CommandList className="max-h-64">
                                     <CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">No personnel found</CommandEmpty>
                                     <CommandGroup className="p-1.5">
-                                        {uniqueStaffNames.map((name) => (
+                                        {staffList.map((name) => (
                                             <CommandItem
                                                 key={name}
                                                 value={name}
@@ -113,10 +120,10 @@ export function ManualOnDisplaySmsTerminal() {
                                                     setSelectedStaff(name);
                                                     setPopoverOpen(false);
                                                 }}
-                                                className="font-bold text-xs h-10"
+                                                className="font-bold text-xs h-10 cursor-pointer rounded-lg px-3"
                                             >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedStaff === name ? "opacity-100" : "opacity-0")} />
-                                                {name}
+                                                <Check className={cn("mr-2 h-4 w-4 text-primary", selectedStaff === name ? "opacity-100" : "opacity-0")} />
+                                                <span className="truncate uppercase">{name}</span>
                                             </CommandItem>
                                         ))}
                                     </CommandGroup>
