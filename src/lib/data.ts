@@ -26,7 +26,7 @@ const DB_COL_BARCODE_B = 1;
 const DB_COL_PRODUCT_NAME = 2;
 const DB_COL_SUPPLIER_NAME = 3;
 const DB_COL_COST_PRICE = 4;
-const DB_COL_UNIQUE_ID = 7; // COLUMN H
+const DB_COL_UNIQUE_ID = 7; 
 
 const SETTINGS_COL_KEY = 0;
 const SETTINGS_COL_VALUE = 1;
@@ -67,9 +67,6 @@ const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
 const STAFF_LIST_KEY = 'staffList';
 const LOCATION_LIST_KEY = 'locationList';
-
-const APPSCRIPT_API_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
-const APPSCRIPT_PASS = "0438"; 
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -156,13 +153,6 @@ export async function getProducts(): Promise<Product[]> {
   }, []);
 }
 
-export async function getSuppliers(prods?: Product[]): Promise<Supplier[]> {
-  const p = prods || await getProducts();
-  const names = new Set<string>();
-  p.forEach(x => { if (x.supplierName) names.add(x.supplierName.trim()); });
-  return Array.from(names).map((n, i) => ({ id: `s_${i}`, name: n, createdAt: new Date().toISOString() }));
-}
-
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   const data = await readSheetData(INVENTORY_READ_RANGE);
   if (data === null) throw new Error("Inventory Registry Offline");
@@ -212,7 +202,13 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ item: In
   
   const barcode = String(alertRow[ODA_COL_BARCODE]).trim();
   const inventory = await getInventoryItems();
-  const item = inventory.find(i => i.barcode.trim() === barcode && i.location === "On Display") || null;
+  
+  // Find the most recent active log for this staff member in On Display
+  const item = inventory.find(i => 
+    i.barcode.trim() === barcode && 
+    i.location === "On Display" && 
+    i.staffName === String(alertRow[ODA_COL_STAFF]).trim()
+  ) || null;
   
   if (!item) return null;
   return { item, pin };
@@ -230,42 +226,8 @@ export async function markOnDisplayTokenUsed(token: string) {
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
-    
-    const row = [
-        id, 
-        reminder.barcode, 
-        reminder.productName, 
-        reminder.expiryDate, 
-        reminder.supplierName || '', 
-        'pending', 
-        ts,
-        reminder.staffName || '' // COLUMN H
-    ];
-    
+    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts, reminder.staffName || ''];
     await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:H`, [row]);
-    
-    try {
-        await fetch(APPSCRIPT_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'triggerWatchSmsOnly',
-                password: APPSCRIPT_PASS,
-                isWatchEntry: true, 
-                isStandardLog: false,
-                reminderId: id,
-                barcode: reminder.barcode,
-                productName: reminder.productName,
-                expiryDate: reminder.expiryDate,
-                staffName: reminder.staffName,
-                supplierName: reminder.supplierName
-            }),
-            redirect: 'follow'
-        });
-    } catch (e) {
-        console.error("Diary Reminder: AppsScript trigger failed.", e);
-    }
-    
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
 }
 
@@ -282,9 +244,6 @@ export async function resolveExpiryReminder(id: string, email: string) {
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const data = await readSheetData(AUDIT_LOG_READ_RANGE);
   if (data === null) throw new Error("Audit Trail Unavailable");
-  
-  const oneYearAgo = subDays(new Date(), 365);
-  
   const logs = data.map((r, i) => {
     const ts = parseFlexibleTimestamp(r[AUDIT_COL_TIMESTAMP]);
     return {
@@ -294,15 +253,9 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
       action: String(r[AUDIT_COL_ACTION] || ''),
       target: String(r[AUDIT_COL_TARGET] || ''),
       details: String(r[AUDIT_COL_DETAILS] || ''),
-      _date: ts
     };
   });
-
-  return logs
-    .filter(log => log._date && isAfter(log._date, oneYearAgo))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 10000)
-    .map(({ _date, ...rest }) => rest) as AuditLogEntry[];
+  return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5000);
 }
 
 export async function logAuditEvent(user: string, action: string, target: string, details: string) {
@@ -313,24 +266,14 @@ export async function logAuditEvent(user: string, action: string, target: string
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   if (data === null) throw new Error("System configuration unreachable.");
-
   const findJson = (key: string) => {
     const rows = data.filter(r => r[SETTINGS_COL_KEY] === key);
     if (!rows || rows.length === 0) return null;
     const lastRow = rows[rows.length - 1];
-    try {
-        return lastRow ? JSON.parse(lastRow[SETTINGS_COL_VALUE]) : null;
-    } catch { return null; }
+    try { return lastRow ? JSON.parse(lastRow[SETTINGS_COL_VALUE]) : null; } catch { return null; }
   };
-
   const rawStaff = findJson(STAFF_LIST_KEY);
-  let processedStaff: StaffMember[] = [];
-  if (Array.isArray(rawStaff)) {
-      processedStaff = rawStaff.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s);
-  } else {
-      processedStaff = ["ASLAM", "SALAM", "MOIDU", "RAMSHAD", "MUHAMMED", "ANAS", "SATTAR", "JOWEL", "AROOS", "SHAHID", "RALEEM"].map(n => ({ name: n }));
-  }
-
+  const processedStaff = Array.isArray(rawStaff) ? rawStaff.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s) : [];
   return {
     permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
     specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
@@ -350,12 +293,11 @@ export async function savePermissionsToSheet(perms: Permissions) {
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
-  const prunedReqs = reqs.slice(0, 200);
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(prunedReqs)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(prunedReqs)]]);
+  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(reqs.slice(0, 200))]]);
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs.slice(0, 200))]]);
 }
 
 export async function saveStaffListToSheet(staff: StaffMember[]) {
@@ -419,57 +361,9 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
 }
 
 export async function addInventoryItemToSheet(item: any) {
-  try {
-    const payload = {
-      action: 'standardLog', 
-      isStandardLog: true,
-      barcode: item.barcode,
-      quantity: item.quantity,
-      expiryDate: item.expiryDate, 
-      location: item.location,
-      staff: item.staffName,
-      productName: item.productName,
-      supplierName: item.supplierName || '', 
-      itemType: item.itemType,        
-      timestamp: item.timestamp || new Date().toISOString(),
-      disableNotification: item.disableNotification === true
-    };
-
-    const response = await fetch(APPSCRIPT_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      redirect: 'follow', 
-      signal: AbortSignal.timeout(15000) 
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      if (result.status === 'success') return true;
-    }
-  } catch (error) {
-    console.error("AppsScript Standard Log Error:", error);
-  }
-
-  // FALLBACK
-  try {
-    const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
-    const sdkRowData = [
-      format(entryDate, "d/M/yyyy HH:mm:ss"), 
-      item.barcode, 
-      item.quantity, 
-      item.expiryDate, 
-      item.location, 
-      item.staffName, 
-      item.productName, 
-      "", 
-      item.itemType, 
-      item.id
-    ];
-    return await appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [sdkRowData]);
-  } catch (error) {
-    return false;
-  }
+    const ts = item.timestamp ? new Date(item.timestamp) : new Date();
+    const row = [format(ts, "d/M/yyyy HH:mm:ss"), item.barcode, item.quantity, item.expiryDate, item.location, item.staffName, item.productName, "", item.itemType, item.id];
+    return appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [row]);
 }
 
 export async function updateInventoryItemDetails(email: string, id: string, u: any) {
@@ -490,25 +384,16 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
   if (!row) return { success: false, message: "Record identification failure." };
-
   const fullRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
   if (!fullRowData || !fullRowData[0]) return { success: false };
-
   const currentItem = transformToInventoryItem(fullRowData[0], row - 2);
   if (!currentItem) return { success: false };
-
   const qtyToReturn = q === undefined ? currentItem.quantity : q;
   const newQty = Math.max(0, currentItem.quantity - qtyToReturn);
-
-  if (newQty > 0) {
-    await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]]);
-  } else {
-    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-  }
-
+  if (newQty > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]]);
+  else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
   const auditDetails = `[RETURN] Product: ${currentItem.productName} | Barcode: ${currentItem.barcode} | Qty: ${qtyToReturn} | Staff: ${staff}`;
   await logAuditEvent(email, 'RETURN_INVENTORY', id, auditDetails);
-
   return { success: true };
 }
 
