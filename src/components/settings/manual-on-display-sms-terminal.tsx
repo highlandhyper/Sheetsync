@@ -41,10 +41,12 @@ export function ManualOnDisplaySmsTerminal() {
     const [isTriggering, setIsTriggering] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
 
-    // Ensure we have a valid array to map over
+    // Normalize and sort staff list
     const staffList = useMemo(() => {
         if (!uniqueStaffNames || !Array.isArray(uniqueStaffNames)) return [];
-        return [...uniqueStaffNames].sort((a, b) => a.localeCompare(b));
+        return [...uniqueStaffNames]
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
     }, [uniqueStaffNames]);
 
     const handleTrigger = async () => {
@@ -90,26 +92,33 @@ export function ManualOnDisplaySmsTerminal() {
             <div className="space-y-4">
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Assigned Personnel</label>
-                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal={true}>
                         <PopoverTrigger asChild>
                             <Button
                                 variant="outline"
                                 role="combobox"
-                                className="w-full h-12 justify-between rounded-xl font-bold bg-background border-primary/10 px-4"
+                                className="w-full h-12 justify-between rounded-xl font-bold bg-background border-primary/10 px-4 shadow-none"
                             >
                                 <div className="flex items-center gap-2 overflow-hidden">
                                     <User className="h-4 w-4 text-primary/40 shrink-0" />
-                                    <span className={cn("truncate", !selectedStaff && "text-muted-foreground")}>
+                                    <span className={cn("truncate uppercase", !selectedStaff && "text-muted-foreground normal-case font-normal")}>
                                         {selectedStaff || "Select personnel..."}
                                     </span>
                                 </div>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-border/60" align="start">
-                            <Command className="w-full">
+                        <PopoverContent 
+                            className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-border/60" 
+                            align="start"
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                            <Command className="w-full" filter={(value, search) => {
+                                if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                                return 0;
+                            }}>
                                 <CommandInput placeholder="Search personnel..." className="h-11" />
-                                <CommandList className="max-h-64">
+                                <CommandList className="max-h-64 overflow-y-auto">
                                     <CommandEmpty className="py-6 text-[10px] font-black text-center text-muted-foreground/40 uppercase">No personnel found</CommandEmpty>
                                     <CommandGroup className="p-1.5">
                                         {staffList.map((name) => (
@@ -120,9 +129,9 @@ export function ManualOnDisplaySmsTerminal() {
                                                     setSelectedStaff(name);
                                                     setPopoverOpen(false);
                                                 }}
-                                                className="font-bold text-xs h-10 cursor-pointer rounded-lg px-3"
+                                                className="font-bold text-xs h-10 cursor-pointer rounded-lg px-3 transition-colors"
                                             >
-                                                <Check className={cn("mr-2 h-4 w-4 text-primary", selectedStaff === name ? "opacity-100" : "opacity-0")} />
+                                                <Check className={cn("mr-2 h-4 w-4 text-primary shrink-0", selectedStaff === name ? "opacity-100" : "opacity-0")} />
                                                 <span className="truncate uppercase">{name}</span>
                                             </CommandItem>
                                         ))}
