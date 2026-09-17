@@ -1,4 +1,3 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -182,16 +181,10 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
     }).filter(r => r.id && r.status === 'pending');
 }
 
-/**
- * EXCLUSIVE DIARY REMINDER LOGGING
- * Strictly logs to "Expiry Watch" sheet only. 
- * Persists Staff Name in Column H for integrated reporting.
- */
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
     
-    // STRUCTURE: ID | Barcode | Name | Expiry | Supplier | Status | Timestamp | Staff
     const row = [
         id, 
         reminder.barcode, 
@@ -465,10 +458,6 @@ export async function updateSupplierNameAndReferences(email: string, oldName: st
   return true;
 }
 
-/**
- * STANDARD INVENTORY LOGGING
- * Logs exclusively to "Form responses 2".
- */
 export async function addInventoryItemToSheet(item: any) {
   try {
     const payload = {
@@ -540,12 +529,28 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) return;
-  const data = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}:C${row}`);
-  const qty = parseInt(String(data?.[0]?.[0] || '0'), 10);
-  const final = Math.max(0, qty - (q === undefined ? qty : q));
-  if (final > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[final]]);
-  else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
+  if (!row) return { success: false, message: "Record identification failure." };
+
+  // FETCH CURRENT STATE FOR AUDIT DETAIL
+  const fullRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
+  if (!fullRowData || !fullRowData[0]) return { success: false };
+
+  const currentItem = transformToInventoryItem(fullRowData[0], row - 2);
+  if (!currentItem) return { success: false };
+
+  const qtyToReturn = q === undefined ? currentItem.quantity : q;
+  const newQty = Math.max(0, currentItem.quantity - qtyToReturn);
+
+  if (newQty > 0) {
+    await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]]);
+  } else {
+    await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
+  }
+
+  // DISPATCH AUDIT LOG
+  const auditDetails = `[RETURN] Product: ${currentItem.productName} | Barcode: ${currentItem.barcode} | Qty: ${qtyToReturn} | Staff: ${staff}`;
+  await logAuditEvent(email, 'RETURN_INVENTORY', id, auditDetails);
+
   return { success: true };
 }
 
