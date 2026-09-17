@@ -56,6 +56,7 @@ export interface OnDisplayAlert {
   expiryDate: string;
   staffName: string;
   token: string;
+  pin: string;
   expiresAt: string;
   used: boolean;
 }

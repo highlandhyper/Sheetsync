@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -138,21 +139,37 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
     }
 }
 
+export async function verifyOnDisplayTokenAction(token: string, pin: string): Promise<ActionResponse<InventoryItem>> {
+  try {
+    const data = await getOnDisplayItemByToken(token);
+    if (!data) return { success: false, message: "Link invalid or session expired." };
+    
+    if (data.pin !== pin) {
+        return { success: false, message: "Invalid Access Key. Please check your SMS." };
+    }
+
+    return { success: true, data: sanitizeForJSON(data.item) };
+  } catch (e) {
+    return { success: false, message: "Registry handshake failure." };
+  }
+}
+
 export async function getOnDisplayItemByTokenAction(token: string): Promise<ActionResponse<InventoryItem>> {
   try {
-    const item = await getOnDisplayItemByToken(token);
-    if (!item) return { success: false, message: "Token invalid or expired." };
-    return { success: true, data: sanitizeForJSON(item) };
+    const data = await getOnDisplayItemByToken(token);
+    if (!data) return { success: false, message: "Token invalid or expired." };
+    return { success: true, data: sanitizeForJSON(data.item) };
   } catch (e) {
     return { success: false, message: "Handshake failure." };
   }
 }
 
-export async function submitOnDisplayRequestAction(token: string, request: Partial<SpecialEntryRequest>): Promise<ActionResponse> {
+export async function submitOnDisplayRequestAction(token: string, pin: string, request: Partial<SpecialEntryRequest>): Promise<ActionResponse> {
   try {
-    const item = await getOnDisplayItemByToken(token);
-    if (!item) return { success: false, message: "Unauthorized: Session expired." };
+    const data = await getOnDisplayItemByToken(token);
+    if (!data || data.pin !== pin) return { success: false, message: "Unauthorized: Session invalid." };
     
+    const item = data.item;
     const meta = await getAppMetaData();
     const reqs = meta.specialRequests || [];
     
@@ -180,7 +197,7 @@ export async function submitOnDisplayRequestAction(token: string, request: Parti
     await markOnDisplayTokenUsed(token);
     
     const actionDesc = request.editDetails?.requestType === 'delete' ? 'DELETION' : 'MODIFICATION';
-    await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Temp staff request via On-Display Token: ${token}`);
+    await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Temp staff request via On-Display Handshake: ${token}`);
     
     return { success: true };
   } catch (e) {

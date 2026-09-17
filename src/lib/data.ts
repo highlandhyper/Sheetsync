@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -51,8 +52,9 @@ const ODA_COL_PRODUCT = 2;
 const ODA_COL_EXPIRY = 3;
 const ODA_COL_STAFF = 4;
 const ODA_COL_TOKEN = 5;
-const ODA_COL_EXPIRES = 6;
-const ODA_COL_USED = 7;
+const ODA_COL_PIN = 6;
+const ODA_COL_EXPIRES = 7;
+const ODA_COL_USED = 8;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
@@ -123,7 +125,6 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
   if (!row || row.length < 2) return null;
   const barcode = String(row[INV_COL_BARCODE] || '').trim();
   const qtyRaw = String(row[INV_COL_QTY] || '0');
-  // Use parseFloat for industrial quantities (e.g. 0.5 kg)
   const qty = parseFloat(qtyRaw.replace(/[^0-9.-]+/g,""));
   if (!barcode || isNaN(qty)) return null;
   
@@ -196,7 +197,7 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
     }).filter(r => r.id && r.status === 'pending');
 }
 
-export async function getOnDisplayItemByToken(token: string): Promise<InventoryItem | null> {
+export async function getOnDisplayItemByToken(token: string): Promise<{ item: InventoryItem; pin: string } | null> {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
   
@@ -205,18 +206,22 @@ export async function getOnDisplayItemByToken(token: string): Promise<InventoryI
   
   const isUsed = String(alertRow[ODA_COL_USED]).toLowerCase() === 'yes';
   const expiresAt = parseFlexibleTimestamp(alertRow[ODA_COL_EXPIRES]);
+  const pin = String(alertRow[ODA_COL_PIN] || '').trim();
   
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
   
-  const barcode = String(alertRow[ODA_COL_BARCODE]);
+  const barcode = String(alertRow[ODA_COL_BARCODE]).trim();
   const inventory = await getInventoryItems();
-  return inventory.find(i => i.barcode === barcode && i.location === "On Display") || null;
+  const item = inventory.find(i => i.barcode.trim() === barcode && i.location === "On Display") || null;
+  
+  if (!item) return null;
+  return { item, pin };
 }
 
 export async function markOnDisplayTokenUsed(token: string) {
   const row = await findRowByUniqueValue(ON_DISPLAY_ALERTS_SHEET_NAME, token, ODA_COL_TOKEN);
   if (row) {
-    await updateSheetData(`${ON_DISPLAY_ALERTS_SHEET_NAME}!H${row}`, [['Yes']]);
+    await updateSheetData(`${ON_DISPLAY_ALERTS_SHEET_NAME}!I${row}`, [['Yes']]);
     return true;
   }
   return false;
