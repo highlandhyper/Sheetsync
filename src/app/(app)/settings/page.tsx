@@ -35,7 +35,8 @@ import {
     Wifi,
     WifiOff,
     ShieldAlert,
-    Cpu
+    Cpu,
+    LayoutDashboard
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -62,6 +63,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { AudioFeedbackToggle } from '@/components/settings/audio-feedback-toggle';
 import { IdentityAudioSelector } from '@/components/settings/identity-audio-selector';
+import { ManualOnDisplaySmsTerminal } from '@/components/settings/manual-on-display-sms-terminal';
 
 interface SettingsCardProps {
   icon: React.ElementType;
@@ -615,6 +617,18 @@ export default function SettingsPage() {
                         badge="WAREHOUSE"
                     >
                         <LocationManager />
+                    </SettingsCard>
+
+                    <SettingsCard
+                        icon={LayoutDashboard}
+                        title="On-Display protocol"
+                        description="Manually trigger 7-day expiry alerts and temporary access for specific staff."
+                        triggerText="Open terminal"
+                        variant="logic"
+                        badge="ALERTS"
+                        dialogClassName="sm:max-w-md"
+                    >
+                        <ManualOnDisplaySmsTerminal />
                     </SettingsCard>
 
                     <SettingsCard

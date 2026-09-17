@@ -37,6 +37,9 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
+const APPSCRIPT_API_URL = "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+const APPSCRIPT_PASS = "0438"; 
+
 function sanitizeForJSON(input: any): any {
     if (input === null || input === undefined) return input;
     if (typeof input !== 'object') {
@@ -105,6 +108,34 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
   } catch (error: any) {
     return { success: false, message: error.message };
   }
+}
+
+export async function triggerManualOnDisplaySmsAction(staffName: string): Promise<ActionResponse> {
+    if (!staffName) return { success: false, message: "Staff identification required." };
+
+    try {
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'triggerOnDisplayAlerts',
+                password: APPSCRIPT_PASS,
+                staffName: staffName
+            }),
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success') {
+                return { success: true, message: `Dispatched ${result.processed || 0} On-Display alerts to ${staffName}.` };
+            }
+            return { success: false, message: result.message || "Protocol rejection by Apps Script." };
+        }
+        return { success: false, message: "Registry core connection timeout." };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
 }
 
 export async function getOnDisplayItemByTokenAction(token: string): Promise<ActionResponse<InventoryItem>> {
