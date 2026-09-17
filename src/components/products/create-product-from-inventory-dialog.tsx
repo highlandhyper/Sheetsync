@@ -78,8 +78,7 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
             costPrice: undefined,
         });
         setSupplierSearch('');
-        // Focus product name on open
-        setTimeout(() => nameRef.current?.focus(), 100);
+        setTimeout(() => nameRef.current?.focus(), 150);
     }
   }, [barcode, reset, isOpen]);
 
@@ -175,11 +174,10 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                         <Command>
                             <CommandInput
                                 placeholder="Search or type new..."
-                                value={supplierSearch}
                                 onValueChange={setSupplierSearch}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && supplierSearch) {
@@ -193,6 +191,7 @@ export function CreateProductFromInventoryDialog({ barcode, allSuppliers, isOpen
                             <CommandEmpty>
                                 {supplierSearch ? (
                                     <Button 
+                                        type="button"
                                         variant="ghost" 
                                         className="w-full justify-start text-xs h-8 font-bold"
                                         onClick={() => {
