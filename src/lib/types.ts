@@ -49,6 +49,17 @@ export interface ExpiryReminder {
   timestamp: string;
 }
 
+export interface OnDisplayAlert {
+  id: string;
+  barcode: string;
+  productName: string;
+  expiryDate: string;
+  staffName: string;
+  token: string;
+  expiresAt: string;
+  used: boolean;
+}
+
 export interface ReturnedItem {
   id: string; 
   originalInventoryItemId?: string;
@@ -110,7 +121,7 @@ export interface DashboardMetrics {
   stockTrend?: StockTrendData[];
 }
 
-export type Role = 'admin' | 'viewer';
+export type Role = 'admin' | 'viewer' | 'staff_temp';
 
 export type ViewerFeature = 'EXPORT_PDF' | 'PRINT_RECORDS' | 'PROCESS_RETURN' | 'EDIT_INVENTORY' | 'DELETE_INVENTORY';
 
@@ -148,7 +159,7 @@ export interface AppNotification {
     barcode?: string;
     requestId?: string;
     otp?: string;
-    type?: 'add_product_request' | 'authorization' | 'edit_request';
+    type?: 'add_product_request' | 'authorization' | 'edit_request' | 'on_display_request';
   };
 }
 
@@ -159,7 +170,8 @@ export interface SpecialEntryRequest {
   reason?: string;
   suggestedProductName?: string;
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired' | 'blocked';
-  type: 'single' | 'timed' | 'product_add' | 'inventory_edit';
+  type: 'single' | 'timed' | 'product_add' | 'inventory_edit' | 'on_display_request';
+  source?: 'on_display_expiry' | 'standard';
   durationMinutes?: number;
   requestedAt: string;
   approvedAt?: string;
@@ -173,6 +185,7 @@ export interface SpecialEntryRequest {
   isDismissedByAdmin?: boolean;
   isReadByUser?: boolean;
   originalDetails?: {
+    itemId?: string;
     location: string;
     itemType: ItemType;
     quantity: number;
@@ -185,6 +198,7 @@ export interface SpecialEntryRequest {
     itemType: ItemType;
     quantity: number;
     expiryDate?: string;
+    requestType?: 'edit' | 'delete';
   };
 }
 
