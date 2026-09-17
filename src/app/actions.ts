@@ -69,6 +69,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
   suppliers?: Supplier[];
   uniqueLocations: string[];
   uniqueStaffNames: string[];
+  staffRegistry: StaffMember[];
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
   expiryReminders: ExpiryReminder[];
@@ -93,6 +94,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       ...(skipProducts ? {} : { products: activeProducts }),
       ...(calculatedSuppliers ? { suppliers: calculatedSuppliers } : {}),
       uniqueLocations: meta.locations || [],
+      staffRegistry: meta.staff || [],
       uniqueStaffNames: meta.staff.map((s: any) => s.name),
       auditLogs: auditLogs || [],
       specialRequests: meta.specialRequests || [],

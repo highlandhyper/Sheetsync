@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -52,7 +51,7 @@ const DataCacheContext = createContext<DataCacheContextType | undefined>(undefin
 const SYNC_INTERVAL_MS = 15000; 
 const PRODUCT_SYNC_INTERVAL_MS = 900000; 
 
-const DATA_CACHE_KEY = 'sheetSync_metaCache_v5'; // Bump version for staff object structure
+const DATA_CACHE_KEY = 'sheetSync_metaCache_v5'; 
 const OFFLINE_KEY = 'sheetSync_offlineActions_v4';
 
 const initialEmptyData: AppData = {
@@ -98,7 +97,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         const saved = localStorage.getItem(DATA_CACHE_KEY);
         if (saved) {
             const parsed = JSON.parse(saved);
-            // Backward compatibility: If old staff list (string[]) found, convert it
             if (parsed.staff && Array.isArray(parsed.staff) && typeof parsed.staff[0] === 'string') {
                 parsed.staffRegistry = parsed.staff.map((n: string) => ({ name: n }));
                 delete parsed.staff;
@@ -168,18 +166,26 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
             lastProductSyncRef.current = now;
         }
         
-        setData(prev => ({ 
-            ...prev, 
-            ...response.data!,
-            staffRegistry: response.data!.uniqueStaffNames.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s),
-            products: response.data!.products && response.data!.products.length > 0 
-                ? response.data!.products 
-                : prev.products,
-            suppliers: response.data!.suppliers && response.data!.suppliers.length > 0 
-                ? response.data!.suppliers 
-                : prev.suppliers,
-            lastSync: now 
-        }));
+        setData(prev => {
+            const incomingStaff = response.data!.staffRegistry || [];
+            // Preference given to registry with phone numbers
+            const finalStaff = incomingStaff.length > 0 
+                ? incomingStaff.map(s => ({ ...s, name: s.name.toUpperCase() }))
+                : prev.staffRegistry;
+
+            return { 
+                ...prev, 
+                ...response.data!,
+                staffRegistry: finalStaff,
+                products: response.data!.products && response.data!.products.length > 0 
+                    ? response.data!.products 
+                    : prev.products,
+                suppliers: response.data!.suppliers && response.data!.suppliers.length > 0 
+                    ? response.data!.suppliers 
+                    : prev.suppliers,
+                lastSync: now 
+            };
+        });
       } else {
           syncFailureCountRef.current++;
           if (syncFailureCountRef.current >= 3) {
