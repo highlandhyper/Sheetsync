@@ -533,17 +533,32 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <Label className="text-xs font-semibold">Supplier</Label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleEditSupplierClick}
-                              disabled={!supplierNameValue || !sortedSuppliers.some((s) => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())}
-                              className="h-7 rounded-lg px-2 text-[10px] font-semibold text-primary"
-                            >
-                              <Edit className="mr-1 h-3 w-3" />
-                              Rename
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setValue('supplierName', '', { shouldDirty: true });
+                                    setSupplierComboboxOpen(true);
+                                  }}
+                                  className="h-7 rounded-lg px-2 text-[10px] font-semibold text-primary"
+                                >
+                                  <PlusCircle className="mr-1 h-3 w-3" />
+                                  New
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleEditSupplierClick}
+                                  disabled={!supplierNameValue || !sortedSuppliers.some((s) => s.name.toLowerCase() === (supplierNameValue || '').toLowerCase())}
+                                  className="h-7 rounded-lg px-2 text-[10px] font-semibold text-primary"
+                                >
+                                  <Edit className="mr-1 h-3 w-3" />
+                                  Rename
+                                </Button>
+                            </div>
                           </div>
 
                           <Popover open={supplierComboboxOpen} onOpenChange={setSupplierComboboxOpen}>
