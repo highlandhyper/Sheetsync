@@ -47,10 +47,10 @@ import {
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { fetchProductAction, saveProductAction, fetchProductExternalDataAction } from '@/app/actions';
+import { fetchProductAction, saveProductAction, fetchProductExternalDataAction, addSupplierAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -86,6 +86,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
     products: cachedProducts, 
     inventoryItems, 
     auditLogs,
+    addSupplier: addSupplierToCache,
     addProduct: addProductToCache, 
     updateProduct: updateProductInCache, 
     refreshData 
@@ -106,6 +107,10 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   
   const [isSupplierEditDialogOpen, setIsSupplierEditDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
+
+  const [isQuickAddSupplierOpen, setIsQuickAddSupplierOpen] = useState(false);
+  const [quickSupplierName, setQuickSupplierName] = useState('');
+  const [isQuickAdding, setIsQuickAdding] = useState(false);
   
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
 
@@ -297,6 +302,32 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
           refreshData();
       }
     });
+  };
+
+  const handleQuickAddSupplier = async () => {
+    if (!quickSupplierName.trim()) return;
+    setIsQuickAdding(true);
+    const formData = new FormData();
+    formData.append('supplierName', quickSupplierName.trim());
+    formData.append('userEmail', user?.email || 'Admin');
+    
+    try {
+        const result = await addSupplierAction(undefined, formData);
+        if (result.success && result.data) {
+            addSupplierToCache(result.data);
+            setValue('supplierName', result.data.name, { shouldValidate: true, shouldDirty: true });
+            setIsQuickAddSupplierOpen(false);
+            setQuickSupplierName('');
+            toast({ title: 'Success', description: 'Supplier added and selected.' });
+            setTimeout(() => costInputRef.current?.focus(), 150);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.message || 'Failed to add supplier.' });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Connection failed.' });
+    } finally {
+        setIsQuickAdding(false);
+    }
   };
   
   const sortedSuppliers = useMemo(() => [...allSuppliers].sort((a, b) => a.name.localeCompare(b.name)), [allSuppliers]);
@@ -538,10 +569,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setValue('supplierName', '', { shouldDirty: true });
-                                    setSupplierComboboxOpen(true);
-                                  }}
+                                  onClick={() => setIsQuickAddSupplierOpen(true)}
                                   className="h-7 rounded-lg px-2 text-[10px] font-semibold text-primary"
                                 >
                                   <PlusCircle className="mr-1 h-3 w-3" />
@@ -812,6 +840,48 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
           supplier={supplierToEdit}
         />
       )}
+
+      <Dialog open={isQuickAddSupplierOpen} onOpenChange={setIsQuickAddSupplierOpen}>
+        <DialogContent className="sm:max-w-md overflow-hidden rounded-[2rem] border-none shadow-3xl">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">Register New Supplier</DialogTitle>
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Add a new vendor to the master registry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 p-6 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="quick-supplier-name" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Supplier Name</Label>
+              <Input
+                id="quick-supplier-name"
+                placeholder="e.g., Global Provisions"
+                value={quickSupplierName}
+                onChange={(e) => setQuickSupplierName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleQuickAddSupplier();
+                  }
+                }}
+                className="h-12 font-bold bg-muted/10"
+              />
+            </div>
+          </div>
+          <DialogFooter className="p-6 pt-0 bg-muted/20 border-t border-white/5 flex gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" className="font-bold h-11">Cancel</Button>
+            </DialogClose>
+            <Button 
+              onClick={handleQuickAddSupplier} 
+              disabled={isQuickAdding || !quickSupplierName.trim()}
+              className="h-11 flex-1 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 bg-primary text-white"
+            >
+              {isQuickAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              Register Supplier
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
