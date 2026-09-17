@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -13,7 +12,8 @@ import {
     ArrowRight, Info, Key, CheckCircle2, Ban,
     Search, FilterX, Hash, MapPin, Tag, Calendar as CalendarIcon,
     ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink, Eye,
-    Trash2
+    Trash2,
+    ShieldAlert
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -134,7 +134,7 @@ export function ApprovalCenterClient() {
 
     return (
         <div className="min-w-0 space-y-4">
-            {/* Search and Summary Sections - Preserved as is */}
+            {/* Search and Summary Sections */}
             <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
                 <CardContent className="p-3 sm:p-4">
                     <div className="relative min-w-0">
@@ -263,8 +263,6 @@ export function ApprovalCenterClient() {
                                 </div>
                             </div>
                         )}
-                        
-                        {/* Preserve existing request detail views */}
                     </div>
 
                     <DialogFooter className="p-6 bg-muted/10 border-t border-white/5 gap-2">
