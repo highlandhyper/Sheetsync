@@ -124,6 +124,10 @@ export function ApprovalCenterClient() {
                 } else {
                     toast({ title: 'Error', description: result.message || 'Failed to apply requested edit.', variant: 'destructive' });
                 }
+            } else if (selectedRequest.type === 'product_add') {
+                // FIXED: Mark as processed without generating OTP or Active Access session
+                await completeProductAddRequest(selectedRequest.id);
+                toast({ title: 'Request Processed', description: 'Product registration marked as completed.' });
             } else {
                 await approveRequest(selectedRequest.id, duration === 'single' ? undefined : parseInt(duration));
                 toast({ title: 'Authorized', description: `Request for ${selectedRequest.staffName} approved.` });
