@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -56,7 +55,9 @@ function sanitizeForJSON(input: any): any {
             const value = source[key];
             if (value === null || value === undefined) target[key] = value;
             else if (value instanceof Date) target[key] = value.toISOString();
-            else if (typeof value === 'number') target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
+            else if (typeof value === 'number') {
+                target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
+            }
             else if (typeof value === 'object') {
                 const newTarget = Array.isArray(value) ? [] : {};
                 target[key] = newTarget;
