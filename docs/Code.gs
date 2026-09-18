@@ -1,208 +1,682 @@
-/**
- * SHEETSYNC INDUSTRIAL REGISTRY CORE
- * Version: 8.0.0 (Ultimate Consolidated)
- */
+// ============================================================
+// CONFIGURATION
+// ============================================================
 
+const DB_SHEET_NAME = "DB";
+const LOG_SHEET_NAME = "Form responses 2";
+const STAFF_SHEET_NAME = "Staff";
+const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
+const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS";
+const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
+const STAFF_LIST_KEY = "staffList";
+
+// UPDATE THIS TO YOUR ACTUAL VERCEL URL
 const APP_URL = "https://sheetsync-five.vercel.app";
+
+// Expiry Watch sheet columns:
+// A ID | B Barcode | C Product | D Expiry | E Supplier
+// F Status | G Timestamp | H Staff
+// I SMS Status | J Last SMS Sent At | K SMS Count
+// L Resolution SMS Status | M Resolution SMS Sent At
+const WATCH_COL_ID = 1;
+const WATCH_COL_BARCODE = 2;
+const WATCH_COL_PRODUCT = 3;
+const WATCH_COL_EXPIRY = 4;
+const WATCH_COL_SUPPLIER = 5;
+const WATCH_COL_STATUS = 6;
+const WATCH_COL_TIMESTAMP = 7;
+const WATCH_COL_STAFF = 8;
+const WATCH_COL_SMS_STATUS = 9;
+const WATCH_COL_SMS_SENT_AT = 10;
+const WATCH_COL_SMS_COUNT = 11;
+const WATCH_COL_RESOLUTION_SMS_STATUS = 12;
+const WATCH_COL_RESOLUTION_SMS_SENT_AT = 13;
+
+// On Display Alert sheet columns:
+// A ID | B Barcode | C Product | D Expiry | E Staff | F Token | G PIN | H Expires At | I Used | J Sent At
+const ODA_COL_TOKEN = 6; // Column F
+const ODA_COL_PIN = 7;   // Column G
+const ODA_COL_USED = 9;  // Column I
+
 const ADMIN_PASSWORD = "0438";
 const RECIPIENT_EMAIL = "ashiqmathath@gmail.com";
 
-const LOG_SHEET_NAME = "Form responses 2";
-const DB_SHEET_NAME = "DB";
-const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
-const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
-const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS";
 
-/**
- * REST HANDSHAKE (doPost)
- */
+// ============================================================
+// GET REQUEST
+// ============================================================
+
+function doGet(e) {
+  try {
+    if (
+      e &&
+      e.parameter &&
+      e.parameter.action === "getProducts"
+    ) {
+      return getProductJSON();
+    }
+
+    return ContentService
+      .createTextOutput("System Active.");
+
+  } catch (error) {
+    return jsonResponse({
+      status: "error",
+      message: error.toString()
+    });
+  }
+}
+
+
+// ============================================================
+// POST REQUEST
+// ============================================================
+
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    const action = data.action || "";
-
-    // Restricted Access Validation
-    const restricted = ["addProduct", "addStaff", "forensicWipe", "triggerWatchSmsOnly", "triggerWatchResolvedSms", "triggerOnDisplayAlerts"];
-    if (restricted.includes(action) && data.password !== ADMIN_PASSWORD) {
-      return JSON_RESPONSE({ status: 'error', message: 'Forbidden' });
+    if (
+      !e ||
+      !e.postData ||
+      !e.postData.contents
+    ) {
+      throw new Error("No POST data received.");
     }
 
-    if (action === 'triggerOnDisplayAlerts') {
-      return JSON_RESPONSE(triggerOnDisplayAlerts_(data.staffName, true)); // Manual bypass enabled
-    }
-    
-    if (action === 'triggerWatchResolvedSms') {
-      return JSON_RESPONSE({ status: 'success', sms: processExpiryWatchResolvedSmsById_(data.reminderId) });
+    const data = JSON.parse(
+      e.postData.contents
+    );
+
+    const action =
+      data.action || "";
+
+    // --------------------------------------------------------
+    // Restricted actions validation
+    // --------------------------------------------------------
+    const restrictedActions = [
+      "addProduct", 
+      "addStaff", 
+      "forensicWipe", 
+      "triggerWatchSmsOnly", 
+      "triggerWatchResolvedSms",
+      "triggerOnDisplayAlerts"
+    ];
+
+    if (restrictedActions.includes(action)) {
+      if (data.password !== ADMIN_PASSWORD) {
+        throw new Error("Unauthorized");
+      }
     }
 
-    if (action === 'standardLog') {
-      submitData_(data);
-      return JSON_RESPONSE({ status: 'success' });
+    // --------------------------------------------------------
+    // Action Dispatcher
+    // --------------------------------------------------------
+
+    if (action === "addProduct") {
+      return manageProduct(data);
     }
 
-    return JSON_RESPONSE({ status: 'error', message: 'Unknown Action' });
-  } catch (err) {
-    return JSON_RESPONSE({ status: 'error', message: err.toString() });
+    if (action === "addStaff") {
+      return addNewStaff(data);
+    }
+
+    if (action === "forensicWipe") {
+      sendWipeAlertEmail(data);
+      return jsonResponse({
+        status: "success",
+        message: "Forensic wipe alert processed"
+      });
+    }
+
+    if (action === "triggerWatchSmsOnly") {
+      ensureExpiryWatchSmsColumns_();
+      let smsResult = {
+        status: "scheduled",
+        message: "Reminder saved. SMS will be sent one calendar month before expiry."
+      };
+      if (data.reminderId) {
+        smsResult = processExpiryWatchReminderById_(data.reminderId);
+      }
+      return jsonResponse({
+        status: "success",
+        type: "expiryWatch",
+        sms: smsResult
+      });
+    }
+
+    if (action === "triggerWatchResolvedSms") {
+      ensureExpiryWatchSmsColumns_();
+      const smsResult = data.reminderId
+        ? processExpiryWatchResolvedSmsById_(data.reminderId)
+        : { status: "error", message: "No reminder ID was supplied." };
+      return jsonResponse({
+        status: "success",
+        type: "expiryWatchResolved",
+        sms: smsResult
+      });
+    }
+
+    // ON DISPLAY TRIGGER (Automated or Manual)
+    if (action === "triggerOnDisplayAlerts") {
+      return jsonResponse(processOnDisplayAlerts_(data.staffName));
+    }
+
+    if (action === "standardLog") {
+      submitData(data);
+      return jsonResponse({
+        status: "success",
+        type: "standardLog"
+      });
+    }
+
+    return jsonResponse({
+      status: "error",
+      message: "Unknown action: " + action
+    });
+
+  } catch (error) {
+    console.error("doPost Error:", error);
+    return jsonResponse({
+      status: "error",
+      message: error.toString()
+    });
   }
 }
 
-function JSON_RESPONSE(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+// ============================================================
+// ON-DISPLAY 7-DAY PROTOCOL (GROUPED LOGIC)
+// ============================================================
+
+function installOnDisplayDailyTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === "processOnDisplayAlerts_") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("processOnDisplayAlerts_").timeBased().everyDays(1).atHour(9).create();
 }
 
-/**
- * GROUPED ON-DISPLAY SCANNER
- */
-function triggerOnDisplayAlerts_(staffName, isManual = false) {
+function processOnDisplayAlerts_(targetStaffName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const invSheet = ss.getSheetByName(LOG_SHEET_NAME);
-  const alertSheet = ss.getSheetByName(ON_DISPLAY_ALERTS_SHEET_NAME);
-  const dbSheet = ss.getSheetByName(DB_SHEET_NAME);
+  const alertSheet = ss.getSheetByName(ON_DISPLAY_ALERTS_SHEET_NAME) || ss.insertSheet(ON_DISPLAY_ALERTS_SHEET_NAME);
   
-  const data = invSheet.getDataRange().getValues();
-  const dbData = dbSheet.getDataRange().getValues();
-  const productMap = {};
-  for(let i = 1; i < dbData.length; i++) {
-    const bc = String(dbData[i][0]).trim();
-    if(bc) productMap[bc] = dbData[i][2]; // Col C is Name
+  if (alertSheet.getLastRow() === 0) {
+    alertSheet.appendRow(["ID", "Barcode", "Product", "Expiry", "Staff", "Token", "PIN", "Expires At", "Used", "Sent At"]);
   }
 
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const threshold = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-  
-  const targetStaff = String(staffName).trim().toUpperCase();
+  const invData = invSheet.getDataRange().getValues();
+  const today = startOfDay_(new Date());
+  const threshold = addCalendarDays_(today, 7);
+
+  // Group log entries by Barcode: { "barcode": [row1, row2, ...] }
   const groups = {};
 
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const qty = parseFloat(row[2]);
-    if (qty <= 0 || isNaN(qty)) continue;
+  for (let i = 1; i < invData.length; i++) {
+    const row = invData[i];
+    const barcode = String(row[1] || "").trim();
+    const qty = parseFloat(String(row[2] || "0").replace(/[^0-9.-]+/g, ""));
+    const expiry = parseExpiryWatchDate_(row[3]);
+    const location = String(row[4] || "").trim();
+    const staffName = String(row[5] || "").trim();
 
-    const loc = String(row[4] || '').trim();
-    const itemStaff = String(row[5] || '').trim().toUpperCase();
-    
-    if (loc === "On Display" && itemStaff === targetStaff) {
-      const exp = parseFlexibleDate_(row[3]);
-      if (exp && exp <= threshold) {
-        const bc = String(row[1]).trim();
-        if (!groups[bc]) groups[bc] = [];
-        groups[bc].push({ row: row, expiry: exp });
-      }
+    if (!barcode || isNaN(qty) || qty <= 0 || location !== "On Display" || !expiry) continue;
+
+    // Filter by staff if targetStaffName is specified
+    if (targetStaffName && staffName.toUpperCase() !== targetStaffName.toUpperCase()) continue;
+
+    const expiryDay = startOfDay_(expiry);
+
+    // Filter items expiring within 7 days
+    if (expiryDay.getTime() <= threshold.getTime()) {
+      if (!groups[barcode]) groups[barcode] = [];
+      groups[barcode].push({
+        row: row,
+        expiryDay: expiryDay,
+        staffName: staffName,
+        qty: qty,
+        productName: String(row[6] || "Unregistered Product").trim()
+      });
     }
   }
 
   const barcodes = Object.keys(groups);
-  if (barcodes.length === 0) return { status: 'success', processed: 0 };
+  if (barcodes.length === 0) return { status: "success", processed: 0 };
 
-  let totalProcessed = 0;
+  let processedCount = 0;
+
   barcodes.forEach(bc => {
-    const batches = groups[bc];
-    const firstItem = batches[0];
-    const totalQty = batches.reduce((s, b) => s + parseFloat(b.row[2]), 0);
-    const pName = String(firstItem.row[6] || productMap[bc] || "Unregistered Product").trim();
+    const items = groups[bc];
+    const mainItem = items[0];
+    const totalQty = items.reduce((sum, item) => sum + item.qty, 0);
 
-    if (isManual || !hasSentRecently_(alertSheet, bc, targetStaff)) {
-      const token = Math.random().toString(36).substr(2, 12);
+    if (!hasSentOnDisplayAlert_(alertSheet, bc, mainItem.expiryDay, mainItem.staffName)) {
+      const token = Math.random().toString(36).substring(2, 14);
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      
-      alertSheet.appendRow([Date.now(), bc, pName, firstItem.row[3], staffName, token, pin, new Date(Date.now() + 86400000), "No"]);
-      
-      // DETAILED COMPLETE SMS CONTENT
-      const batchList = batches.map(b => `- ${b.row[2]} units (Exp: ${formatSmsDate_(b.expiry)})`).join("\n");
-      const sms = [
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 Hours
+      const alertId = "oda_" + Date.now() + "_" + bc;
+
+      const message = [
         "HIGHLAND HYPERMARKET",
-        "ON-DISPLAY ALERT",
-        "Product: " + pName,
-        "Total Qty: " + totalQty,
-        "Batches:",
-        batchList,
-        "",
+        "ON-DISPLAY ALERT: " + mainItem.productName,
+        "Staff: " + mainItem.staffName,
         "Access Key: " + pin,
-        "Link: " + APP_URL + "/on-display/" + token
+        "Total Qty: " + totalQty,
+        "Batches: " + items.length,
+        "",
+        APP_URL + "/on-display/" + token
       ].join("\n");
-      
-      const success = sendSmsViaTextBee_(staffName, sms);
-      if (success) totalProcessed++;
+
+      const smsResult = sendSmsViaTextBee_(mainItem.staffName, message);
+
+      if (smsResult.success) {
+        alertSheet.appendRow([
+          alertId,
+          bc,
+          mainItem.productName,
+          mainItem.expiryDay,
+          mainItem.staffName,
+          token,
+          pin,
+          expiresAt,
+          "No",
+          new Date()
+        ]);
+        processedCount++;
+      }
     }
   });
 
-  return { status: 'success', processed: totalProcessed };
-}
-
-function hasSentRecently_(sheet, barcode, staff) {
-  const data = sheet.getRange(Math.max(1, sheet.getLastRow() - 50), 1, 50, 9).getValues();
-  const today = new Date().setHours(0,0,0,0);
-  return data.some(r => String(r[1]) === barcode && String(r[4]).toUpperCase() === staff && new Date(r[0]).setHours(0,0,0,0) === today);
+  return { status: "success", processed: processedCount };
 }
 
 function sendSmsViaTextBee_(staffName, message) {
-  const props = PropertiesService.getScriptProperties();
-  const apiKey = props.getProperty("TEXTBEE_API_KEY");
-  const deviceId = props.getProperty("TEXTBEE_DEVICE_ID");
-  const staffObj = getStaffContact_(staffName);
-  if (!staffObj?.phone || !apiKey) return false;
+  const staffContact = getStaffContactByName_(staffName);
+  if (!staffContact || !staffContact.phone) return { success: false };
 
-  const res = UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
+  const recipient = normalizeStaffPhone_(staffContact.phone);
+  const properties = PropertiesService.getScriptProperties();
+  const apiKey = properties.getProperty("TEXTBEE_API_KEY");
+  const deviceId = properties.getProperty("TEXTBEE_DEVICE_ID");
+
+  const response = UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
     method: "post",
     contentType: "application/json",
     headers: { "x-api-key": apiKey },
-    payload: JSON.stringify({ message, recipients: [normalizePhone_(staffObj.phone)], deviceId }),
+    payload: JSON.stringify({ message, recipients: [recipient], deviceId }),
     muteHttpExceptions: true
   });
-  return res.getResponseCode() === 200;
+
+  return { success: response.getResponseCode() === 200 };
 }
 
-function getStaffContact_(name) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(APP_SETTINGS_SHEET_NAME);
+function hasSentOnDisplayAlert_(sheet, barcode, expiry, staff) {
   const data = sheet.getDataRange().getValues();
-  let list = [];
-  data.forEach(r => { if(r[0] === 'staffList') list = JSON.parse(r[1]); });
-  return list.find(s => String(s.name).toUpperCase() === String(name).toUpperCase());
-}
-
-function parseFlexibleDate_(v) {
-  if (v instanceof Date) return v;
-  const s = String(v);
-  const p = s.split(/[-/]/);
-  return p.length === 3 ? (p[0].length === 4 ? new Date(p[0], p[1]-1, p[2]) : new Date(p[2], p[1]-1, p[0])) : new Date(s);
-}
-
-function formatSmsDate_(d) {
-  return Utilities.formatDate(d, "GMT+3", "dd MMM yyyy");
-}
-
-function normalizePhone_(p) {
-  let res = String(p).replace(/\D/g, '');
-  if (res.length === 8) res = "974" + res;
-  return "+" + res;
-}
-
-/**
- * LEGACY SYNC & TRIGGERS
- */
-function installTriggers() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('runDailyScan').timeBased().everyDays(1).atHour(9).create();
-}
-
-function runDailyScan() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(APP_SETTINGS_SHEET_NAME);
-  const data = sheet.getDataRange().getValues();
-  let list = [];
-  data.forEach(r => { if(r[0] === 'staffList') list = JSON.parse(r[1]); });
-  list.forEach(s => triggerOnDisplayAlerts_(s.name, false));
-}
-
-function onEdit(e) {
-  const sheet = e.source.getActiveSheet();
-  if (sheet.getName() === "DB" && e.range.getColumn() === 1 && e.range.getRow() > 1) {
-    const row = e.range.getRow();
-    const cellH = sheet.getRange(row, 8);
-    if (!cellH.getValue()) cellH.setValue("prod_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5));
-    const cellG = sheet.getRange(row, 7);
-    if (!cellG.getFormula()) cellG.setFormula(`=IFERROR(VLOOKUP(A${row}, 'Form responses 2'!B:G, 6, FALSE), "")`);
+  for (let i = 1; i < data.length; i++) {
+    if (
+      String(data[i][1]).trim() === String(barcode).trim() &&
+      isSameDay_(new Date(data[i][3]), expiry) &&
+      String(data[i][4]).trim().toUpperCase() === String(staff).trim().toUpperCase()
+    ) {
+      return true;
+    }
   }
+  return false;
+}
+
+function isSameDay_(d1, d2) {
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+}
+
+
+// ============================================================
+// ORIGINAL CORE FUNCTIONS
+// ============================================================
+
+function jsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getProductJSON() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(DB_SHEET_NAME);
+  if (!sheet) throw new Error('Sheet "' + DB_SHEET_NAME + '" not found.');
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const dbVersion = scriptProperties.getProperty("DB_VERSION") || "1";
+  const productMap = {};
+  const supplierSet = new Set();
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 0) {
+    const data = sheet.getRange(1, 1, lastRow, 5).getValues();
+    data.forEach(function (row) {
+      const barcode = row[0] ? row[0].toString().trim() : "";
+      const name = row[2] ? row[2].toString().trim() : "";
+      const supplier = row[3] ? row[3].toString().trim() : "";
+      const cost = row[4] || "";
+      if (barcode && name) {
+        productMap[barcode] = { name: name, supplier: supplier, cost: cost };
+      }
+      if (supplier && supplier !== "Supplier") supplierSet.add(supplier);
+    });
+  }
+  const staffSheet = ss.getSheetByName(STAFF_SHEET_NAME);
+  let staffList = [];
+  if (staffSheet && staffSheet.getLastRow() > 0) {
+    staffList = staffSheet.getDataRange().getValues().flat().filter(String);
+  }
+  return jsonResponse({
+    version: dbVersion,
+    products: productMap,
+    suppliers: Array.from(supplierSet).sort(),
+    staff: staffList.sort()
+  });
+}
+
+function manageProduct(item) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const dbSheet = ss.getSheetByName(DB_SHEET_NAME);
+  if (!dbSheet) throw new Error('Sheet "' + DB_SHEET_NAME + '" not found.');
+  if (!item.barcode) throw new Error("Barcode is required.");
+  const barcode = item.barcode.toString().trim();
+  const data = dbSheet.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 0; i < data.length; i++) {
+    const existingBarcode = data[i][0] ? data[i][0].toString().trim() : "";
+    if (existingBarcode === barcode) { foundRow = i + 1; break; }
+  }
+  const rowData = [barcode, "", item.name || "", item.supplier || "", item.cost || ""];
+  if (foundRow !== -1) dbSheet.getRange(foundRow, 1, 1, 5).setValues([rowData]);
+  else dbSheet.appendRow(rowData);
+  updateDbVersion();
+  return jsonResponse({ status: "success" });
+}
+
+function addNewStaff(item) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const staffSheet = ss.getSheetByName(STAFF_SHEET_NAME);
+  if (!staffSheet) throw new Error('Sheet "' + STAFF_SHEET_NAME + '" not found.');
+  if (!item.staffName || !item.staffName.toString().trim()) throw new Error("Staff name is required.");
+  staffSheet.appendRow([item.staffName.toString().trim()]);
+  updateDbVersion();
+  return jsonResponse({ status: "success" });
+}
+
+function updateDbVersion() {
+  PropertiesService.getScriptProperties().setProperty("DB_VERSION", Date.now().toString());
+}
+
+function ensureExpiryWatchSmsColumns_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(EXPIRY_WATCH_SHEET_NAME);
+  if (!sheet) throw new Error('Sheet "' + EXPIRY_WATCH_SHEET_NAME + '" not found.');
+  if (sheet.getMaxColumns() < WATCH_COL_SMS_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), WATCH_COL_SMS_COUNT - sheet.getMaxColumns());
+  }
+  sheet.getRange(1, WATCH_COL_SMS_STATUS, 1, 5).setValues([[
+    "SMS Status", "Last SMS Sent At", "SMS Count", "Resolution SMS Status", "Resolution SMS Sent At"
+  ]]);
+  const trackingRows = Math.max(sheet.getMaxRows() - 1, 1);
+  sheet.getRange(2, WATCH_COL_SMS_SENT_AT, trackingRows, 1).setNumberFormat("dd/MM/yyyy HH:mm:ss");
+  sheet.getRange(2, WATCH_COL_SMS_COUNT, trackingRows, 1).setNumberFormat("0");
+  sheet.getRange(2, WATCH_COL_RESOLUTION_SMS_SENT_AT, trackingRows, 1).setNumberFormat("dd/MM/yyyy HH:mm:ss");
+  return sheet;
+}
+
+function fixExpiryWatchSmsColumnFormats() {
+  const sheet = ensureExpiryWatchSmsColumns_();
+  const lastRow = Math.max(sheet.getLastRow(), 2);
+  sheet.getRange(2, WATCH_COL_SMS_SENT_AT, lastRow - 1, 1).setNumberFormat("dd/MM/yyyy HH:mm:ss");
+  sheet.getRange(2, WATCH_COL_SMS_COUNT, lastRow - 1, 1).setNumberFormat("0");
+  SpreadsheetApp.flush();
+  return { status: "success", message: "Expiry Watch SMS formats repaired." };
+}
+
+function installExpiryWatchDailyTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (trigger.getHandlerFunction() === "processExpiryWatchSmsReminders") ScriptApp.deleteTrigger(trigger);
+  });
+  ScriptApp.newTrigger("processExpiryWatchSmsReminders").timeBased().everyDays(1).atHour(9).create();
+  ensureExpiryWatchSmsColumns_();
+}
+
+function authorizeExpiryWatchSms() {
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.send_mail"
+  ]);
+}
+
+function processExpiryWatchSmsReminders() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try {
+    const sheet = ensureExpiryWatchSmsColumns_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const rows = sheet.getRange(2, 1, lastRow - 1, WATCH_COL_SMS_COUNT).getValues();
+    for (let i = 0; i < rows.length; i++) {
+      processExpiryWatchRow_(sheet, i + 2, rows[i]);
+    }
+  } finally { lock.releaseLock(); }
+}
+
+function processExpiryWatchReminderById_(reminderId) {
+  const id = String(reminderId || "").trim();
+  if (!id) return { status: "scheduled", message: "No ID supplied." };
+  const sheet = ensureExpiryWatchSmsColumns_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "scheduled" };
+  const ids = sheet.getRange(2, WATCH_COL_ID, lastRow - 1, 1).getDisplayValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || "").trim() === id) {
+      const row = sheet.getRange(i + 2, 1, 1, WATCH_COL_SMS_COUNT).getValues()[0];
+      return processExpiryWatchRow_(sheet, i + 2, row);
+    }
+  }
+  return { status: "scheduled" };
+}
+
+function processExpiryWatchRow_(sheet, rowNumber, row) {
+  const reminderId = String(row[WATCH_COL_ID - 1] || "").trim();
+  const status = String(row[WATCH_COL_STATUS - 1] || "pending").trim().toLowerCase();
+  const smsStatus = String(row[WATCH_COL_SMS_STATUS - 1] || "").trim().toUpperCase();
+  if (!reminderId || status !== "pending") return { status: "ignored" };
+  const expiryDate = parseExpiryWatchDate_(row[WATCH_COL_EXPIRY - 1]);
+  if (!expiryDate) {
+    sheet.getRange(rowNumber, WATCH_COL_SMS_STATUS).setValue("INVALID DATE");
+    return { status: "error" };
+  }
+  const today = startOfDay_(new Date());
+  const expiryDay = startOfDay_(expiryDate);
+  const firstReminderDay = subtractCalendarMonths_(expiryDay, 1);
+  if (today.getTime() < firstReminderDay.getTime()) return { status: "scheduled" };
+  const lastSentAt = parseExpiryWatchDate_(row[WATCH_COL_SMS_SENT_AT - 1]);
+  let smsCount = Number(row[WATCH_COL_SMS_COUNT - 1] || 0);
+  if (!Number.isFinite(smsCount) || smsCount < 0) smsCount = 0;
+  if (lastSentAt && smsCount < 1) smsCount = 1;
+  const isFollowUp = !!lastSentAt;
+  if (lastSentAt) {
+    const nextReminderDay = addCalendarDays_(startOfDay_(lastSentAt), 7);
+    if (today.getTime() < nextReminderDay.getTime()) return { status: "waiting" };
+  }
+  if (smsStatus === "SENT" && !lastSentAt) return { status: "error" };
+  try {
+    const item = {
+      reminderId: reminderId,
+      barcode: String(row[WATCH_COL_BARCODE - 1] || "").trim(),
+      productName: String(row[WATCH_COL_PRODUCT - 1] || "").trim(),
+      expiryDate: formatSheetDate_(expiryDay),
+      supplierName: String(row[WATCH_COL_SUPPLIER - 1] || "").trim(),
+      staffName: String(row[WATCH_COL_STAFF - 1] || "").trim()
+    };
+    sendExpiryWatchSms_(item, firstReminderDay, expiryDay, isFollowUp);
+    const sentAt = new Date();
+    const newSmsCount = smsCount + 1;
+    sheet.getRange(rowNumber, WATCH_COL_SMS_STATUS, 1, 3).setValues([["SENT", sentAt, newSmsCount]]);
+    sheet.getRange(rowNumber, WATCH_COL_SMS_SENT_AT).setNumberFormat("dd/MM/yyyy HH:mm:ss");
+    sheet.getRange(rowNumber, WATCH_COL_SMS_COUNT).setNumberFormat("0");
+    return { status: "sent", type: isFollowUp ? "weekly-follow-up" : "first-reminder" };
+  } catch (error) {
+    sheet.getRange(rowNumber, WATCH_COL_SMS_STATUS).setValue("ERROR");
+    return { status: "error", message: error.toString() };
+  }
+}
+
+function processExpiryWatchResolvedSmsById_(reminderId) {
+  const id = String(reminderId || "").trim();
+  if (!id) return { status: "error" };
+  const sheet = ensureExpiryWatchSmsColumns_();
+  const lastRow = sheet.getLastRow();
+  const rows = sheet.getRange(2, 1, lastRow - 1, WATCH_COL_RESOLUTION_SMS_SENT_AT).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[WATCH_COL_ID - 1] || "").trim() !== id) continue;
+    const status = String(row[WATCH_COL_STATUS - 1] || "").trim().toLowerCase();
+    const resolutionSmsStatus = String(row[WATCH_COL_RESOLUTION_SMS_STATUS - 1] || "").trim().toUpperCase();
+    if (status !== "resolved") return { status: "ignored" };
+    if (resolutionSmsStatus === "SENT") return { status: "already-sent" };
+    try {
+      const properties = PropertiesService.getScriptProperties();
+      const apiKey = String(properties.getProperty("TEXTBEE_API_KEY") || "").trim();
+      const deviceId = String(properties.getProperty("TEXTBEE_DEVICE_ID") || "").trim();
+      const staffName = String(row[WATCH_COL_STAFF - 1] || "").trim();
+      const staffContact = getStaffContactByName_(staffName);
+      if (!staffContact?.phone) throw new Error("No phone registered.");
+      const recipient = normalizeStaffPhone_(staffContact.phone);
+      const message = ["HIGHLAND EXPIRY RESOLVED", "Hi " + staffName + ",", String(row[WATCH_COL_PRODUCT - 1]), "Item resolved successfully.", "Thank you."].join("\n");
+      UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
+        method: "post", contentType: "application/json", headers: { "x-api-key": apiKey },
+        payload: JSON.stringify({ message, recipients: [recipient], deviceId }),
+        muteHttpExceptions: true
+      });
+      const sentAt = new Date();
+      sheet.getRange(i + 2, WATCH_COL_RESOLUTION_SMS_STATUS).setValue("SENT");
+      sheet.getRange(i + 2, WATCH_COL_RESOLUTION_SMS_SENT_AT).setValue(sentAt).setNumberFormat("dd/MM/yyyy HH:mm:ss");
+      return { status: "sent", sentAt: sentAt.toISOString() };
+    } catch (e) {
+      sheet.getRange(i + 2, WATCH_COL_RESOLUTION_SMS_STATUS).setValue("ERROR");
+      return { status: "error" };
+    }
+  }
+  return { status: "error" };
+}
+
+function sendExpiryWatchSms_(item, reminderDay, expiryDay, isFollowUp) {
+  const properties = PropertiesService.getScriptProperties();
+  const apiKey = String(properties.getProperty("TEXTBEE_API_KEY") || "").trim();
+  const deviceId = String(properties.getProperty("TEXTBEE_DEVICE_ID") || "").trim();
+  const staffContact = getStaffContactByName_(item.staffName);
+  if (!staffContact?.phone) throw new Error("Staff phone missing.");
+  const recipient = normalizeStaffPhone_(staffContact.phone);
+  const message = isFollowUp ? 
+    ["HIGHLAND EXPIRY FOLLOW-UP", "Hi " + item.staffName + ",", item.productName, "Still pending after 7 days.", "Exp: " + formatSmsDate_(expiryDay)].join("\n") :
+    ["HIGHLAND EXPIRY ALERT", "Hi " + item.staffName + ",", item.productName, "Exp: " + formatSmsDate_(expiryDay), "BC: " + item.barcode].join("\n");
+  UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
+    method: "post", contentType: "application/json", headers: { "x-api-key": apiKey },
+    payload: JSON.stringify({ message, recipients: [recipient], deviceId }),
+    muteHttpExceptions: true
+  });
+}
+
+function getStaffContactByName_(staffName) {
+  const wantedName = normalizeStaffName_(staffName);
+  if (!wantedName) return null;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsSheet = ss.getSheetByName(APP_SETTINGS_SHEET_NAME);
+  const data = settingsSheet?.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getValues();
+  let staffJson = null;
+  data?.forEach(r => { if (String(r[0]).trim() === STAFF_LIST_KEY) staffJson = r[1]; });
+  if (!staffJson) return null;
+  const staffList = typeof staffJson === "string" ? JSON.parse(staffJson) : staffJson;
+  for (let s of staffList) {
+    const sName = typeof s === "string" ? s : (s.name || s.staffName || "");
+    if (normalizeStaffName_(sName) === wantedName) {
+      return typeof s === "string" ? { name: s, phone: "" } : { name: sName, phone: String(s.phone || s.phoneNumber || s.mobile || "") };
+    }
+  }
+  return null;
+}
+
+function normalizeStaffName_(v) { return String(v || "").trim().replace(/\s+/g, " ").toUpperCase(); }
+function normalizeStaffPhone_(v) {
+  let p = String(v || "").trim().replace(/[\s\-\(\)]/g, "");
+  if (!p) return "";
+  if (p.indexOf("00") === 0) p = "+" + p.substring(2);
+  if (/^\d{8}$/.test(p)) p = "+974" + p;
+  if (/^974\d{8}$/.test(p)) p = "+" + p;
+  return /^\+\d{8,15}$/.test(p) ? p : "";
+}
+
+function parseExpiryWatchDate_(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) return new Date(v.getTime());
+  const t = String(v || "").trim();
+  if (!t) return null;
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return makeValidDate_(Number(m[1]), Number(m[2]), Number(m[3]));
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return makeValidDate_(Number(m[3]), Number(m[2]), Number(m[1]));
+  const p = new Date(t);
+  return isNaN(p.getTime()) ? null : p;
+}
+
+function makeValidDate_(y, m, d) {
+  const date = new Date(y, m - 1, d);
+  return (date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d) ? date : null;
+}
+
+function subtractCalendarMonths_(d, m) {
+  const res = new Date(d.getTime());
+  res.setMonth(res.getMonth() - m);
+  return res;
+}
+function addCalendarDays_(d, days) { const res = new Date(d.getTime()); res.setDate(res.getDate() + days); return res; }
+function startOfDay_(d) { const res = new Date(d.getTime()); res.setHours(0, 0, 0, 0); return res; }
+function formatSheetDate_(d) { return Utilities.formatDate(d, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd"); }
+function formatSmsDate_(d) { return Utilities.formatDate(d, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "dd MMM yyyy"); }
+
+function submitData(item) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
+  const tz = ss.getSpreadsheetTimeZone();
+  let entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
+  if (isNaN(entryDate.getTime())) entryDate = new Date();
+  const nextRow = logSheet.getLastRow() + 1;
+  const uniqueId = `${nextRow}-${Utilities.formatDate(entryDate, tz, "yyyyMMddHHmmss")}`;
+  logSheet.getRange(nextRow, 1, 1, 10).setValues([[
+    Utilities.formatDate(entryDate, tz, "d/M/yyyy HH:mm:ss"), item.barcode || "", item.quantity || "", item.expiryDate || "", 
+    item.location || "", item.staff || item.identity || item.staffName || "", item.productName || "", "", item.itemType || item.type || "", uniqueId
+  ]]);
+  setFormResponseSupplierFormula_(logSheet, nextRow);
+  if (item.disableNotification === true) return;
+  let alert = item.isSpecial === true;
+  if (item.expiryDate) {
+    const exp = new Date(item.expiryDate);
+    if (!isNaN(exp.getTime())) {
+      const today = new Date(); today.setHours(0,0,0,0); exp.setHours(0,0,0,0);
+      if (exp <= today) alert = true;
+    }
+  }
+  if (alert) sendExpiryAlertEmail(item, entryDate);
+}
+
+function sendExpiryAlertEmail(item, logDate) {
+  const dateStr = Utilities.formatDate(logDate, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "EEE, MMM d, yyyy HH:mm");
+  const htmlBody = `<div style="font-family:sans-serif;max-width:600px;border:1px solid #eee;border-radius:10px;padding:20px;">
+    <h2 style="color:#dc2626;">Expired Item Alert</h2>
+    <p>Product: <b>${item.productName}</b></p><p>Barcode: ${item.barcode}</p><p>Qty: ${item.quantity}</p>
+    <p>Expiry: <span style="color:#dc2626;">${item.expiryDate}</span></p><p>Logged By: ${item.staff || item.staffName}</p>
+    <p>Time: ${dateStr}</p></div>`;
+  MailApp.sendEmail({ to: RECIPIENT_EMAIL, subject: `⚠️ EXPIRED: ${item.productName}`, htmlBody });
+}
+
+function sendWipeAlertEmail(data) {
+  const dateStr = Utilities.formatDate(new Date(), SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "EEE, MMM d, yyyy HH:mm:ss");
+  const htmlBody = `<div style="font-family:sans-serif;max-width:600px;border:1px solid #fecaca;padding:20px;">
+    <h2 style="color:#7f1d1d;">Forensic Wipe Alert</h2>
+    <p>Admin: ${data.adminEmail || data.identity}</p><p>Target: ${data.barcode}</p><p>Time: ${dateStr}</p></div>`;
+  MailApp.sendEmail({ to: RECIPIENT_EMAIL, subject: `❗ SECURITY: Forensic Wipe`, htmlBody });
+}
+
+function setFormResponseSupplierFormula_(sheet, rowNumber) {
+  const formula = '=IF(B' + rowNumber + '=\"\",\"\",IFERROR(INDEX(FILTER(DB!$D$2:$D$100000,((TRIM(DB!$A$2:$A$100000&\"\")=TRIM(B' + rowNumber + '&\"\"))+(TRIM(DB!$B$2:$B$100000&\"\")=TRIM(B' + rowNumber + '&\"\")))>0),1),\"Not Found\"))';
+  sheet.getRange(rowNumber, 8).setFormula(formula);
 }

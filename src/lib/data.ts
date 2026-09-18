@@ -200,13 +200,14 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
   
   const barcode = String(alertRow[ODA_COL_BARCODE]).trim();
-  const staffName = String(alertRow[ODA_COL_STAFF]).trim();
+  const staffName = String(alertRow[ODA_COL_STAFF]).trim().toUpperCase();
   const inventory = await getInventoryItems();
   
+  // Find all grouped batches for this product/staff combination
   const items = inventory.filter(i => 
     i.barcode.trim() === barcode && 
     i.location === "On Display" && 
-    i.staffName === staffName &&
+    i.staffName.trim().toUpperCase() === staffName &&
     i.quantity > 0
   );
   
