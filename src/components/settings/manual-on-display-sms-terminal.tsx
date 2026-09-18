@@ -16,6 +16,10 @@ import {
   User,
   Users,
   Zap,
+  ArrowRight,
+  Terminal,
+  Wifi,
+  BellRing
 } from 'lucide-react';
 import {
   Command,
@@ -59,25 +63,22 @@ export function ManualOnDisplaySmsTerminal() {
 
       if (res.success) {
         toast({
-          title: 'Alert Dispatched',
-          description:
-            res.message ||
-            `Successfully notified ${selectedStaff} of On-Display items.`,
+          title: 'Protocol Dispatched',
+          description: res.message || `Successfully notified ${selectedStaff} of On-Display items.`,
         });
         setSelectedStaff('');
       } else {
         toast({
           variant: 'destructive',
-          title: 'Action Blocked',
-          description:
-            res.message || 'The protocol could not be finalized.',
+          title: 'Dispatch Blocked',
+          description: res.message || 'The protocol handshake could not be finalized.',
         });
       }
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Sync Error',
-        description: 'Communication failure with registry core.',
+        title: 'Registry Error',
+        description: 'Communication failure with industrial registry core.',
       });
     } finally {
       setIsTriggering(false);
@@ -85,56 +86,59 @@ export function ManualOnDisplaySmsTerminal() {
   };
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white shadow-[0_20px_60px_-28px_rgba(15,23,42,0.28)]">
-        {/* HEADER */}
-        <div className="relative overflow-hidden border-b border-slate-100 bg-gradient-to-br from-primary/[0.08] via-white to-white px-5 py-6 sm:px-7 sm:py-7">
-          <div className="absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/[0.07] blur-2xl" />
+    <div className="animate-in fade-in duration-700">
+      <div className="overflow-hidden rounded-[2.5rem] border border-border/60 bg-card shadow-3xl">
+        {/* HEADER: INDUSTRIAL BRANDING */}
+        <div className="relative overflow-hidden border-b border-border/50 bg-muted/20 px-6 py-8 sm:px-8 sm:py-10">
+          <div className="absolute inset-0 bg-tech-grid opacity-30" />
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
-          <div className="relative flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              <Smartphone className="h-5 w-5" />
+          <div className="relative flex items-start gap-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/30">
+              <Terminal className="h-7 w-7" strokeWidth={2.5} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">
-                  Manual SMS Dispatch
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-xl font-black uppercase tracking-tighter text-foreground sm:text-2xl">
+                  SMS Control <span className="text-primary">Center</span>
                 </h3>
 
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-full border-emerald-200 bg-emerald-50 px-2 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-700"
+                  className="h-6 rounded-lg border-emerald-500/20 bg-emerald-500/10 px-2.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400"
                 >
-                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Ready
+                  <Wifi className="mr-1.5 h-3 w-3 animate-pulse" />
+                  Link Ready
                 </Badge>
               </div>
 
-              <p className="mt-1.5 max-w-xl text-[10px] leading-5 text-slate-500 sm:text-[11px]">
-                Select a staff member to immediately send their On-Display
-                expiry alert. Only items within the 7-day expiry threshold
-                are included.
+              <p className="mt-2 max-w-xl text-[11px] font-medium leading-relaxed text-muted-foreground sm:text-xs">
+                Immediately trigger the 7-day expiry protocol for a specific staff member.
+                The system will generate secure one-time tokens for all their items in the <span className="font-bold text-foreground">On Display</span> registry.
               </p>
             </div>
           </div>
         </div>
 
-        {/* BODY */}
-        <div className="p-5 sm:p-7">
-          <div className="grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-end">
-            {/* STAFF SELECTOR */}
-            <div className="space-y-2.5">
+        {/* BODY: SELECTION & ACTION */}
+        <div className="p-6 sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-1">
+            
+            {/* PERSONNEL SELECTION */}
+            <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5 text-primary" />
-                  <label className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                    Assigned Personnel
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Users className="h-3.5 w-3.5" />
+                  </div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                    Identify Personnel
                   </label>
                 </div>
 
-                <span className="text-[8px] font-bold uppercase tracking-wider text-slate-300">
-                  {staffList.length} Available
+                <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">
+                  {staffList.length} IN REGISTRY
                 </span>
               </div>
 
@@ -147,60 +151,56 @@ export function ManualOnDisplaySmsTerminal() {
                   <Button
                     variant="outline"
                     role="combobox"
-                    aria-expanded={popoverOpen}
                     className={cn(
-                      'h-14 w-full justify-between rounded-2xl border-slate-200 bg-slate-50 px-4 shadow-inner transition-all',
-                      'hover:bg-white hover:border-primary/20',
-                      popoverOpen &&
-                        'border-primary/30 bg-white ring-4 ring-primary/10'
+                      'h-16 w-full justify-between rounded-3xl border-border/60 bg-muted/30 px-6 shadow-inner transition-all',
+                      'hover:border-primary/30 hover:bg-background',
+                      popoverOpen && 'border-primary/50 bg-background ring-4 ring-primary/10'
                     )}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm ring-1 ring-slate-100">
-                        <User className="h-3.5 w-3.5" />
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
+                        selectedStaff ? "bg-primary text-primary-foreground shadow-lg" : "bg-background text-muted-foreground border border-border/50"
+                      )}>
+                        <User className="h-4.5 w-4.5" />
                       </div>
 
-                      <span
-                        className={cn(
-                          'truncate text-left text-xs font-black uppercase tracking-wide',
-                          !selectedStaff &&
-                            'font-medium normal-case tracking-normal text-slate-400'
-                        )}
-                      >
-                        {selectedStaff || 'Select personnel...'}
-                      </span>
+                      <div className="min-w-0 text-left">
+                        <p className={cn(
+                          "truncate text-[13px] font-black uppercase tracking-wide leading-none",
+                          !selectedStaff && "text-muted-foreground/30 font-bold"
+                        )}>
+                          {selectedStaff || 'Choose from registry...'}
+                        </p>
+                        <p className="mt-1 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                          Target Recipient Node
+                        </p>
+                      </div>
                     </div>
 
-                    <ChevronsUpDown className="ml-3 h-4 w-4 shrink-0 text-slate-300" />
+                    <ChevronsUpDown className="ml-3 h-5 w-5 shrink-0 text-muted-foreground/30" />
                   </Button>
                 </PopoverTrigger>
 
                 <PopoverContent
-                  className="w-[--radix-popover-trigger-width] overflow-hidden rounded-2xl border-slate-200 p-0 shadow-2xl"
+                  className="w-[--radix-popover-trigger-width] overflow-hidden rounded-[2rem] border-border/60 p-0 shadow-3xl"
                   align="start"
-                  onOpenAutoFocus={(e) => e.preventDefault()}
                 >
-                  <Command
-                    className="w-full"
-                    filter={(value, search) =>
-                      value.toLowerCase().includes(search.toLowerCase())
-                        ? 1
-                        : 0
-                    }
-                  >
-                    <div className="border-b border-slate-100 p-2">
+                  <Command className="w-full">
+                    <div className="border-b border-border/50 bg-muted/20 p-3">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-300" />
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/40" />
                         <CommandInput
-                          placeholder="Search personnel..."
-                          className="h-10 border-0 bg-slate-50 pl-9 text-xs font-semibold focus:ring-0"
+                          placeholder="SEARCH PERSONNEL..."
+                          className="h-11 border-none bg-transparent pl-9 text-[11px] font-bold uppercase tracking-widest focus:ring-0"
                         />
                       </div>
                     </div>
 
-                    <CommandList className="max-h-64 overflow-y-auto p-1">
-                      <CommandEmpty className="py-8 text-center text-[9px] font-black uppercase tracking-widest text-slate-300">
-                        No personnel found
+                    <CommandList className="max-h-[280px] p-2">
+                      <CommandEmpty className="py-12 text-center">
+                        <Users className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Zero Matches</p>
                       </CommandEmpty>
 
                       <CommandGroup>
@@ -212,24 +212,17 @@ export function ManualOnDisplaySmsTerminal() {
                               setSelectedStaff(name);
                               setPopoverOpen(false);
                             }}
-                            className="h-11 cursor-pointer rounded-xl px-3 text-xs font-bold transition-colors data-[selected=true]:bg-primary/5"
+                            className="flex h-12 cursor-pointer items-center rounded-2xl px-4 text-xs font-black uppercase tracking-wide transition-all data-[selected=true]:bg-primary/5 data-[selected=true]:text-primary"
                           >
-                            <div className="mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
-                              <User className="h-3.5 w-3.5" />
+                            <div className="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground group-data-[selected=true]:bg-primary/10 group-data-[selected=true]:text-primary">
+                              <User className="h-4 w-4" />
                             </div>
 
-                            <span className="min-w-0 flex-1 truncate uppercase">
-                              {name}
-                            </span>
+                            <span className="flex-1 truncate">{name}</span>
 
-                            <Check
-                              className={cn(
-                                'h-4 w-4 text-primary',
-                                selectedStaff === name
-                                  ? 'opacity-100'
-                                  : 'opacity-0'
-                              )}
-                            />
+                            {selectedStaff === name && (
+                              <Check className="h-4 w-4 text-primary" strokeWidth={3} />
+                            )}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -237,115 +230,73 @@ export function ManualOnDisplaySmsTerminal() {
                   </Command>
                 </PopoverContent>
               </Popover>
+            </div>
 
-              {selectedStaff ? (
-                <div className="flex items-center gap-2 px-1 pt-0.5 text-[9px] font-bold text-emerald-600">
-                  <Check className="h-3 w-3" />
-                  Recipient selected
+            {/* ACTION GRID */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
+                 <div className="flex items-center gap-2 px-1">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                      Execution
+                    </p>
                 </div>
-              ) : (
-                <p className="px-1 text-[9px] text-slate-400">
-                  Choose the staff member who should receive the alert.
-                </p>
-              )}
-            </div>
-
-            {/* DISPATCH */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 px-1">
-                <Zap className="h-3.5 w-3.5 text-primary" />
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Dispatch Action
-                </p>
+                <Button
+                  onClick={handleTrigger}
+                  disabled={!selectedStaff || isTriggering}
+                  className={cn(
+                    'h-16 w-full rounded-[1.25rem] text-[11px] font-black uppercase tracking-[0.22em] shadow-xl transition-all active:scale-[0.98]',
+                    selectedStaff 
+                      ? 'bg-primary shadow-primary/25 hover:bg-primary/90' 
+                      : 'bg-muted text-muted-foreground/40 opacity-50'
+                  )}
+                >
+                  {isTriggering ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Dispatching...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-5 w-5 fill-current" />
+                      Dispatch Alert
+                      <ArrowRight className="ml-2 h-4 w-4 opacity-40" />
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <Button
-                onClick={handleTrigger}
-                disabled={!selectedStaff || isTriggering}
-                className={cn(
-                  'h-14 w-full rounded-2xl text-[9px] font-black uppercase tracking-[0.18em] shadow-xl shadow-primary/20 transition-all active:scale-[0.985]',
-                  'disabled:cursor-not-allowed disabled:opacity-45'
-                )}
-              >
-                {isTriggering ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending Alert...
-                  </>
-                ) : (
-                  <>
-                    <SendIcon className="mr-2 h-4 w-4" />
-                    Dispatch Manual Alert
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* PROTOCOL INFORMATION */}
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                  Alert Scope
-                </p>
-                <p className="mt-0.5 text-[10px] font-bold text-slate-600">
-                  Expiry threshold: 7 days
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                  Delivery
-                </p>
-                <p className="mt-0.5 text-[10px] font-bold text-slate-600">
-                  Secure SMS dispatch
-                </p>
+              {/* PROTOCOL STATUS CARDS */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/50 bg-muted/10 p-4 text-center">
+                  <ShieldAlert className="mb-2 h-5 w-5 text-orange-500" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Scope</p>
+                  <p className="mt-1 text-[10px] font-black text-foreground uppercase tracking-tight">7-Day Expiry</p>
+                </div>
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/50 bg-muted/10 p-4 text-center">
+                  <BellRing className="mb-2 h-5 w-5 text-primary" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Channel</p>
+                  <p className="mt-1 text-[10px] font-black text-foreground uppercase tracking-tight">TextBee SMS</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div className="flex items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-7">
-          <div className="flex items-center gap-2 text-slate-300">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span className="text-[8px] font-black uppercase tracking-[0.22em]">
-              Secure Handshake
+        {/* FOOTER: SYSTEM TRACE */}
+        <div className="flex items-center justify-between gap-4 border-t border-border/50 bg-muted/20 px-8 py-5">
+          <div className="flex items-center gap-2.5 text-muted-foreground/30">
+            <ShieldCheck className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.3em]">
+              Secured Registry Tunnel
             </span>
           </div>
 
-          <span className="text-[8px] font-bold uppercase tracking-wider text-slate-300">
-            Protocol v5.1
-          </span>
+          <Badge variant="outline" className="h-6 border-transparent bg-background/50 px-2 text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest">
+            Handshake v5.2
+          </Badge>
         </div>
       </div>
     </div>
-  );
-}
-
-function SendIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="m22 2-7 20-4-9-9-4Z" />
-      <path d="M22 2 11 13" />
-    </svg>
   );
 }
