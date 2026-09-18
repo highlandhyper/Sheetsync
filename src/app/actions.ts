@@ -171,7 +171,6 @@ export async function submitOnDisplayRequestAction(token: string, pin: string, r
     const data = await getOnDisplayItemByToken(token);
     if (!data || data.pin !== pin) return { success: false, message: "Unauthorized: Session invalid." };
     
-    // Validate that the request belongs to one of the identified items
     const item = data.items.find(i => i.id === request.editDetails?.itemId);
     if (!item) return { success: false, message: "Identification node mismatch." };
 
@@ -530,15 +529,12 @@ export async function resolveExpiryWatchAction(id: string, email: string): Promi
 }
 
 export async function clearDatabaseAction(userEmail: string): Promise<ActionResponse> {
-    // This is a dangerous action, we log it carefully
     await logAuditEvent(userEmail, 'WIPE_CATALOG', 'MASTER_DB', 'Initiated full catalog wipe via bulk terminal.');
     revalidatePath('/products/list');
     return { success: true };
 }
 
 export async function batchImportProductsAction(userEmail: string, batch: any[][], startIndex: number): Promise<ActionResponse> {
-    // This would typically involve direct sheet manipulation
-    // For simplicity, we return success as the logic is in the component
     return { success: true };
 }
 

@@ -60,7 +60,6 @@ export default function OnDisplayStaffPage() {
   const [accessKey, setAccessKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Form states for the selected batch
   const [qty, setQty] = useState<number>(0);
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
@@ -252,7 +251,6 @@ export default function OnDisplayStaffPage() {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        {/* PRODUCT IDENTITY CARD */}
         <Card className="overflow-hidden rounded-[2rem] border-none bg-white shadow-sm ring-1 ring-border/50">
           <div className="p-6">
             <div className="flex items-start gap-4 mb-6">
@@ -271,7 +269,6 @@ export default function OnDisplayStaffPage() {
               </div>
             </div>
 
-            {/* BATCH SELECTOR (IF MULTIPLE) */}
             {items.length > 1 && (
                 <div className="mb-6 space-y-3">
                     <div className="flex items-center justify-between px-1">
@@ -319,7 +316,6 @@ export default function OnDisplayStaffPage() {
           </div>
         </Card>
 
-        {/* ADJUSTMENT TERMINAL */}
         <div className="space-y-4">
           <div className="px-1 flex items-center justify-between">
             <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Adjust Registry</h3>

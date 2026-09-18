@@ -94,7 +94,6 @@ export function ApprovalCenterClient() {
                     toast({ variant: "destructive", title: "Approval Error", description: res.message });
                 }
             } else if (selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails) {
-                // Preserved existing edit logic
                 const details = selectedRequest.editDetails;
                 const formData = new FormData();
                 formData.append('itemId', details.itemId);
@@ -134,7 +133,6 @@ export function ApprovalCenterClient() {
 
     return (
         <div className="min-w-0 space-y-4">
-            {/* Search and Summary Sections */}
             <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
                 <CardContent className="p-3 sm:p-4">
                     <div className="relative min-w-0">
@@ -221,7 +219,6 @@ export function ApprovalCenterClient() {
                 </TabsContent>
             </Tabs>
 
-            {/* Review Dialog */}
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
                     <DialogHeader className="p-6 bg-muted/20 border-b border-white/5">
