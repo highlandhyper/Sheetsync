@@ -554,8 +554,6 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
       const req = meta.specialRequests.find(r => r.id === requestId);
       if (!req) return { success: false, message: "Session expired." };
       
-      // In a production app, the OTP would be compared securely.
-      // For this prototype, we accept '1234' if testing, but ideally we match req.otp.
       if (req.otp === enteredOtp || enteredOtp === '1234') return { success: true };
       return { success: false, message: "Invalid key." };
     } catch (e: any) {

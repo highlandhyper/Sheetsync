@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import {
   verifyOnDisplayTokenAction,
@@ -26,7 +26,10 @@ import {
   Clock3,
   Calendar,
   X,
-  History
+  History,
+  Info,
+  Building2,
+  ArrowRight
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
@@ -218,7 +221,7 @@ export default function OnDisplayStaffPage() {
           <div className="pt-8 text-center border-t border-border/50">
             <div className="flex items-center justify-center gap-2 text-muted-foreground/40">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span className="text-[8px] font-black uppercase tracking-[0.4em]">SheetSync Secure Node v5.5</span>
+              <span className="text-[8px] font-black uppercase tracking-[0.4em]">SheetSync Secure Node v6.0</span>
             </div>
           </div>
         </div>
