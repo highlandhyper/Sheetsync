@@ -49,7 +49,8 @@ function sanitizeForJSON(input: any): any {
     const stack: { source: any, target: any }[] = [{ source: input, target: Array.isArray(input) ? [] : {} }];
     const rootTarget = stack[0].target;
     while (stack.length > 0) {
-        const { source, target } = stack.pop()!;
+        const { source, target } = stack.pop()! || {};
+        if (!source) continue;
         for (const key in source) {
             if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
             const value = source[key];
@@ -140,7 +141,7 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
     }
 }
 
-export async function verifyOnDisplayTokenAction(token: string, pin: string): Promise<ActionResponse<InventoryItem>> {
+export async function verifyOnDisplayTokenAction(token: string, pin: string): Promise<ActionResponse<InventoryItem[]>> {
   try {
     const data = await getOnDisplayItemByToken(token);
     if (!data) return { success: false, message: "Link invalid or session expired." };
@@ -149,17 +150,17 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string): Pr
         return { success: false, message: "Invalid Access Key. Please check your SMS." };
     }
 
-    return { success: true, data: sanitizeForJSON(data.item) };
+    return { success: true, data: sanitizeForJSON(data.items) };
   } catch (e) {
     return { success: false, message: "Registry handshake failure." };
   }
 }
 
-export async function getOnDisplayItemByTokenAction(token: string): Promise<ActionResponse<InventoryItem>> {
+export async function getOnDisplayItemByTokenAction(token: string): Promise<ActionResponse<InventoryItem[]>> {
   try {
     const data = await getOnDisplayItemByToken(token);
     if (!data) return { success: false, message: "Token invalid or expired." };
-    return { success: true, data: sanitizeForJSON(data.item) };
+    return { success: true, data: sanitizeForJSON(data.items) };
   } catch (e) {
     return { success: false, message: "Handshake failure." };
   }
@@ -170,7 +171,10 @@ export async function submitOnDisplayRequestAction(token: string, pin: string, r
     const data = await getOnDisplayItemByToken(token);
     if (!data || data.pin !== pin) return { success: false, message: "Unauthorized: Session invalid." };
     
-    const item = data.item;
+    // Validate that the request belongs to one of the identified items
+    const item = data.items.find(i => i.id === request.editDetails?.itemId);
+    if (!item) return { success: false, message: "Identification node mismatch." };
+
     const meta = await getAppMetaData();
     const reqs = meta.specialRequests || [];
     

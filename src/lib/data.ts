@@ -186,7 +186,7 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
     }).filter(r => r.id && r.status === 'pending');
 }
 
-export async function getOnDisplayItemByToken(token: string): Promise<{ item: InventoryItem; pin: string } | null> {
+export async function getOnDisplayItemByToken(token: string): Promise<{ items: InventoryItem[]; pin: string } | null> {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
   
@@ -200,17 +200,18 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ item: In
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
   
   const barcode = String(alertRow[ODA_COL_BARCODE]).trim();
+  const staffName = String(alertRow[ODA_COL_STAFF]).trim();
   const inventory = await getInventoryItems();
   
-  // Find the most recent active log for this staff member in On Display
-  const item = inventory.find(i => 
+  // Find ALL active logs for this barcode/staff in On Display
+  const items = inventory.filter(i => 
     i.barcode.trim() === barcode && 
     i.location === "On Display" && 
-    i.staffName === String(alertRow[ODA_COL_STAFF]).trim()
-  ) || null;
+    i.staffName === staffName
+  );
   
-  if (!item) return null;
-  return { item, pin };
+  if (items.length === 0) return null;
+  return { items, pin };
 }
 
 export async function markOnDisplayTokenUsed(token: string) {
