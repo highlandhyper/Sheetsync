@@ -17,7 +17,8 @@ import {
   ArrowRight,
   Wifi,
   BellRing,
-  Info
+  Info,
+  KeyRound
 } from 'lucide-react';
 import {
   Command,
@@ -111,6 +112,7 @@ export function ManualOnDisplaySmsTerminal() {
               <Button
                 variant="outline"
                 role="combobox"
+                aria-expanded={popoverOpen}
                 className={cn(
                   'h-12 w-full justify-between rounded-xl border-border/60 bg-background px-4 text-sm font-medium transition-all shadow-none',
                   popoverOpen && 'border-primary/40 ring-2 ring-primary/10'
