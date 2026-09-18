@@ -203,7 +203,6 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
   const staffName = String(alertRow[ODA_COL_STAFF]).trim();
   const inventory = await getInventoryItems();
   
-  // Grouped retrieval: find ALL active batches for this SKU/Staff in On Display
   const items = inventory.filter(i => 
     i.barcode.trim() === barcode && 
     i.location === "On Display" && 
@@ -236,7 +235,7 @@ export async function resolveExpiryReminder(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!G${row}`, [['resolved']]);
-        await logAuditEvent(email, 'RESOLVE_DIARY', id, `Cleared product from Diary Reminders.`);
+        await logAuditEvent(email, 'RESOLVE_DIARY', id, `Registry resolution for ${id}.`);
         return true;
     }
     return false;
@@ -266,7 +265,7 @@ export async function logAuditEvent(user: string, action: string, target: string
 
 export async function getAppMetaData() {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  if (data === null) throw new Error("System configuration unreachable.");
+  if (data === null) throw new Error("System configuration offline.");
   const findJson = (key: string) => {
     const rows = data.filter(r => r[SETTINGS_COL_KEY] === key);
     if (!rows || rows.length === 0) return null;
@@ -301,7 +300,7 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs.slice(0, 200))]]);
 }
 
-export async function saveStaffListToSheet(staff: StaffMember[]) {
+export async function saveStaffListAction(staff: StaffMember[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === STAFF_LIST_KEY) lastIdx = i; });
@@ -309,7 +308,7 @@ export async function saveStaffListToSheet(staff: StaffMember[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
 }
 
-export async function saveLocationListToSheet(locations: string[]) {
+export async function saveLocationListAction(locations: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY) lastIdx = i; });
@@ -331,7 +330,7 @@ export async function addProduct(email: string, p: any) {
   const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
   await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
-  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `[CREATED] Product: ${p.productName} | Barcode: ${p.barcode}`);
+  await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `[CREATED] ${p.productName}`);
   return { id: uniqueId, uniqueId, ...p };
 }
 
@@ -340,7 +339,7 @@ export async function deleteProductByBarcode(email: string, barcode: string) {
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
   if (row) {
     await deleteSheetRow(DB_SHEET_NAME, row);
-    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `[REMOVED] Barcode: ${barcode}`);
+    await logAuditEvent(email, 'DELETE_PRODUCT', barcode, `[REMOVED] SKU: ${barcode}`);
     return true;
   }
   return false;
@@ -371,7 +370,7 @@ export async function addInventoryItemToSheet(item: any) {
         item.location, 
         item.staffName, 
         item.productName || "", 
-        item.supplierName || "", 
+        item.supplier || "", 
         item.itemType, 
         item.id
     ];

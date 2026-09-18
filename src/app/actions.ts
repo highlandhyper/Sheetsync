@@ -37,7 +37,7 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
-const APPSCRIPT_API_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycby__866_Y_0XFiaPPCUaX6U1oZK329Ek6SRg9iU4u-aq5ARhxmkTmIHq6gvTpxXMf-8Lw/exec";
+const APPSCRIPT_API_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
 const APPSCRIPT_PASS = "0438"; 
 
 function sanitizeForJSON(input: any): any {
@@ -90,8 +90,11 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     const expiryReminders = results[3];
     const products = skipProducts ? undefined : results[4];
     const activeProducts = skipProducts ? undefined : (products || []);
+    
     const calculatedSuppliers = skipProducts ? undefined : activeProducts.reduce((acc: any[], p: any) => {
-        if (p.supplierName && !acc.some(s => s.name === p.supplierName)) acc.push({ name: p.supplierName, id: `s_${acc.length}` });
+        if (p.supplierName && !acc.some(s => s.name === p.supplierName)) {
+          acc.push({ name: p.supplierName, id: `s_${acc.length}` });
+        }
         return acc;
     }, []);
 
@@ -114,7 +117,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
 }
 
 export async function triggerManualOnDisplaySmsAction(staffName: string): Promise<ActionResponse> {
-    if (!staffName) return { success: false, message: "Staff identification required." };
+    if (!staffName || !APPSCRIPT_API_URL) return { success: false, message: "Staff ID or Gateway URL missing." };
 
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
@@ -131,11 +134,11 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: `Dispatched ${result.processed || 0} On-Display alerts to ${staffName}.` };
+                return { success: true, message: `Dispatched ${result.processed || 0} alerts to ${staffName}.` };
             }
-            return { success: false, message: result.message || "Protocol rejection by Apps Script." };
+            return { success: false, message: result.message || "Registry protocol error." };
         }
-        return { success: false, message: "Registry core connection timeout." };
+        return { success: false, message: "Gateway handshake failure." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -145,11 +148,7 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string): Pr
   try {
     const data = await getOnDisplayItemByToken(token);
     if (!data) return { success: false, message: "Link invalid or session expired." };
-    
-    if (data.pin !== pin) {
-        return { success: false, message: "Invalid Access Key. Please check your SMS." };
-    }
-
+    if (data.pin !== pin) return { success: false, message: "Invalid Access Key. Check your SMS." };
     return { success: true, data: sanitizeForJSON(data.items) };
   } catch (e) {
     return { success: false, message: "Registry handshake failure." };
@@ -159,10 +158,10 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string): Pr
 export async function submitOnDisplayRequestAction(token: string, pin: string, request: Partial<SpecialEntryRequest>): Promise<ActionResponse> {
   try {
     const data = await getOnDisplayItemByToken(token);
-    if (!data || data.pin !== pin) return { success: false, message: "Unauthorized: Session invalid." };
+    if (!data || data.pin !== pin) return { success: false, message: "Session invalid." };
     
     const item = data.items.find(i => i.id === request.editDetails?.itemId);
-    if (!item) return { success: false, message: "Identification node mismatch." };
+    if (!item) return { success: false, message: "Batch identification node mismatch." };
 
     const meta = await getAppMetaData();
     const reqs = meta.specialRequests || [];
@@ -191,11 +190,11 @@ export async function submitOnDisplayRequestAction(token: string, pin: string, r
     await markOnDisplayTokenUsed(token);
     
     const actionDesc = request.editDetails?.requestType === 'delete' ? 'DELETION' : 'MODIFICATION';
-    await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Temp staff request via On-Display Handshake: ${token}`);
+    await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Handshake request: ${token}`);
     
     return { success: true };
   } catch (e) {
-    return { success: false, message: "Registry error." };
+    return { success: false, message: "Registry update failed." };
   }
 }
 
@@ -221,15 +220,14 @@ export async function approveRequestAction(requestId: string, adminEmail: string
       req.status = 'approved';
       req.approvedAt = new Date().toISOString();
       await saveSpecialRequestsToSheet(requests);
-      await logAuditEvent(adminEmail, 'APPROVE_ON_DISPLAY', req.id, `Applied ${req.editDetails.requestType} for ${req.staffName}`);
+      await logAuditEvent(adminEmail, 'APPROVE_ON_DISPLAY', req.id, `Applied sync: ${req.editDetails.requestType}`);
       revalidatePath('/approvals');
       revalidatePath('/inventory');
       return { success: true };
     }
-    
-    return { success: false, message: "Action mapping missing." };
+    return { success: false, message: "Logic mapping failure." };
   } catch (e) {
-    return { success: false, message: "Registry update failed." };
+    return { success: false, message: "Registry error." };
   }
 }
 
@@ -261,22 +259,13 @@ export async function sendSmsAction(message: string, phone: string): Promise<Act
     const apiKey = process.env.TEXTBEE_API_KEY;
     const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-    if (!apiKey || !deviceId) {
-        return { success: false, message: "SMS Gateway not configured." };
-    }
+    if (!apiKey || !deviceId) return { success: false, message: "SMS Gateway offline." };
 
     try {
         const response = await fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-api-key": apiKey
-            },
-            body: JSON.stringify({
-                message,
-                recipients: [phone],
-                deviceId
-            })
+            headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+            body: JSON.stringify({ message, recipients: [phone], deviceId })
         });
 
         if (response.ok) return { success: true };
@@ -290,7 +279,7 @@ export async function sendSmsAction(message: string, phone: string): Promise<Act
 export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
     try {
         await dbDeleteInventoryItemById(userEmail, itemId);
-        await logAuditEvent(userEmail, 'DELETE_INVENTORY', itemId, `[DELETED] Entry ID: ${itemId}`);
+        await logAuditEvent(userEmail, 'DELETE_INVENTORY', itemId, `[PURGED] ID: ${itemId}`);
         revalidatePath('/inventory');
         return { success: true };
     } catch (e: any) {
@@ -303,7 +292,7 @@ export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds:
         for (const id of itemIds) {
             await dbDeleteInventoryItemById(userEmail, id);
         }
-        await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY', `${itemIds.length} items`, `Deleted multiple logs: ${itemIds.join(', ')}`);
+        await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY', `${itemIds.length} items`, `Purged batches: ${itemIds.join(', ')}`);
         revalidatePath('/inventory');
         return { success: true };
     } catch (e: any) {
@@ -392,14 +381,14 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             location: formData.get('location') as string,
             staffName: formData.get('staffName') as string,
             productName: formData.get('productName') as string,
-            supplierName: formData.get('supplier') as string,
+            supplier: formData.get('supplier') as string,
             itemType: formData.get('itemType') as any,
             timestamp: new Date().toISOString(),
             disableNotification: formData.get('disableNotification') === 'true'
         };
 
         const success = await addInventoryItemToSheet(item);
-        if (!success) throw new Error("Sheet append failed.");
+        if (!success) throw new Error("Registry core refused sync.");
 
         await logAuditEvent(item.staffName, 'LOG_INVENTORY', item.barcode, `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
         
@@ -422,7 +411,7 @@ export async function updateInventoryItemAction(prevState: any, formData: FormDa
         };
 
         const result = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
-        await logAuditEvent(userEmail, 'UPDATE_INVENTORY', itemId, `[UPDATED] Qty: ${updates.quantity} | Loc: ${updates.location}`);
+        await logAuditEvent(userEmail, 'UPDATE_INVENTORY', itemId, `[SYNC] Qty: ${updates.quantity} | Zone: ${updates.location}`);
 
         revalidatePath('/inventory');
         return { success: true, data: sanitizeForJSON(result) };
@@ -450,7 +439,7 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
         }
 
         revalidatePath('/products/list');
-        return { success: true, data: sanitizeForJSON(result), message: "Catalog updated successfully." };
+        return { success: true, data: sanitizeForJSON(result), message: "Catalog synchronized." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -472,9 +461,9 @@ export async function addSupplierAction(prevState: any, formData: FormData): Pro
     try {
         const name = formData.get('supplierName') as string;
         const userEmail = formData.get('userEmail') as string || 'Admin';
-        await logAuditEvent(userEmail, 'ADD_SUPPLIER', name, `Registered new supplier: ${name}`);
+        await logAuditEvent(userEmail, 'ADD_SUPPLIER', name, `Master vendor created: ${name}`);
         const newSupplier = { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() };
-        return { success: true, data: sanitizeForJSON(newSupplier), message: "Supplier registered." };
+        return { success: true, data: sanitizeForJSON(newSupplier), message: "Vendor registered." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -519,7 +508,7 @@ export async function resolveExpiryWatchAction(id: string, email: string): Promi
 }
 
 export async function clearDatabaseAction(userEmail: string): Promise<ActionResponse> {
-    await logAuditEvent(userEmail, 'WIPE_CATALOG', 'MASTER_DB', 'Initiated full catalog wipe via bulk terminal.');
+    await logAuditEvent(userEmail, 'WIPE_CATALOG', 'MASTER_DB', 'Industrial catalog wipe initiated.');
     revalidatePath('/products/list');
     return { success: true };
 }
@@ -552,10 +541,9 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
     try {
       const meta = await getAppMetaData();
       const req = meta.specialRequests.find(r => r.id === requestId);
-      if (!req) return { success: false, message: "Session expired." };
-      
+      if (!req) return { success: false, message: "Handshake session invalid." };
       if (req.otp === enteredOtp || enteredOtp === '1234') return { success: true };
-      return { success: false, message: "Invalid key." };
+      return { success: false, message: "Access Key rejection." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }

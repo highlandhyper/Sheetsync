@@ -268,7 +268,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       }
 
       if (!navigator.onLine) {
-          setProductLookupError('Working Offline: Only local catalog items verifiable.');
+          setProductLookupError('Registry lookup requires connectivity.');
           setIsFetchingProduct(false);
           return false;
       }
@@ -285,7 +285,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
               setSuggestedProductName(externalRes.data.name);
               setFoundInGlobalRegistry(true);
           }
-          setProductLookupError('Asset not found in Registry.');
+          setProductLookupError('SKU not found in local registry.');
           setIsFetchingProduct(false);
           return false;
       }
@@ -374,11 +374,11 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         if (response.success && response.data) {
           if (activeSession) consumeSpecialEntry(); 
         } else {
-          setErrorMessage(response.message || 'The Google Sheets registry refused the connection.');
+          setErrorMessage(response.message || 'Registry refused synchronization.');
           setIsErrorDialogOpen(true);
         }
       } catch (err) {
-        setErrorMessage('Industrial terminal handshake timeout. Check connectivity.');
+        setErrorMessage('Communication timeout with master registry.');
         setIsErrorDialogOpen(true);
       }
     });
@@ -389,7 +389,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     if (!currentBarcode) return;
     requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', currentBarcode, suggestedProductName);
     setHasRequestedProduct(true);
-    toast({ title: "Request Dispatched", description: "Administrators notified." });
+    toast({ title: "Request Sent", description: "Admin notified of missing SKU." });
   };
 
   type FieldName = keyof AddInventoryItemFormValues;
@@ -472,15 +472,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                     isOnline && pendingActions.length > 0 && 'bg-primary/10 text-primary hover:bg-primary/15',
                                     isOnline && pendingActions.length === 0 && 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15',
                                 )}
-                                aria-label={
-                                    isSubmitting || isPending
-                                        ? 'Inventory changes are syncing'
-                                        : !isOnline
-                                          ? 'Offline: changes will be queued'
-                                          : pendingActions.length > 0
-                                            ? `${pendingActions.length} changes waiting to sync`
-                                            : 'Inventory is synced'
-                                }
                             >
                                 {isSubmitting || isPending ? (
                                     <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
@@ -504,7 +495,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             )}
                         </div>
                         <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">
-                            Scan, verify, and add inventory in a few steps.
+                            Standard SKU identification protocol.
                         </p>
                     </div>
                 </div>
@@ -553,17 +544,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             </span>
                         </div>
                         <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1" />
-                        <div className="hidden grid-cols-4 gap-1.5 sm:grid">
-                            {steps.map((step, index) => (
-                                <div
-                                    key={step.id}
-                                    className={cn(
-                                        "h-1 rounded-full transition-colors",
-                                        index <= currentStep ? "bg-primary" : "bg-muted"
-                                    )}
-                                />
-                            ))}
-                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -599,15 +579,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                     {!hasRequestedProduct ? (
                                         <div className="space-y-1.5">
-                                            {foundInGlobalRegistry && suggestedProductName && (
-                                                <div className="mb-1 flex items-center gap-2 rounded-xl border-0 bg-primary/5 px-3 py-2">
-                                                    <Globe className="h-3 w-3 text-primary" />
-                                                    <span className="text-[7px] font-black uppercase tracking-widest text-primary">Product match found</span>
-                                                </div>
-                                            )}
                                             <Button type="button" variant="default" className="h-11 w-full min-w-0 rounded-xl bg-primary px-3 text-xs font-semibold shadow-sm" onClick={handleRequestProductAdd}>
                                                 <SendHorizontal className="mr-2 h-3 w-3 shrink-0" />
-                                                <span className="min-w-0 truncate">{suggestedProductName ? `Request: ${suggestedProductName}` : "Request new product"}</span>
+                                                <span className="min-w-0 truncate">{suggestedProductName ? `Request: ${suggestedProductName}` : "Request registration"}</span>
                                             </Button>
                                         </div>
                                     ) : (
@@ -615,7 +589,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                                             <div className="flex-1">
                                                 <p className="text-[8px] font-black uppercase tracking-widest leading-none">Request sent</p>
-                                                <p className="text-[7px] font-medium opacity-80 leading-none uppercase mt-0.5">Waiting for admin to add this product</p>
+                                                <p className="text-[7px] font-medium opacity-80 leading-none uppercase mt-0.5">Registry update pending admin approval</p>
                                             </div>
                                         </div>
                                     )}
@@ -633,7 +607,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-primary/70">
-                                                Product found
+                                                Product verified
                                             </p>
                                             <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
                                                 {productName}
@@ -762,7 +736,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         <Label htmlFor="damage-toggle" className="text-xs font-semibold text-foreground">Damaged item</Label>
                                         {allFormValues.itemType === 'Damage' && <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">Mark this stock as damaged</p>
+                                    <p className="text-[10px] text-muted-foreground">Classify this batch as damaged stock</p>
                                 </div>
                                 <Switch id="damage-toggle" checked={allFormValues.itemType === 'Damage'} onCheckedChange={(checked) => setValue('itemType', checked ? 'Damage' : 'Expiry', { shouldValidate: true })} className="shrink-0" />
                             </div>
@@ -844,7 +818,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         </Card>
         
         <div className="hidden pt-4 text-center sm:block">
-            <p className="px-2 text-[10px] text-muted-foreground/60">SheetSync Inventory • Secure sync enabled</p>
+            <p className="px-2 text-[10px] text-muted-foreground/60">SheetSync Registry Handshake • Encrypted Sync</p>
         </div>
     </div>
 
@@ -854,12 +828,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
                     <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
                         <DialogTitle className="text-base font-bold">Select staff member</DialogTitle>
-                        <DialogDescription className="text-xs">Search and select the staff member logging this item.</DialogDescription>
+                        <DialogDescription className="text-xs">Identify the personnel logging this registry entry.</DialogDescription>
                     </DialogHeader>
                     <Command className="min-h-0 flex-1 rounded-none bg-transparent">
-                        <CommandInput placeholder="Search staff members..." className="h-12" />
+                        <CommandInput placeholder="Search staff registry..." className="h-12" />
                         <CommandList className="max-h-[min(52dvh,360px)] p-1.5">
-                            <CommandEmpty className="py-8 text-xs text-muted-foreground">No staff members found.</CommandEmpty>
+                            <CommandEmpty className="py-8 text-xs text-muted-foreground">No staff members identified.</CommandEmpty>
                             <CommandGroup>
                                 {uniqueStaffNames.map((staff) => (
                                     <CommandItem
@@ -890,7 +864,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
                     <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
                         <DialogTitle className="text-base font-bold">Select expiry date</DialogTitle>
-                        <DialogDescription className="text-xs">Choose when this inventory item expires.</DialogDescription>
+                        <DialogDescription className="text-xs">Choose the lifecycle threshold for this item.</DialogDescription>
                     </DialogHeader>
                     <div className="min-h-0 flex-1 overflow-y-auto p-2">
                         <Calendar
@@ -953,13 +927,13 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
             </div>
             <DialogHeader className="space-y-1">
                 <DialogTitle className="text-lg font-black uppercase tracking-tighter text-primary leading-none">Sync Confirmed</DialogTitle>
-                <DialogDescription className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Registry Node Updated</DialogDescription>
+                <DialogDescription className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Registry Handshake Successful</DialogDescription>
             </DialogHeader>
             <Separator className="my-4 bg-slate-800" />
             <div className="flex flex-col items-center gap-1">
                 <Heart className="h-3.5 w-3.5 text-red-500 fill-red-500" />
                 <p className="text-sm font-black uppercase tracking-tight truncate max-w-[180px]">Thank you, {submittedStaffName}!</p>
-                <p className="text-slate-500 text-[7px] font-black uppercase tracking-widest">Entry Synchronized with Cloud</p>
+                <p className="text-slate-500 text-[7px] font-black uppercase tracking-widest">Entry Buffered for Cloud Dispatch</p>
             </div>
         </DialogContent>
     </Dialog>
@@ -971,14 +945,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 <XCircle className="h-8 w-8 text-white" />
             </div>
             <DialogHeader className="space-y-1">
-                <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none">Couldn’t Log Item</DialogTitle>
-                <DialogDescription className="text-white/70 text-[8px] font-black uppercase tracking-widest">Inventory sync error</DialogDescription>
+                <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none">Handshake Failure</DialogTitle>
+                <DialogDescription className="text-white/70 text-[8px] font-black uppercase tracking-widest">Registry Sync Error</DialogDescription>
             </DialogHeader>
             <div className="mt-5 p-3 bg-black/20 rounded-xl border border-0 w-full">
                 <p className="text-[9px] font-bold leading-relaxed italic text-white/90">"{errorMessage}"</p>
             </div>
             <Button onClick={() => setIsErrorDialogOpen(false)} variant="secondary" className="mt-6 w-full h-11 text-[9px] font-black uppercase tracking-widest rounded-xl shadow-xl">
-                Back to Form
+                Abort & Return
             </Button>
         </DialogContent>
     </Dialog>
@@ -992,8 +966,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         <CloudOff className="h-4 w-4 text-amber-500" />
                     </div>
                     <div>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-amber-600 leading-none">Pending Sync</DialogTitle>
-                        <DialogDescription className="font-bold text-[7px] uppercase tracking-[0.2em] text-muted-foreground/60 mt-1">Items waiting to upload</DialogDescription>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter text-amber-600 leading-none">Transmission Buffer</DialogTitle>
+                        <DialogDescription className="font-bold text-[7px] uppercase tracking-[0.2em] text-muted-foreground/60 mt-1">Pending industrial registry updates</DialogDescription>
                     </div>
                 </div>
             </DialogHeader>
