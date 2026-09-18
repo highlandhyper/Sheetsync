@@ -10,7 +10,6 @@ import {
   ChevronsUpDown,
   Loader2,
   Search,
-  ShieldAlert,
   Smartphone,
   User,
   Users,
@@ -35,6 +34,7 @@ import {
 } from '@/components/ui/popover';
 import { triggerManualOnDisplaySmsAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 export function ManualOnDisplaySmsTerminal() {
   const { uniqueStaffNames } = useDataCache();
@@ -85,60 +85,55 @@ export function ManualOnDisplaySmsTerminal() {
   };
 
   return (
-    <div className="space-y-6 p-1 animate-in fade-in duration-500">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col gap-1.5 border-b border-border/50 pb-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Smartphone className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold tracking-tight text-foreground">Manual Alert Dispatch</h3>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* HEADER */}
+      <div className="flex items-center justify-between pb-4 border-b border-border/50">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Smartphone className="h-5 w-5" />
           </div>
-          <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-            <Wifi className="mr-1.5 h-3 w-3" />
-            Gateway Ready
-          </Badge>
+          <div>
+            <h3 className="text-base font-bold text-foreground">SMS Alert Dispatch</h3>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">On-Display protocol</p>
+          </div>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Identify a staff member to trigger immediate security notifications for their <span className="font-semibold text-foreground">On-Display</span> items.
-        </p>
+        <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5">
+          <Wifi className="mr-1 h-3 w-3" />
+          Active
+        </Badge>
       </div>
 
-      {/* CORE SELECTION */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="space-y-2">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Assign Target Personnel</Label>
+          <Label className="text-[11px] font-bold text-muted-foreground ml-1">Select Target Personnel</Label>
           <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal={true}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 role="combobox"
                 className={cn(
-                  'h-12 w-full justify-between rounded-xl border-border/60 bg-background px-4 text-sm font-medium transition-all shadow-sm',
-                  popoverOpen && 'ring-2 ring-primary/20 border-primary/40'
+                  'h-12 w-full justify-between rounded-xl border-border/60 bg-background px-4 text-sm font-medium transition-all shadow-none',
+                  popoverOpen && 'border-primary/40 ring-2 ring-primary/10'
                 )}
               >
                 <div className="flex items-center gap-3 truncate">
                   {selectedStaff ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                      <User className="h-3.5 w-3.5" />
-                    </div>
+                    <User className="h-4 w-4 text-primary" />
                   ) : (
                     <Users className="h-4 w-4 text-muted-foreground/50" />
                   )}
                   <span className={cn(!selectedStaff && "text-muted-foreground/60")}>
-                    {selectedStaff || 'Choose from registry...'}
+                    {selectedStaff || 'Search personnel...'}
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl" align="start">
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden shadow-2xl border-border/60" align="start">
               <Command>
-                <CommandInput placeholder="Search staff registry..." className="h-11" />
+                <CommandInput placeholder="Type staff name..." className="h-11" />
                 <CommandList className="max-h-[240px]">
-                  <CommandEmpty className="py-8 text-center text-xs text-muted-foreground">No personnel identified.</CommandEmpty>
+                  <CommandEmpty className="py-8 text-center text-xs text-muted-foreground">No staff found.</CommandEmpty>
                   <CommandGroup>
                     {staffList.map((name) => (
                       <CommandItem
@@ -161,63 +156,54 @@ export function ManualOnDisplaySmsTerminal() {
           </Popover>
         </div>
 
-        {/* INFO BOX */}
-        <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-4 border border-border/40">
-          <div className="mt-0.5 rounded-full bg-background p-1 shadow-sm">
-            <Info className="h-3.5 w-3.5 text-primary" />
+        <div className="rounded-2xl bg-muted/40 p-4 border border-border/40 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-lg bg-background p-1.5 shadow-sm">
+              <Info className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-foreground">Registry Handshake</p>
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                Triggering this will scan for items expiring within 7 days and dispatch one-time access links via the SMS gateway.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-bold text-foreground">Industrial Handshake Protocol</p>
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
-              A secure one-time token will be generated for every item identified under the 7-day threshold. SMS delivery is handled by the TextBee REST gateway.
-            </p>
-          </div>
-        </div>
 
-        {/* ACTION AREA */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-muted/20 border border-border/50 text-center">
-                <BellRing className="h-4 w-4 text-primary mb-1.5" />
-                <span className="text-[10px] font-bold uppercase tracking-tight text-foreground">7-Day Threshold</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1 rounded-xl bg-background/50 p-2.5 text-center">
+              <BellRing className="mx-auto h-3.5 w-3.5 text-primary" />
+              <span className="text-[9px] font-bold uppercase tracking-tight">7D Threshold</span>
             </div>
-            <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-muted/20 border border-border/50 text-center">
-                <ShieldAlert className="h-4 w-4 text-orange-500 mb-1.5" />
-                <span className="text-[10px] font-bold uppercase tracking-tight text-foreground">Secure Tokens</span>
+            <div className="flex flex-col gap-1 rounded-xl bg-background/50 p-2.5 text-center">
+              <KeyRound className="mx-auto h-3.5 w-3.5 text-orange-500" />
+              <span className="text-[9px] font-bold uppercase tracking-tight">One-Time PIN</span>
             </div>
+          </div>
         </div>
 
         <Button
           onClick={handleTrigger}
           disabled={!selectedStaff || isTriggering}
-          className="h-12 w-full rounded-xl text-xs font-bold uppercase tracking-wide shadow-md transition-all active:scale-[0.985]"
+          className="h-14 w-full rounded-2xl text-xs font-black uppercase tracking-[0.1em] shadow-lg shadow-primary/10 transition-all active:scale-[0.98]"
         >
           {isTriggering ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Finalizing Handshake...
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing Dispatch...
             </>
           ) : (
             <>
               <Zap className="mr-2 h-4 w-4 fill-current" />
-              Dispatch Security Alert
+              Start Manual Trigger
               <ArrowRight className="ml-2 h-4 w-4 opacity-40" />
             </>
           )}
         </Button>
       </div>
-      
+
       <div className="pt-2 text-center">
-        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30">Registry Control Terminal v5.2</p>
+        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">SheetSync Registry Control Terminal</p>
       </div>
     </div>
   );
 }
-
-function Label({ children, className }: { children: React.ReactNode; className?: string }) {
-    return (
-        <label className={cn("block text-xs font-medium", className)}>
-            {children}
-        </label>
-    );
-}
-
