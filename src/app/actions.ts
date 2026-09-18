@@ -134,7 +134,7 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: `Dispatched ${result.processed || 0} alerts to ${staffName}.` };
+                return { success: true, message: `Dispatched ${result.processed || 0} summarized alerts to ${staffName}.` };
             }
             return { success: false, message: result.message || "Registry protocol error." };
         }
