@@ -1,4 +1,3 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -362,7 +361,18 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
 
 export async function addInventoryItemToSheet(item: any) {
     const ts = item.timestamp ? new Date(item.timestamp) : new Date();
-    const row = [format(ts, "d/M/yyyy HH:mm:ss"), item.barcode, item.quantity, item.expiryDate, item.location, item.staffName, item.productName, "", item.itemType, item.id];
+    const row = [
+        format(ts, "d/M/yyyy HH:mm:ss"), 
+        item.barcode, 
+        item.quantity, 
+        item.expiryDate, 
+        item.location, 
+        item.staffName, 
+        item.productName, 
+        item.supplierName || "", 
+        item.itemType, 
+        item.id
+    ];
     return appendSheetData(`${FORM_RESPONSES_SHEET_NAME}!A:J`, [row]);
 }
 

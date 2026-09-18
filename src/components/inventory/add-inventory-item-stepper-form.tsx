@@ -348,6 +348,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                 expiryDate: formattedExpiry,
                 userEmail: user?.email,
                 disableNotification: activeSession ? 'true' : 'false',
+                productName: productName,
                 supplier: productSupplier
             }
         });
@@ -362,6 +363,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       formData.append('itemType', data.itemType);
       formData.append('quantity', data.quantity.toString());
       formData.append('location', data.location);
+      formData.append('productName', productName);
       formData.append('supplier', productSupplier);
       if (user?.email) formData.append('userEmail', user.email);
       if (activeSession) formData.append('disableNotification', 'true');
