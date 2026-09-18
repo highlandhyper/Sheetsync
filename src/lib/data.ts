@@ -203,11 +203,12 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
   const staffName = String(alertRow[ODA_COL_STAFF]).trim();
   const inventory = await getInventoryItems();
   
-  // Find ALL active logs for this barcode/staff in On Display
+  // Grouped retrieval: find ALL active batches for this SKU/Staff in On Display
   const items = inventory.filter(i => 
     i.barcode.trim() === barcode && 
     i.location === "On Display" && 
-    i.staffName === staffName
+    i.staffName === staffName &&
+    i.quantity > 0
   );
   
   if (items.length === 0) return null;
@@ -226,15 +227,15 @@ export async function markOnDisplayTokenUsed(token: string) {
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
-    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts, reminder.staffName || ''];
-    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:H`, [row]);
+    const row = [id, id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts, reminder.staffName || ''];
+    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:I`, [row]);
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
 }
 
 export async function resolveExpiryReminder(id: string, email: string) {
-    const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID - 1);
+    const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
-        await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
+        await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!G${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_DIARY', id, `Cleared product from Diary Reminders.`);
         return true;
     }
