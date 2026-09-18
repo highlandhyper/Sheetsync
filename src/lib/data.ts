@@ -370,7 +370,7 @@ export async function addInventoryItemToSheet(item: any) {
         item.expiryDate, 
         item.location, 
         item.staffName, 
-        item.productName, 
+        item.productName || "", 
         item.supplierName || "", 
         item.itemType, 
         item.id
