@@ -189,39 +189,48 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
 export async function getOnDisplayItemByToken(token: string): Promise<{ items: InventoryItem[]; pin: string } | null> {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
-  
-  const alertRow = alerts.find(row => String(row[ODA_COL_TOKEN]).trim() === token);
-  if (!alertRow) return null;
-  
-  const isUsed = String(alertRow[ODA_COL_USED]).toLowerCase() === 'yes';
-  const expiresAt = parseFlexibleTimestamp(alertRow[ODA_COL_EXPIRES]);
-  const pin = String(alertRow[ODA_COL_PIN] || '').trim();
-  
+
+  const matchingAlerts = alerts.filter(row => String(row[ODA_COL_TOKEN]).trim() === token);
+  if (matchingAlerts.length === 0) return null;
+
+  const firstAlert = matchingAlerts[0];
+  const isUsed = matchingAlerts.some(row => String(row[ODA_COL_USED]).toLowerCase() === 'yes');
+  const expiresAt = parseFlexibleTimestamp(firstAlert[ODA_COL_EXPIRES]);
+  const pin = String(firstAlert[ODA_COL_PIN] || '').trim();
+
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
-  
-  const barcode = String(alertRow[ODA_COL_BARCODE]).trim();
-  const staffName = String(alertRow[ODA_COL_STAFF]).trim().toUpperCase();
+
+  const staffName = String(firstAlert[ODA_COL_STAFF]).trim().toUpperCase();
+  const barcodes = new Set(matchingAlerts.map(row => String(row[ODA_COL_BARCODE]).trim()));
   const inventory = await getInventoryItems();
-  
-  // Find all grouped batches for this product/staff combination
-  const items = inventory.filter(i => 
-    i.barcode.trim() === barcode && 
-    i.location === "On Display" && 
+
+  // A staff-level SMS uses one token for every listed barcode, so show each
+  // matching on-display product in the linked workflow.
+  const items = inventory.filter(i =>
+    barcodes.has(i.barcode.trim()) &&
+    i.location === "On Display" &&
     i.staffName.trim().toUpperCase() === staffName &&
     i.quantity > 0
   );
-  
+
   if (items.length === 0) return null;
   return { items, pin };
 }
 
 export async function markOnDisplayTokenUsed(token: string) {
-  const row = await findRowByUniqueValue(ON_DISPLAY_ALERTS_SHEET_NAME, token, ODA_COL_TOKEN);
-  if (row) {
-    await updateSheetData(`${ON_DISPLAY_ALERTS_SHEET_NAME}!I${row}`, [['Yes']]);
-    return true;
-  }
-  return false;
+  const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
+  if (!alerts) return false;
+
+  const matchingRows = alerts
+    .map((row, index) => String(row[ODA_COL_TOKEN]).trim() === token ? index + 2 : null)
+    .filter((row): row is number => row !== null);
+
+  if (matchingRows.length === 0) return false;
+
+  await Promise.all(matchingRows.map(row =>
+    updateSheetData(`${ON_DISPLAY_ALERTS_SHEET_NAME}!I${row}`, [['Yes']])
+  ));
+  return true;
 }
 
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
