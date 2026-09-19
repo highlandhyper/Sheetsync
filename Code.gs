@@ -197,7 +197,7 @@ function processOnDisplayAlerts_(targetStaffName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const invSheet = ss.getSheetByName(LOG_SHEET_NAME);
   const alertSheet = ss.getSheetByName(ON_DISPLAY_ALERTS_SHEET_NAME) || ss.insertSheet(ON_DISPLAY_ALERTS_SHEET_NAME);
-  
+
   if (alertSheet.getLastRow() === 0) {
     alertSheet.appendRow(["ID", "Barcode", "Product", "Expiry", "Staff", "Token", "PIN", "Expires At", "Used", "Sent At"]);
   }
@@ -205,51 +205,69 @@ function processOnDisplayAlerts_(targetStaffName) {
   const invData = invSheet.getDataRange().getValues();
   const today = startOfDay_(new Date());
   const targetDate = addCalendarDays_(today, 7);
+  const isManualDispatch = Boolean(targetStaffName && String(targetStaffName).trim());
+  const pendingAlerts = [];
 
-  const results = [];
-  
   for (let i = 1; i < invData.length; i++) {
     const row = invData[i];
     const barcode = String(row[1] || "").trim();
-    const qty = parseFloat(String(row[2] || "0").replace(/[^0-9.-]+/g,""));
+    const qty = parseFloat(String(row[2] || "0").replace(/[^0-9.-]+/g, ""));
     const expiry = parseExpiryWatchDate_(row[3]);
     const location = String(row[4] || "").trim();
     const staffName = String(row[5] || "").trim();
     const productName = String(row[6] || "Unregistered Product").trim();
 
     if (!barcode || isNaN(qty) || qty <= 0 || location !== "On Display" || !expiry) continue;
-
-    // Filter by staff if manually triggered
-    if (targetStaffName && staffName.toUpperCase() !== targetStaffName.toUpperCase()) continue;
+    if (isManualDispatch && staffName.toUpperCase() !== String(targetStaffName).trim().toUpperCase()) continue;
 
     const expiryDay = startOfDay_(expiry);
-
-    // Trigger if exactly 7 days away
-    if (isSameDay_(expiryDay, targetDate)) {
-      if (!hasSentOnDisplayAlert_(alertSheet, barcode, expiryDay, staffName)) {
-        const token = generateSecureToken_();
-        const pin = Math.floor(1000 + Math.random() * 9000).toString();
-        const expiresAt = new Date(new Date().getTime() + 24 * 60 * 60 * 1000); // 24 Hours
-        
-        const alertId = "oda_" + Date.now() + "_" + i;
-        const smsResult = sendOnDisplaySms_(staffName, productName, barcode, qty, expiryDay, token, pin);
-        
-        if (smsResult.success) {
-          alertSheet.appendRow([alertId, barcode, productName, expiryDay, staffName, token, pin, expiresAt, "No", new Date()]);
-          results.push({ barcode, status: "sent" });
-        }
-      }
-    }
+    // A manual trigger is an explicit staff inventory summary: include every
+    // on-display log for that staff, not only products at the 7-day threshold.
+    // Scheduled runs retain the 7-day rule and duplicate-alert protection.
+    const shouldSend = isManualDispatch || (
+      isSameDay_(expiryDay, targetDate) &&
+      !hasSentOnDisplayAlert_(alertSheet, barcode, expiryDay, staffName)
+    );
+    if (shouldSend) pendingAlerts.push({ barcode, expiryDay, staffName, productName, qty, rowIndex: i });
   }
-  return { status: "success", processed: results.length };
+
+  if (pendingAlerts.length === 0) return { status: "success", processed: 0 };
+
+  // Send one staff-level SMS containing every pending product log for that staff.
+  // This also keeps automatic runs isolated when more than one staff member has alerts.
+  const alertsByStaff = {};
+  pendingAlerts.forEach(item => {
+    const staffKey = item.staffName.toUpperCase();
+    if (!alertsByStaff[staffKey]) alertsByStaff[staffKey] = { staffName: item.staffName, items: [] };
+    alertsByStaff[staffKey].items.push(item);
+  });
+
+  let processed = 0;
+  Object.keys(alertsByStaff).forEach(staffKey => {
+    const staffAlerts = alertsByStaff[staffKey];
+    const token = generateSecureToken_();
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const smsResult = sendOnDisplaySms_(staffAlerts.staffName, staffAlerts.items, token, pin);
+
+    if (!smsResult.success) return;
+
+    staffAlerts.items.forEach((item, index) => {
+      const alertId = "oda_" + Date.now() + "_" + item.rowIndex + "_" + index;
+      alertSheet.appendRow([alertId, item.barcode, item.productName, item.expiryDay, item.staffName, token, pin, expiresAt, "No", new Date()]);
+      processed++;
+    });
+  });
+
+  return { status: "success", processed: processed };
 }
 
 function hasSentOnDisplayAlert_(sheet, barcode, expiry, staff) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][1]).trim() === String(barcode).trim() && 
-        isSameDay_(new Date(data[i][3]), expiry) && 
-        String(data[i][4]).trim() === String(staff).trim()) return true;
+    if (String(data[i][1]).trim() === String(barcode).trim() &&
+        isSameDay_(new Date(data[i][3]), expiry) &&
+        String(data[i][4]).trim().toUpperCase() === String(staff).trim().toUpperCase()) return true;
   }
   return false;
 }
@@ -262,13 +280,17 @@ function isSameDay_(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 }
 
-function sendOnDisplaySms_(staffName, product, barcode, qty, expiry, token, pin) {
+function sendOnDisplaySms_(staffName, items, token, pin) {
   const staffContact = getStaffContactByName_(staffName);
   if (!staffContact || !staffContact.phone) return { success: false };
-  
+
   const recipient = normalizeStaffPhone_(staffContact.phone);
   const link = APP_URL + "/on-display/" + token;
-  
+  const productLines = items.map((item, index) => [
+    (index + 1) + ". " + item.productName,
+    "   Barcode: " + item.barcode + " | Qty: " + item.qty + " | Exp: " + formatSmsDate_(item.expiryDay)
+  ].join("\n"));
+
   const message = [
     "HIGHLAND HYPERMARKET",
     "ON DISPLAY EXPIRY ALERT",
@@ -276,12 +298,10 @@ function sendOnDisplaySms_(staffName, product, barcode, qty, expiry, token, pin)
     "Staff: " + staffName,
     "Access Key: " + pin,
     "",
-    "Product: " + product,
-    "Barcode: " + barcode,
-    "Quantity: " + qty,
-    "Expiry: " + formatSmsDate_(expiry),
+    "Products requiring attention:",
+    productLines.join("\n"),
     "",
-    "Please check this product in SheetSync.",
+    "Please check these products in SheetSync.",
     "",
     "Open:",
     link
@@ -298,7 +318,7 @@ function sendOnDisplaySms_(staffName, product, barcode, qty, expiry, token, pin)
     payload: JSON.stringify({ message, recipients: [recipient], deviceId }),
     muteHttpExceptions: true
   });
-  
+
   return { success: response.getResponseCode() === 200 };
 }
 
