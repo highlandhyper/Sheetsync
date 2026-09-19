@@ -48,8 +48,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
-// Kept at module scope so the staff page and its selector always share one defined source of zone options.
-const availableLocations = ['On Display', 'Front Side', 'Back side'];
+const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
 
 type OnDisplayLocationSelectProps = {
   location: string;
@@ -59,7 +58,7 @@ type OnDisplayLocationSelectProps = {
 
 function OnDisplayLocationSelect({ location, itemLocations, onChange }: OnDisplayLocationSelectProps) {
   const options = Array.from(new Set([
-    ...availableLocations,
+    ...DEFAULT_ON_DISPLAY_LOCATIONS,
     ...itemLocations.filter(Boolean),
   ]));
 
@@ -307,52 +306,47 @@ export default function OnDisplayStaffPage() {
             </div>
 
             {items.length > 1 && (
-              <section className="mb-6 space-y-3" aria-label="Products in this alert">
+              <div className="mb-6 space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Products in this alert</span>
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary">{displayItems.length} LOGS</span>
+                  <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
                 </div>
-                <div className="max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain pr-1">
-                  {displayItems.map((it, idx) => {
-                    const isSelected = selectedItemIndex === idx;
-                    return (
-                      <button
-                        key={it.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => handleSelectBatch(idx)}
-                        className={cn(
-                          "w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                          isSelected
-                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
-                            : "border-border/50 bg-slate-50 text-foreground active:bg-slate-100"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black uppercase leading-tight">{it.productName}</p>
-                            <p className={cn(
-                              "mt-1.5 flex items-center gap-1 font-mono text-[11px] font-bold",
-                              isSelected ? "text-white/80" : "text-muted-foreground"
-                            )}>
-                              <Barcode className="h-3.5 w-3.5 shrink-0" /> {it.barcode}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-[10px] font-black uppercase">Qty {it.quantity}</p>
-                            <p className={cn(
-                              "mt-1.5 text-[10px] font-bold uppercase",
-                              isSelected ? "text-white/80" : "text-muted-foreground"
-                            )}>
-                              {it.expiryLabel}
-                            </p>
-                          </div>
+                <div className="space-y-2">
+                  {items.map((it, idx) => (
+                    <button
+                      key={it.id}
+                      onClick={() => handleSelectBatch(idx)}
+                      className={cn(
+                        "w-full rounded-2xl border p-3 text-left transition-all",
+                        selectedItemIndex === idx
+                          ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                          : "border-border/50 bg-slate-50 text-foreground"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black uppercase">{it.productName}</p>
+                          <p className={cn(
+                            "mt-1 font-mono text-[10px] font-bold",
+                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                          )}>
+                            Barcode: {it.barcode}
+                          </p>
                         </div>
-                      </button>
-                    );
-                  })}
+                        <div className="shrink-0 text-right">
+                          <p className="text-[9px] font-black uppercase">Qty {it.quantity}</p>
+                          <p className={cn(
+                            "mt-1 text-[9px] font-bold uppercase",
+                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                          )}>
+                            {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yyyy') : 'No expiry'}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              </section>
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
@@ -425,11 +419,16 @@ export default function OnDisplayStaffPage() {
                     <Label htmlFor="on-display-location" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Zone</Label>
                     <div className="relative">
                       <MapPin className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-primary/40" />
-                      <OnDisplayLocationSelect
-                        location={loc}
-                        itemLocations={items.map(item => item.location)}
-                        onChange={setLoc}
-                      />
+                      <select
+                        id="on-display-location"
+                        value={loc}
+                        onChange={(e) => setLoc(e.target.value)}
+                        className="h-16 w-full appearance-none rounded-2xl border-none bg-slate-50 py-0 pl-14 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        {availableLocations.map(location => (
+                          <option key={location} value={location}>{location}</option>
+                        ))}
+                      </select>
                     </div>
                     <p className="px-1 text-[10px] font-medium text-muted-foreground">Select the zone where this product is currently placed.</p>
                   </div>
