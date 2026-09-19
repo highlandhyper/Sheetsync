@@ -28,7 +28,8 @@ import {
   Info,
   X,
   History,
-  Box
+  Box,
+  LogOut
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
