@@ -5,12 +5,12 @@ import { useParams } from 'next/navigation';
 import {
   verifyOnDisplayTokenAction,
   submitOnDisplayRequestAction,
+  finalizeOnDisplaySessionAction,
 } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 
 import {
   AlertTriangle,
-  Barcode,
   CheckCircle2,
   KeyRound,
   Loader2,
@@ -20,16 +20,13 @@ import {
   SendHorizontal,
   ShieldAlert,
   ShieldCheck,
-  ChevronRight,
   Layers,
   Hash,
   Clock3,
-  Calendar,
-  X,
-  History,
-  Info,
-  Building2,
-  ArrowRight
+  Check,
+  LogOut,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
@@ -39,8 +36,6 @@ import { cn } from '@/lib/utils';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,32 +44,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
-
-type OnDisplayLocationSelectProps = {
-  location: string;
-  itemLocations: string[];
-  onChange: (location: string) => void;
-};
-
-function OnDisplayLocationSelect({ location, itemLocations, onChange }: OnDisplayLocationSelectProps) {
-  const options = Array.from(new Set([
-    ...DEFAULT_ON_DISPLAY_LOCATIONS,
-    ...itemLocations.filter(Boolean),
-  ]));
-
-  return (
-    <select
-      id="on-display-location"
-      value={location}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-16 w-full appearance-none rounded-2xl border-none bg-slate-50 py-0 pl-14 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-    >
-      {options.map(option => (
-        <option key={option} value={option}>{option}</option>
-      ))}
-    </select>
-  );
-}
 
 export default function OnDisplayStaffPage() {
   const params = useParams();
@@ -85,8 +54,11 @@ export default function OnDisplayStaffPage() {
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
+  const [isFinalizing, startFinalizingTransition] = useTransition();
   const [isVerified, setIsVerified] = useState(false);
   const [success, setSuccess] = useState(false);
+  
+  const [syncedItemIds, setSyncedItemIds] = useState<Set<string>>(new Set());
 
   const [accessKey, setAccessKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -165,10 +137,10 @@ export default function OnDisplayStaffPage() {
       });
 
       if (res.success) {
-        setSuccess(true);
+        setSyncedItemIds(prev => new Set(prev).add(item.id));
         toast({
-          title: 'Request Synchronized',
-          description: 'Admin review pending.',
+          title: 'Batch Synchronized',
+          description: `Sync request for ${item.productName} dispatched.`,
         });
       } else {
         toast({
@@ -176,6 +148,21 @@ export default function OnDisplayStaffPage() {
           title: 'Sync Blocked',
           description: res.message,
         });
+      }
+    });
+  };
+
+  const handleFinalize = async () => {
+    startFinalizingTransition(async () => {
+      try {
+        const res = await finalizeOnDisplaySessionAction(token);
+        if (res.success) {
+          setSuccess(true);
+        } else {
+          toast({ variant: 'destructive', title: 'Session Error', description: res.message });
+        }
+      } catch {
+        toast({ variant: 'destructive', title: 'Session Error', description: "Failed to finalize session." });
       }
     });
   };
@@ -190,14 +177,14 @@ export default function OnDisplayStaffPage() {
               <CheckCircle2 className="h-10 w-10" />
             </div>
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase leading-none">Sync Confirmed</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase leading-none">Session Complete</h1>
           <p className="mt-4 text-sm font-medium text-muted-foreground leading-relaxed">
-            Your request has been dispatched to the master registry for administrative review.
+            All requests have been dispatched to the master registry. Your authorization link has expired.
           </p>
           <div className="mt-10 p-6 rounded-3xl bg-white border border-border/50 text-left shadow-sm">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Audit Trace Recorded</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Handshake Finalized</span>
             </div>
           </div>
         </Card>
@@ -273,9 +260,10 @@ export default function OnDisplayStaffPage() {
 
   const currentItem = displayItems[selectedItemIndex];
   const expiryLabel = currentItem?.expiryLabel || 'NO DATA';
+  const isCurrentItemSynced = syncedItemIds.has(currentItem?.id);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-slate-50 pb-[calc(5rem+env(safe-area-inset-bottom))]">
       <header className="sticky top-0 z-20 border-b bg-white/95 px-3 py-3 backdrop-blur-xl sm:px-4 sm:py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-3">
@@ -288,12 +276,27 @@ export default function OnDisplayStaffPage() {
             </div>
           </div>
           <Badge variant="outline" className="h-7 shrink-0 border-emerald-500/20 bg-emerald-500/5 px-2 text-[9px] font-black uppercase tracking-widest text-emerald-600">
-            <span className="mr-1.5 h-1 w-1 rounded-full bg-emerald-500" /><span className="hidden sm:inline">Authorized </span>Session
+            <span className="mr-1.5 h-1 w-1 rounded-full bg-emerald-500" /><span className="hidden sm:inline">Active </span>Session
           </Badge>
         </div>
       </header>
 
       <main className="mx-auto max-w-2xl space-y-4 px-3 py-4 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-6 sm:px-4 sm:py-6">
+        {syncedItemIds.size > 0 && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95">
+             <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <div>
+                   <p className="text-xs font-black uppercase tracking-tight text-emerald-800">{syncedItemIds.size} Batches Updated</p>
+                   <p className="text-[9px] font-bold text-emerald-600 uppercase">Updates staged for registry sync</p>
+                </div>
+             </div>
+             <Button onClick={handleFinalize} disabled={isFinalizing} className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 rounded-xl text-[9px] font-black uppercase tracking-widest px-4">
+                {isFinalizing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Finalize & Exit"}
+             </Button>
+          </div>
+        )}
+
         <Card className="overflow-hidden rounded-[1.5rem] border-none bg-white shadow-sm ring-1 ring-border/50 sm:rounded-[2rem]">
           <div className="p-4 sm:p-6">
             <div className="mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
@@ -308,6 +311,11 @@ export default function OnDisplayStaffPage() {
                   <Badge variant="secondary" className="text-[9px] h-6 font-bold uppercase tracking-widest bg-primary/5 text-primary border-none">
                     {currentItem?.itemType}
                   </Badge>
+                  {isCurrentItemSynced && (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase h-6 border-none">
+                       <Check className="h-2.5 w-2.5 mr-1" /> Synced
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -315,43 +323,45 @@ export default function OnDisplayStaffPage() {
             {items.length > 1 && (
               <div className="mb-6 space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Products in this alert</span>
-                  <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Batch to Update</span>
+                  <span className="text-[10px] font-black text-primary">{syncedItemIds.size} / {items.length} COMPLETED</span>
                 </div>
                 <div className="space-y-2">
-                  {items.map((it, idx) => (
-                    <button
-                      key={it.id}
-                      onClick={() => handleSelectBatch(idx)}
-                      className={cn(
-                        "w-full rounded-2xl border p-3 text-left transition-all",
-                        selectedItemIndex === idx
-                          ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
-                          : "border-border/50 bg-slate-50 text-foreground"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-black uppercase">{it.productName}</p>
-                          <p className={cn(
-                            "mt-1 font-mono text-[10px] font-bold",
-                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
-                          )}>
-                            Barcode: {it.barcode}
-                          </p>
+                  {items.map((it, idx) => {
+                    const isSynced = syncedItemIds.has(it.id);
+                    return (
+                      <button
+                        key={it.id}
+                        onClick={() => handleSelectBatch(idx)}
+                        className={cn(
+                          "w-full rounded-2xl border p-3 text-left transition-all",
+                          selectedItemIndex === idx
+                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                            : isSynced ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-900" : "border-border/50 bg-slate-50 text-foreground"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex items-center gap-3">
+                            {isSynced && <div className={cn("flex h-6 w-6 rounded-full items-center justify-center bg-emerald-500 text-white shadow-sm shrink-0", selectedItemIndex === idx && "bg-white text-primary")}>
+                               <Check className="h-3.5 w-3.5" />
+                            </div>}
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-black uppercase">{it.productName}</p>
+                              <p className={cn(
+                                "mt-1 font-mono text-[10px] font-bold",
+                                selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                              )}>
+                                Qty {it.quantity} • {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yyyy') : 'No expiry'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                             <ChevronRight className={cn("h-4 w-4 opacity-20", selectedItemIndex === idx && "opacity-100")} />
+                          </div>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-[9px] font-black uppercase">Qty {it.quantity}</p>
-                          <p className={cn(
-                            "mt-1 text-[9px] font-bold uppercase",
-                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
-                          )}>
-                            {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yyyy') : 'No expiry'}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -378,7 +388,7 @@ export default function OnDisplayStaffPage() {
         <div className="space-y-4">
           <div className="px-1 flex items-center justify-between">
             <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Adjust Registry</h3>
-            <span className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-[0.1em]">Verification Level 2</span>
+            <span className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-[0.1em]">Identity Checked</span>
           </div>
 
           <Card className="rounded-[2.5rem] border-none bg-white shadow-sm ring-1 ring-border/50 overflow-hidden">
@@ -437,7 +447,6 @@ export default function OnDisplayStaffPage() {
                         ))}
                       </select>
                     </div>
-                    <p className="px-1 text-[10px] font-medium text-muted-foreground">Select the zone where this product is currently placed.</p>
                   </div>
                 </div>
               ) : (
@@ -471,13 +480,22 @@ export default function OnDisplayStaffPage() {
                 ) : (
                   <>
                     <SendHorizontal className="mr-3 h-5 w-5" />
-                    Dispatch Sync Request
+                    {isCurrentItemSynced ? "Update Sync Request" : "Dispatch Sync Request"}
                   </>
                 )}
               </Button>
             </div>
           </Card>
         </div>
+
+        {items.length > 1 && syncedItemIds.size < items.length && (
+           <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-4">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-[10px] font-medium leading-relaxed text-primary/70">
+                You can select other batches from the list above to update them. The link will remain active until you finalize your session.
+              </p>
+           </div>
+        )}
 
         <div className="flex items-center justify-center gap-6 pt-6">
           <div className="h-px flex-1 bg-border/50" />
@@ -488,6 +506,18 @@ export default function OnDisplayStaffPage() {
           <div className="h-px flex-1 bg-border/50" />
         </div>
       </main>
+      
+      {/* GLOBAL TERMINATE BUTTON FOR MOBILE */}
+      <div className="fixed bottom-0 inset-x-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pt-8 md:hidden">
+          <Button 
+            variant="ghost" 
+            onClick={handleFinalize} 
+            disabled={isFinalizing}
+            className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5"
+          >
+            {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Terminate Session"}
+          </Button>
+      </div>
     </div>
   );
 }

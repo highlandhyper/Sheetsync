@@ -155,6 +155,16 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string): Pr
   }
 }
 
+export async function finalizeOnDisplaySessionAction(token: string): Promise<ActionResponse> {
+  try {
+    const success = await markOnDisplayTokenUsed(token);
+    if (success) return { success: true };
+    return { success: false, message: "Failed to finalize session." };
+  } catch (e) {
+    return { success: false, message: "Registry handshake failure." };
+  }
+}
+
 export async function submitOnDisplayRequestAction(token: string, pin: string, request: Partial<SpecialEntryRequest>): Promise<ActionResponse> {
   try {
     const data = await getOnDisplayItemByToken(token);
@@ -187,7 +197,6 @@ export async function submitOnDisplayRequestAction(token: string, pin: string, r
     };
 
     await saveSpecialRequestsToSheet([newRequest, ...reqs]);
-    await markOnDisplayTokenUsed(token);
     
     const actionDesc = request.editDetails?.requestType === 'delete' ? 'DELETION' : 'MODIFICATION';
     await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Handshake request: ${token}`);
