@@ -24,9 +24,11 @@ import {
   Hash,
   Clock3,
   Check,
-  LogOut,
   ChevronRight,
-  Info
+  Info,
+  X,
+  History,
+  Box
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
@@ -35,7 +37,6 @@ import { cn } from '@/lib/utils';
 
 import {
   Card,
-  CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,7 +141,7 @@ export default function OnDisplayStaffPage() {
         setSyncedItemIds(prev => new Set(prev).add(item.id));
         toast({
           title: 'Batch Synchronized',
-          description: `Sync request for ${item.productName} dispatched.`,
+          description: `Update for ${item.productName} dispatched.`,
         });
       } else {
         toast({
@@ -173,18 +174,18 @@ export default function OnDisplayStaffPage() {
         <div className="absolute inset-0 bg-tech-grid opacity-[0.05]" />
         <Card className="relative z-10 w-full max-w-sm overflow-hidden border-none bg-transparent shadow-none text-center animate-in fade-in zoom-in-95 duration-500">
           <div className="mb-8 flex justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-emerald-500/10 text-emerald-600 shadow-sm ring-1 ring-emerald-500/20">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[2.5rem] bg-emerald-500/10 text-emerald-600 shadow-sm ring-1 ring-emerald-500/20">
               <CheckCircle2 className="h-10 w-10" />
             </div>
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase leading-none">Session Complete</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase leading-none">Protocol Finalized</h1>
           <p className="mt-4 text-sm font-medium text-muted-foreground leading-relaxed">
-            All requests have been dispatched to the master registry. Your authorization link has expired.
+            All inventory adjustments have been successfully dispatched. This authorization link has been terminated.
           </p>
           <div className="mt-10 p-6 rounded-3xl bg-white border border-border/50 text-left shadow-sm">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Handshake Finalized</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Handshake Terminated</span>
             </div>
           </div>
         </Card>
@@ -250,7 +251,7 @@ export default function OnDisplayStaffPage() {
           <div className="pt-8 text-center border-t border-border/50">
             <div className="flex items-center justify-center gap-2 text-muted-foreground/40">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span className="text-[8px] font-black uppercase tracking-[0.4em]">SheetSync Secure Node v6.0</span>
+              <span className="text-[8px] font-black uppercase tracking-[0.4em]">SheetSync Secure Node v7.0</span>
             </div>
           </div>
         </div>
@@ -259,74 +260,93 @@ export default function OnDisplayStaffPage() {
   }
 
   const currentItem = displayItems[selectedItemIndex];
-  const expiryLabel = currentItem?.expiryLabel || 'NO DATA';
   const isCurrentItemSynced = syncedItemIds.has(currentItem?.id);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-[calc(5rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 border-b bg-white/95 px-3 py-3 backdrop-blur-xl sm:px-4 sm:py-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 sm:gap-4">
+    <div className="min-h-screen bg-slate-50 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+      <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
+
+      {/* STICKY HEADER */}
+      <header className="sticky top-0 z-30 border-b bg-white/95 px-4 py-4 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 sm:h-10 sm:w-10">
-              <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <ShieldAlert className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-black uppercase tracking-tight text-foreground">Personnel Portal</h2>
-              <p className="text-[9px] font-bold text-primary uppercase tracking-widest leading-none">On-Display Registry</p>
+              <h2 className="truncate text-sm font-black uppercase tracking-tight text-foreground leading-none mb-1">Personnel Portal</h2>
+              <div className="flex items-center gap-2">
+                 <Badge variant="outline" className="h-5 shrink-0 border-emerald-500/20 bg-emerald-500/5 px-1.5 text-[7px] font-black uppercase tracking-widest text-emerald-600 shadow-none">
+                    <span className="mr-1 h-1 w-1 rounded-full bg-emerald-500" />Verified
+                 </Badge>
+                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">v7.0 Registry Node</span>
+              </div>
             </div>
           </div>
-          <Badge variant="outline" className="h-7 shrink-0 border-emerald-500/20 bg-emerald-500/5 px-2 text-[9px] font-black uppercase tracking-widest text-emerald-600">
-            <span className="mr-1.5 h-1 w-1 rounded-full bg-emerald-500" /><span className="hidden sm:inline">Active </span>Session
-          </Badge>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleFinalize} 
+            disabled={isFinalizing}
+            className="h-9 rounded-xl border border-destructive/10 text-[9px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5"
+          >
+            {isFinalizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3.5 w-3.5 sm:mr-1.5" />}
+            <span className="hidden sm:inline">Finalize Session</span>
+          </Button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-4 px-3 py-4 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-6 sm:px-4 sm:py-6">
-        {syncedItemIds.size > 0 && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95">
-             <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <div>
-                   <p className="text-xs font-black uppercase tracking-tight text-emerald-800">{syncedItemIds.size} Batches Updated</p>
-                   <p className="text-[9px] font-bold text-emerald-600 uppercase">Updates staged for registry sync</p>
-                </div>
-             </div>
-             <Button onClick={handleFinalize} disabled={isFinalizing} className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 rounded-xl text-[9px] font-black uppercase tracking-widest px-4">
-                {isFinalizing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Finalize & Exit"}
-             </Button>
-          </div>
-        )}
-
-        <Card className="overflow-hidden rounded-[1.5rem] border-none bg-white shadow-sm ring-1 ring-border/50 sm:rounded-[2rem]">
-          <div className="p-4 sm:p-6">
-            <div className="mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-primary sm:h-16 sm:w-16">
-                <Package className="h-6 w-6 sm:h-8 sm:w-8" />
+      <main className="relative z-10 mx-auto max-w-3xl space-y-5 px-4 py-6 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-8 sm:px-6">
+        {/* PRODUCT SUMMARY CARD */}
+        <Card className="overflow-hidden rounded-[2rem] border-none bg-white shadow-xl shadow-black/[0.03] ring-1 ring-border/50">
+          <div className="p-6 sm:p-8">
+            <div className="mb-6 flex items-start gap-4 sm:mb-8 sm:gap-6">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-slate-100 text-primary sm:h-20 sm:w-20">
+                <Package className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Asset Identity</p>
-                <h3 className="text-lg font-black leading-tight text-foreground sm:text-xl">{currentItem?.productName}</h3>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="font-mono text-[9px] h-6 bg-slate-50 border-none">{currentItem?.barcode}</Badge>
-                  <Badge variant="secondary" className="text-[9px] h-6 font-bold uppercase tracking-widest bg-primary/5 text-primary border-none">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 mb-2">Asset Identity</p>
+                <h3 className="text-xl font-black leading-tight text-foreground sm:text-3xl tracking-tight">{currentItem?.productName}</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="outline" className="font-mono text-[10px] h-7 bg-slate-50 border-slate-200 px-2.5">{currentItem?.barcode}</Badge>
+                  <Badge variant="secondary" className="text-[9px] h-7 font-black uppercase tracking-widest bg-primary/5 text-primary border-none px-2.5">
                     {currentItem?.itemType}
                   </Badge>
-                  {isCurrentItemSynced && (
-                    <Badge className="bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase h-6 border-none">
-                       <Check className="h-2.5 w-2.5 mr-1" /> Synced
-                    </Badge>
-                  )}
                 </div>
               </div>
             </div>
 
-            {items.length > 1 && (
-              <div className="mb-6 space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Batch to Update</span>
-                  <span className="text-[10px] font-black text-primary">{syncedItemIds.size} / {items.length} COMPLETED</span>
+            <Separator className="bg-slate-100 mb-6" />
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
+                  <Layers className="h-4 w-4" />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Current Stock</span>
                 </div>
-                <div className="space-y-2">
+                <p className="text-2xl font-black text-foreground tabular-nums">{currentItem?.quantity} <span className="text-[10px] opacity-40 font-bold uppercase">Units</span></p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
+                  <Clock3 className="h-4 w-4" />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Batch Threshold</span>
+                </div>
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                    {currentItem?.expiryLabel || 'NO DATA'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* BATCH SELECTOR (Only if multiple) */}
+        {items.length > 1 && (
+            <section className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Select Targeted Batch</h3>
+                  <span className="text-[10px] font-black text-primary uppercase">{syncedItemIds.size} / {items.length} COMPLETED</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {items.map((it, idx) => {
                     const isSynced = syncedItemIds.has(it.id);
                     return (
@@ -334,131 +354,124 @@ export default function OnDisplayStaffPage() {
                         key={it.id}
                         onClick={() => handleSelectBatch(idx)}
                         className={cn(
-                          "w-full rounded-2xl border p-3 text-left transition-all",
+                          "group relative overflow-hidden rounded-[1.25rem] border-2 p-4 text-left transition-all active:scale-[0.98]",
                           selectedItemIndex === idx
                             ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
-                            : isSynced ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-900" : "border-border/50 bg-slate-50 text-foreground"
+                            : isSynced 
+                                ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-900" 
+                                : "border-white bg-white text-foreground shadow-sm hover:border-slate-200"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="relative z-10 flex items-center justify-between gap-3">
                           <div className="min-w-0 flex items-center gap-3">
-                            {isSynced && <div className={cn("flex h-6 w-6 rounded-full items-center justify-center bg-emerald-500 text-white shadow-sm shrink-0", selectedItemIndex === idx && "bg-white text-primary")}>
-                               <Check className="h-3.5 w-3.5" />
-                            </div>}
+                            <div className={cn(
+                                "flex h-10 w-10 items-center justify-center rounded-xl shadow-sm shrink-0",
+                                selectedItemIndex === idx ? "bg-white/20" : isSynced ? "bg-emerald-500 text-white" : "bg-slate-100 text-muted-foreground"
+                            )}>
+                               {isSynced ? <Check className="h-5 w-5" /> : <Box className="h-5 w-5" />}
+                            </div>
                             <div className="min-w-0">
-                              <p className="truncate text-xs font-black uppercase">{it.productName}</p>
+                              <p className="truncate text-xs font-black uppercase tracking-tight">{it.productName}</p>
                               <p className={cn(
-                                "mt-1 font-mono text-[10px] font-bold",
-                                selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                                "mt-0.5 font-mono text-[10px] font-bold",
+                                selectedItemIndex === idx ? "text-white/80" : "text-muted-foreground"
                               )}>
-                                Qty {it.quantity} • {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yyyy') : 'No expiry'}
+                                Qty {it.quantity} • {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yy') : 'N/A'}
                               </p>
                             </div>
                           </div>
-                          <div className="shrink-0 text-right">
-                             <ChevronRight className={cn("h-4 w-4 opacity-20", selectedItemIndex === idx && "opacity-100")} />
-                          </div>
+                          <ChevronRight className={cn("h-5 w-5 opacity-20 group-hover:opacity-40", selectedItemIndex === idx && "opacity-100")} />
                         </div>
+                        {selectedItemIndex === idx && (
+                            <div className="absolute top-0 right-0 p-1">
+                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                            </div>
+                        )}
                       </button>
                     );
                   })}
                 </div>
-              </div>
-            )}
+            </section>
+        )}
 
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-              <div className="rounded-2xl border border-border/40 bg-slate-50 p-3 sm:p-4">
-                <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
-                  <Layers className="h-3.5 w-3.5" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">In Stock</span>
-                </div>
-                <p className="text-2xl font-black text-foreground">{currentItem?.quantity} <span className="text-[10px] opacity-40 font-bold">UNITS</span></p>
-              </div>
-              <div className="rounded-2xl border border-border/40 bg-slate-50 p-3 sm:p-4">
-                <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
-                  <Clock3 className="h-3.5 w-3.5" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Batch Expiry</span>
-                </div>
-                <p className="text-sm font-black text-foreground uppercase">{expiryLabel}</p>
-              </div>
+        {/* REGISTRY ADJUSTMENT FORM */}
+        <section className="space-y-4">
+          <div className="px-1 flex items-center justify-between">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Registry Adjustment</h3>
+            <div className="flex items-center gap-2">
+                 {isCurrentItemSynced && <Badge className="bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase h-5 border-none"><Check className="h-2 w-2 mr-1" /> Synced Batch</Badge>}
             </div>
           </div>
-        </Card>
 
-        <div className="space-y-4">
-          <div className="px-1 flex items-center justify-between">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Adjust Registry</h3>
-            <span className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-[0.1em]">Identity Checked</span>
-          </div>
-
-          <Card className="rounded-[2.5rem] border-none bg-white shadow-sm ring-1 ring-border/50 overflow-hidden">
-            <div className="p-1.5">
-              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 rounded-[2rem]">
+          <Card className="rounded-[2.5rem] border-none bg-white shadow-xl shadow-black/[0.03] ring-1 ring-border/50 overflow-hidden">
+            <div className="p-2">
+              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 rounded-[2.2rem]">
                 <button
                   onClick={() => setRequestType('edit')}
                   className={cn(
-                    "h-12 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all",
-                    requestType === 'edit' ? "bg-white text-primary shadow-sm" : "text-muted-foreground/60 hover:text-foreground"
+                    "h-14 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all",
+                    requestType === 'edit' ? "bg-white text-primary shadow-md" : "text-muted-foreground/60 hover:text-foreground"
                   )}
                 >
-                  Edit Count
+                  Edit Record
                 </button>
                 <button
                   onClick={() => setRequestType('delete')}
                   className={cn(
-                    "h-12 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all",
-                    requestType === 'delete' ? "bg-white text-destructive shadow-sm" : "text-muted-foreground/60 hover:text-foreground"
+                    "h-14 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all",
+                    requestType === 'delete' ? "bg-white text-destructive shadow-md" : "text-muted-foreground/60 hover:text-foreground"
                   )}
                 >
-                  Request Removal
+                  Log Removal
                 </button>
               </div>
             </div>
 
-            <div className="space-y-6 p-5 pt-4 sm:space-y-8 sm:p-8 sm:pt-4">
+            <div className="space-y-6 p-6 pt-2 sm:space-y-8 sm:p-10 sm:pt-4">
               {requestType === 'edit' ? (
                 <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-2.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Physical Count Update</Label>
-                    <div className="relative">
-                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40" />
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Physical Count Observed</Label>
+                    <div className="relative group">
+                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-primary/30 group-focus-within:text-primary transition-colors" />
                       <Input
                         type="number"
                         min={0}
                         value={qty}
                         onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                        className="h-16 rounded-2xl border-none bg-slate-50 pl-14 text-2xl font-black focus:ring-2 focus:ring-primary/20"
+                        className="h-16 rounded-3xl border-none bg-slate-50 pl-14 text-3xl font-black focus:ring-4 focus:ring-primary/10 transition-all tabular-nums"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label htmlFor="on-display-location" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Zone</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="on-display-location" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Operating Zone</Label>
                     <div className="relative">
-                      <MapPin className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-primary/40" />
+                      <MapPin className="pointer-events-none absolute left-4 top-1/2 z-10 h-6 w-6 -translate-y-1/2 text-primary/30" />
                       <select
                         id="on-display-location"
                         value={loc}
                         onChange={(e) => setLoc(e.target.value)}
-                        className="h-16 w-full appearance-none rounded-2xl border-none bg-slate-50 py-0 pl-14 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                        className="h-16 w-full appearance-none rounded-3xl border-none bg-slate-50 py-0 pl-14 pr-6 text-base font-bold text-foreground outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-none"
                       >
                         {availableLocations.map(location => (
                           <option key={location} value={location}>{location}</option>
                         ))}
                       </select>
+                      <ChevronRight className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 rotate-90 text-muted-foreground/30" />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-6 rounded-3xl bg-destructive/[0.03] border border-destructive/10 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex gap-4">
-                    <div className="h-12 w-12 shrink-0 flex items-center justify-center rounded-[1.2rem] bg-destructive/10 text-destructive">
-                      <AlertTriangle className="h-6 w-6" />
+                <div className="p-8 rounded-[2rem] bg-destructive/[0.03] border-2 border-destructive/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex gap-5">
+                    <div className="h-14 w-14 shrink-0 flex items-center justify-center rounded-[1.5rem] bg-destructive/10 text-destructive shadow-sm">
+                      <AlertTriangle className="h-7 w-7" />
                     </div>
                     <div>
-                      <p className="text-sm font-black uppercase tracking-tight text-destructive">Purge Protocol</p>
-                      <p className="mt-1.5 text-xs font-medium leading-relaxed text-destructive/70">
-                        Submit this request if the product is physically absent or requires total removal from the active registry.
+                      <p className="text-base font-black uppercase tracking-tight text-destructive">Removal Protocol</p>
+                      <p className="mt-2 text-xs font-medium leading-relaxed text-destructive/70">
+                        Proceed only if this SKU is physically absent from the shelf or requires immediate removal from the active registry.
                       </p>
                     </div>
                   </div>
@@ -469,7 +482,7 @@ export default function OnDisplayStaffPage() {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={cn(
-                  "h-16 w-full rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98]",
+                  "h-16 w-full rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] shadow-xl transition-all active:scale-[0.98] border-none",
                   requestType === 'delete' 
                     ? "bg-destructive hover:bg-destructive/90 shadow-destructive/20" 
                     : "bg-primary hover:bg-primary/90 shadow-primary/20"
@@ -480,43 +493,50 @@ export default function OnDisplayStaffPage() {
                 ) : (
                   <>
                     <SendHorizontal className="mr-3 h-5 w-5" />
-                    {isCurrentItemSynced ? "Update Sync Request" : "Dispatch Sync Request"}
+                    {isCurrentItemSynced ? "Update Registry Request" : "Dispatch Sync Request"}
                   </>
                 )}
               </Button>
             </div>
           </Card>
-        </div>
+        </section>
 
-        {items.length > 1 && syncedItemIds.size < items.length && (
-           <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-4">
-              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <p className="text-[10px] font-medium leading-relaxed text-primary/70">
-                You can select other batches from the list above to update them. The link will remain active until you finalize your session.
+        {/* GUIDANCE NODE */}
+        <div className="p-6 bg-white border border-border/50 rounded-[2rem] flex items-start gap-4 shadow-sm">
+           <Info className="h-5 w-5 text-primary mt-1 shrink-0 opacity-50" />
+           <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Operational Protocol</p>
+              <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">
+                You may update multiple batches sequentially. After all identified batches are synchronized, ensure you finalize the session using the button in the header.
               </p>
            </div>
-        )}
+        </div>
 
-        <div className="flex items-center justify-center gap-6 pt-6">
-          <div className="h-px flex-1 bg-border/50" />
-          <div className="flex items-center gap-2 opacity-30">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="text-[8px] font-black uppercase tracking-[0.5em]">Identity Secured</span>
+        <div className="flex items-center justify-center gap-8 pt-8">
+          <div className="h-px flex-1 bg-slate-200" />
+          <div className="flex items-center gap-3 opacity-30">
+            <ShieldCheck className="h-5 w-5" />
+            <span className="text-[9px] font-black uppercase tracking-[0.5em]">Identity Secured</span>
           </div>
-          <div className="h-px flex-1 bg-border/50" />
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
       </main>
       
-      {/* GLOBAL TERMINATE BUTTON FOR MOBILE */}
-      <div className="fixed bottom-0 inset-x-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pt-8 md:hidden">
-          <Button 
-            variant="ghost" 
-            onClick={handleFinalize} 
-            disabled={isFinalizing}
-            className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5"
-          >
-            {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Terminate Session"}
-          </Button>
+      {/* MOBILE PERSISTENT STATUS BAR */}
+      <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-white/80 backdrop-blur-xl border-t border-border/50 md:hidden">
+         <div className="mx-auto max-w-sm flex items-center justify-between gap-4">
+            <div className="min-w-0">
+               <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Session Progress</p>
+               <p className="text-xs font-black text-foreground">{syncedItemIds.size} / {items.length} BATCHES DONE</p>
+            </div>
+            <Button 
+                onClick={handleFinalize} 
+                disabled={isFinalizing || syncedItemIds.size === 0}
+                className="h-12 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] shadow-lg shadow-emerald-500/20 disabled:opacity-40"
+            >
+                {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Finalize & Exit"}
+            </Button>
+         </div>
       </div>
     </div>
   );
