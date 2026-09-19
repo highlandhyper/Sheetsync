@@ -223,9 +223,11 @@ function processOnDisplayAlerts_(targetStaffName) {
     const expiryDay = startOfDay_(expiry);
     // A manual trigger is an explicit staff inventory summary: include every
     // on-display log for that staff, not only products at the 7-day threshold.
-    // Scheduled runs retain the 7-day rule and duplicate-alert protection.
+    // Scheduled runs automatically send one calendar week before expiry and
+    // retain duplicate-alert protection.
+    const isOneWeekBeforeExpiry = isSameDay_(expiryDay, targetDate);
     const shouldSend = isManualDispatch || (
-      isSameDay_(expiryDay, targetDate) &&
+      isOneWeekBeforeExpiry &&
       !hasSentOnDisplayAlert_(alertSheet, barcode, expiryDay, staffName)
     );
     if (shouldSend) pendingAlerts.push({ barcode, expiryDay, staffName, productName, qty, rowIndex: i });

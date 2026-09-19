@@ -48,6 +48,34 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
+const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
+
+type OnDisplayLocationSelectProps = {
+  location: string;
+  itemLocations: string[];
+  onChange: (location: string) => void;
+};
+
+function OnDisplayLocationSelect({ location, itemLocations, onChange }: OnDisplayLocationSelectProps) {
+  const options = Array.from(new Set([
+    ...DEFAULT_ON_DISPLAY_LOCATIONS,
+    ...itemLocations.filter(Boolean),
+  ]));
+
+  return (
+    <select
+      id="on-display-location"
+      value={location}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-16 w-full appearance-none rounded-2xl border-none bg-slate-50 py-0 pl-14 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      {options.map(option => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+}
+
 export default function OnDisplayStaffPage() {
   const params = useParams();
   const token = params?.token as string;
