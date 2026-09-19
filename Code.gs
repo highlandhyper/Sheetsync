@@ -205,6 +205,7 @@ function processOnDisplayAlerts_(targetStaffName) {
   const invData = invSheet.getDataRange().getValues();
   const today = startOfDay_(new Date());
   const targetDate = addCalendarDays_(today, 7);
+  const isManualDispatch = Boolean(targetStaffName && String(targetStaffName).trim());
   const pendingAlerts = [];
 
   for (let i = 1; i < invData.length; i++) {
@@ -217,12 +218,17 @@ function processOnDisplayAlerts_(targetStaffName) {
     const productName = String(row[6] || "Unregistered Product").trim();
 
     if (!barcode || isNaN(qty) || qty <= 0 || location !== "On Display" || !expiry) continue;
-    if (targetStaffName && staffName.toUpperCase() !== targetStaffName.toUpperCase()) continue;
+    if (isManualDispatch && staffName.toUpperCase() !== String(targetStaffName).trim().toUpperCase()) continue;
 
     const expiryDay = startOfDay_(expiry);
-    if (isSameDay_(expiryDay, targetDate) && !hasSentOnDisplayAlert_(alertSheet, barcode, expiryDay, staffName)) {
-      pendingAlerts.push({ barcode, expiryDay, staffName, productName, qty, rowIndex: i });
-    }
+    // A manual trigger is an explicit staff inventory summary: include every
+    // on-display log for that staff, not only products at the 7-day threshold.
+    // Scheduled runs retain the 7-day rule and duplicate-alert protection.
+    const shouldSend = isManualDispatch || (
+      isSameDay_(expiryDay, targetDate) &&
+      !hasSentOnDisplayAlert_(alertSheet, barcode, expiryDay, staffName)
+    );
+    if (shouldSend) pendingAlerts.push({ barcode, expiryDay, staffName, productName, qty, rowIndex: i });
   }
 
   if (pendingAlerts.length === 0) return { status: "success", processed: 0 };
