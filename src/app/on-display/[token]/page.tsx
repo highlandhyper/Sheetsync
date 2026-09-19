@@ -95,6 +95,13 @@ export default function OnDisplayStaffPage() {
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
 
+  const availableLocations = useMemo(() => {
+    return Array.from(new Set([
+      ...DEFAULT_ON_DISPLAY_LOCATIONS,
+      ...items.map(i => i.location).filter(Boolean)
+    ]));
+  }, [items]);
+
   const displayItems = useMemo(() => items.map(item => ({
     ...item,
     expiryLabel: item.expiryDate && isValid(parseISO(item.expiryDate))
