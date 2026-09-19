@@ -48,6 +48,34 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
+const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
+
+type OnDisplayLocationSelectProps = {
+  location: string;
+  itemLocations: string[];
+  onChange: (location: string) => void;
+};
+
+function OnDisplayLocationSelect({ location, itemLocations, onChange }: OnDisplayLocationSelectProps) {
+  const options = Array.from(new Set([
+    ...DEFAULT_ON_DISPLAY_LOCATIONS,
+    ...itemLocations.filter(Boolean),
+  ]));
+
+  return (
+    <select
+      id="on-display-location"
+      value={location}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-16 w-full appearance-none rounded-2xl border-none bg-slate-50 py-0 pl-14 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      {options.map(option => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+}
+
 export default function OnDisplayStaffPage() {
   const params = useParams();
   const token = params?.token as string;
@@ -66,6 +94,13 @@ export default function OnDisplayStaffPage() {
   const [qty, setQty] = useState<number>(0);
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
+
+  const displayItems = useMemo(() => items.map(item => ({
+    ...item,
+    expiryLabel: item.expiryDate && isValid(parseISO(item.expiryDate))
+      ? format(parseISO(item.expiryDate), 'dd MMM yyyy')
+      : 'No expiry',
+  })), [items]);
 
   const handleVerify = async () => {
     if (!accessKey || accessKey.length < 4) return;
@@ -229,40 +264,38 @@ export default function OnDisplayStaffPage() {
     );
   }
 
-  const currentItem = items[selectedItemIndex];
-  const expiryLabel = currentItem?.expiryDate && isValid(parseISO(currentItem.expiryDate))
-    ? format(parseISO(currentItem.expiryDate), 'dd MMM yyyy')
-    : 'NO DATA';
+  const currentItem = displayItems[selectedItemIndex];
+  const expiryLabel = currentItem?.expiryLabel || 'NO DATA';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 border-b bg-white/80 px-4 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+      <header className="sticky top-0 z-20 border-b bg-white/95 px-3 py-3 backdrop-blur-xl sm:px-4 sm:py-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              <ShieldAlert className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 sm:h-10 sm:w-10">
+              <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-sm font-black uppercase tracking-tight text-foreground">Personnel Portal</h2>
               <p className="text-[9px] font-bold text-primary uppercase tracking-widest leading-none">On-Display Registry</p>
             </div>
           </div>
-          <Badge variant="outline" className="h-7 border-emerald-500/20 bg-emerald-500/5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
-            <span className="mr-1.5 h-1 w-1 rounded-full bg-emerald-500" /> Authorized Session
+          <Badge variant="outline" className="h-7 shrink-0 border-emerald-500/20 bg-emerald-500/5 px-2 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+            <span className="mr-1.5 h-1 w-1 rounded-full bg-emerald-500" /><span className="hidden sm:inline">Authorized </span>Session
           </Badge>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <Card className="overflow-hidden rounded-[2rem] border-none bg-white shadow-sm ring-1 ring-border/50">
-          <div className="p-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-primary">
-                <Package className="h-8 w-8" />
+      <main className="mx-auto max-w-2xl space-y-4 px-3 py-4 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-6 sm:px-4 sm:py-6">
+        <Card className="overflow-hidden rounded-[1.5rem] border-none bg-white shadow-sm ring-1 ring-border/50 sm:rounded-[2rem]">
+          <div className="p-4 sm:p-6">
+            <div className="mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-primary sm:h-16 sm:w-16">
+                <Package className="h-6 w-6 sm:h-8 sm:w-8" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Asset Identity</p>
-                <h3 className="text-xl font-black text-foreground leading-tight">{currentItem?.productName}</h3>
+                <h3 className="text-lg font-black leading-tight text-foreground sm:text-xl">{currentItem?.productName}</h3>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="font-mono text-[9px] h-6 bg-slate-50 border-none">{currentItem?.barcode}</Badge>
                   <Badge variant="secondary" className="text-[9px] h-6 font-bold uppercase tracking-widest bg-primary/5 text-primary border-none">
@@ -273,42 +306,63 @@ export default function OnDisplayStaffPage() {
             </div>
 
             {items.length > 1 && (
-                <div className="mb-6 space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Batch</span>
-                        <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {items.map((it, idx) => (
-                            <button
-                                key={it.id}
-                                onClick={() => handleSelectBatch(idx)}
-                                className={cn(
-                                    "flex-shrink-0 min-w-[120px] p-3 rounded-2xl border text-left transition-all",
-                                    selectedItemIndex === idx 
-                                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" 
-                                        : "bg-slate-50 border-border/50 text-muted-foreground"
-                                )}
-                            >
-                                <p className="text-[8px] font-black uppercase opacity-60">Qty {it.quantity}</p>
-                                <p className="text-[10px] font-bold mt-1 uppercase">
-                                    {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM') : 'N/A'}
-                                </p>
-                            </button>
-                        ))}
-                    </div>
+              <section className="mb-6 space-y-3" aria-label="Products in this alert">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Products in this alert</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary">{displayItems.length} LOGS</span>
                 </div>
+                <div className="max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain pr-1">
+                  {displayItems.map((it, idx) => {
+                    const isSelected = selectedItemIndex === idx;
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => handleSelectBatch(idx)}
+                        className={cn(
+                          "w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          isSelected
+                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                            : "border-border/50 bg-slate-50 text-foreground active:bg-slate-100"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black uppercase leading-tight">{it.productName}</p>
+                            <p className={cn(
+                              "mt-1.5 flex items-center gap-1 font-mono text-[11px] font-bold",
+                              isSelected ? "text-white/80" : "text-muted-foreground"
+                            )}>
+                              <Barcode className="h-3.5 w-3.5 shrink-0" /> {it.barcode}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[10px] font-black uppercase">Qty {it.quantity}</p>
+                            <p className={cn(
+                              "mt-1.5 text-[10px] font-bold uppercase",
+                              isSelected ? "text-white/80" : "text-muted-foreground"
+                            )}>
+                              {it.expiryLabel}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl bg-slate-50 p-4 border border-border/40">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+              <div className="rounded-2xl border border-border/40 bg-slate-50 p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
                   <Layers className="h-3.5 w-3.5" />
                   <span className="text-[9px] font-black uppercase tracking-widest">In Stock</span>
                 </div>
                 <p className="text-2xl font-black text-foreground">{currentItem?.quantity} <span className="text-[10px] opacity-40 font-bold">UNITS</span></p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4 border border-border/40">
+              <div className="rounded-2xl border border-border/40 bg-slate-50 p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
                   <Clock3 className="h-3.5 w-3.5" />
                   <span className="text-[9px] font-black uppercase tracking-widest">Batch Expiry</span>
@@ -349,7 +403,7 @@ export default function OnDisplayStaffPage() {
               </div>
             </div>
 
-            <div className="p-8 pt-4 space-y-8">
+            <div className="space-y-6 p-5 pt-4 sm:space-y-8 sm:p-8 sm:pt-4">
               {requestType === 'edit' ? (
                 <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-2.5">
@@ -367,16 +421,16 @@ export default function OnDisplayStaffPage() {
                   </div>
 
                   <div className="space-y-2.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Current Zone</Label>
+                    <Label htmlFor="on-display-location" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Zone</Label>
                     <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40" />
-                      <Input
-                        value={loc}
-                        onChange={(e) => setLoc(e.target.value)}
-                        placeholder="Specify location..."
-                        className="h-16 rounded-2xl border-none bg-slate-50 pl-14 text-sm font-bold focus:ring-2 focus:ring-primary/20"
+                      <MapPin className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-primary/40" />
+                      <OnDisplayLocationSelect
+                        location={loc}
+                        itemLocations={items.map(item => item.location)}
+                        onChange={setLoc}
                       />
                     </div>
+                    <p className="px-1 text-[10px] font-medium text-muted-foreground">Select the zone where this product is currently placed.</p>
                   </div>
                 </div>
               ) : (
