@@ -67,6 +67,13 @@ export default function OnDisplayStaffPage() {
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
 
+  const displayItems = useMemo(() => items.map(item => ({
+    ...item,
+    expiryLabel: item.expiryDate && isValid(parseISO(item.expiryDate))
+      ? format(parseISO(item.expiryDate), 'dd MMM yyyy')
+      : 'No expiry',
+  })), [items]);
+
   const handleVerify = async () => {
     if (!accessKey || accessKey.length < 4) return;
 
@@ -229,10 +236,8 @@ export default function OnDisplayStaffPage() {
     );
   }
 
-  const currentItem = items[selectedItemIndex];
-  const expiryLabel = currentItem?.expiryDate && isValid(parseISO(currentItem.expiryDate))
-    ? format(parseISO(currentItem.expiryDate), 'dd MMM yyyy')
-    : 'NO DATA';
+  const currentItem = displayItems[selectedItemIndex];
+  const expiryLabel = currentItem?.expiryLabel || 'NO DATA';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-[calc(1rem+env(safe-area-inset-bottom))]">
