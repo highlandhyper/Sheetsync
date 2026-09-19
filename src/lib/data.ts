@@ -222,7 +222,7 @@ export async function markOnDisplayTokenUsed(token: string) {
   if (!alerts) return false;
 
   const matchingRows = alerts
-    .map((row, index) => String(row[ODA_COL_TOKEN]).trim() === token ? index + 1 : null)
+    .map((row, index) => String(row[ODA_COL_TOKEN]).trim() === token ? index + 2 : null)
     .filter((row): row is number => row !== null);
 
   if (matchingRows.length === 0) return false;

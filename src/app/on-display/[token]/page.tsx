@@ -273,31 +273,47 @@ export default function OnDisplayStaffPage() {
             </div>
 
             {items.length > 1 && (
-                <div className="mb-6 space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Batch</span>
-                        <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {items.map((it, idx) => (
-                            <button
-                                key={it.id}
-                                onClick={() => handleSelectBatch(idx)}
-                                className={cn(
-                                    "flex-shrink-0 min-w-[120px] p-3 rounded-2xl border text-left transition-all",
-                                    selectedItemIndex === idx 
-                                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" 
-                                        : "bg-slate-50 border-border/50 text-muted-foreground"
-                                )}
-                            >
-                                <p className="text-[8px] font-black uppercase opacity-60">Qty {it.quantity}</p>
-                                <p className="text-[10px] font-bold mt-1 uppercase">
-                                    {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM') : 'N/A'}
-                                </p>
-                            </button>
-                        ))}
-                    </div>
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Products in this alert</span>
+                  <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
                 </div>
+                <div className="space-y-2">
+                  {items.map((it, idx) => (
+                    <button
+                      key={it.id}
+                      onClick={() => handleSelectBatch(idx)}
+                      className={cn(
+                        "w-full rounded-2xl border p-3 text-left transition-all",
+                        selectedItemIndex === idx
+                          ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                          : "border-border/50 bg-slate-50 text-foreground"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black uppercase">{it.productName}</p>
+                          <p className={cn(
+                            "mt-1 font-mono text-[10px] font-bold",
+                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                          )}>
+                            Barcode: {it.barcode}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-[9px] font-black uppercase">Qty {it.quantity}</p>
+                          <p className={cn(
+                            "mt-1 text-[9px] font-bold uppercase",
+                            selectedItemIndex === idx ? "text-white/75" : "text-muted-foreground"
+                          )}>
+                            {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yyyy') : 'No expiry'}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
