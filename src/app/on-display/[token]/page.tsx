@@ -67,6 +67,13 @@ export default function OnDisplayStaffPage() {
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
 
+  const displayItems = useMemo(() => items.map(item => ({
+    ...item,
+    expiryLabel: item.expiryDate && isValid(parseISO(item.expiryDate))
+      ? format(parseISO(item.expiryDate), 'dd MMM yyyy')
+      : 'No expiry',
+  })), [items]);
+
   const handleVerify = async () => {
     if (!accessKey || accessKey.length < 4) return;
 
@@ -229,10 +236,8 @@ export default function OnDisplayStaffPage() {
     );
   }
 
-  const currentItem = items[selectedItemIndex];
-  const expiryLabel = currentItem?.expiryDate && isValid(parseISO(currentItem.expiryDate))
-    ? format(parseISO(currentItem.expiryDate), 'dd MMM yyyy')
-    : 'NO DATA';
+  const currentItem = displayItems[selectedItemIndex];
+  const expiryLabel = currentItem?.expiryLabel || 'NO DATA';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -273,31 +278,52 @@ export default function OnDisplayStaffPage() {
             </div>
 
             {items.length > 1 && (
-                <div className="mb-6 space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Batch</span>
-                        <span className="text-[10px] font-black text-primary">{items.length} LOGS FOUND</span>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {items.map((it, idx) => (
-                            <button
-                                key={it.id}
-                                onClick={() => handleSelectBatch(idx)}
-                                className={cn(
-                                    "flex-shrink-0 min-w-[120px] p-3 rounded-2xl border text-left transition-all",
-                                    selectedItemIndex === idx 
-                                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" 
-                                        : "bg-slate-50 border-border/50 text-muted-foreground"
-                                )}
-                            >
-                                <p className="text-[8px] font-black uppercase opacity-60">Qty {it.quantity}</p>
-                                <p className="text-[10px] font-bold mt-1 uppercase">
-                                    {it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM') : 'N/A'}
-                                </p>
-                            </button>
-                        ))}
-                    </div>
+              <section className="mb-6 space-y-3" aria-label="Products in this alert">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Products in this alert</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary">{displayItems.length} LOGS</span>
                 </div>
+                <div className="max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain pr-1">
+                  {displayItems.map((it, idx) => {
+                    const isSelected = selectedItemIndex === idx;
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => handleSelectBatch(idx)}
+                        className={cn(
+                          "w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          isSelected
+                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                            : "border-border/50 bg-slate-50 text-foreground active:bg-slate-100"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black uppercase leading-tight">{it.productName}</p>
+                            <p className={cn(
+                              "mt-1.5 flex items-center gap-1 font-mono text-[11px] font-bold",
+                              isSelected ? "text-white/80" : "text-muted-foreground"
+                            )}>
+                              <Barcode className="h-3.5 w-3.5 shrink-0" /> {it.barcode}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[10px] font-black uppercase">Qty {it.quantity}</p>
+                            <p className={cn(
+                              "mt-1.5 text-[10px] font-bold uppercase",
+                              isSelected ? "text-white/80" : "text-muted-foreground"
+                            )}>
+                              {it.expiryLabel}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             )}
 
             <div className="grid grid-cols-2 gap-4">
