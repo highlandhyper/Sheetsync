@@ -38,7 +38,10 @@ import {
   Barcode,
   Trophy,
   Zap,
-  ArrowUpRight
+  ArrowUpRight,
+  Edit,
+  Trash2,
+  ChevronsUpDown
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
