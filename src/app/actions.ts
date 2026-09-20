@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -26,8 +27,9 @@ import {
   addExpiryReminder,
   resolveExpiryReminder as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
+  getAllOnDisplayAlerts,
 } from '@/lib/data';
-import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder } from '@/lib/types';
+import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
 export interface ActionResponse<T = any> {
@@ -111,6 +113,15 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     };
 
     return { success: true, data: sanitizeForJSON(result) };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function fetchOnDisplayAlertsAction(): Promise<ActionResponse<OnDisplayAlert[]>> {
+  try {
+    const alerts = await getAllOnDisplayAlerts();
+    return { success: true, data: sanitizeForJSON(alerts) };
   } catch (error: any) {
     return { success: false, message: error.message };
   }

@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -54,13 +55,16 @@ const ODA_COL_TOKEN = 5;
 const ODA_COL_PIN = 6;
 const ODA_COL_EXPIRES = 7;
 const ODA_COL_USED = 8;
+const ODA_COL_SENT_AT = 9;
+const ODA_COL_LOG_ROW = 10;
+const ODA_COL_LOG_ID = 11;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:H`;
-const ON_DISPLAY_ALERTS_READ_RANGE = `${ON_DISPLAY_ALERTS_SHEET_NAME}!A2:I`;
+const ON_DISPLAY_ALERTS_READ_RANGE = `${ON_DISPLAY_ALERTS_SHEET_NAME}!A2:L`;
 
 const PERMISSIONS_KEY = 'accessPermissions';
 const SPECIAL_REQUESTS_KEY = 'specialRequests';
@@ -184,6 +188,31 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
             staffName: String(row[WATCH_COL_STAFF - 1] || '').trim() 
         };
     }).filter(r => r.id && r.status === 'pending');
+}
+
+export async function getAllOnDisplayAlerts(): Promise<OnDisplayAlert[]> {
+  const data = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
+  if (!data) return [];
+
+  return data.map((row) => {
+    const expAtTs = parseFlexibleTimestamp(row[ODA_COL_EXPIRES]);
+    const sentAtTs = parseFlexibleTimestamp(row[ODA_COL_SENT_AT]);
+
+    return {
+      id: String(row[ODA_COL_ID] || ''),
+      barcode: String(row[ODA_COL_BARCODE] || ''),
+      productName: String(row[ODA_COL_PRODUCT] || ''),
+      expiryDate: String(row[ODA_COL_EXPIRY] || ''),
+      staffName: String(row[ODA_COL_STAFF] || ''),
+      token: String(row[ODA_COL_TOKEN] || ''),
+      pin: String(row[ODA_COL_PIN] || ''),
+      expiresAt: expAtTs ? expAtTs.toISOString() : String(row[ODA_COL_EXPIRES] || ''),
+      used: String(row[ODA_COL_USED] || 'No'),
+      sentAt: sentAtTs ? sentAtTs.toISOString() : String(row[ODA_COL_SENT_AT] || ''),
+      logRow: String(row[ODA_COL_LOG_ROW] || ''),
+      logId: String(row[ODA_COL_LOG_ID] || '')
+    };
+  }).reverse();
 }
 
 export async function getOnDisplayItemByToken(token: string): Promise<{ items: InventoryItem[]; pin: string } | null> {

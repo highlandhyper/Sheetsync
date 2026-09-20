@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -36,7 +37,8 @@ import {
     WifiOff,
     ShieldAlert,
     Cpu,
-    LayoutDashboard
+    LayoutDashboard,
+    History
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -64,6 +66,7 @@ import { Input } from '@/components/ui/input';
 import { AudioFeedbackToggle } from '@/components/settings/audio-feedback-toggle';
 import { IdentityAudioSelector } from '@/components/settings/identity-audio-selector';
 import { ManualOnDisplaySmsTerminal } from '@/components/settings/manual-on-display-sms-terminal';
+import { OnDisplayAlertsTerminal } from '@/components/settings/on-display-alerts-terminal';
 
 interface SettingsCardProps {
   icon: React.ElementType;
@@ -629,6 +632,18 @@ export default function SettingsPage() {
                         dialogClassName="sm:max-w-md"
                     >
                         <ManualOnDisplaySmsTerminal />
+                    </SettingsCard>
+
+                    <SettingsCard
+                        icon={History}
+                        title="Transmission Log"
+                        description="Review recently dispatched On-Display alerts and security tokens."
+                        triggerText="View History"
+                        variant="logic"
+                        badge="ALERTS"
+                        dialogClassName="sm:max-w-4xl"
+                    >
+                        <OnDisplayAlertsTerminal />
                     </SettingsCard>
 
                     <SettingsCard

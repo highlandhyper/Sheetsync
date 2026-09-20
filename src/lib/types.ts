@@ -58,7 +58,10 @@ export interface OnDisplayAlert {
   token: string;
   pin: string;
   expiresAt: string;
-  used: boolean;
+  used: string;
+  sentAt: string;
+  logRow?: string;
+  logId?: string;
 }
 
 export interface ReturnedItem {
