@@ -34,7 +34,8 @@ import {
   ArrowRight,
   Database,
   Activity,
-  UserCheck
+  UserCheck,
+  Barcode
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
