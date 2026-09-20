@@ -171,7 +171,7 @@ export default function OnDisplayStaffPage() {
 
   if (success) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
+      <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-8">
         <div className="absolute inset-0 bg-tech-grid opacity-[0.05]" />
         <Card className="relative z-10 w-full max-w-sm overflow-hidden border-none bg-transparent shadow-none text-center animate-in fade-in zoom-in-95 duration-500">
           <div className="mb-8 flex justify-center">
@@ -183,7 +183,7 @@ export default function OnDisplayStaffPage() {
           <p className="mt-4 text-sm font-medium text-muted-foreground leading-relaxed">
             All inventory adjustments have been successfully dispatched. This authorization link has been terminated.
           </p>
-          <div className="mt-10 p-6 rounded-3xl bg-white border border-border/50 text-left shadow-sm">
+          <div className="mt-10 p-6 rounded-3xl bg-card border border-border/50 text-left shadow-sm">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Handshake Terminated</span>
@@ -196,7 +196,7 @@ export default function OnDisplayStaffPage() {
 
   if (!isVerified) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 overflow-hidden">
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 py-12 overflow-hidden">
         <div className="absolute inset-0 bg-tech-grid opacity-[0.08]" />
         <div className="absolute top-0 left-0 w-full h-1.5 bg-primary/20" />
         
@@ -228,7 +228,7 @@ export default function OnDisplayStaffPage() {
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
                   className={cn(
-                    "h-16 w-full rounded-2xl border-none bg-slate-100 pl-14 pr-4 text-center text-3xl font-black tracking-[0.6em] transition-all focus:bg-slate-200 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/20",
+                    "h-16 w-full rounded-2xl border-none bg-muted pl-14 pr-4 text-center text-3xl font-black tracking-[0.6em] transition-all focus:bg-muted/80 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/20",
                     errorMessage && "bg-destructive/5 ring-2 ring-destructive/20"
                   )}
                 />
@@ -264,11 +264,11 @@ export default function OnDisplayStaffPage() {
   const isCurrentItemSynced = syncedItemIds.has(currentItem?.id);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-background pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
       <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
 
       {/* STICKY HEADER */}
-      <header className="sticky top-0 z-30 border-b bg-white/95 px-4 py-4 backdrop-blur-xl sm:px-6">
+      <header className="sticky top-0 z-30 border-b bg-background/95 px-4 py-4 backdrop-blur-xl sm:px-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
@@ -299,17 +299,17 @@ export default function OnDisplayStaffPage() {
 
       <main className="relative z-10 mx-auto max-w-3xl space-y-5 px-4 py-6 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-8 sm:px-6">
         {/* PRODUCT SUMMARY CARD */}
-        <Card className="overflow-hidden rounded-[2rem] border-none bg-white shadow-xl shadow-black/[0.03] ring-1 ring-border/50">
+        <Card className="overflow-hidden rounded-[2rem] border-none bg-card shadow-xl shadow-black/[0.03] ring-1 ring-border/50">
           <div className="p-6 sm:p-8">
             <div className="mb-6 flex items-start gap-4 sm:mb-8 sm:gap-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-slate-100 text-primary sm:h-20 sm:w-20">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-muted text-primary sm:h-20 sm:w-20">
                 <Package className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 mb-2">Asset Identity</p>
                 <h3 className="text-xl font-black leading-tight text-foreground sm:text-3xl tracking-tight">{currentItem?.productName}</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="outline" className="font-mono text-[10px] h-7 bg-slate-50 border-slate-200 px-2.5">{currentItem?.barcode}</Badge>
+                  <Badge variant="outline" className="font-mono text-[10px] h-7 bg-muted border-border/50 px-2.5">{currentItem?.barcode}</Badge>
                   <Badge variant="secondary" className="text-[9px] h-7 font-black uppercase tracking-widest bg-primary/5 text-primary border-none px-2.5">
                     {currentItem?.itemType}
                   </Badge>
@@ -317,17 +317,17 @@ export default function OnDisplayStaffPage() {
               </div>
             </div>
 
-            <Separator className="bg-slate-100 mb-6" />
+            <Separator className="bg-border/50 mb-6" />
 
             <div className="grid grid-cols-2 gap-3 sm:gap-6">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="rounded-2xl border border-border/50 bg-muted/30 p-4">
                 <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
                   <Layers className="h-4 w-4" />
                   <span className="text-[9px] font-black uppercase tracking-widest">Current Stock</span>
                 </div>
                 <p className="text-2xl font-black text-foreground tabular-nums">{currentItem?.quantity} <span className="text-[10px] opacity-40 font-bold uppercase">Units</span></p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="rounded-2xl border border-border/50 bg-muted/30 p-4">
                 <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
                   <Clock3 className="h-4 w-4" />
                   <span className="text-[9px] font-black uppercase tracking-widest">Batch Threshold</span>
@@ -357,17 +357,17 @@ export default function OnDisplayStaffPage() {
                         className={cn(
                           "group relative overflow-hidden rounded-[1.25rem] border-2 p-4 text-left transition-all active:scale-[0.98]",
                           selectedItemIndex === idx
-                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                            ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                             : isSynced 
                                 ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-900" 
-                                : "border-white bg-white text-foreground shadow-sm hover:border-slate-200"
+                                : "border-border bg-card text-foreground shadow-sm hover:border-border/80"
                         )}
                       >
                         <div className="relative z-10 flex items-center justify-between gap-3">
                           <div className="min-w-0 flex items-center gap-3">
                             <div className={cn(
                                 "flex h-10 w-10 items-center justify-center rounded-xl shadow-sm shrink-0",
-                                selectedItemIndex === idx ? "bg-white/20" : isSynced ? "bg-emerald-500 text-white" : "bg-slate-100 text-muted-foreground"
+                                selectedItemIndex === idx ? "bg-white/20" : isSynced ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
                             )}>
                                {isSynced ? <Check className="h-5 w-5" /> : <Box className="h-5 w-5" />}
                             </div>
@@ -404,14 +404,14 @@ export default function OnDisplayStaffPage() {
             </div>
           </div>
 
-          <Card className="rounded-[2.5rem] border-none bg-white shadow-xl shadow-black/[0.03] ring-1 ring-border/50 overflow-hidden">
+          <Card className="rounded-[2.5rem] border-none bg-card shadow-xl shadow-black/[0.03] ring-1 ring-border/50 overflow-hidden">
             <div className="p-2">
-              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 rounded-[2.2rem]">
+              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-muted rounded-[2.2rem]">
                 <button
                   onClick={() => setRequestType('edit')}
                   className={cn(
                     "h-14 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all",
-                    requestType === 'edit' ? "bg-white text-primary shadow-md" : "text-muted-foreground/60 hover:text-foreground"
+                    requestType === 'edit' ? "bg-card text-primary shadow-md" : "text-muted-foreground/60 hover:text-foreground"
                   )}
                 >
                   Edit Record
@@ -420,7 +420,7 @@ export default function OnDisplayStaffPage() {
                   onClick={() => setRequestType('delete')}
                   className={cn(
                     "h-14 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all",
-                    requestType === 'delete' ? "bg-white text-destructive shadow-md" : "text-muted-foreground/60 hover:text-foreground"
+                    requestType === 'delete' ? "bg-card text-destructive shadow-md" : "text-muted-foreground/60 hover:text-foreground"
                   )}
                 >
                   Log Removal
@@ -440,7 +440,7 @@ export default function OnDisplayStaffPage() {
                         min={0}
                         value={qty}
                         onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                        className="h-16 rounded-3xl border-none bg-slate-50 pl-14 text-3xl font-black focus:ring-4 focus:ring-primary/10 transition-all tabular-nums"
+                        className="h-16 rounded-3xl border-none bg-muted pl-14 text-3xl font-black focus:ring-4 focus:ring-primary/10 transition-all tabular-nums"
                       />
                     </div>
                   </div>
@@ -453,7 +453,7 @@ export default function OnDisplayStaffPage() {
                         id="on-display-location"
                         value={loc}
                         onChange={(e) => setLoc(e.target.value)}
-                        className="h-16 w-full appearance-none rounded-3xl border-none bg-slate-50 py-0 pl-14 pr-6 text-base font-bold text-foreground outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-none"
+                        className="h-16 w-full appearance-none rounded-3xl border-none bg-muted py-0 pl-14 pr-6 text-base font-bold text-foreground outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-none"
                       >
                         {availableLocations.map(location => (
                           <option key={location} value={location}>{location}</option>
@@ -503,7 +503,7 @@ export default function OnDisplayStaffPage() {
         </section>
 
         {/* GUIDANCE NODE */}
-        <div className="p-6 bg-white border border-border/50 rounded-[2rem] flex items-start gap-4 shadow-sm">
+        <div className="p-6 bg-card border border-border/50 rounded-[2rem] flex items-start gap-4 shadow-sm">
            <Info className="h-5 w-5 text-primary mt-1 shrink-0 opacity-50" />
            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Operational Protocol</p>
@@ -514,17 +514,17 @@ export default function OnDisplayStaffPage() {
         </div>
 
         <div className="flex items-center justify-center gap-8 pt-8">
-          <div className="h-px flex-1 bg-slate-200" />
+          <div className="h-px flex-1 bg-border/50" />
           <div className="flex items-center gap-3 opacity-30">
             <ShieldCheck className="h-5 w-5" />
             <span className="text-[9px] font-black uppercase tracking-[0.5em]">Identity Secured</span>
           </div>
-          <div className="h-px flex-1 bg-slate-200" />
+          <div className="h-px flex-1 bg-border/50" />
         </div>
       </main>
       
       {/* MOBILE PERSISTENT STATUS BAR */}
-      <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-white/80 backdrop-blur-xl border-t border-border/50 md:hidden">
+      <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-background/80 backdrop-blur-xl border-t border-border/50 md:hidden">
          <div className="mx-auto max-w-sm flex items-center justify-between gap-4">
             <div className="min-w-0">
                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Session Progress</p>
