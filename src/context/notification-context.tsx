@@ -43,13 +43,16 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       
       if (!isAfter(reqDate, threshold)) return;
 
+      // -----------------------------------------------------------
+      // ADMIN NOTIFICATIONS (Incoming Requests)
+      // -----------------------------------------------------------
       if (role === 'admin') {
         if (req.status === 'pending' && !req.isDismissedByAdmin) {
           if (req.type === 'product_add') {
             list.push({
               id: `notif_${req.id}`,
-              title: 'Product Addition Requested',
-              message: `${req.staffName} is requesting a new product for barcode: ${req.reason}`,
+              title: 'New Product Request',
+              message: `${req.staffName} is requesting a new SKU registration for: ${req.reason}`,
               timestamp: req.requestedAt,
               type: 'request',
               isRead: false,
@@ -63,32 +66,47 @@ export function NotificationProvider({ children }: PropsWithChildren) {
             list.push({
               id: `notif_${req.id}`,
               title: 'Inventory Edit Requested',
-              message: `${req.staffName} wants to update ${req.editDetails?.productName}.`,
+              message: `${req.staffName} submitted a correction for ${req.editDetails?.productName || 'an item'}.`,
               timestamp: req.requestedAt,
               type: 'request',
               isRead: false,
-              link: '/dashboard',
+              link: '/approvals',
               metadata: {
                 requestId: req.id,
                 type: 'edit_request'
               }
             });
-          } else {
+          } else if (req.type === 'on_display_request') {
             list.push({
               id: `notif_${req.id}`,
-              title: 'Access Request',
-              message: `${req.staffName} is requesting silent entry authorization.`,
+              title: 'On-Display Update',
+              message: `${req.staffName} submitted a mobile adjustment for ${req.editDetails?.productName || 'an item'}.`,
               timestamp: req.requestedAt,
               type: 'request',
               isRead: false,
-              link: '/dashboard'
+              link: '/approvals',
+              metadata: {
+                requestId: req.id,
+                type: 'on_display_request'
+              }
+            });
+          } else {
+            // Actual Silent Entry requests (single or timed)
+            list.push({
+              id: `notif_${req.id}`,
+              title: 'Silent Entry Request',
+              message: `${req.staffName} is requesting temporary authorization.`,
+              timestamp: req.requestedAt,
+              type: 'request',
+              isRead: false,
+              link: '/approvals'
             });
           }
         } else if (isGlobal && req.status === 'approved' && !req.isDismissedByAdmin) {
             list.push({
                 id: `notif_${req.id}`,
                 title: 'Global Silent Mode Active',
-                message: `AUTHORIZATION GRANTED. KEY: ${req.otp || '----'}`,
+                message: `SYSTEM-WIDE AUTHORIZATION GRANTED. KEY: ${req.otp || '----'}`,
                 timestamp: req.approvedAt || req.requestedAt,
                 type: 'success',
                 isRead: false,
@@ -101,6 +119,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         }
       }
 
+      // -----------------------------------------------------------
+      // VIEWER NOTIFICATIONS (Result Alerts)
+      // -----------------------------------------------------------
       if (role === 'viewer' && (reqEmail === currentEmail || isGlobal)) {
         if (req.status === 'approved' || req.status === 'rejected') {
           let title = '';
@@ -108,14 +129,24 @@ export function NotificationProvider({ children }: PropsWithChildren) {
           let link = undefined;
 
           if (req.type === 'inventory_edit') {
-            title = req.status === 'approved' ? 'Edit Request Approved' : 'Edit Request Declined';
+            title = req.status === 'approved' ? 'Inventory Edit Approved' : 'Inventory Edit Declined';
             message = req.status === 'approved' 
-                ? `Update for ${req.editDetails?.productName} has been applied.`
-                : `Edit request for ${req.editDetails?.productName} was declined.`;
+                ? `The correction for ${req.editDetails?.productName} has been synchronized.`
+                : `The correction for ${req.editDetails?.productName} was declined by admin.`;
+          } else if (req.type === 'on_display_request') {
+            title = req.status === 'approved' ? 'Update Applied' : 'Update Declined';
+            message = req.status === 'approved'
+                ? `Your mobile adjustment for ${req.editDetails?.productName} is now live.`
+                : `Your mobile adjustment for ${req.editDetails?.productName} was rejected.`;
+          } else if (req.type === 'product_add') {
+             title = req.status === 'approved' ? 'Product Registered' : 'Registration Declined';
+             message = req.status === 'approved'
+                ? `The requested product (${req.reason}) is now in the catalog.`
+                : `The registration request for ${req.reason} was declined.`;
           } else {
-            title = isGlobal ? 'System-Wide Authorization' : (req.status === 'approved' ? 'Access Authorized' : 'Request Declined');
+            title = isGlobal ? 'System Authorization' : (req.status === 'approved' ? 'Access Authorized' : 'Access Denied');
             message = req.status === 'approved' 
-              ? `AUTHORIZATION GRANTED. KEY: ${req.otp || '----'}`
+              ? `SILENT ENTRY ACTIVE. SECURITY KEY: ${req.otp || '----'}`
               : `Your request for ${req.staffName} was declined.`;
             link = req.status === 'approved' ? '/inventory/add' : undefined;
           }
