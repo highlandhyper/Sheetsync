@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,9 +28,11 @@ import {
     Image as ImageIcon,
     Box,
     Clock,
+    Scan,
 } from 'lucide-react';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
+import { Html5Qrcode } from 'html5-qrcode';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,10 +59,13 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EditOrCreateProductFormProps {
   allSuppliers: Supplier[];
 }
+
+const SCANNER_REGION_ID = 'manage-product-scanner';
 
 const getActionIcon = (action: string) => {
     if (action.includes('DELETE') || action.includes('WIPE')) return <Trash2 className="h-3 w-3" />;
@@ -82,6 +87,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const { 
     products: cachedProducts, 
     inventoryItems, 
@@ -113,6 +119,11 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const [isQuickAdding, setIsQuickAdding] = useState(false);
   
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
+
+  // Scanner State
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const scanProcessedRef = useRef(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -350,6 +361,59 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       reset();
   };
 
+  // Scanner Logic
+  const onScanSuccess = useCallback((decodedText: string) => {
+    if (scanProcessedRef.current || !decodedText) return;
+    scanProcessedRef.current = true;
+    setBarcodeToSearch(decodedText.toUpperCase());
+    setIsScannerOpen(false);
+    if (html5QrcodeScannerRef.current) {
+      html5QrcodeScannerRef.current.stop().catch(() => {});
+      html5QrcodeScannerRef.current = null;
+    }
+    handleSearchBarcode(decodedText);
+    setTimeout(() => { scanProcessedRef.current = false; }, 1000); 
+  }, [handleSearchBarcode]);
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      const timer = setTimeout(() => {
+        if (!html5QrcodeScannerRef.current) {
+          const scanner = new Html5Qrcode(SCANNER_REGION_ID);
+          scanner.start(
+            { facingMode: 'environment' }, 
+            { 
+              fps: 20, 
+              qrbox: (vw, vh) => {
+                const edgeSize = Math.floor(Math.min(vw, vh) * 0.7);
+                return { width: edgeSize, height: edgeSize };
+              }, 
+              aspectRatio: 1.0,
+              disableFlip: true,
+              experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+              videoConstraints: {
+                facingMode: "environment",
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
+              }
+            }, 
+            onScanSuccess, 
+            () => {}
+          ).then(() => {
+            html5QrcodeScannerRef.current = scanner;
+          }).catch(() => {});
+        }
+      }, 1000);
+      return () => {
+        clearTimeout(timer);
+        if (html5QrcodeScannerRef.current) {
+          html5QrcodeScannerRef.current.stop().catch(() => {});
+          html5QrcodeScannerRef.current = null;
+        }
+      };
+    }
+  }, [isScannerOpen, onScanSuccess]);
+
   return (
     <div
       className={cn(
@@ -425,19 +489,32 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative min-w-0 flex-1">
-                  <Barcode className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
-                  <Input
-                    id="catalog-barcode-search"
-                    ref={searchInputRef}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder="Enter barcode"
-                    value={barcodeToSearch}
-                    onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                    className="h-12 rounded-xl border-border/70 bg-background pl-11 pr-3 text-base font-semibold tracking-wide shadow-none sm:h-11"
-                  />
+                <div className="flex w-full min-w-0 items-start gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <Barcode className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
+                    <Input
+                      id="catalog-barcode-search"
+                      ref={searchInputRef}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="Enter barcode"
+                      value={barcodeToSearch}
+                      onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
+                      className="h-12 rounded-xl border-border/70 bg-background pl-11 pr-3 text-base font-semibold tracking-wide shadow-none sm:h-11"
+                    />
+                  </div>
+                  {isMobile && (
+                    <Button 
+                      type="button" 
+                      onClick={() => setIsScannerOpen(true)} 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-12 w-12 shrink-0 rounded-xl border-0 bg-primary/10 shadow-none hover:bg-primary/15 sm:h-11 sm:w-11"
+                    >
+                      <Scan className="h-5 w-5 text-primary" />
+                    </Button>
+                  )}
                 </div>
                 <Button
                   type="button"
@@ -829,6 +906,55 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
           <div className="border-t border-border/60 bg-muted/20 p-4 text-center sm:p-5">
             <p className="truncate text-sm font-semibold text-foreground">{externalData?.name || 'Unknown product'}</p>
             <p className="mt-1 font-mono text-[11px] text-muted-foreground">{searchedBarcode}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* SCANNER MODAL */}
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border-border/60 bg-background p-0 shadow-2xl">
+          <DialogHeader className="border-b border-border/50 bg-muted/20 p-4 pb-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Scan className="h-4 w-4" />
+              </div>
+
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-base font-semibold tracking-tight">
+                  Scan product
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
+                  Position the barcode inside the camera frame.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="relative h-[58dvh] min-h-[300px] max-h-[440px] w-full bg-black">
+            <div
+              id={SCANNER_REGION_ID}
+              className="relative h-full w-full bg-black [&>span]:hidden"
+            />
+            <div className="scanner-overlay">
+              <div className="scanner-focus">
+                <div className="scanner-laser" />
+                <div className="scanner-corner scanner-corner-tl" />
+                <div className="scanner-corner scanner-corner-tr" />
+                <div className="scanner-corner scanner-corner-bl" />
+                <div className="scanner-corner scanner-corner-br" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border/50 p-3">
+            <Button
+              variant="ghost"
+              onClick={() => setIsScannerOpen(false)}
+              className="h-10 w-full rounded-xl text-[10px] font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <X className="mr-1.5 h-4 w-4" />
+              Close scanner
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
