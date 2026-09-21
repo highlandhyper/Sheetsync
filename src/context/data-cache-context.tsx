@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -167,9 +168,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         }
         
         setData(prev => {
-            const incomingStaff = response.data!.staffRegistry || [];
-            // Preference given to registry with phone numbers
-            const finalStaff = incomingStaff.length > 0 
+            const incomingStaff = response.data!.staffRegistry;
+            // Support clearing the registry by allowing empty arrays if provided by server
+            const finalStaff = incomingStaff 
                 ? incomingStaff.map(s => ({ ...s, name: s.name.toUpperCase() }))
                 : prev.staffRegistry;
 

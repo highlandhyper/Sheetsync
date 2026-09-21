@@ -339,7 +339,7 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs.slice(0, 200))]]);
 }
 
-export async function saveStaffListAction(staff: StaffMember[]) {
+export async function saveStaffListToSheet(staff: StaffMember[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === STAFF_LIST_KEY) lastIdx = i; });
@@ -347,7 +347,7 @@ export async function saveStaffListAction(staff: StaffMember[]) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
 }
 
-export async function saveLocationListAction(locations: string[]) {
+export async function saveLocationListToSheet(locations: string[]) {
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
   let lastIdx = -1;
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY) lastIdx = i; });
