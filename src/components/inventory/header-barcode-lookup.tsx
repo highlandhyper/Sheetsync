@@ -163,9 +163,23 @@ export function HeaderBarcodeLookup() {
 
         const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
         scanner.start(
-          { facingMode: 'environment' },
-          { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          onScanSuccess,
+          { facingMode: 'environment' }, 
+          { 
+            fps: 20, 
+            qrbox: (vw, vh) => {
+              const edgeSize = Math.floor(Math.min(vw, vh) * 0.7);
+              return { width: edgeSize, height: edgeSize };
+            }, 
+            aspectRatio: 1.0,
+            disableFlip: true,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            videoConstraints: {
+              facingMode: "environment",
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 },
+            }
+          }, 
+          onScanSuccess, 
           () => {}
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
@@ -177,7 +191,7 @@ export function HeaderBarcodeLookup() {
           });
           setIsScannerOpen(false);
         });
-      }, 800);
+      }, 1000);
 
       return () => {
         clearTimeout(timer);

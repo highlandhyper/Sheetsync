@@ -473,9 +473,23 @@ export function InventoryListClient() {
         if (html5QrcodeScannerRef.current) return;
         const scanner = new Html5Qrcode(SCANNER_REGION_ID, false);
         scanner.start(
-          { facingMode: 'environment' },
-          { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          onScanSuccess,
+          { facingMode: 'environment' }, 
+          { 
+            fps: 20, 
+            qrbox: (vw, vh) => {
+              const edgeSize = Math.floor(Math.min(vw, vh) * 0.7);
+              return { width: edgeSize, height: edgeSize };
+            }, 
+            aspectRatio: 1.0,
+            disableFlip: true,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            videoConstraints: {
+              facingMode: "environment",
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 },
+            }
+          }, 
+          onScanSuccess, 
           () => {}
         ).then(() => {
           html5QrcodeScannerRef.current = scanner;
@@ -483,7 +497,7 @@ export function InventoryListClient() {
           toast({ variant: 'destructive', title: 'Hardware Error', description: 'Optical system failed.' });
           setIsScannerDialogOpen(false);
         });
-      }, 800);
+      }, 1000);
       return () => {
         clearTimeout(timer);
         if (html5QrcodeScannerRef.current) {
@@ -1105,7 +1119,7 @@ export function InventoryListClient() {
                                   : 'bg-primary/10 text-primary'
                               )}
                             >
-                              {mainItem.itemType}
+                              {item.itemType}
                             </span>
                           )}
                         </TableCell>
@@ -1339,7 +1353,7 @@ export function InventoryListClient() {
         isOpen={isBulkReturnOpen}
         onOpenChange={setIsBulkReturnOpen}
         itemIds={getItemsForBulkAction()}
-        onSuccess={handleActionSuccess}
+        onSuccess={handleBulkSuccess}
         itemCount={getItemsForBulkAction().length}
       />
 
@@ -1347,7 +1361,7 @@ export function InventoryListClient() {
         isOpen={isBulkDeleteOpen}
         onOpenChange={setIsBulkDeleteOpen}
         itemIds={getItemsForBulkAction()}
-        onSuccess={handleActionSuccess}
+        onSuccess={handleBulkSuccess}
         itemCount={getItemsForBulkAction().length}
       />
 
