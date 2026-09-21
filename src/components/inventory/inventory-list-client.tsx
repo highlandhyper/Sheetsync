@@ -28,7 +28,8 @@ import {
     MapPin,
     Scan,
     X,
-    AlertTriangle
+    AlertTriangle,
+    Loader2
 } from 'lucide-react';
 import { addDays, parseISO, isValid, isBefore, format, isAfter, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
@@ -439,6 +440,13 @@ export function InventoryListClient() {
     setIsDeleteDialogOpen(false);
     setSelectedBarcodes(new Set());
   }, []);
+
+  const handleBulkSuccess = useCallback(() => {
+      onDataNeeded();
+      setSelectedBarcodes(new Set());
+      setIsBulkReturnOpen(false);
+      setIsBulkDeleteOpen(false);
+  }, [onDataNeeded]);
 
   const handleExportPDF = (orientation: PDFOrientation) => {
     const cols = ['No.', 'Product Name', 'Barcode', 'Supplier', 'Qty', 'Unit Cost', 'Total Value', 'Expiry', 'Location'];
@@ -1119,7 +1127,7 @@ export function InventoryListClient() {
                                   : 'bg-primary/10 text-primary'
                               )}
                             >
-                              {item.itemType}
+                              {mainItem.itemType}
                             </span>
                           )}
                         </TableCell>
@@ -1127,13 +1135,13 @@ export function InventoryListClient() {
                         {/* Fixed-width activity/action area prevents row content from shifting on hover */}
                         <TableCell className="relative w-[132px] min-w-[132px] max-w-[132px] pr-3 text-right noprint">
                           <div className="relative h-9 w-full">
-                            <span className="absolute inset-0 flex items-center justify-end whitespace-nowrap text-[9px] tabular-nums text-muted-foreground transition-opacity duration-150 group-hover:opacity-0">
+                            <span className="absolute inset-0 flex items-center justify-end whitespace-nowrap text-[9px] tabular-nums text-muted-foreground transition-opacity duration-150 group-hover:opacity-100 lg:opacity-100 lg:group-hover:opacity-0">
                               {mainItem.timestamp
                                 ? format(parseISO(mainItem.timestamp), 'dd/MM/yy HH:mm')
                                 : 'N/A'}
                             </span>
 
-                            <div className="absolute inset-0 flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                            <div className="absolute inset-0 flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 lg:group-hover:pointer-events-auto">
                               {individualItems.length === 1 ? (
                                 <>
                                   <Button
