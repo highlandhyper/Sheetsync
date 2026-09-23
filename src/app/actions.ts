@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -31,7 +30,7 @@ import {
   getAllOnDisplayAlerts,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInCalendarDays, startOfDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -423,10 +422,23 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
 
         await logAuditEvent(item.staffName, 'LOG_INVENTORY', item.barcode, `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
         
+        // IMMEDIATE ALERT PROTOCOL: If expiring exactly in 7 days, trigger SMS gateway handshake.
+        if (item.expiryDate && item.itemType === 'Expiry') {
+            const expDate = startOfDay(parseISO(item.expiryDate));
+            const today = startOfDay(new Date());
+            
+            if (isValid(expDate) && differenceInCalendarDays(expDate, today) === 7) {
+                // Async dispatch to avoid blocking the logging UI response
+                triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
+                    console.error("Immediate SMS dispatch failed:", err);
+                });
+            }
+        }
+
         revalidatePath('/inventory');
         return { success: true, data: sanitizeForJSON(item) };
-    } catch (e: any) {
-        return { success: false, message: e.message };
+    } catch (error: any) {
+        return { success: false, message: error.message };
     }
 }
 
