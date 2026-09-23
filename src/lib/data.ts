@@ -233,8 +233,6 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
   const barcodes = new Set(matchingAlerts.map(row => String(row[ODA_COL_BARCODE]).trim()));
   const inventory = await getInventoryItems();
 
-  // A staff-level SMS uses one token for every listed barcode, so show each
-  // matching on-display product in the linked workflow.
   const items = inventory.filter(i =>
     barcodes.has(i.barcode.trim()) &&
     i.location === "On Display" &&
@@ -244,6 +242,27 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
 
   if (items.length === 0) return null;
   return { items, pin };
+}
+
+export async function getOnDisplayItemByPin(pin: string): Promise<{ items: InventoryItem[]; staffName: string; token: string } | null> {
+  const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
+  if (!alerts) return null;
+
+  const matches = alerts.filter(row =>
+    String(row[ODA_COL_PIN]).trim() === pin &&
+    String(row[ODA_COL_USED]).toLowerCase() !== 'yes'
+  );
+
+  if (matches.length === 0) return null;
+
+  const lastMatch = matches[matches.length - 1];
+  const token = String(lastMatch[ODA_COL_TOKEN]).trim();
+  const staffName = String(lastMatch[ODA_COL_STAFF]).trim().toUpperCase();
+
+  const sessionData = await getOnDisplayItemByToken(token);
+  if (!sessionData) return null;
+
+  return { items: sessionData.items, staffName, token };
 }
 
 export async function markOnDisplayTokenUsed(token: string) {

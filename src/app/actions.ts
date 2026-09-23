@@ -22,6 +22,7 @@ import {
   saveLocationListToSheet,
   getAppMetaData,
   getOnDisplayItemByToken,
+  getOnDisplayItemByPin,
   markOnDisplayTokenUsed,
   getExpiryReminders,
   addExpiryReminder,
@@ -163,6 +164,16 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string): Pr
     return { success: true, data: sanitizeForJSON(data.items) };
   } catch (e) {
     return { success: false, message: "Registry handshake failure." };
+  }
+}
+
+export async function verifyOnDisplayPinOnlyAction(pin: string): Promise<ActionResponse<{ staffName: string; token: string; items: InventoryItem[] }>> {
+  try {
+    const data = await getOnDisplayItemByPin(pin);
+    if (!data) return { success: false, message: "Invalid Access Key. Check your latest SMS." };
+    return { success: true, data: sanitizeForJSON(data) };
+  } catch (e) {
+    return { success: false, message: "Registry connection failure." };
   }
 }
 
