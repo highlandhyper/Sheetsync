@@ -11,6 +11,7 @@ import type { InventoryItem } from '@/lib/types';
 
 import {
   AlertTriangle,
+  ArrowLeft,
   Barcode,
   Check,
   CheckCircle2,
