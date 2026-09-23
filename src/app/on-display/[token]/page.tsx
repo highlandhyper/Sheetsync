@@ -34,6 +34,8 @@ import {
   UserCheck,
   Zap,
   Edit,
+  Search,
+  X,
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
@@ -45,6 +47,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import Image from 'next/image';
 
 const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
@@ -72,6 +89,7 @@ export default function OnDisplayStaffPage() {
   const [loc, setLoc] = useState('');
   const [requestType, setRequestType] = useState<'edit' | 'delete'>('edit');
   const [view, setView] = useState<'products' | 'edit'>('products');
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
   const verificationProcessedRef = useRef(false);
 
@@ -637,28 +655,20 @@ export default function OnDisplayStaffPage() {
 
                         <div className="space-y-3">
                           <Label
-                            htmlFor="on-display-location"
                             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1"
                           >
                             Operating Zone
                           </Label>
 
-                          <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsLocationPickerOpen(true)}
+                            className="relative flex h-16 w-full items-center rounded-[1.25rem] bg-muted/40 pl-14 pr-12 text-left text-sm font-black uppercase tracking-wider outline-none ring-0 focus:ring-2 focus:ring-primary/20 shadow-inner"
+                          >
                             <MapPin className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground/30" />
-                            <select
-                              id="on-display-location"
-                              value={loc}
-                              onChange={(e) => setLoc(e.target.value)}
-                              className="h-16 w-full appearance-none rounded-[1.25rem] border-none bg-muted/40 pl-14 pr-12 text-sm font-black uppercase tracking-wider outline-none ring-0 focus:ring-2 focus:ring-primary/20 shadow-inner"
-                            >
-                              {availableLocations.map((location) => (
-                                <option key={location} value={location}>
-                                  {location}
-                                </option>
-                              ))}
-                            </select>
+                            <span className="truncate">{loc || 'Select Zone'}</span>
                             <ChevronsUpDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/20" />
-                          </div>
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -797,6 +807,42 @@ export default function OnDisplayStaffPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={isLocationPickerOpen} onOpenChange={setIsLocationPickerOpen}>
+          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
+              <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
+                  <DialogTitle className="text-base font-black uppercase tracking-tight">Operating Zone</DialogTitle>
+                  <DialogDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">Identify shelf mapping.</DialogDescription>
+              </DialogHeader>
+              <Command className="min-h-0 flex-1 rounded-none bg-transparent">
+                  <CommandInput placeholder="Search zones..." className="h-12" />
+                  <CommandList className="max-h-[min(52dvh,360px)] p-1.5">
+                      <CommandEmpty className="py-8 text-xs text-muted-foreground uppercase font-bold tracking-widest">Zero zones identified.</CommandEmpty>
+                      <CommandGroup>
+                          {availableLocations.map((location) => (
+                              <CommandItem
+                                  key={location}
+                                  value={location}
+                                  onSelect={() => {
+                                      setLoc(location);
+                                      setIsLocationPickerOpen(false);
+                                  }}
+                                  className="h-12 rounded-xl text-sm font-black uppercase tracking-tight"
+                              >
+                                  <Check className={cn('mr-3 h-4 w-4', loc === location ? 'opacity-100' : 'opacity-0')} />
+                                  <span className="truncate">{location}</span>
+                              </CommandItem>
+                          ))}
+                      </CommandGroup>
+                  </CommandList>
+              </Command>
+              <div className="border-t bg-muted/15 p-3">
+                  <Button type="button" variant="ghost" onClick={() => setIsLocationPickerOpen(false)} className="h-10 w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-destructive">
+                      Cancel
+                  </Button>
+              </div>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
