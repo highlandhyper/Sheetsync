@@ -93,7 +93,7 @@ export function StaffManager() {
 
     setTestingStaffName(member.name);
 
-    const msg = `SheetSync: Test alert for ${member.name}. Your terminal is now ready for Expiry Watch notifications.`;
+    const msg = `SheetSync: Test signal for ${member.name}. Your mobile terminal is now linked to the industrial registry for security alerts and handshakes.`;
 
     try {
       const res = await sendSmsAction(msg, member.phone);
@@ -188,7 +188,7 @@ export function StaffManager() {
 
           <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
             Manage staff identities and SMS contacts used by inventory logging
-            and Expiry Watch.
+            and security handshakes.
           </p>
         </div>
       </div>
@@ -267,7 +267,7 @@ export function StaffManager() {
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p className="text-[9px] font-medium leading-4">
                 Add a phone number if this staff member should receive
-                Expiry Watch SMS reminders.
+                security handshakes and expiry alerts.
               </p>
             </div>
           </div>
