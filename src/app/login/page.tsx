@@ -3,7 +3,9 @@
 import { LoginForm } from '@/components/auth/login-form';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, Activity, Network, Fingerprint, LockKeyhole } from 'lucide-react';
+import { ShieldCheck, Activity, Network, Fingerprint, LockKeyhole, SmartphoneNfc } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 function LoginFormSkeleton() {
   return (
@@ -64,6 +66,20 @@ export default function LoginPage() {
             <Suspense fallback={<LoginFormSkeleton />}>
               <LoginForm />
             </Suspense>
+
+            {/* HANDSHAKE REDIRECT FOR STAFF */}
+            <div className="mt-8 pt-8 border-t border-border/40 text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 mb-4">Personnel Protocol</p>
+                <Button variant="ghost" asChild className="h-12 w-full rounded-2xl border border-primary/10 bg-primary/[0.03] text-primary hover:bg-primary/5 transition-all">
+                    <Link href="/on-display/handshake">
+                        <SmartphoneNfc className="mr-2 h-4 w-4" />
+                        Staff Manual Handshake
+                    </Link>
+                </Button>
+                <p className="mt-4 text-[9px] font-medium text-muted-foreground/40 leading-relaxed px-6">
+                    Received an SMS alert but have no internet? Use another device to enter your Session ID and PIN.
+                </p>
+            </div>
             
             {/* COMPLIANCE FOOTER */}
             <p className="mt-12 text-center text-[8px] font-black uppercase tracking-[0.5em] text-muted-foreground/10">
