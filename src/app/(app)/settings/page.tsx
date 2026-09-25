@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -38,7 +37,9 @@ import {
     ShieldAlert,
     Cpu,
     LayoutDashboard,
-    History
+    History,
+    Zap,
+    Key
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
@@ -51,7 +52,7 @@ import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
-import { getMasterSpreadsheetUrlAction, checkSmsConfigAction } from '@/app/actions';
+import { getMasterSpreadsheetUrlAction, checkSmsConfigAction, sendSmsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { BulkImportTerminal } from '@/components/settings/bulk-import-terminal';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
@@ -80,6 +81,7 @@ interface SettingsCardProps {
   onManualClick?: () => void;
   variant?: 'default' | 'premium' | 'security' | 'logic';
   badge?: string;
+  isLoading?: boolean;
 }
 
 function SettingsCard({ 
@@ -93,7 +95,8 @@ function SettingsCard({
     isManual, 
     onManualClick,
     variant = 'default',
-    badge
+    badge,
+    isLoading = false
 }: SettingsCardProps) {
   const toneClass =
     variant === 'premium'
@@ -108,6 +111,7 @@ function SettingsCard({
     <Button
       variant={variant === 'premium' ? 'default' : 'outline'}
       onClick={isManual ? onManualClick : undefined}
+      disabled={isLoading}
       className={cn(
         'h-9 shrink-0 rounded-lg px-3 text-[10px] font-semibold shadow-none',
         variant === 'premium'
@@ -117,7 +121,11 @@ function SettingsCard({
           'hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive'
       )}
     >
-      {isManual && <Settings2 className="mr-1.5 h-3.5 w-3.5" />}
+      {isLoading ? (
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+      ) : isManual && (
+          <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+      )}
       {triggerText}
     </Button>
   );
@@ -125,7 +133,7 @@ function SettingsCard({
   return (
     <div className="group min-w-0 bg-card transition-colors hover:bg-muted/[0.18]">
       <div className="flex min-w-0 flex-col gap-3 px-3.5 py-3.5 sm:px-4 sm:py-4 md:flex-row md:items-center">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <div
             className={cn(
               'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
@@ -226,7 +234,7 @@ function NotificationTerminal() {
 
       if (granted) {
         setSetting('isBrowserNotificationsEnabled', true);
-        toast({ title: "Alerts Enabled", description: "Browser notifications are now active." });
+        toast({ title: "Alerts Enabled", description: "Browser notifications..." });
       } else {
         toast({
           variant: "destructive",
@@ -287,7 +295,9 @@ export default function SettingsPage() {
   const [isDbAuthOpen, setIsDbAuthOpen] = React.useState(false);
   const [isMasterDbDialogOpen, setIsMasterDbDialogOpen] = React.useState(false);
   
-  const [isBulkAuthOpen, setIsBulkAuthOpen] = React.useState(false);
+  const [isBulkSmsDialogOpen, setIsBulkSmsDialogOpen] = React.useState(false);
+  const [generatedBulkPin, setGeneratedBulkPin] = React.useState('');
+  const [isSendingSms, setIsSendingSms] = React.useState(false);
   const [isImportTerminalOpen, setIsImportTerminalOpen] = React.useState(false);
 
   const [smsEnvStatus, setSmsEnvStatus] = React.useState<{ hasApiKey: boolean; hasDeviceId: boolean } | null>(null);
@@ -299,6 +309,36 @@ export default function SettingsPage() {
         });
     }
   }, [role]);
+
+  const handleInitiateBulkImport = async () => {
+    if (!permissions.smsRecipientNumber) {
+        toast({ 
+            variant: "destructive", 
+            title: "Security Config Missing", 
+            description: "SMS recipient number must be configured in SMS Delivery settings." 
+        });
+        return;
+    }
+
+    setIsSendingSms(true);
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    const msg = `SheetSync Security: Your PIN for Bulk Import is ${pin}. This code expires shortly.`;
+
+    try {
+        const res = await sendSmsAction(msg, permissions.smsRecipientNumber);
+        if (res.success) {
+            setGeneratedBulkPin(pin);
+            setIsBulkSmsDialogOpen(true);
+            toast({ title: "Verification Sent", description: "Security PIN routed to authorized terminal." });
+        } else {
+            toast({ variant: "destructive", title: "Gateway Error", description: res.message || "Failed to dispatch SMS." });
+        }
+    } catch (e) {
+        toast({ variant: "destructive", title: "Connection Error", description: "SMS Gateway unreachable." });
+    } finally {
+        setIsSendingSms(false);
+    }
+  };
 
   const handleOpenMasterDb = async () => {
     if (dbUrl) return;
@@ -327,11 +367,6 @@ export default function SettingsPage() {
       setIsDbAuthOpen(false);
       setIsMasterDbDialogOpen(true);
       handleOpenMasterDb();
-  };
-
-  const handleBulkImportAuthSuccess = () => {
-      setIsBulkAuthOpen(false);
-      setIsImportTerminalOpen(true);
   };
 
   return (
@@ -673,11 +708,12 @@ export default function SettingsPage() {
                     <SettingsCard
                         icon={CloudUpload}
                         title="Bulk import"
-                        description="Import and synchronize large product datasets."
+                        description="Import large datasets with mandatory SMS identity handshake."
                         triggerText="Open importer"
                         variant="premium"
                         isManual={true}
-                        onManualClick={() => setIsBulkAuthOpen(true)}
+                        isLoading={isSendingSms}
+                        onManualClick={handleInitiateBulkImport}
                         badge="DATA"
                     />
 
@@ -802,13 +838,59 @@ export default function SettingsPage() {
         actionDescription={`Identity check required for ${user?.email}. Provide account credentials to establish a secure registry tunnel.`}
       />
 
-      <AuthorizeActionDialog 
-        isOpen={isBulkAuthOpen}
-        onOpenChange={setIsBulkAuthOpen}
-        onAuthorizationSuccess={handleBulkImportAuthSuccess}
-        fixedIdentifier={user?.email || undefined}
-        actionDescription={`Identity check required for ${user?.email}. Enterprise synchronization terminal requires verified administrative clearance.`}
-      />
+      <Dialog open={isBulkSmsDialogOpen} onOpenChange={setIsBulkSmsDialogOpen}>
+          <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm rounded-[2rem] border-none shadow-3xl overflow-hidden p-0">
+              <div className="p-6 bg-muted/30 border-b border-white/5">
+                <DialogHeader className="text-left">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-primary/10 p-2.5 rounded-xl">
+                            <Key className="h-5 w-5 text-primary" />
+                        </div>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Security Handshake</DialogTitle>
+                    </div>
+                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 leading-relaxed">
+                        Enter the 4-digit PIN sent to {permissions.smsRecipientNumber?.slice(-4).padStart(permissions.smsRecipientNumber.length, '*')}
+                    </DialogDescription>
+                </DialogHeader>
+              </div>
+              <div className="p-6 space-y-6">
+                  <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Authentication Key</Label>
+                      <Input 
+                          type="text" 
+                          inputMode="numeric" 
+                          maxLength={4}
+                          className="h-20 text-center text-5xl font-black tracking-[0.4em] bg-muted/20 border-none rounded-3xl shadow-inner focus-visible:ring-primary/20"
+                          placeholder="••••"
+                          autoFocus
+                          onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              if (val.length === 4) {
+                                  if (val === generatedBulkPin) {
+                                      setIsBulkSmsDialogOpen(false);
+                                      setIsImportTerminalOpen(true);
+                                      setGeneratedBulkPin('');
+                                      toast({ title: "Access Granted", description: "Identity verified via SMS." });
+                                  } else {
+                                      toast({ variant: "destructive", title: "Access Denied", description: "Invalid security PIN." });
+                                      e.target.value = '';
+                                  }
+                              }
+                          }}
+                      />
+                  </div>
+                  <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                      <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-bold leading-relaxed text-primary/70 uppercase tracking-tighter">
+                          Bulk synchronization requires industrial-grade verification. Code is valid for this session only.
+                      </p>
+                  </div>
+              </div>
+              <DialogFooter className="p-4 bg-muted/20 border-t border-white/5">
+                  <Button variant="ghost" onClick={() => setIsBulkSmsDialogOpen(false)} className="w-full font-black uppercase tracking-widest text-[10px] opacity-40 hover:opacity-100">Abort Protocol</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
           <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-border/60 p-0 shadow-2xl">
