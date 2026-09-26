@@ -132,7 +132,7 @@ function SettingsCard({
 
   return (
     <div className="group min-w-0 bg-card transition-colors hover:bg-muted/[0.18]">
-      <div className="flex min-w-0 flex-col gap-3 px-3.5 py-3.5 sm:px-4 sm:py-4 md:flex-row md:items-center">
+      <div className="flex min-w-0 items-center justify-between gap-3 px-3.5 py-3.5 sm:px-4 sm:py-4">
         <div className="flex min-w-0 items-start gap-3">
           <div
             className={cn(
@@ -168,7 +168,7 @@ function SettingsCard({
           </div>
         </div>
 
-        <div className="flex w-full shrink-0 justify-end md:w-auto">
+        <div className="flex shrink-0">
           {isManual ? (
             triggerButton
           ) : (
