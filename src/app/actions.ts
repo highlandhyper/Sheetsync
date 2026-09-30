@@ -422,15 +422,17 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
 
         await logAuditEvent(item.staffName, 'LOG_INVENTORY', item.barcode, `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
         
-        // IMMEDIATE ALERT PROTOCOL: If expiring exactly in 7 days, trigger SMS gateway handshake.
+        // IMMEDIATE ALERT PROTOCOL: Trigger SMS if item is already expired or hits the 7-day threshold.
         if (item.expiryDate && item.itemType === 'Expiry') {
             const expDate = startOfDay(parseISO(item.expiryDate));
             const today = startOfDay(new Date());
+            const daysDiff = differenceInCalendarDays(expDate, today);
             
-            if (isValid(expDate) && differenceInCalendarDays(expDate, today) === 7) {
+            // ALERT: If exactly 7 days (standard threshold) OR already expired/today (critical alert)
+            if (isValid(expDate) && (daysDiff <= 0 || daysDiff === 7)) {
                 // Async dispatch to avoid blocking the logging UI response
                 triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
-                    console.error("Immediate SMS dispatch failed:", err);
+                    console.error("Immediate threshold alert failed:", err);
                 });
             }
         }

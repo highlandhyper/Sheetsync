@@ -1,1 +1,0 @@
-// This file has been purged. Log functionality is now exclusively handled by src/components/inventory/add-inventory-item-stepper-form.tsx.
