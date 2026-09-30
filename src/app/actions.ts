@@ -467,8 +467,9 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             const today = startOfDay(new Date());
             const daysDiff = differenceInCalendarDays(expDate, today);
             
-            // ALERT: 7-day threshold
-            if (isValid(expDate) && daysDiff === 7) {
+            // ALERT: 7-day threshold (or within 7 days)
+            // Trigger SMS/OTP immediately if item is on display and expires within the 0-7 day window
+            if (isValid(expDate) && daysDiff <= 7 && daysDiff >= 0 && item.location?.toLowerCase() === "on display") {
                 await triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
                     console.error("SMS alert failed:", err);
                 });
