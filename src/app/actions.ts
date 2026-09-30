@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -39,8 +40,8 @@ export interface ActionResponse<T = any> {
   errors?: z.ZodIssue[];
 }
 
-const APPSCRIPT_API_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
-const APPSCRIPT_PASS = "0438"; 
+const APPSCRIPT_API_URL = process.env.GOOGLE_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
+const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "0438"; 
 
 function sanitizeForJSON(input: any): any {
     if (input === null || input === undefined) return input;
@@ -150,6 +151,37 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
             return { success: false, message: result.message || "Registry protocol error." };
         }
         return { success: false, message: "Gateway handshake failure." };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+/**
+ * ADMIN EMAIL PROTOCOL: Critical Expiry Notification
+ * Dispatches a high-priority alert to the system administrator when an expired item is logged.
+ */
+export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
+    if (!APPSCRIPT_API_URL) return { success: false, message: "Gateway URL missing." };
+
+    try {
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sendAdminExpiryAlert',
+                password: APPSCRIPT_PASS,
+                item: item
+            }),
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success') {
+                return { success: true };
+            }
+        }
+        return { success: false };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -403,7 +435,7 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
 
 export async function addInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
     try {
-        const item = {
+        const item: InventoryItem = {
             id: `log_${Date.now()}`,
             barcode: formData.get('barcode') as string,
             quantity: parseFloat(formData.get('quantity') as string),
@@ -411,28 +443,42 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             location: formData.get('location') as string,
             staffName: formData.get('staffName') as string,
             productName: formData.get('productName') as string,
-            supplier: formData.get('supplier') as string,
+            supplierName: formData.get('supplier') as string,
             itemType: formData.get('itemType') as any,
             timestamp: new Date().toISOString(),
-            disableNotification: formData.get('disableNotification') === 'true'
         };
+
+        // Compatibility injection for sheet and email templates
+        (item as any).supplier = item.supplierName;
 
         const success = await addInventoryItemToSheet(item);
         if (!success) throw new Error("Registry core refused sync.");
 
         await logAuditEvent(item.staffName, 'LOG_INVENTORY', item.barcode, `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
         
-        // IMMEDIATE ALERT PROTOCOL: Trigger SMS if item is already expired or hits the 7-day threshold.
+        // IMMEDIATE ALERT PROTOCOL: Trigger SMS/Email if item is already expired or hits the 7-day threshold.
         if (item.expiryDate && item.itemType === 'Expiry') {
             const expDate = startOfDay(parseISO(item.expiryDate));
             const today = startOfDay(new Date());
             const daysDiff = differenceInCalendarDays(expDate, today);
             
-            // ALERT: If exactly 7 days (standard threshold) OR already expired/today (critical alert)
-            if (isValid(expDate) && (daysDiff <= 0 || daysDiff === 7)) {
-                // Async dispatch to avoid blocking the logging UI response
-                triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
-                    console.error("Immediate threshold alert failed:", err);
+            // ALERT: If exactly 7 days (standard threshold)
+            if (isValid(expDate) && daysDiff === 7) {
+                await triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
+                    console.error("Threshold SMS alert failed:", err);
+                });
+            }
+
+            // CRITICAL ALERT: If already expired or today (Critical Alert Protocol)
+            if (isValid(expDate) && daysDiff <= 0) {
+                // Dispatch SMS for Handshake
+                await triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
+                    console.error("Expired item SMS alert failed:", err);
+                });
+
+                // Dispatch Email Notification to Admin
+                await triggerAdminExpiryEmailAction(item).catch(err => {
+                    console.error("Admin Email notification failed:", err);
                 });
             }
         }
