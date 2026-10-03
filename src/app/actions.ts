@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -163,11 +162,10 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
 export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Gateway URL missing." };
 
-    // Align with Apps Script template expectations
     const payload = {
         ...item,
-        staff: item.staffName, // Apps Script template uses 'staff'
-        expiryDate: item.expiryDate // Ensure this is formatted correctly
+        staff: item.staffName, 
+        expiryDate: item.expiryDate 
     };
 
     try {
@@ -442,50 +440,60 @@ export async function fetchProductAction(barcode: string): Promise<ActionRespons
 }
 
 export async function addInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
+    if (!APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway URL missing." };
+
     try {
-        const item: InventoryItem = {
-            id: `log_${Date.now()}`,
-            barcode: formData.get('barcode') as string,
-            quantity: parseFloat(formData.get('quantity') as string),
-            expiryDate: formData.get('expiryDate') as string,
-            location: formData.get('location') as string,
-            staffName: formData.get('staffName') as string,
-            productName: formData.get('productName') as string,
-            supplierName: formData.get('supplier') as string,
-            itemType: formData.get('itemType') as any,
+        const itemData = {
+            action: 'standardLog',
+            password: APPSCRIPT_PASS,
+            barcode: formData.get('barcode'),
+            quantity: formData.get('quantity'),
+            expiryDate: formData.get('expiryDate'),
+            location: formData.get('location'),
+            staffName: formData.get('staffName'),
+            productName: formData.get('productName'),
+            itemType: formData.get('itemType'),
             timestamp: new Date().toISOString(),
+            disableNotification: formData.get('disableNotification') === 'true'
         };
 
-        const success = await addInventoryItemToSheet(item);
-        if (!success) throw new Error("Registry core refused sync.");
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemData),
+            redirect: 'follow'
+        });
 
-        await logAuditEvent(item.staffName, 'LOG_INVENTORY', item.barcode, `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
+        if (!response.ok) throw new Error("Registry Gateway Handshake failed.");
+
+        const result = await response.json();
         
-        // ALERT PROTOCOL
-        if (item.expiryDate && item.itemType === 'Expiry') {
-            const expDate = startOfDay(parseISO(item.expiryDate));
-            const today = startOfDay(new Date());
-            const daysDiff = differenceInCalendarDays(expDate, today);
+        if (result.status === 'success') {
+            await logAuditEvent(
+                itemData.staffName as string, 
+                'LOG_INVENTORY', 
+                itemData.barcode as string, 
+                `[LOGGED] Qty: ${itemData.quantity} | Loc: ${itemData.location}`
+            );
             
-            // ALERT: 7-day threshold (or within 7 days)
-            // Trigger SMS/OTP immediately if item is on display and expires within the 0-7 day window
-            if (isValid(expDate) && daysDiff <= 7 && daysDiff >= 0 && item.location?.toLowerCase() === "on display") {
-                await triggerManualOnDisplaySmsAction(item.staffName).catch(err => {
-                    console.error("SMS alert failed:", err);
-                });
-            }
-
-            // CRITICAL: Expired or expiring today
-            if (isValid(expDate) && daysDiff <= 0) {
-                // Email Administrator via Apps Script
-                await triggerAdminExpiryEmailAction(item).catch(err => {
-                    console.error("Email notification failed:", err);
-                });
-            }
+            revalidatePath('/inventory');
+            return { 
+                success: true, 
+                data: sanitizeForJSON({
+                    id: `log_${Date.now()}`,
+                    barcode: itemData.barcode,
+                    quantity: Number(itemData.quantity),
+                    expiryDate: itemData.expiryDate,
+                    location: itemData.location,
+                    staffName: itemData.staffName,
+                    productName: itemData.productName,
+                    itemType: itemData.itemType,
+                    timestamp: itemData.timestamp
+                }) 
+            };
+        } else {
+            return { success: false, message: result.message || "Registry core refused sync." };
         }
-
-        revalidatePath('/inventory');
-        return { success: true, data: sanitizeForJSON(item) };
     } catch (error: any) {
         return { success: false, message: error.message };
     }
@@ -592,7 +600,7 @@ export async function addExpiryWatchAction(reminder: Omit<ExpiryReminder, 'id' |
 
 export async function resolveExpiryWatchAction(id: string, email: string): Promise<ActionResponse> {
     try {
-        await dbResolveExpiryWatch(id, email);
+        await resolveExpiryWatch(id, email);
         return { success: true };
     } catch (e: any) {
         return { success: false, message: e.message };
