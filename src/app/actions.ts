@@ -162,12 +162,6 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
 export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Gateway URL missing." };
 
-    const payload = {
-        ...item,
-        staff: item.staffName, 
-        expiryDate: item.expiryDate 
-    };
-
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
             method: 'POST',
@@ -175,7 +169,14 @@ export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promis
             body: JSON.stringify({
                 action: 'sendAdminExpiryAlert',
                 password: APPSCRIPT_PASS,
-                item: payload
+                item: {
+                    productName: item.productName,
+                    barcode: item.barcode,
+                    quantity: item.quantity,
+                    expiryDate: item.expiryDate,
+                    staff: item.staffName,
+                    location: item.location
+                }
             }),
             redirect: 'follow'
         });
@@ -469,12 +470,47 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
         const result = await response.json();
         
         if (result.status === 'success') {
+            const staffName = itemData.staffName as string;
+            const location = itemData.location as string;
+            const expiryDateStr = itemData.expiryDate as string;
+
             await logAuditEvent(
-                itemData.staffName as string, 
+                staffName, 
                 'LOG_INVENTORY', 
                 itemData.barcode as string, 
-                `[LOGGED] Qty: ${itemData.quantity} | Loc: ${itemData.location}`
+                `[LOGGED] Qty: ${itemData.quantity} | Loc: ${location}`
             );
+
+            // Notification Logic
+            if (expiryDateStr && itemData.disableNotification !== true) {
+                const expiryDate = new Date(expiryDateStr);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // 1. Instant Email for expired items (<= today)
+                if (expiryDate <= today) {
+                    await triggerAdminExpiryEmailAction({
+                        productName: itemData.productName as string,
+                        barcode: itemData.barcode as string,
+                        quantity: Number(itemData.quantity),
+                        expiryDate: expiryDateStr,
+                        staffName: staffName,
+                        location: location,
+                        id: 'temp'
+                    } as InventoryItem).catch(() => {});
+                }
+
+                // 2. Instant SMS for On-Display items (today to today + 7 days)
+                if (location === 'On Display') {
+                    const sevenDaysFromNow = new Date(today);
+                    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+                    if (expiryDate >= today && expiryDate <= sevenDaysFromNow) {
+                        // Call the trigger action for this staff member
+                        await triggerManualOnDisplaySmsAction(staffName).catch(() => {});
+                    }
+                }
+            }
             
             revalidatePath('/inventory');
             return { 
@@ -483,9 +519,9 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
                     id: `log_${Date.now()}`,
                     barcode: itemData.barcode,
                     quantity: Number(itemData.quantity),
-                    expiryDate: itemData.expiryDate,
-                    location: itemData.location,
-                    staffName: itemData.staffName,
+                    expiryDate: expiryDateStr,
+                    location: location,
+                    staffName: staffName,
                     productName: itemData.productName,
                     itemType: itemData.itemType,
                     timestamp: itemData.timestamp
