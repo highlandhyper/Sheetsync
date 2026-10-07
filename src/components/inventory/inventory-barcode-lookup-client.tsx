@@ -49,8 +49,10 @@ const playProfessionalBeep = () => {
     const audioCtx = new AudioContextClass();
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
+
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
+
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
@@ -199,7 +201,7 @@ export function InventoryBarcodeLookupClient() {
     setIsDetailsDialogOpen(false);
   }, []);
 
-  const handleOpenDetails = (item: InventoryItem) => {
+  const handleOpenDetailsDialog = (item: InventoryItem) => {
     setSelectedItemForDetails(item);
     setIsDetailsDialogOpen(true);
   };
