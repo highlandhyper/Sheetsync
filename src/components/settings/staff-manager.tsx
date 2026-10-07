@@ -93,7 +93,8 @@ export function StaffManager() {
 
     setTestingStaffName(member.name);
 
-    const msg = `SheetSync: Test signal for ${member.name}. Your mobile terminal is now linked to the industrial registry for security alerts and handshakes.`;
+    // PROFESSIONAL INDUSTRIAL TONE
+    const msg = `SHEETSYNC SECURITY: Test signal successful for ${member.name}. Mobile terminal linked to industrial registry. System ready for secure handshake protocols.`;
 
     try {
       const res = await sendSmsAction(msg, member.phone);
