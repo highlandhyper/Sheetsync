@@ -94,12 +94,23 @@ export function ExpiryWatchClient() {
         try {
             const res = await triggerManualExpirySmsAction(id);
             if (res.success) {
-                toast({ title: "Reminder Dispatched", description: `SMS signal sent for ${name}.` });
+                toast({ 
+                    title: "Signal Dispatched", 
+                    description: `SHEETSYNC SECURITY: Observation reminder sent for ${name}.` 
+                });
             } else {
-                toast({ variant: "destructive", title: "Gateway Error", description: res.message });
+                toast({ 
+                    variant: "destructive", 
+                    title: "Protocol Error", 
+                    description: res.message || "Registry core rejected handshake." 
+                });
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Connection Error", description: "Registry handshake failed." });
+            toast({ 
+                variant: "destructive", 
+                title: "Gateway Offline", 
+                description: "Communication link with industrial gateway interrupted." 
+            });
         } finally {
             setIsSendingSms(null);
         }
@@ -113,23 +124,15 @@ export function ExpiryWatchClient() {
         });
 
         try {
-            // STEP 1: Update Registry
             await resolveExpiryReminder(id);
-
-            // STEP 2: Dispatch Resolution SMS via Server Action
-            await triggerResolvedSmsAction(id).catch(err => {
-                console.warn("Resolution SMS skipped or failed:", err);
-            });
-
-            // STEP 3: Final Sync
+            await triggerResolvedSmsAction(id).catch(() => {});
             await refreshData();
 
             toast({
-                title: "Task Completed",
-                description: "Product removed from active observation.",
+                title: "Sync Success",
+                description: "Product removed from active observation registry.",
             });
         } catch (e) {
-            console.error("Expiry Watch resolve failed:", e);
             toast({
                 variant: "destructive",
                 title: "Sync Failure",
@@ -345,7 +348,7 @@ export function ExpiryWatchClient() {
                                                 
                                                 <Button 
                                                     onClick={() => handleResolve(reminder.id, reminder.productName)}
-                                                    disabled={isResolving === reminder.id}
+                                                    disabled={isResolvingDiary === reminder.id}
                                                     className={cn(
                                                         "h-9 rounded-lg px-3 text-[10px] font-semibold shadow-none transition-colors sm:h-10 sm:px-4",
                                                         isCritical 
@@ -353,7 +356,7 @@ export function ExpiryWatchClient() {
                                                             : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
                                                     )}
                                                 >
-                                                    {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                                                    {isResolvingDiary === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
                                                     Clear
                                                 </Button>
                                             </div>

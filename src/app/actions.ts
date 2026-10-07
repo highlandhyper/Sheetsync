@@ -128,7 +128,7 @@ export async function fetchOnDisplayAlertsAction(): Promise<ActionResponse<OnDis
 }
 
 export async function triggerManualOnDisplaySmsAction(staffName: string): Promise<ActionResponse> {
-    if (!staffName || !APPSCRIPT_API_URL) return { success: false, message: "Staff ID or Gateway URL missing." };
+    if (!staffName || !APPSCRIPT_API_URL) return { success: false, message: "Security Terminal ID or Gateway URL missing." };
 
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
@@ -145,18 +145,18 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: `Dispatched ${result.processed || 0} summarized alerts to ${staffName}.` };
+                return { success: true, message: `SHEETSYNC SECURITY: Dispatched ${result.processed || 0} summarized alerts to ${staffName}.` };
             }
-            return { success: false, message: result.message || "Registry protocol error." };
+            return { success: false, message: result.message || "Registry core rejected handshake." };
         }
-        return { success: false, message: "Gateway handshake failure." };
+        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
 }
 
 export async function triggerManualExpirySmsAction(reminderId: string): Promise<ActionResponse> {
-    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Reminder ID or Gateway URL missing." };
+    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Asset Node ID or Gateway URL missing." };
 
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
@@ -173,18 +173,18 @@ export async function triggerManualExpirySmsAction(reminderId: string): Promise<
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: "Manual SMS reminder dispatched." };
+                return { success: true, message: "SHEETSYNC SECURITY: Manual observation reminder dispatched." };
             }
-            return { success: false, message: result.message || "Registry protocol error." };
+            return { success: false, message: result.message || "Registry core rejected manual trigger." };
         }
-        return { success: false, message: "Gateway handshake failure." };
+        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
 }
 
 export async function triggerResolvedSmsAction(reminderId: string): Promise<ActionResponse> {
-    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Reminder ID or Gateway URL missing." };
+    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Asset Node ID or Gateway URL missing." };
 
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
@@ -201,11 +201,11 @@ export async function triggerResolvedSmsAction(reminderId: string): Promise<Acti
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: "Resolution SMS dispatched." };
+                return { success: true, message: "SHEETSYNC SECURITY: Resolution protocol synchronized." };
             }
-            return { success: false, message: result.message || "Registry protocol error." };
+            return { success: false, message: result.message || "Registry core rejected resolution signal." };
         }
-        return { success: false, message: "Gateway handshake failure." };
+        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
