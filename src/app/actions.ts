@@ -25,7 +25,7 @@ import {
   markOnDisplayTokenUsed,
   getExpiryReminders,
   addExpiryReminder,
-  resolveExpiryReminder as dbResolveExpiryWatch,
+  resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
   getAllOnDisplayAlerts,
 } from '@/lib/data';
@@ -155,10 +155,62 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
     }
 }
 
-/**
- * ADMIN EMAIL PROTOCOL: Critical Expiry Notification
- * Dispatches a high-priority alert to the system administrator when an expired item is logged.
- */
+export async function triggerManualExpirySmsAction(reminderId: string): Promise<ActionResponse> {
+    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Reminder ID or Gateway URL missing." };
+
+    try {
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'triggerWatchSmsOnly',
+                password: APPSCRIPT_PASS,
+                reminderId: reminderId
+            }),
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success') {
+                return { success: true, message: "Manual SMS reminder dispatched." };
+            }
+            return { success: false, message: result.message || "Registry protocol error." };
+        }
+        return { success: false, message: "Gateway handshake failure." };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function triggerResolvedSmsAction(reminderId: string): Promise<ActionResponse> {
+    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Reminder ID or Gateway URL missing." };
+
+    try {
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'triggerWatchResolvedSms',
+                password: APPSCRIPT_PASS,
+                reminderId: reminderId
+            }),
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success') {
+                return { success: true, message: "Resolution SMS dispatched." };
+            }
+            return { success: false, message: result.message || "Registry protocol error." };
+        }
+        return { success: false, message: "Gateway handshake failure." };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
 export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Gateway URL missing." };
 
@@ -480,37 +532,6 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
                 itemData.barcode as string, 
                 `[LOGGED] Qty: ${itemData.quantity} | Loc: ${location}`
             );
-
-            // Notification Logic
-            if (expiryDateStr && itemData.disableNotification !== true) {
-                const expiryDate = new Date(expiryDateStr);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                // 1. Instant Email for expired items (<= today)
-                if (expiryDate <= today) {
-                    await triggerAdminExpiryEmailAction({
-                        productName: itemData.productName as string,
-                        barcode: itemData.barcode as string,
-                        quantity: Number(itemData.quantity),
-                        expiryDate: expiryDateStr,
-                        staffName: staffName,
-                        location: location,
-                        id: 'temp'
-                    } as InventoryItem).catch(() => {});
-                }
-
-                // 2. Instant SMS for On-Display items (today to today + 7 days)
-                if (location === 'On Display') {
-                    const sevenDaysFromNow = new Date(today);
-                    sevenDaysFromNow.setDate(today.getDate() + 7);
-
-                    if (expiryDate >= today && expiryDate <= sevenDaysFromNow) {
-                        // Call the trigger action for this staff member
-                        await triggerManualOnDisplaySmsAction(staffName).catch(() => {});
-                    }
-                }
-            }
             
             revalidatePath('/inventory');
             return { 
@@ -636,7 +657,7 @@ export async function addExpiryWatchAction(reminder: Omit<ExpiryReminder, 'id' |
 
 export async function resolveExpiryWatchAction(id: string, email: string): Promise<ActionResponse> {
     try {
-        await resolveExpiryWatch(id, email);
+        await dbResolveExpiryWatch(id, email);
         return { success: true };
     } catch (e: any) {
         return { success: false, message: e.message };

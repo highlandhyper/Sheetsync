@@ -41,21 +41,20 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-// Expiry Watch Column Mapping (1-based for use with row[index-1])
+// Expiry Watch Column Mapping (Based on user's Code.gs)
 const WATCH_COL_ID = 1;        // Col A
-// Column B is a redundant ID column
-const WATCH_COL_BARCODE = 3;   // Col C
-const WATCH_COL_PRODUCT = 4;   // Col D
-const WATCH_COL_EXPIRY = 5;    // Col E
-const WATCH_COL_SUPPLIER = 6;  // Col F
-const WATCH_COL_STATUS = 7;    // Col G
-const WATCH_COL_TIMESTAMP = 8; // Col H
-const WATCH_COL_STAFF = 9;     // Col I
-const WATCH_COL_SMS_STATUS = 10;
-const WATCH_COL_SMS_SENT_AT = 11;
-const WATCH_COL_SMS_COUNT = 12;
-const WATCH_COL_RESOLUTION_SMS_STATUS = 13;
-const WATCH_COL_RESOLUTION_SMS_SENT_AT = 14;
+const WATCH_COL_BARCODE = 2;   // Col B
+const WATCH_COL_PRODUCT = 3;   // Col C
+const WATCH_COL_EXPIRY = 4;    // Col D
+const WATCH_COL_SUPPLIER = 5;  // Col E
+const WATCH_COL_STATUS = 6;    // Col F
+const WATCH_COL_TIMESTAMP = 7; // Col G
+const WATCH_COL_STAFF = 8;     // Col H
+const WATCH_COL_SMS_STATUS = 9;
+const WATCH_COL_SMS_SENT_AT = 10;
+const WATCH_COL_SMS_COUNT = 11;
+const WATCH_COL_RESOLUTION_SMS_STATUS = 12;
+const WATCH_COL_RESOLUTION_SMS_SENT_AT = 13;
 
 // On Display Alerts Column Mapping
 const ODA_COL_ID = 1;
@@ -291,15 +290,16 @@ export async function markOnDisplayTokenUsed(token: string) {
 export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>) {
     const id = `rem_${Date.now()}`;
     const ts = new Date().toISOString();
-    const row = [id, id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts, reminder.staffName || ''];
-    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:I`, [row]);
+    const row = [id, reminder.barcode, reminder.productName, reminder.expiryDate, reminder.supplierName || '', 'pending', ts, reminder.staffName || ''];
+    await appendSheetData(`${EXPIRY_WATCH_SHEET_NAME}!A:H`, [row]);
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
 }
 
 export async function resolveExpiryWatch(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
-        await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!G${row}`, [['resolved']]);
+        // Status is Column F (6)
+        await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!F${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_DIARY', id, `Registry resolution for ${id}.`);
         return true;
     }

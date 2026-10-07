@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
     Search, 
-    Plus, 
     Calendar, 
     User, 
     Bell, 
@@ -23,13 +22,15 @@ import {
     FilterX,
     Scan,
     X,
-    ClipboardPlus
+    ClipboardPlus,
+    Send
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, addMonths, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Html5Qrcode } from 'html5-qrcode';
 import Link from 'next/link';
+import { triggerManualExpirySmsAction, triggerResolvedSmsAction } from '@/app/actions';
 
 const SCANNER_REGION_ID = "diary-lookup-scanner-region";
 
@@ -62,6 +63,7 @@ export function ExpiryWatchClient() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [isResolving, setIsResolving] = useState<string | null>(null);
+    const [isSendingSms, setIsSendingSms] = useState<string | null>(null);
 
     const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
     const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -87,51 +89,20 @@ export function ExpiryWatchClient() {
         });
     }, [expiryReminders, searchTerm]);
 
-    /**
-     * IMPORTANT:
-     * These must point to the same Apps Script deployment used by your app.
-     *
-     * Recommended .env.local:
-     * NEXT_PUBLIC_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-     * NEXT_PUBLIC_ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD
-     *
-     * Do NOT hard-code the admin password in this file.
-     */
-    const GOOGLE_SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || '';
-    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
-
-    const triggerResolvedSms = async (reminderId: string) => {
-        if (!GOOGLE_SCRIPT_URL) {
-            throw new Error("NEXT_PUBLIC_GOOGLE_SCRIPT_URL is not configured.");
+    const handleSendManualSms = async (id: string, name: string) => {
+        setIsSendingSms(id);
+        try {
+            const res = await triggerManualExpirySmsAction(id);
+            if (res.success) {
+                toast({ title: "Reminder Dispatched", description: `SMS signal sent for ${name}.` });
+            } else {
+                toast({ variant: "destructive", title: "Gateway Error", description: res.message });
+            }
+        } catch (e) {
+            toast({ variant: "destructive", title: "Connection Error", description: "Registry handshake failed." });
+        } finally {
+            setIsSendingSms(null);
         }
-
-        if (!ADMIN_PASSWORD) {
-            throw new Error("NEXT_PUBLIC_ADMIN_PASSWORD is not configured.");
-        }
-
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify({
-                action: 'triggerWatchResolvedSms',
-                reminderId,
-                password: ADMIN_PASSWORD,
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`Resolved SMS request failed (${response.status}).`);
-        }
-
-        const result = await response.json();
-
-        if (result?.status !== 'success') {
-            throw new Error(result?.message || 'Resolved SMS request failed.');
-        }
-
-        return result?.sms;
     };
 
     const handleResolve = async (id: string, name: string) => {
@@ -142,53 +113,23 @@ export function ExpiryWatchClient() {
         });
 
         try {
-            // STEP 1: Change Expiry Watch status to resolved.
+            // STEP 1: Update Registry
             await resolveExpiryReminder(id);
 
-            // STEP 2: Only after the resolve operation succeeds,
-            // ask Apps Script to send the resolved SMS immediately.
-            let smsResult: any = null;
+            // STEP 2: Dispatch Resolution SMS via Server Action
+            await triggerResolvedSmsAction(id).catch(err => {
+                console.warn("Resolution SMS skipped or failed:", err);
+            });
 
-            try {
-                smsResult = await triggerResolvedSms(id);
-            } catch (smsError) {
-                console.error("Resolved expiry SMS failed:", smsError);
-
-                toast({
-                    variant: "destructive",
-                    title: "Resolved, SMS Failed",
-                    description:
-                        "The expiry entry was resolved, but the notification could not be sent.",
-                });
-            }
-
-            // STEP 3: Refresh the app regardless of SMS result.
+            // STEP 3: Final Sync
             await refreshData();
 
-            if (smsResult?.status === 'sent') {
-                toast({
-                    title: "Task Completed",
-                    description: "Entry resolved and SMS sent immediately.",
-                });
-            } else if (
-                smsResult?.status === 'already-sent' ||
-                smsResult?.status === 'skipped'
-            ) {
-                toast({
-                    title: "Task Completed",
-                    description: "Entry resolved. SMS was already processed.",
-                });
-            } else if (!smsResult) {
-                // An SMS error toast was already shown above.
-            } else {
-                toast({
-                    title: "Task Completed",
-                    description: "Product removed from active observation.",
-                });
-            }
+            toast({
+                title: "Task Completed",
+                description: "Product removed from active observation.",
+            });
         } catch (e) {
             console.error("Expiry Watch resolve failed:", e);
-
             toast({
                 variant: "destructive",
                 title: "Sync Failure",
@@ -391,19 +332,31 @@ export function ExpiryWatchClient() {
                                                 </p>
                                             </div>
 
-                                            <Button 
-                                                onClick={() => handleResolve(reminder.id, reminder.productName)}
-                                                disabled={isResolving === reminder.id}
-                                                className={cn(
-                                                    "h-9 rounded-lg px-3 text-[10px] font-semibold shadow-none transition-colors sm:h-10 sm:px-4",
-                                                    isCritical 
-                                                        ? "bg-orange-500 text-white hover:bg-orange-600" 
-                                                        : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
-                                                )}
-                                            >
-                                                {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-                                                Clear
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                <Button 
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => handleSendManualSms(reminder.id, reminder.productName)}
+                                                    disabled={isSendingSms === reminder.id}
+                                                    className="h-9 w-9 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground"
+                                                >
+                                                    {isSendingSms === reminder.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                                </Button>
+                                                
+                                                <Button 
+                                                    onClick={() => handleResolve(reminder.id, reminder.productName)}
+                                                    disabled={isResolving === reminder.id}
+                                                    className={cn(
+                                                        "h-9 rounded-lg px-3 text-[10px] font-semibold shadow-none transition-colors sm:h-10 sm:px-4",
+                                                        isCritical 
+                                                            ? "bg-orange-500 text-white hover:bg-orange-600" 
+                                                            : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+                                                    )}
+                                                >
+                                                    {isResolving === reminder.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                                                    Clear
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>
