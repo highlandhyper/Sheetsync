@@ -13,7 +13,9 @@ import {
     Search, FilterX, Hash, MapPin, Tag, Calendar as CalendarIcon,
     ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink, Eye,
     Trash2,
-    ShieldAlert
+    ShieldAlert,
+    Database,
+    Layers
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,7 +30,7 @@ import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-d
 import { updateInventoryItemAction, approveRequestAction } from '@/app/actions';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
 import { CreateProductFromInventoryDialog } from '@/components/products/create-product-from-inventory-dialog';
 
@@ -44,9 +46,6 @@ export function ApprovalCenterClient() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-
-    const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] = useState(false);
-    const [productBarcodeForDialog, setProductBarcodeForDialog] = useState('');
 
     const filteredPending = useMemo(() => {
         const lower = searchTerm.toLowerCase().trim();
@@ -85,39 +84,15 @@ export function ApprovalCenterClient() {
         setIsProcessing(true);
 
         try {
-            if (selectedRequest.type === 'on_display_request') {
-                const res = await approveRequestAction(selectedRequest.id, authUser.email);
-                if (res.success) {
-                    toast({ title: 'Approved', description: 'On-Display change applied successfully.' });
-                    refreshData();
-                } else {
-                    toast({ variant: "destructive", title: "Approval Error", description: res.message });
-                }
-            } else if (selectedRequest.type === 'inventory_edit' && selectedRequest.editDetails) {
-                const details = selectedRequest.editDetails;
-                const formData = new FormData();
-                formData.append('itemId', details.itemId);
-                formData.append('location', details.location);
-                formData.append('itemType', details.itemType);
-                formData.append('userEmail', authUser.email);
-                formData.append('quantity', String(details.quantity));
-                if (details.expiryDate) formData.append('expiryDate', details.expiryDate);
-
-                const result = await updateInventoryItemAction(undefined, formData);
-                if (result.success && result.data) {
-                    updateInventoryItem(result.data);
-                    await approveRequest(selectedRequest.id);
-                    toast({ title: 'Edit Applied', description: `Approved changes for ${details.productName}.` });
-                }
-            } else if (selectedRequest.type === 'product_add') {
-                await completeProductAddRequest(selectedRequest.id);
-                toast({ title: 'Processed', description: 'Catalog request completed.' });
+            const res = await approveRequestAction(selectedRequest.id, authUser.email);
+            if (res.success) {
+                toast({ title: 'Sync Confirmed', description: 'Registry modification successfully applied.' });
+                refreshData();
             } else {
-                await approveRequest(selectedRequest.id);
-                toast({ title: 'Authorized', description: `Request for ${selectedRequest.staffName} approved.` });
+                toast({ variant: "destructive", title: "Sync Error", description: res.message || "The registry core rejected the update." });
             }
         } catch (error) {
-            toast({ title: 'Sync Error', description: 'Action failed.', variant: 'destructive' });
+            toast({ title: 'Connection Error', description: 'Registry handshake timed out.', variant: 'destructive' });
         } finally {
             setIsProcessing(false);
             setSelectedRequest(null);
@@ -126,10 +101,30 @@ export function ApprovalCenterClient() {
 
     const requestTypeMeta = (req: SpecialEntryRequest) => {
         if (req.type === "on_display_request") return { label: "On-Display", icon: ShieldAlert, badge: "border-red-500/15 bg-red-500/10 text-red-600", iconClass: "bg-red-500/10 text-red-600" };
-        if (req.type === "inventory_edit") return { label: "Inventory Edit", icon: Edit, badge: "border-primary/15 bg-primary/10 text-primary", iconClass: "bg-primary/10 text-primary" };
+        if (req.type === "inventory_edit") return { label: "Registry Edit", icon: Edit, badge: "border-primary/15 bg-primary/10 text-primary", iconClass: "bg-primary/10 text-primary" };
         if (req.type === "product_add") return { label: "New Product", icon: PackagePlus, badge: "border-orange-500/15 bg-orange-500/10 text-orange-600", iconClass: "bg-orange-500/10 text-orange-600" };
         return { label: "Special Entry", icon: Key, badge: "border-emerald-500/15 bg-emerald-500/10 text-emerald-600", iconClass: "bg-emerald-500/10 text-emerald-600" };
     };
+
+    const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label: string, original?: string | number, edited?: string | number }) => (
+        <div className="p-4 bg-muted/20 rounded-2xl border border-white/5 space-y-3">
+            <div className="flex items-center gap-2">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+            </div>
+            <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[8px] font-black uppercase text-muted-foreground/40 mb-1">ORIGINAL</p>
+                    <p className="text-sm font-bold truncate opacity-50">{original || '---'}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                    <p className="text-[8px] font-black uppercase text-primary/40 mb-1">CORRECTED</p>
+                    <p className="text-sm font-black truncate text-primary">{edited || '---'}</p>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-w-0 space-y-4">
@@ -148,123 +143,159 @@ export function ApprovalCenterClient() {
             </Card>
 
             <Tabs defaultValue="pending" className="w-full min-w-0">
-                <TabsList className="grid h-10 w-full grid-cols-2 rounded-xl border border-border/60 bg-muted/30 p-1">
-                    <TabsTrigger value="pending" className="rounded-lg px-2 text-[10px] font-semibold">Active Requests</TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-lg px-2 text-[10px] font-semibold">History</TabsTrigger>
+                <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl border-0 bg-muted/30 p-1">
+                    <TabsTrigger value="pending" className="rounded-lg px-2 text-[10px] font-black uppercase tracking-widest">Active Requests</TabsTrigger>
+                    <TabsTrigger value="history" className="rounded-lg px-2 text-[10px] font-black uppercase tracking-widest">Protocol History</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="pending" className="mt-3 outline-none animate-in fade-in duration-200">
+                <TabsContent value="pending" className="mt-4 outline-none animate-in fade-in duration-300">
                     <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {filteredPending.map((req) => {
                             const meta = requestTypeMeta(req);
                             const Icon = meta.icon;
                             return (
-                                <Card key={req.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-                                    <CardHeader className="min-w-0 border-b border-border/50 bg-muted/[0.16] p-4 pb-3">
-                                        <div className="flex min-w-0 items-start gap-3">
-                                            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", meta.iconClass)}><Icon className="h-4 w-4" /></div>
+                                <Card key={req.id} className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm hover:shadow-md transition-all">
+                                    <CardHeader className="min-w-0 border-b border-border/50 bg-muted/[0.16] p-5 pb-4">
+                                        <div className="flex min-w-0 items-start gap-4">
+                                            <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm", meta.iconClass)}><Icon className="h-5 w-5" /></div>
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex min-w-0 items-start justify-between gap-2">
                                                     <div className="min-w-0">
-                                                        <CardTitle className="truncate text-[13px] font-bold">{req.staffName}</CardTitle>
-                                                        <CardDescription className="mt-0.5 truncate text-[9px] font-medium">{req.userEmail}</CardDescription>
+                                                        <CardTitle className="truncate text-base font-black uppercase tracking-tight">{req.staffName}</CardTitle>
+                                                        <CardDescription className="mt-1 truncate text-[10px] font-bold uppercase text-muted-foreground/60">{req.userEmail}</CardDescription>
                                                     </div>
-                                                    <Badge variant="outline" className={cn("rounded-lg px-2 py-0.5 text-[7px] font-bold", meta.badge)}>{meta.label}</Badge>
+                                                    <Badge variant="outline" className={cn("rounded-lg px-2 py-0.5 text-[8px] font-black uppercase tracking-widest", meta.badge)}>{meta.label}</Badge>
                                                 </div>
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="flex flex-1 flex-col p-4">
-                                        <div className="rounded-xl bg-muted/30 px-3 py-2.5 flex-1">
-                                            <p className="text-[7px] font-black uppercase text-muted-foreground tracking-widest">Requested Change</p>
-                                            <p className="mt-1 text-xs font-bold leading-tight text-foreground">
-                                                {req.type === 'on_display_request' && req.editDetails 
-                                                  ? `${req.editDetails.requestType === 'delete' ? 'REMOVE' : 'ADJUST'} ${req.editDetails.productName}`
-                                                  : (req.editDetails?.productName || req.suggestedProductName || req.reason || "Registry Access")
+                                    <CardContent className="flex flex-1 flex-col p-5">
+                                        <div className="rounded-2xl bg-muted/30 p-4 flex-1 border border-white/5 shadow-inner">
+                                            <p className="text-[8px] font-black uppercase text-muted-foreground/40 tracking-[0.2em] mb-2">Registry Proposal</p>
+                                            <p className="text-sm font-bold leading-tight text-foreground line-clamp-2 uppercase">
+                                                {req.type === 'on_display_request' || req.type === 'inventory_edit'
+                                                  ? `${req.editDetails?.requestType === 'delete' ? 'PURGE' : 'ADJUST'} ${req.editDetails?.productName || 'NODE'}`
+                                                  : (req.suggestedProductName || req.reason || "SILENT ENTRY HANDSHAKE")
                                                 }
                                             </p>
                                         </div>
-                                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-3">
-                                            <Button variant="outline" size="sm" className="h-9 rounded-xl border-destructive/20 text-destructive hover:bg-destructive/5" onClick={() => handleRejectRequest(req.id)}>Decline</Button>
-                                            <Button size="sm" className="h-9 rounded-xl" onClick={() => handleActionClick(req)}><Eye className="mr-1.5 h-3.5 w-3.5" />Review</Button>
+                                        <div className="mt-4 grid grid-cols-2 gap-3 pt-1">
+                                            <Button variant="ghost" size="sm" className="h-11 rounded-xl font-black uppercase text-[10px] tracking-widest text-destructive hover:bg-destructive/5" onClick={() => handleRejectRequest(req.id)}>Reject</Button>
+                                            <Button size="sm" className="h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/10" onClick={() => handleActionClick(req)}><Eye className="mr-2 h-4 w-4" /> Review</Button>
                                         </div>
                                     </CardContent>
                                 </Card>
                             );
                         })}
+
+                        {filteredPending.length === 0 && (
+                            <div className="col-span-full py-24 text-center opacity-30">
+                                <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em]">Zero Active Protocols</p>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
-                <TabsContent value="history" className="mt-3 outline-none animate-in fade-in duration-200">
-                     <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+                <TabsContent value="history" className="mt-4 outline-none animate-in fade-in duration-300">
+                     <Card className="min-w-0 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
                         {processedRequests.length > 0 ? (
                             <div className="divide-y divide-border/50">
                                 {processedRequests.map((req) => (
-                                    <div key={req.id} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-muted/20">
-                                        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", req.status === 'approved' ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive")}>
-                                            {req.status === 'approved' ? <Check className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                    <div key={req.id} className="flex min-w-0 items-center gap-4 px-6 py-4 hover:bg-muted/10 transition-colors">
+                                        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", req.status === 'approved' ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive")}>
+                                            {req.status === 'approved' ? <Check className="h-5 w-5" /> : <Ban className="h-5 w-5" />}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-xs font-bold">{req.staffName}</p>
-                                            <p className="mt-0.5 truncate text-[9px] text-muted-foreground">{req.userEmail}</p>
+                                            <p className="truncate text-sm font-black uppercase tracking-tight">{req.staffName}</p>
+                                            <p className="mt-0.5 truncate text-[10px] font-bold text-muted-foreground/50">{req.userEmail}</p>
                                         </div>
                                         <div className="shrink-0 text-right">
-                                            <Badge variant="outline" className={cn("text-[7px] font-bold uppercase", req.status === 'approved' ? "border-emerald-500/20 text-emerald-600" : "border-destructive/20 text-destructive")}>{req.status}</Badge>
-                                            <p className="mt-1 text-[7px] font-mono text-muted-foreground">{format(parseISO(req.approvedAt || req.requestedAt), "dd MMM yy")}</p>
+                                            <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-widest", req.status === 'approved' ? "border-emerald-500/20 text-emerald-600" : "border-destructive/20 text-destructive")}>{req.status}</Badge>
+                                            <p className="mt-1.5 text-[10px] font-mono font-bold text-muted-foreground/30">{format(parseISO(req.approvedAt || req.requestedAt), "dd MMM yy")}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        ) : null}
+                        ) : (
+                            <div className="py-24 text-center opacity-20">
+                                <History className="mx-auto h-12 w-12 mb-4" />
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em]">Zero Historical Traces</p>
+                            </div>
+                        )}
                      </Card>
                 </TabsContent>
             </Tabs>
 
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
-                    <DialogHeader className="p-6 bg-muted/20 border-b border-white/5">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-primary/10 flex items-center justify-center rounded-2xl text-primary"><ShieldCheck className="h-6 w-6" /></div>
+                <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
+                    <DialogHeader className="p-8 pb-4 bg-muted/30 border-b border-white/5">
+                        <div className="flex items-center gap-5">
+                            <div className="h-14 w-14 bg-primary/10 flex items-center justify-center rounded-2xl text-primary shadow-sm"><ShieldCheck className="h-8 w-8" /></div>
                             <div>
-                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Review On-Display Request</DialogTitle>
-                                <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Personnel: {selectedRequest?.staffName}</DialogDescription>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Review Security Request</DialogTitle>
+                                <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1.5">Personnel terminal: {selectedRequest?.staffName}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-6">
-                        {selectedRequest?.type === 'on_display_request' && selectedRequest.editDetails && selectedRequest.originalDetails && (
-                            <div className="space-y-4">
-                                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Protocol: {selectedRequest.editDetails.requestType === 'delete' ? 'Registry Deletion' : 'Inventory Correction'}</p>
-                                    <h4 className="text-lg font-bold leading-tight">{selectedRequest.editDetails.productName}</h4>
+                    <div className="p-8 space-y-6">
+                        {(selectedRequest?.type === 'on_display_request' || selectedRequest?.type === 'inventory_edit') && selectedRequest.editDetails && selectedRequest.originalDetails ? (
+                            <div className="space-y-6">
+                                <div className="p-5 bg-primary/5 rounded-[1.5rem] border border-primary/10 flex items-start gap-4">
+                                    <div className="h-10 w-10 bg-background rounded-xl flex items-center justify-center border border-primary/10 shadow-sm"><Database className="h-5 w-5 text-primary" /></div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60 mb-1">Identification Node</p>
+                                        <h4 className="text-lg font-black uppercase truncate leading-tight">{selectedRequest.editDetails.productName}</h4>
+                                    </div>
+                                    <Badge className={cn("mt-1 uppercase font-black text-[9px] tracking-widest", selectedRequest.editDetails.requestType === 'delete' ? "bg-destructive text-white" : "bg-primary text-white")}>
+                                        {selectedRequest.editDetails.requestType === 'delete' ? 'PURGE' : 'ADJUST'}
+                                    </Badge>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Quantity</span>
-                                            <Badge className="bg-background text-primary border-primary/10">{selectedRequest.originalDetails.quantity} → {selectedRequest.editDetails.quantity}</Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Location</span>
-                                            <Badge className="bg-background text-primary border-primary/10">{selectedRequest.originalDetails.location} → {selectedRequest.editDetails.location}</Badge>
-                                        </div>
+                                    <DetailNode icon={Layers} label="Volume Change" original={selectedRequest.originalDetails.quantity} edited={selectedRequest.editDetails.quantity} />
+                                    <DetailNode icon={MapPin} label="Zone Mapping" original={selectedRequest.originalDetails.location} edited={selectedRequest.editDetails.location} />
+                                    <DetailNode icon={Tag} label="Classification" original={selectedRequest.originalDetails.itemType} edited={selectedRequest.editDetails.itemType} />
+                                    <DetailNode icon={CalendarIcon} label="Lifecycle Threshold" original={selectedRequest.originalDetails.expiryDate || 'N/A'} edited={selectedRequest.editDetails.expiryDate || 'N/A'} />
+                                </div>
+                            </div>
+                        ) : selectedRequest?.type === 'product_add' ? (
+                            <div className="p-6 bg-orange-500/5 rounded-3xl border border-orange-500/10 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <PackagePlus className="h-6 w-6 text-orange-600" />
+                                    <h4 className="text-lg font-black uppercase text-orange-900 tracking-tight">New SKU Identification</h4>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Asset Barcode</p>
+                                        <p className="font-mono text-xl font-black text-orange-900">{selectedRequest.reason}</p>
                                     </div>
-                                    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Expiry Window</span>
+                                    {selectedRequest.suggestedProductName && (
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Optical Name Suggestion</p>
+                                            <p className="text-base font-bold text-orange-800">{selectedRequest.suggestedProductName}</p>
                                         </div>
-                                        <p className="text-xs font-bold">{selectedRequest.originalDetails.expiryDate || 'N/A'}</p>
-                                    </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center space-y-4">
+                                <div className="mx-auto h-16 w-16 bg-muted/30 rounded-full flex items-center justify-center"><Key className="h-8 w-8 text-muted-foreground/40" /></div>
+                                <div className="space-y-1">
+                                    <p className="text-base font-bold uppercase">Manual Silent Entry</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">Personnel requires temporary registry access. Authorizing will dispatch a one-time identification key.</p>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <DialogFooter className="p-6 bg-muted/10 border-t border-white/5 gap-2">
-                        <Button variant="ghost" onClick={() => setIsDetailDialogOpen(false)} className="font-bold h-11 px-6 rounded-xl">Close</Button>
-                        <Button onClick={handleConfirmApproval} className="h-11 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20">Authorize Change</Button>
+                    <DialogFooter className="p-8 pt-2 bg-muted/10 border-t border-white/5 flex flex-row items-center gap-3">
+                        <DialogClose asChild>
+                            <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
+                        </DialogClose>
+                        <Button onClick={handleConfirmApproval} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
+                            Authorize Protocol
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -273,7 +304,7 @@ export function ApprovalCenterClient() {
                 isOpen={isAuthDialogOpen}
                 onOpenChange={setIsAuthDialogOpen}
                 onAuthorizationSuccess={handleAuthorizationSuccess}
-                actionDescription="Administrative identity verification required to apply registry modifications."
+                actionDescription="Administrative identity verification required to synchronize registry modifications."
             />
         </div>
     );

@@ -302,7 +302,8 @@ export async function approveRequestAction(requestId: string, adminEmail: string
     if (reqIndex === -1) return { success: false, message: "Request node not found." };
     const req = requests[reqIndex];
 
-    if (req.type === 'on_display_request' && req.editDetails) {
+    // APPLY REGISTRY CHANGE IF APPLICABLE
+    if ((req.type === 'on_display_request' || req.type === 'inventory_edit') && req.editDetails) {
       if (req.editDetails.requestType === 'delete') {
         await dbDeleteInventoryItemById(adminEmail, req.editDetails.itemId);
       } else {
@@ -341,8 +342,8 @@ export async function approveRequestAction(requestId: string, adminEmail: string
     revalidatePath('/approvals');
     revalidatePath('/inventory');
     return { success: true };
-  } catch (e) {
-    return { success: false, message: "Registry error." };
+  } catch (e: any) {
+    return { success: false, message: e.message || "Registry error." };
   }
 }
 
