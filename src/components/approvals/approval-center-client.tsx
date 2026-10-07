@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { 
     Check, X, Clock, User, ShieldCheck, History, 
-    AlertTriangle, Edit, PackagePlus, MessageSquare, 
+    Edit, PackagePlus, MessageSquare, 
     ArrowRight, Info, Key, CheckCircle2, Ban,
     Search, FilterX, Hash, MapPin, Tag, Calendar as CalendarIcon,
     ArrowLeftRight, AlertCircle, PlusCircle, ExternalLink, Eye,
@@ -25,21 +25,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
-import { updateInventoryItemAction, approveRequestAction } from '@/app/actions';
+import { approveRequestAction } from '@/app/actions';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
-import { CreateProductFromInventoryDialog } from '@/components/products/create-product-from-inventory-dialog';
+
+// HELPER COMPONENTS
+const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label: string, original?: string | number, edited?: string | number }) => (
+    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5 space-y-3">
+        <div className="flex items-center gap-2">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+        </div>
+        <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-black uppercase text-muted-foreground/40 mb-1">ORIGINAL</p>
+                <p className="text-sm font-bold truncate opacity-50">
+                    {original !== undefined && original !== null ? original : '---'}
+                </p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-black uppercase text-primary/40 mb-1">CORRECTED</p>
+                <p className="text-sm font-black truncate text-primary">
+                    {edited !== undefined && edited !== null ? edited : '---'}
+                </p>
+            </div>
+        </div>
+    </div>
+);
 
 export function ApprovalCenterClient() {
-    const { pendingRequests, processedRequests, approveRequest, completeProductAddRequest, rejectRequest } = useSpecialEntry();
-    const { updateInventoryItem, refreshData, suppliers, addProduct } = useDataCache();
+    const { pendingRequests, processedRequests, rejectRequest } = useSpecialEntry();
+    const { refreshData } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
-    const router = useRouter();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRequest, setSelectedRequest] = useState<SpecialEntryRequest | null>(null);
@@ -100,31 +122,35 @@ export function ApprovalCenterClient() {
     };
 
     const requestTypeMeta = (req: SpecialEntryRequest) => {
-        if (req.type === "on_display_request") return { label: "On-Display", icon: ShieldAlert, badge: "border-red-500/15 bg-red-500/10 text-red-600", iconClass: "bg-red-500/10 text-red-600" };
-        if (req.type === "inventory_edit") return { label: "Registry Edit", icon: Edit, badge: "border-primary/15 bg-primary/10 text-primary", iconClass: "bg-primary/10 text-primary" };
-        if (req.type === "product_add") return { label: "New Product", icon: PackagePlus, badge: "border-orange-500/15 bg-orange-500/10 text-orange-600", iconClass: "bg-orange-500/10 text-orange-600" };
-        return { label: "Special Entry", icon: Key, badge: "border-emerald-500/15 bg-emerald-500/10 text-emerald-600", iconClass: "bg-emerald-500/10 text-emerald-600" };
+        if (req.type === "on_display_request") return { 
+            label: "On-Display", 
+            icon: ShieldAlert, 
+            badge: "border-red-500/15 bg-red-500/10 text-red-600", 
+            iconClass: "bg-red-500/10 text-red-600",
+            dialogTitle: "Review On-Display Request" 
+        };
+        if (req.type === "inventory_edit") return { 
+            label: "Registry Edit", 
+            icon: Edit, 
+            badge: "border-primary/15 bg-primary/10 text-primary", 
+            iconClass: "bg-primary/10 text-primary",
+            dialogTitle: "Review Registry Edit"
+        };
+        if (req.type === "product_add") return { 
+            label: "New Product", 
+            icon: PackagePlus, 
+            badge: "border-orange-500/15 bg-orange-500/10 text-orange-600", 
+            iconClass: "bg-orange-500/10 text-orange-600",
+            dialogTitle: "Review Product Registration"
+        };
+        return { 
+            label: "Special Entry", 
+            icon: Key, 
+            badge: "border-emerald-500/15 bg-emerald-500/10 text-emerald-600", 
+            iconClass: "bg-emerald-500/10 text-emerald-600",
+            dialogTitle: "Review Access Request"
+        };
     };
-
-    const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label: string, original?: string | number, edited?: string | number }) => (
-        <div className="p-4 bg-muted/20 rounded-2xl border border-white/5 space-y-3">
-            <div className="flex items-center gap-2">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="text-[8px] font-black uppercase text-muted-foreground/40 mb-1">ORIGINAL</p>
-                    <p className="text-sm font-bold truncate opacity-50">{original || '---'}</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-                <div className="min-w-0 flex-1">
-                    <p className="text-[8px] font-black uppercase text-primary/40 mb-1">CORRECTED</p>
-                    <p className="text-sm font-black truncate text-primary">{edited || '---'}</p>
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <div className="min-w-0 space-y-4">
@@ -230,16 +256,20 @@ export function ApprovalCenterClient() {
                 <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-3xl bg-background">
                     <DialogHeader className="p-8 pb-4 bg-muted/30 border-b border-white/5">
                         <div className="flex items-center gap-5">
-                            <div className="h-14 w-14 bg-primary/10 flex items-center justify-center rounded-2xl text-primary shadow-sm"><ShieldCheck className="h-8 w-8" /></div>
+                            <div className="h-14 w-14 bg-primary/10 flex items-center justify-center rounded-2xl text-primary shadow-sm">
+                                {selectedRequest && React.createElement(requestTypeMeta(selectedRequest).icon, { className: "h-8 w-8" })}
+                            </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Review Security Request</DialogTitle>
-                                <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1.5">Personnel terminal: {selectedRequest?.staffName}</DialogDescription>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+                                    {selectedRequest ? requestTypeMeta(selectedRequest).dialogTitle : 'Review Request'}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1.5">Personnel: {selectedRequest?.staffName}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
                     <div className="p-8 space-y-6">
-                        {(selectedRequest?.type === 'on_display_request' || selectedRequest?.type === 'inventory_edit') && selectedRequest.editDetails && selectedRequest.originalDetails ? (
+                        {(selectedRequest?.type === 'on_display_request' || selectedRequest?.type === 'inventory_edit') && selectedRequest.editDetails ? (
                             <div className="space-y-6">
                                 <div className="p-5 bg-primary/5 rounded-[1.5rem] border border-primary/10 flex items-start gap-4">
                                     <div className="h-10 w-10 bg-background rounded-xl flex items-center justify-center border border-primary/10 shadow-sm"><Database className="h-5 w-5 text-primary" /></div>
@@ -253,10 +283,30 @@ export function ApprovalCenterClient() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <DetailNode icon={Layers} label="Volume Change" original={selectedRequest.originalDetails.quantity} edited={selectedRequest.editDetails.quantity} />
-                                    <DetailNode icon={MapPin} label="Zone Mapping" original={selectedRequest.originalDetails.location} edited={selectedRequest.editDetails.location} />
-                                    <DetailNode icon={Tag} label="Classification" original={selectedRequest.originalDetails.itemType} edited={selectedRequest.editDetails.itemType} />
-                                    <DetailNode icon={CalendarIcon} label="Lifecycle Threshold" original={selectedRequest.originalDetails.expiryDate || 'N/A'} edited={selectedRequest.editDetails.expiryDate || 'N/A'} />
+                                    <DetailNode 
+                                        icon={Layers} 
+                                        label="Volume Change" 
+                                        original={selectedRequest.originalDetails?.quantity} 
+                                        edited={selectedRequest.editDetails.quantity} 
+                                    />
+                                    <DetailNode 
+                                        icon={MapPin} 
+                                        label="Zone Mapping" 
+                                        original={selectedRequest.originalDetails?.location} 
+                                        edited={selectedRequest.editDetails.location} 
+                                    />
+                                    <DetailNode 
+                                        icon={Tag} 
+                                        label="Classification" 
+                                        original={selectedRequest.originalDetails?.itemType} 
+                                        edited={selectedRequest.editDetails.itemType} 
+                                    />
+                                    <DetailNode 
+                                        icon={CalendarIcon} 
+                                        label="Lifecycle Threshold" 
+                                        original={selectedRequest.originalDetails?.expiryDate || 'N/A'} 
+                                        edited={selectedRequest.editDetails.expiryDate || 'N/A'} 
+                                    />
                                 </div>
                             </div>
                         ) : selectedRequest?.type === 'product_add' ? (
@@ -294,7 +344,7 @@ export function ApprovalCenterClient() {
                             <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
                         </DialogClose>
                         <Button onClick={handleConfirmApproval} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
-                            Authorize Protocol
+                            Authorize Change
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -309,3 +359,5 @@ export function ApprovalCenterClient() {
         </div>
     );
 }
+
+import * as React from 'react';
