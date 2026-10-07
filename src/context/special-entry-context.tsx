@@ -152,7 +152,8 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
         location: updatedValues.location || item.location,
         itemType: updatedValues.itemType || item.itemType,
         quantity: updatedValues.quantity !== undefined ? updatedValues.quantity : item.quantity,
-        expiryDate: updatedValues.expiryDate || item.expiryDate
+        expiryDate: updatedValues.expiryDate || item.expiryDate,
+        requestType: 'edit'
       }
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);

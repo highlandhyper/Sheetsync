@@ -31,31 +31,40 @@ import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 // HELPER COMPONENTS
-const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label: string, original?: string | number, edited?: string | number }) => (
-    <div className="p-4 bg-muted/20 rounded-2xl border border-white/5 space-y-3">
-        <div className="flex items-center gap-2">
-            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-        </div>
-        <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-black uppercase text-muted-foreground/40 mb-1">ORIGINAL</p>
-                <p className="text-sm font-bold truncate opacity-50">
-                    {original !== undefined && original !== null ? original : '---'}
-                </p>
+const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label: string, original?: string | number, edited?: string | number }) => {
+    const hasChanged = original !== edited && String(original) !== String(edited);
+    
+    return (
+        <div className={cn(
+            "p-4 rounded-2xl border transition-all duration-300",
+            hasChanged ? "bg-primary/[0.03] border-primary/20" : "bg-muted/20 border-white/5 opacity-60"
+        )}>
+            <div className="flex items-center gap-2 mb-3">
+                <Icon className={cn("h-3.5 w-3.5", hasChanged ? "text-primary" : "text-muted-foreground")} />
+                <span className={cn("text-[10px] font-black uppercase tracking-widest", hasChanged ? "text-primary" : "text-muted-foreground")}>{label}</span>
+                {hasChanged && <Badge className="h-3.5 px-1 text-[7px] bg-primary/10 text-primary border-none">MODIFIED</Badge>}
             </div>
-            <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-            <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-black uppercase text-primary/40 mb-1">CORRECTED</p>
-                <p className="text-sm font-black truncate text-primary">
-                    {edited !== undefined && edited !== null ? edited : '---'}
-                </p>
+            <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[8px] font-black uppercase text-muted-foreground/40 mb-1">ORIGINAL</p>
+                    <p className="text-sm font-bold truncate opacity-50">
+                        {original !== undefined && original !== null ? original : '---'}
+                    </p>
+                </div>
+                <ArrowRight className={cn("h-4 w-4 shrink-0", hasChanged ? "text-primary" : "text-muted-foreground/20")} />
+                <div className="min-w-0 flex-1">
+                    <p className={cn("text-[8px] font-black uppercase mb-1", hasChanged ? "text-primary/60" : "text-muted-foreground/40")}>PROPOSED</p>
+                    <p className={cn("text-sm font-black truncate", hasChanged ? "text-primary" : "opacity-50")}>
+                        {edited !== undefined && edited !== null ? edited : '---'}
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, rejectRequest } = useSpecialEntry();
@@ -152,6 +161,25 @@ export function ApprovalCenterClient() {
         };
     };
 
+    const getProposalSummary = (req: SpecialEntryRequest) => {
+        if ((req.type === 'inventory_edit' || req.type === 'on_display_request') && req.editDetails) {
+            const d = req.editDetails;
+            const o = req.originalDetails;
+            const action = d.requestType === 'delete' ? 'PURGE' : 'ADJUST';
+            
+            if (d.requestType === 'delete') return `PURGE ${d.productName} from registry`;
+
+            let changes = [];
+            if (o && o.quantity !== d.quantity) changes.push(`Qty ${o.quantity} → ${d.quantity}`);
+            if (o && o.location !== d.location) changes.push(`Zone ${o.location} → ${d.location}`);
+            if (o && o.itemType !== d.itemType) changes.push(`Type ${o.itemType} → ${d.itemType}`);
+
+            if (changes.length > 0) return `${action}: ${changes.join(', ')}`;
+            return `${action} ${d.productName}`;
+        }
+        return req.suggestedProductName || req.reason || "SILENT ENTRY HANDSHAKE";
+    };
+
     return (
         <div className="min-w-0 space-y-4">
             <Card className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
@@ -199,10 +227,7 @@ export function ApprovalCenterClient() {
                                         <div className="rounded-2xl bg-muted/30 p-4 flex-1 border border-white/5 shadow-inner">
                                             <p className="text-[8px] font-black uppercase text-muted-foreground/40 tracking-[0.2em] mb-2">Registry Proposal</p>
                                             <p className="text-sm font-bold leading-tight text-foreground line-clamp-2 uppercase">
-                                                {req.type === 'on_display_request' || req.type === 'inventory_edit'
-                                                  ? `${req.editDetails?.requestType === 'delete' ? 'PURGE' : 'ADJUST'} ${req.editDetails?.productName || 'NODE'}`
-                                                  : (req.suggestedProductName || req.reason || "SILENT ENTRY HANDSHAKE")
-                                                }
+                                                {getProposalSummary(req)}
                                             </p>
                                         </div>
                                         <div className="mt-4 grid grid-cols-2 gap-3 pt-1">
@@ -359,5 +384,3 @@ export function ApprovalCenterClient() {
         </div>
     );
 }
-
-import * as React from 'react';
