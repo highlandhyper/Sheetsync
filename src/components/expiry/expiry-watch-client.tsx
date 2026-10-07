@@ -62,7 +62,7 @@ export function ExpiryWatchClient() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
-    const [isResolving, setIsResolving] = useState<string | null>(null);
+    const [isResolvingDiary, setIsResolvingDiary] = useState<string | null>(null);
     const [isSendingSms, setIsSendingSms] = useState<string | null>(null);
 
     const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
@@ -117,7 +117,7 @@ export function ExpiryWatchClient() {
     };
 
     const handleResolve = async (id: string, name: string) => {
-        setIsResolving(id);
+        setIsResolvingDiary(id);
         toast({
             title: "Resolving Entry",
             description: `Clearing ${name} from Diary Reminders...`,
@@ -139,7 +139,7 @@ export function ExpiryWatchClient() {
                 description: "Registry core connection interrupted.",
             });
         } finally {
-            setIsResolving(null);
+            setIsResolvingDiary(null);
         }
     };
 
