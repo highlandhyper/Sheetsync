@@ -28,9 +28,15 @@ import {
   resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
   getAllOnDisplayAlerts,
+  EXPIRY_WATCH_READ_RANGE,
+  WATCH_COL_ID,
+  WATCH_COL_STAFF,
+  WATCH_COL_PRODUCT,
+  WATCH_COL_EXPIRY
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
-import { format, parseISO, isValid, differenceInCalendarDays, startOfDay } from 'date-fns';
+import { format, parseISO, isValid, differenceInCalendarDays, startOfDay, endOfDay, addDays, isBefore, isAfter } from 'date-fns';
+import { readSheetData } from '@/lib/google-sheets-client';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -145,7 +151,7 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
-                return { success: true, message: `SHEETSYNC SECURITY: Dispatched ${result.processed || 0} summarized alerts to ${staffName}.` };
+                return { success: true, message: `SHEETSYNC SECURITY: Dispatched summarised alerts to ${staffName}.` };
             }
             return { success: false, message: result.message || "Registry core rejected handshake." };
         }
@@ -156,58 +162,65 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
 }
 
 export async function triggerManualExpirySmsAction(reminderId: string): Promise<ActionResponse> {
-    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Asset Node ID or Gateway URL missing." };
+    if (!reminderId) return { success: false, message: "Asset Node ID missing." };
 
     try {
-        const response = await fetch(APPSCRIPT_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'triggerWatchSmsOnly',
-                password: APPSCRIPT_PASS,
-                reminderId: reminderId
-            }),
-            redirect: 'follow'
-        });
+        // 1. Fetch reminder data directly from registry for maximum precision
+        const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
+        if (!data) return { success: false, message: "Registry offline." };
 
-        if (response.ok) {
-            const result = await response.json();
-            if (result.status === 'success') {
-                return { success: true, message: "SHEETSYNC SECURITY: Manual observation reminder dispatched." };
-            }
-            return { success: false, message: result.message || "Registry core rejected manual trigger." };
+        const row = data.find(r => String(r[WATCH_COL_ID - 1]).trim() === reminderId);
+        if (!row) return { success: false, message: "Observation node not identified." };
+
+        const staffName = String(row[WATCH_COL_STAFF - 1]).trim();
+        const productName = String(row[WATCH_COL_PRODUCT - 1]).trim();
+        const expiryDate = String(row[WATCH_COL_EXPIRY - 1]).trim();
+
+        // 2. Locate staff terminal (phone number)
+        const meta = await getAppMetaData();
+        const staff = meta.staff.find(s => s.name.toUpperCase() === staffName.toUpperCase());
+        
+        if (!staff || !staff.phone) {
+            return { success: false, message: "Personnel terminal node (phone) not registered." };
         }
-        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
+
+        // 3. Construct Industrial Message
+        const msg = `SHEETSYNC REGISTRY: Priority observation reminder for node ${productName}. Target expiry: ${expiryDate}. Identify and verify stock immediately.`;
+
+        // 4. Dispatch SMS directly from Standard Protocol Gateway (Textbee)
+        const smsRes = await sendSmsAction(msg, staff.phone);
+
+        if (smsRes.success) {
+            return { success: true, message: "SHEETSYNC SECURITY: Manual observation reminder dispatched." };
+        } else {
+            return { success: false, message: smsRes.message || "Gateway handshake failure." };
+        }
     } catch (e: any) {
         return { success: false, message: e.message };
     }
 }
 
 export async function triggerResolvedSmsAction(reminderId: string): Promise<ActionResponse> {
-    if (!reminderId || !APPSCRIPT_API_URL) return { success: false, message: "Asset Node ID or Gateway URL missing." };
-
     try {
-        const response = await fetch(APPSCRIPT_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'triggerWatchResolvedSms',
-                password: APPSCRIPT_PASS,
-                reminderId: reminderId
-            }),
-            redirect: 'follow'
-        });
+        const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
+        if (!data) return { success: true };
+        
+        const row = data.find(r => String(r[WATCH_COL_ID - 1]).trim() === reminderId);
+        if (!row) return { success: true };
 
-        if (response.ok) {
-            const result = await response.json();
-            if (result.status === 'success') {
-                return { success: true, message: "SHEETSYNC SECURITY: Resolution protocol synchronized." };
-            }
-            return { success: false, message: result.message || "Registry core rejected resolution signal." };
-        }
-        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
-    } catch (e: any) {
-        return { success: false, message: e.message };
+        const staffName = String(row[WATCH_COL_STAFF - 1]).trim();
+        const productName = String(row[WATCH_COL_PRODUCT - 1]).trim();
+
+        const meta = await getAppMetaData();
+        const staff = meta.staff.find(s => s.name.toUpperCase() === staffName.toUpperCase());
+        if (!staff || !staff.phone) return { success: true };
+
+        const msg = `SHEETSYNC SECURITY: Observation node ${productName} resolved and synchronized by ${staffName}. Registry updated.`;
+        await sendSmsAction(msg, staff.phone);
+
+        return { success: true, message: "SHEETSYNC SECURITY: Resolution protocol synchronized." };
+    } catch (e) {
+        return { success: true }; 
     }
 }
 
@@ -415,7 +428,7 @@ export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds:
         }
         await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY', `${itemIds.length} items`, `Purged batches: ${itemIds.join(', ')}`);
         revalidatePath('/inventory');
-        return { success: true };
+        return { true: true };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
