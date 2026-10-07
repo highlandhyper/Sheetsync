@@ -1,4 +1,3 @@
-
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -9,6 +8,8 @@ const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS";
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
 const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
 const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
+
+const STAFF_LIST_KEY = "staffList";
 
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -37,39 +38,28 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-const WATCH_COL_ID = 1;
-const WATCH_COL_BARCODE = 2;
-const WATCH_COL_PRODUCT = 3;
-const WATCH_COL_EXPIRY = 4;
-const WATCH_COL_SUPPLIER = 5;
-const WATCH_COL_STATUS = 6;
-const WATCH_COL_TIMESTAMP = 7;
-const WATCH_COL_STAFF = 8;
-
-const ODA_COL_ID = 0;
-const ODA_COL_BARCODE = 1;
-const ODA_COL_PRODUCT = 2;
-const ODA_COL_EXPIRY = 3;
-const ODA_COL_STAFF = 4;
-const ODA_COL_TOKEN = 5;
-const ODA_COL_PIN = 6;
-const ODA_COL_EXPIRES = 7;
-const ODA_COL_USED = 8;
-const ODA_COL_SENT_AT = 9;
-const ODA_COL_LOG_ROW = 10;
-const ODA_COL_LOG_ID = 11;
+// Aligned with the spreadsheet structure provided in the screenshot
+const WATCH_COL_ID = 1;        // Col A
+// Column B is a redundant ID column
+const WATCH_COL_BARCODE = 3;   // Col C
+const WATCH_COL_PRODUCT = 4;   // Col D
+const WATCH_COL_EXPIRY = 5;    // Col E
+const WATCH_COL_SUPPLIER = 6;  // Col F
+const WATCH_COL_STATUS = 7;    // Col G
+const WATCH_COL_TIMESTAMP = 8; // Col H
+const WATCH_COL_STAFF = 9;     // Col I
+const WATCH_COL_SMS_STATUS = 10;
+const WATCH_COL_SMS_SENT_AT = 11;
+const WATCH_COL_SMS_COUNT = 12;
+const WATCH_COL_RESOLUTION_SMS_STATUS = 13;
+const WATCH_COL_RESOLUTION_SMS_SENT_AT = 14;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
 const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
-const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:H`;
+const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:N`;
 const ON_DISPLAY_ALERTS_READ_RANGE = `${ON_DISPLAY_ALERTS_SHEET_NAME}!A2:L`;
-
-const PERMISSIONS_KEY = 'accessPermissions';
-const SPECIAL_REQUESTS_KEY = 'specialRequests';
-const STAFF_LIST_KEY = 'staffList';
-const LOCATION_LIST_KEY = 'locationList';
 
 function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
@@ -86,7 +76,7 @@ function parseFlexibleTimestamp(val: any): Date | null {
   const iso = parseISO(s);
   if (isValid(iso)) return iso;
   
-  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"];
+  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss.SSSX"];
   for (const f of formats) {
     try {
       const d = dateParse(s, f, new Date());
@@ -195,22 +185,22 @@ export async function getAllOnDisplayAlerts(): Promise<OnDisplayAlert[]> {
   if (!data) return [];
 
   return data.map((row) => {
-    const expAtTs = parseFlexibleTimestamp(row[ODA_COL_EXPIRES]);
-    const sentAtTs = parseFlexibleTimestamp(row[ODA_COL_SENT_AT]);
+    const expAtTs = parseFlexibleTimestamp(row[ODA_COL_EXPIRES_AT - 1]);
+    const sentAtTs = parseFlexibleTimestamp(row[ODA_COL_SENT_AT - 1]);
 
     return {
-      id: String(row[ODA_COL_ID] || ''),
-      barcode: String(row[ODA_COL_BARCODE] || ''),
-      productName: String(row[ODA_COL_PRODUCT] || ''),
-      expiryDate: String(row[ODA_COL_EXPIRY] || ''),
-      staffName: String(row[ODA_COL_STAFF] || ''),
-      token: String(row[ODA_COL_TOKEN] || ''),
-      pin: String(row[ODA_COL_PIN] || ''),
-      expiresAt: expAtTs ? expAtTs.toISOString() : String(row[ODA_COL_EXPIRES] || ''),
-      used: String(row[ODA_COL_USED] || 'No'),
-      sentAt: sentAtTs ? sentAtTs.toISOString() : String(row[ODA_COL_SENT_AT] || ''),
-      logRow: String(row[ODA_COL_LOG_ROW] || ''),
-      logId: String(row[ODA_COL_LOG_ID] || '')
+      id: String(row[ODA_COL_ID - 1] || ''),
+      barcode: String(row[ODA_COL_BARCODE - 1] || ''),
+      productName: String(row[ODA_COL_PRODUCT - 1] || ''),
+      expiryDate: String(row[ODA_COL_EXPIRY - 1] || ''),
+      staffName: String(row[ODA_COL_STAFF - 1] || ''),
+      token: String(row[ODA_COL_TOKEN - 1] || ''),
+      pin: String(row[ODA_COL_PIN - 1] || ''),
+      expiresAt: expAtTs ? expAtTs.toISOString() : String(row[ODA_COL_EXPIRES_AT - 1] || ''),
+      used: String(row[ODA_COL_USED - 1] || 'No'),
+      sentAt: sentAtTs ? sentAtTs.toISOString() : String(row[ODA_COL_SENT_AT - 1] || ''),
+      logRow: String(row[ODA_COL_LOG_ROW - 1] || ''),
+      logId: String(row[ODA_COL_LOG_ID - 1] || '')
     };
   }).reverse();
 }
@@ -219,18 +209,18 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
 
-  const matchingAlerts = alerts.filter(row => String(row[ODA_COL_TOKEN]).trim() === token);
+  const matchingAlerts = alerts.filter(row => String(row[ODA_COL_TOKEN - 1]).trim() === token);
   if (matchingAlerts.length === 0) return null;
 
   const firstAlert = matchingAlerts[0];
-  const isUsed = matchingAlerts.some(row => String(row[ODA_COL_USED]).toLowerCase() === 'yes');
-  const expiresAt = parseFlexibleTimestamp(firstAlert[ODA_COL_EXPIRES]);
-  const pin = String(firstAlert[ODA_COL_PIN] || '').trim();
+  const isUsed = matchingAlerts.some(row => String(row[ODA_COL_USED - 1]).toLowerCase() === 'yes');
+  const expiresAt = parseFlexibleTimestamp(firstAlert[ODA_COL_EXPIRES_AT - 1]);
+  const pin = String(firstAlert[ODA_COL_PIN - 1] || '').trim();
 
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
 
-  const staffName = String(firstAlert[ODA_COL_STAFF]).trim().toUpperCase();
-  const barcodes = new Set(matchingAlerts.map(row => String(row[ODA_COL_BARCODE]).trim()));
+  const staffName = String(firstAlert[ODA_COL_STAFF - 1]).trim().toUpperCase();
+  const barcodes = new Set(matchingAlerts.map(row => String(row[ODA_COL_BARCODE - 1]).trim()));
   const inventory = await getInventoryItems();
 
   const items = inventory.filter(i =>
@@ -249,15 +239,15 @@ export async function getOnDisplayItemByPin(pin: string): Promise<{ items: Inven
   if (!alerts) return null;
 
   const matches = alerts.filter(row =>
-    String(row[ODA_COL_PIN]).trim() === pin &&
-    String(row[ODA_COL_USED]).toLowerCase() !== 'yes'
+    String(row[ODA_COL_PIN - 1]).trim() === pin &&
+    String(row[ODA_COL_USED - 1]).toLowerCase() !== 'yes'
   );
 
   if (matches.length === 0) return null;
 
   const lastMatch = matches[matches.length - 1];
-  const token = String(lastMatch[ODA_COL_TOKEN]).trim();
-  const staffName = String(lastMatch[ODA_COL_STAFF]).trim().toUpperCase();
+  const token = String(lastMatch[ODA_COL_TOKEN - 1]).trim();
+  const staffName = String(lastMatch[ODA_COL_STAFF - 1]).trim().toUpperCase();
 
   const sessionData = await getOnDisplayItemByToken(token);
   if (!sessionData) return null;
@@ -270,7 +260,7 @@ export async function markOnDisplayTokenUsed(token: string) {
   if (!alerts) return false;
 
   const matchingRows = alerts
-    .map((row, index) => String(row[ODA_COL_TOKEN]).trim() === token ? index + 2 : null)
+    .map((row, index) => String(row[ODA_COL_TOKEN - 1]).trim() === token ? index + 2 : null)
     .filter((row): row is number => row !== null);
 
   if (matchingRows.length === 0) return false;
@@ -289,7 +279,7 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
     return { ...reminder, id, timestamp: ts, status: 'pending' as const };
 }
 
-export async function resolveExpiryReminder(id: string, email: string) {
+export async function resolveExpiryWatch(id: string, email: string) {
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID);
     if (row) {
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!G${row}`, [['resolved']]);
