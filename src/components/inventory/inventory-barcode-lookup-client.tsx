@@ -349,7 +349,7 @@ export function InventoryBarcodeLookupClient() {
                                         <TableHead className="text-[10px] font-semibold text-muted-foreground">Location</TableHead>
                                         <TableHead className="text-[10px] font-semibold text-muted-foreground">Staff</TableHead>
                                         <TableHead className="text-[10px] font-semibold text-muted-foreground">Status</TableHead>
-                                        {role === 'admin' && <TableHead className="pr-5 text-right text-[10px] font-semibold text-muted-foreground">Actions</TableHead>}
+                                        <TableHead className="pr-5 text-right text-[10px] font-semibold text-muted-foreground">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -378,15 +378,17 @@ export function InventoryBarcodeLookupClient() {
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            {role === 'admin' && (
-                                                <TableCell className="pr-5 text-right">
-                                                    <div className="flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                                                        <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10"><Edit className="h-4 w-4" /></Button>
+                                            <TableCell className="pr-5 text-right">
+                                                <div className="flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                                    <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10"><Edit className="h-4 w-4" /></Button>
+                                                    {role === 'admin' && (
+                                                      <>
                                                         <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); }} className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10"><Undo2 className="h-4 w-4" /></Button>
                                                         <Button variant="ghost" size="icon" onClick={() => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); }} className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
-                                                    </div>
-                                                </TableCell>
-                                            )}
+                                                      </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -402,7 +404,7 @@ export function InventoryBarcodeLookupClient() {
                                 product={productsByBarcode.get(item.barcode)} 
                                 onDetails={() => handleOpenDetailsDialog(item)} 
                                 onReturn={role === 'admin' ? () => { setSelectedItemForReturn(item); setIsReturnDialogOpen(true); } : undefined} 
-                                onEdit={role === 'admin' ? () => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); } : undefined} 
+                                onEdit={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} 
                                 onDelete={role === 'admin' ? () => { setSelectedItemForDeletion(item); setIsDeleteDialogOpen(true); } : undefined} 
                                 context="inventory" 
                             />
@@ -449,7 +451,7 @@ export function InventoryBarcodeLookupClient() {
       <ReturnQuantityDialog key={selectedItemForReturn ? `lookup-ret-${selectedItemForReturn.id}` : 'none-ret'} item={selectedItemForReturn} isOpen={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen} onReturnSuccess={handleActionSuccess} />
       <DeleteConfirmationDialog key={selectedItemForDeletion ? `lookup-del-${selectedItemForDeletion.id}` : 'none-del'} item={selectedItemForDeletion} isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} onSuccess={handleActionSuccess} />
       <EditInventoryItemDialog key={currentItemToEdit ? `lookup-edt-${currentItemToEdit.id}` : 'none-edt'} item={currentItemToEdit} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSuccess={handleActionSuccess} uniqueLocationsFromDb={uniqueLocations} />
-      <InventoryItemDetailsDialog key={selectedItemForDetails ? `lookup-det-${selectedItemForDetails.id}` : 'none-det'} item={selectedItemForDetails} isOpen={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} onStartEdit={role === 'admin' ? (item) => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); } : undefined} />
+      <InventoryItemDetailsDialog key={selectedItemForDetails ? `lookup-det-${selectedItemForDetails.id}` : 'none-det'} item={selectedItemForDetails} isOpen={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} onStartEdit={(item) => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} />
     </div>
   );
 }
