@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -116,13 +117,13 @@ export function BottomNav() {
           "
         >
           <NavItem
-            href={isAdmin ? '/dashboard' : '/expiry-watch/add'}
+            href={isAdmin ? '/dashboard' : '/expiry-watch'}
             icon={isAdmin ? Home : Eye}
             label={isAdmin ? 'Home' : 'Diary'}
             active={
               isAdmin
                 ? pathname === '/dashboard'
-                : pathname.startsWith('/expiry-watch')
+                : pathname === '/expiry-watch'
             }
           />
 
@@ -146,7 +147,7 @@ export function BottomNav() {
           />
 
           <NavItem
-            href={isAdmin ? '/expiry-watch/add' : '/products'}
+            href={isAdmin ? '/expiry-watch' : '/products'}
             icon={isAdmin ? Eye : UserCheck}
             label={isAdmin ? 'Diary' : 'Returns'}
             active={
