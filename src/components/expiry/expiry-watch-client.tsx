@@ -31,6 +31,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Html5Qrcode } from 'html5-qrcode';
 import Link from 'next/link';
 import { triggerManualExpirySmsAction, triggerResolvedSmsAction } from '@/app/actions';
+import type { ExpiryReminder } from '@/lib/types';
 
 const SCANNER_REGION_ID = "diary-lookup-scanner-region";
 
@@ -58,7 +59,7 @@ const playProfessionalBeep = () => {
 };
 
 export function ExpiryWatchClient() {
-    const { expiryReminders, resolveExpiryReminder, refreshData } = useDataCache();
+    const { expiryReminders, staffRegistry, resolveExpiryReminder, refreshData } = useDataCache();
     const { user } = useAuth();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
@@ -89,14 +90,30 @@ export function ExpiryWatchClient() {
         });
     }, [expiryReminders, searchTerm]);
 
-    const handleSendManualSms = async (id: string, name: string) => {
-        setIsSendingSms(id);
+    const handleSendManualSms = async (reminder: ExpiryReminder) => {
+        setIsSendingSms(reminder.id);
+        
+        // 1. Locate staff terminal number from local registry
+        const staff = staffRegistry.find(s => s.name.toUpperCase() === reminder.staffName.toUpperCase());
+        
+        if (!staff || !staff.phone) {
+            toast({ 
+                variant: "destructive", 
+                title: "Node Error", 
+                description: "Personnel terminal node (phone) not registered in staff directory." 
+            });
+            setIsSendingSms(null);
+            return;
+        }
+
         try {
-            const res = await triggerManualExpirySmsAction(id);
+            // 2. Dispatch protocol with direct data to avoid redundant registry reads
+            const res = await triggerManualExpirySmsAction(staff.phone, reminder.productName, reminder.expiryDate);
+            
             if (res.success) {
                 toast({ 
                     title: "Signal Dispatched", 
-                    description: `SHEETSYNC SECURITY: Observation reminder sent for ${name}.` 
+                    description: `SHEETSYNC SECURITY: Observation reminder sent to ${reminder.staffName}.` 
                 });
             } else {
                 toast({ 
@@ -116,16 +133,23 @@ export function ExpiryWatchClient() {
         }
     };
 
-    const handleResolve = async (id: string, name: string) => {
-        setIsResolvingDiary(id);
+    const handleResolve = async (reminder: ExpiryReminder) => {
+        setIsResolvingDiary(reminder.id);
         toast({
             title: "Resolving Entry",
-            description: `Clearing ${name} from Diary Reminders...`,
+            description: `Clearing ${reminder.productName} from Diary Reminders...`,
         });
 
         try {
-            await resolveExpiryReminder(id);
-            await triggerResolvedSmsAction(id).catch(() => {});
+            // Locate phone for resolution confirm
+            const staff = staffRegistry.find(s => s.name.toUpperCase() === reminder.staffName.toUpperCase());
+            
+            await resolveExpiryReminder(reminder.id);
+            
+            if (staff?.phone) {
+                await triggerResolvedSmsAction(staff.phone, reminder.productName, reminder.staffName).catch(() => {});
+            }
+            
             await refreshData();
 
             toast({
@@ -339,7 +363,7 @@ export function ExpiryWatchClient() {
                                                 <Button 
                                                     variant="outline"
                                                     size="icon"
-                                                    onClick={() => handleSendManualSms(reminder.id, reminder.productName)}
+                                                    onClick={() => handleSendManualSms(reminder)}
                                                     disabled={isSendingSms === reminder.id}
                                                     className="h-9 w-9 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground"
                                                 >
@@ -347,7 +371,7 @@ export function ExpiryWatchClient() {
                                                 </Button>
                                                 
                                                 <Button 
-                                                    onClick={() => handleResolve(reminder.id, reminder.productName)}
+                                                    onClick={() => handleResolve(reminder)}
                                                     disabled={isResolvingDiary === reminder.id}
                                                     className={cn(
                                                         "h-9 rounded-lg px-3 text-[10px] font-semibold shadow-none transition-colors sm:h-10 sm:px-4",

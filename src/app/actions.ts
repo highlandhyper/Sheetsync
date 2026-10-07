@@ -28,15 +28,9 @@ import {
   resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
   getAllOnDisplayAlerts,
-  EXPIRY_WATCH_READ_RANGE,
-  WATCH_COL_ID,
-  WATCH_COL_STAFF,
-  WATCH_COL_PRODUCT,
-  WATCH_COL_EXPIRY
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
-import { format, parseISO, isValid, differenceInCalendarDays, startOfDay, endOfDay, addDays, isBefore, isAfter } from 'date-fns';
-import { readSheetData } from '@/lib/google-sheets-client';
+import { format, parseISO, isValid, isBefore, isAfter, endOfDay } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -161,67 +155,35 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
     }
 }
 
-export async function triggerManualExpirySmsAction(reminderId: string): Promise<ActionResponse> {
-    if (!reminderId) return { success: false, message: "Asset Node ID missing." };
+/**
+ * Dispatches a manual priority reminder for a diary entry.
+ * Data is passed directly from client to bypass redundant sheet reads.
+ */
+export async function triggerManualExpirySmsAction(
+    phone: string, 
+    productName: string, 
+    expiryDate: string
+): Promise<ActionResponse> {
+    if (!phone) return { success: false, message: "Personnel terminal node (phone) not registered." };
 
-    try {
-        // 1. Fetch reminder data directly from registry for maximum precision
-        const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
-        if (!data) return { success: false, message: "Registry offline." };
+    const msg = `SHEETSYNC REGISTRY: Priority observation reminder for node ${productName}. Target expiry: ${expiryDate}. Identify and verify stock immediately.`;
 
-        const row = data.find(r => String(r[WATCH_COL_ID - 1]).trim() === reminderId);
-        if (!row) return { success: false, message: "Observation node not identified." };
-
-        const staffName = String(row[WATCH_COL_STAFF - 1]).trim();
-        const productName = String(row[WATCH_COL_PRODUCT - 1]).trim();
-        const expiryDate = String(row[WATCH_COL_EXPIRY - 1]).trim();
-
-        // 2. Locate staff terminal (phone number)
-        const meta = await getAppMetaData();
-        const staff = meta.staff.find(s => s.name.toUpperCase() === staffName.toUpperCase());
-        
-        if (!staff || !staff.phone) {
-            return { success: false, message: "Personnel terminal node (phone) not registered." };
-        }
-
-        // 3. Construct Industrial Message
-        const msg = `SHEETSYNC REGISTRY: Priority observation reminder for node ${productName}. Target expiry: ${expiryDate}. Identify and verify stock immediately.`;
-
-        // 4. Dispatch SMS directly from Standard Protocol Gateway (Textbee)
-        const smsRes = await sendSmsAction(msg, staff.phone);
-
-        if (smsRes.success) {
-            return { success: true, message: "SHEETSYNC SECURITY: Manual observation reminder dispatched." };
-        } else {
-            return { success: false, message: smsRes.message || "Gateway handshake failure." };
-        }
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
+    return sendSmsAction(msg, phone);
 }
 
-export async function triggerResolvedSmsAction(reminderId: string): Promise<ActionResponse> {
-    try {
-        const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
-        if (!data) return { success: true };
-        
-        const row = data.find(r => String(r[WATCH_COL_ID - 1]).trim() === reminderId);
-        if (!row) return { success: true };
+/**
+ * Dispatches a resolution confirmation message when a diary entry is cleared.
+ */
+export async function triggerResolvedSmsAction(
+    phone: string, 
+    productName: string, 
+    staffName: string
+): Promise<ActionResponse> {
+    if (!phone) return { success: true }; // Silent pass if no phone
 
-        const staffName = String(row[WATCH_COL_STAFF - 1]).trim();
-        const productName = String(row[WATCH_COL_PRODUCT - 1]).trim();
-
-        const meta = await getAppMetaData();
-        const staff = meta.staff.find(s => s.name.toUpperCase() === staffName.toUpperCase());
-        if (!staff || !staff.phone) return { success: true };
-
-        const msg = `SHEETSYNC SECURITY: Observation node ${productName} resolved and synchronized by ${staffName}. Registry updated.`;
-        await sendSmsAction(msg, staff.phone);
-
-        return { success: true, message: "SHEETSYNC SECURITY: Resolution protocol synchronized." };
-    } catch (e) {
-        return { success: true }; 
-    }
+    const msg = `SHEETSYNC SECURITY: Observation node ${productName} resolved and synchronized by ${staffName}. Registry updated.`;
+    
+    return sendSmsAction(msg, phone);
 }
 
 export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
@@ -402,7 +364,7 @@ export async function sendSmsAction(message: string, phone: string): Promise<Act
             body: JSON.stringify({ message, recipients: [phone], deviceId })
         });
 
-        if (response.ok) return { success: true };
+        if (response.ok) return { success: true, message: "SIGNAL DISPATCHED" };
         const err = await response.text();
         return { success: false, message: `Gateway error: ${err}` };
     } catch (e: any) {
