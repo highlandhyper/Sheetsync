@@ -23,7 +23,8 @@ import {
     History,
     Fingerprint,
     Layers,
-    Clock
+    Clock,
+    Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { InventoryItem } from '@/lib/types';
@@ -380,6 +381,7 @@ export function InventoryBarcodeLookupClient() {
                                             </TableCell>
                                             <TableCell className="pr-5 text-right">
                                                 <div className="flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetailsDialog(item)} className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted"><Eye className="h-4 w-4" /></Button>
                                                     <Button variant="ghost" size="icon" onClick={() => { setCurrentItemToEdit(item); setIsEditDialogOpen(true); }} className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10"><Edit className="h-4 w-4" /></Button>
                                                     {role === 'admin' && (
                                                       <>

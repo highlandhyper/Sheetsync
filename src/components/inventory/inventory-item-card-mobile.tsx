@@ -384,6 +384,20 @@ function InventoryItemCardMobileComponent({
                 Details
               </Button>
 
+              {onEdit ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onEdit}
+                  className="h-9 rounded-lg px-2 text-[9px] font-semibold shadow-none"
+                >
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+              ) : (
+                <div />
+              )}
+
               {onViewImage ? (
                 <Button
                   variant="ghost"
@@ -393,20 +407,6 @@ function InventoryItemCardMobileComponent({
                 >
                   <ImageIcon className="mr-1 h-3.5 w-3.5" />
                   Image
-                </Button>
-              ) : (
-                <div />
-              )}
-
-              {onEdit ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onEdit}
-                  aria-label={`Edit ${item.productName}`}
-                  className="h-9 w-full rounded-lg"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
               ) : (
                 <div />
