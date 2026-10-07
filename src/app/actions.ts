@@ -313,15 +313,34 @@ export async function approveRequestAction(requestId: string, adminEmail: string
           expiryDate: req.editDetails.expiryDate
         });
       }
-      req.status = 'approved';
-      req.approvedAt = new Date().toISOString();
-      await saveSpecialRequestsToSheet(requests);
-      await logAuditEvent(adminEmail, 'APPROVE_ON_DISPLAY', req.id, `Applied sync: ${req.editDetails.requestType}`);
-      revalidatePath('/approvals');
-      revalidatePath('/inventory');
-      return { success: true };
     }
-    return { success: false, message: "Logic mapping failure." };
+
+    req.status = 'approved';
+    req.approvedAt = new Date().toISOString();
+
+    // INDUSTRIAL DISPATCH HANDSHAKE: Send confirmation SMS to staff
+    const staff = meta.staff.find(s => s.name.toUpperCase() === req.staffName.toUpperCase());
+    if (staff?.phone) {
+        let msg = `SHEETSYNC SECURITY: Your request for registry modification has been approved by administrator. Registry synchronized.`;
+        
+        if ((req.type === 'inventory_edit' || req.type === 'on_display_request') && req.editDetails) {
+            const d = req.editDetails;
+            msg = `SHEETSYNC SECURITY: Adjustment for ${d.productName} approved. Registry corrected to ${d.quantity} units in zone "${d.location}". Audit trace logged.`;
+        } else if (req.type === 'product_add') {
+             msg = `SHEETSYNC SECURITY: Registration request for SKU ${req.reason} approved. Product added to master catalog by ${adminEmail}.`;
+        } else if (req.type === 'single' || req.type === 'timed') {
+             msg = `SHEETSYNC SECURITY: Silent entry authorized for terminal ${req.staffName}. Identification key dispatched via system gateway.`;
+        }
+
+        await sendSmsAction(msg, staff.phone).catch(() => {});
+    }
+
+    await saveSpecialRequestsToSheet(requests);
+    await logAuditEvent(adminEmail, 'APPROVE_REQUEST', req.id, `Applied sync for ${req.staffName}: ${req.type}`);
+    
+    revalidatePath('/approvals');
+    revalidatePath('/inventory');
+    return { success: true };
   } catch (e) {
     return { success: false, message: "Registry error." };
   }
