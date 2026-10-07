@@ -10,6 +10,9 @@ const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
 const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
 
 const STAFF_LIST_KEY = "staffList";
+const PERMISSIONS_KEY = "permissions";
+const SPECIAL_REQUESTS_KEY = "specialRequests";
+const LOCATION_LIST_KEY = "locationList";
 
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -38,7 +41,7 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-// Aligned with the spreadsheet structure provided in the screenshot
+// Expiry Watch Column Mapping (1-based for use with row[index-1])
 const WATCH_COL_ID = 1;        // Col A
 // Column B is a redundant ID column
 const WATCH_COL_BARCODE = 3;   // Col C
@@ -53,6 +56,20 @@ const WATCH_COL_SMS_SENT_AT = 11;
 const WATCH_COL_SMS_COUNT = 12;
 const WATCH_COL_RESOLUTION_SMS_STATUS = 13;
 const WATCH_COL_RESOLUTION_SMS_SENT_AT = 14;
+
+// On Display Alerts Column Mapping
+const ODA_COL_ID = 1;
+const ODA_COL_BARCODE = 2;
+const ODA_COL_PRODUCT = 3;
+const ODA_COL_EXPIRY = 4;
+const ODA_COL_STAFF = 5;
+const ODA_COL_TOKEN = 6;
+const ODA_COL_PIN = 7;
+const ODA_COL_EXPIRES_AT = 8;
+const ODA_COL_USED = 9;
+const ODA_COL_SENT_AT = 10;
+const ODA_COL_LOG_ROW = 11;
+const ODA_COL_LOG_ID = 12;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
