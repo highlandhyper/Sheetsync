@@ -275,75 +275,108 @@ export default function OnDisplayStaffPage() {
 
   if (!isVerified) {
     return (
-      <div className="min-h-[100dvh] bg-[#09090b] px-8 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(41,171,226,0.05)_0%,transparent_70%)] pointer-events-none" />
+      <div className="min-h-[100dvh] bg-black relative overflow-hidden flex flex-col items-center justify-start pt-8 pb-12 animate-in fade-in duration-700">
+        {/* ATMOSPHERIC LAYER */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] pointer-events-none" />
+        
+        <div className="relative z-10 w-full max-w-[360px] px-6 flex flex-col h-full">
+            <div className="flex-1 flex flex-col">
+                {/* TOP NAVIGATION */}
+                <div className="flex items-center justify-between mb-12">
+                    <button 
+                        onClick={() => window.close()}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/80 text-zinc-300 hover:text-white transition-all active:scale-90"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    
+                    <Button variant="ghost" size="sm" className="h-8 rounded-full bg-zinc-900/80 text-[11px] text-zinc-400 px-3 hover:text-white border-none shadow-none">
+                        Help?
+                    </Button>
+                </div>
 
-        <div className="mx-auto flex w-full max-w-sm flex-col relative z-10 animate-in fade-in zoom-in-95 duration-700">
-            <div className="space-y-12">
-                <div className="space-y-4 text-center">
-                    <h1 className="text-4xl font-bold tracking-tight text-white uppercase">
+                {/* CONTENT AREA */}
+                <div className="space-y-3 mb-8 text-left">
+                    <h1 className="text-3xl font-bold text-white tracking-tight">
                         Confirmation
                     </h1>
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest leading-relaxed opacity-60">
-                        Enter the 4-digit industrial access key dispatched via SMS.
+                    <p className="text-[14px] font-medium text-zinc-500">
+                        Enter a 4-digit code sent to you by SMS.
                     </p>
                 </div>
 
-                <div className="space-y-10">
-                    <div className="relative flex justify-between gap-4">
-                        {[0, 1, 2, 3].map((index) => (
-                            <div
-                                key={index}
-                                className={cn(
-                                    "flex-1 h-20 sm:h-24 rounded-3xl flex items-center justify-center text-4xl font-black transition-all duration-300",
-                                    "bg-zinc-900/30 border border-white/[0.03]",
-                                    accessKey.length === index && !errorMessage ? "bg-primary/5 border-primary/30 shadow-[0_0_25px_rgba(41,171,226,0.15)]" : "",
-                                    errorMessage ? "border-destructive/40 bg-destructive/5" : ""
-                                )}
-                            >
-                                {accessKey[index] ? (
-                                    <span className="text-white animate-in zoom-in-75 duration-200">{accessKey[index]}</span>
-                                ) : (
-                                    <div className={cn(
-                                        "h-1.5 w-1.5 rounded-full bg-zinc-800 transition-all",
-                                        accessKey.length === index && "animate-pulse bg-primary"
-                                    )} />
-                                )}
-                            </div>
-                        ))}
-                        
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={4}
-                            value={accessKey}
-                            onChange={handleInputChange}
-                            className="absolute inset-0 opacity-0 cursor-default"
-                            autoFocus
-                        />
+                {/* PIN SLOTS */}
+                <div className="relative flex items-center justify-start gap-3 mb-16">
+                    {[0, 1, 2, 3].map((index) => (
+                        <div
+                            key={index}
+                            className={cn(
+                                "flex h-12 w-12 items-center justify-center rounded-xl border text-xl font-bold transition-all duration-300",
+                                "bg-zinc-900/30 text-white",
+                                accessKey.length === index && !errorMessage ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-zinc-800",
+                                errorMessage ? "border-destructive/40 bg-destructive/5" : ""
+                            )}
+                        >
+                            {accessKey[index] ? (
+                                <span className="text-white animate-in zoom-in-75 duration-200">{accessKey[index]}</span>
+                            ) : (
+                                <div className={cn(
+                                    "h-1.5 w-1.5 rounded-full bg-zinc-700 transition-all",
+                                    accessKey.length === index && "animate-pulse bg-emerald-500"
+                                )} />
+                            )}
+                        </div>
+                    ))}
+                    
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]*"
+                        maxLength={4}
+                        value={accessKey}
+                        onChange={handleInputChange}
+                        className="absolute inset-0 h-full w-full opacity-0 cursor-default"
+                        autoFocus
+                    />
+                </div>
+
+                {/* STATUS / INFO AREA */}
+                <div className="flex flex-col items-center justify-center space-y-24">
+                    <p className="text-[11px] font-medium text-zinc-600 text-center">
+                        You can request a new code
+                    </p>
+
+                    <div className="flex flex-col items-center space-y-6">
+                        <button 
+                            onClick={() => window.close()}
+                            className="flex items-center gap-2 text-[15px] font-medium text-zinc-600 hover:text-white transition-colors"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Return to Portal
+                        </button>
+
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-800">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Industrial Protocol
+                        </div>
                     </div>
-
-                    {errorMessage && (
-                        <div className="flex items-center justify-center gap-3 text-destructive animate-in shake-in duration-300">
-                            <ShieldAlert className="h-4 w-4 shrink-0" />
-                            <p className="text-[10px] font-black leading-relaxed uppercase tracking-[0.2em]">{errorMessage}</p>
-                        </div>
-                    )}
-
-                    {isVerifying && (
-                        <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verifying Identity...</span>
-                        </div>
-                    )}
                 </div>
 
-                <div className="pt-12 flex items-center justify-center gap-3 text-[8px] font-black uppercase tracking-[0.6em] text-zinc-800">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Industrial Protocol
-                </div>
+                {isVerifying && (
+                    <div className="mt-8 flex items-center justify-center gap-2 text-emerald-500 animate-pulse">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Verifying Identity...</span>
+                    </div>
+                )}
+                
+                {errorMessage && (
+                    <div className="mt-8 flex items-center justify-center gap-2 text-destructive animate-in shake-in duration-300">
+                        <ShieldAlert className="h-4 w-4 shrink-0" />
+                        <p className="text-[10px] font-black leading-relaxed uppercase tracking-widest">{errorMessage}</p>
+                    </div>
+                )}
             </div>
         </div>
       </div>

@@ -79,105 +79,118 @@ export default function ManualHandshakePage() {
     }, [resendSeconds, identifiedStaff]);
 
     return (
-        <div className="min-h-[100dvh] bg-black relative overflow-hidden flex flex-col items-start justify-start px-6 pt-6 pb-8 sm:px-8 sm:pt-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+        <div className="min-h-[100dvh] bg-black relative overflow-hidden flex flex-col items-center justify-start pt-8 pb-12 animate-in fade-in duration-700">
             {/* ATMOSPHERIC LAYER */}
-            <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(41,171,226,0.05)_0%,transparent_70%)] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] pointer-events-none" />
             
-            <div className="relative z-10 mx-auto w-full max-w-[320px] space-y-0">
+            <div className="relative z-10 w-full max-w-[360px] px-6 flex flex-col h-full">
                 {!identifiedStaff ? (
-                    <div className="space-y-5">
-                        {/* HEADER */}
-                        <div className="space-y-1.5 text-left">
-                            <div className="mb-7 flex items-center justify-between">
-                                <Link 
-                                    href="/login" 
-                                    aria-label="Back to login" 
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900/50 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-90"
-                                >
-                                    <ArrowLeft className="h-5 w-5" />
-                                </Link>
-                                <span className="rounded-full bg-zinc-900/30 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-500">Security Node</span>
-                            </div>
-                            <h1 className="text-[20px] font-black tracking-tight text-white uppercase">
+                    <div className="flex-1 flex flex-col">
+                        {/* TOP NAVIGATION */}
+                        <div className="flex items-center justify-between mb-12">
+                            <Link 
+                                href="/login" 
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/80 text-zinc-300 hover:text-white transition-all active:scale-90"
+                            >
+                                <ArrowLeft className="h-5 w-5" />
+                            </Link>
+                            
+                            <Button variant="ghost" size="sm" className="h-8 rounded-full bg-zinc-900/80 text-[11px] text-zinc-400 px-3 hover:text-white border-none shadow-none">
+                                Help?
+                            </Button>
+                        </div>
+
+                        {/* CONTENT AREA */}
+                        <div className="space-y-3 mb-8 text-left">
+                            <h1 className="text-3xl font-bold text-white tracking-tight">
                                 Confirmation
                             </h1>
-                            <p className="max-w-[290px] text-[11px] font-medium leading-relaxed text-zinc-500 uppercase tracking-tight opacity-60">
-                                Enter the 4-digit industrial access key dispatched via SMS.
+                            <p className="text-[14px] font-medium text-zinc-500">
+                                Enter a 4-digit code sent to you by SMS.
                             </p>
                         </div>
 
-                        {/* PIN INPUT GROUP */}
-                        <div className="space-y-6 pt-2">
-                            <div
-                                className="relative flex w-full items-center justify-between gap-3"
-                                onClick={() => inputRef.current?.focus()}
-                            >
-                                {[0, 1, 2, 3].map((index) => (
-                                    <div
-                                        key={index}
-                                        className={cn(
-                                            "flex h-[72px] flex-1 shrink-0 items-center justify-center rounded-2xl border text-3xl font-black transition-all duration-200",
-                                            "border-zinc-800 bg-zinc-900/30 text-white shadow-inner",
-                                            pin.length === index && !error ? "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(41,171,226,0.1)]" : "",
-                                            error ? "border-destructive/40 bg-destructive/5" : ""
-                                        )}
-                                    >
-                                        {pin[index] ? (
-                                            <span className="text-white animate-in zoom-in-75 duration-200">{pin[index]}</span>
-                                        ) : (
-                                            <span className={cn(
-                                                "h-1.5 w-1.5 rounded-full bg-zinc-700 transition-all duration-300",
-                                                pin.length === index && "bg-primary animate-pulse"
-                                            )} />
-                                        )}
-                                    </div>
-                                ))}
-
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    pattern="[0-9]*"
-                                    aria-label="4-digit verification code"
-                                    maxLength={4}
-                                    value={pin}
-                                    onChange={handleInputChange}
-                                    className="absolute inset-0 h-full w-full cursor-text opacity-0"
-                                    autoFocus
-                                />
-                            </div>
-
-                            {error && (
-                                <div className="flex items-center justify-center gap-2 text-destructive animate-in shake-in duration-300">
-                                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-                                    <p className="text-[10px] font-black leading-relaxed uppercase tracking-[0.15em]">{error}</p>
+                        {/* PIN SLOTS */}
+                        <div className="relative flex items-center justify-start gap-3 mb-16">
+                            {[0, 1, 2, 3].map((index) => (
+                                <div
+                                    key={index}
+                                    className={cn(
+                                        "flex h-12 w-12 items-center justify-center rounded-xl border text-xl font-bold transition-all duration-300",
+                                        "bg-zinc-900/30 text-white",
+                                        pin.length === index && !error ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-zinc-800",
+                                        error ? "border-destructive/40 bg-destructive/5" : ""
+                                    )}
+                                >
+                                    {pin[index] ? (
+                                        <span className="text-white animate-in zoom-in-75 duration-200">{pin[index]}</span>
+                                    ) : (
+                                        <div className={cn(
+                                            "h-1.5 w-1.5 rounded-full bg-zinc-700 transition-all",
+                                            pin.length === index && "animate-pulse bg-emerald-500"
+                                        )} />
+                                    )}
                                 </div>
-                            )}
-
-                            {!error && !isVerifying && (
-                                <p className="pt-20 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-700">
-                                    {resendSeconds > 0 ? `Resend key in 00:${String(resendSeconds).padStart(2, '0')}` : 'Key request available'}
-                                </p>
-                            )}
-
-                            {isVerifying && (
-                                <div className="flex items-center justify-center gap-2 text-primary animate-pulse pt-20">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verifying Node...</span>
-                                </div>
-                            )}
+                            ))}
+                            
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                pattern="[0-9]*"
+                                maxLength={4}
+                                value={pin}
+                                onChange={handleInputChange}
+                                className="absolute inset-0 h-full w-full opacity-0 cursor-default"
+                                autoFocus
+                            />
                         </div>
+
+                        {/* STATUS / INFO AREA */}
+                        <div className="flex flex-col items-center justify-center space-y-24">
+                            <p className="text-[11px] font-medium text-zinc-600 text-center">
+                                You can request a new code
+                            </p>
+
+                            <div className="flex flex-col items-center space-y-6">
+                                <Link 
+                                    href="/login"
+                                    className="flex items-center gap-2 text-[15px] font-medium text-zinc-600 hover:text-white transition-colors"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Return to Portal
+                                </Link>
+
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-800">
+                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                    Industrial Protocol
+                                </div>
+                            </div>
+                        </div>
+
+                        {isVerifying && (
+                            <div className="mt-8 flex items-center justify-center gap-2 text-emerald-500 animate-pulse">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Verifying Identity...</span>
+                            </div>
+                        )}
+                        
+                        {error && (
+                            <div className="mt-8 flex items-center justify-center gap-2 text-destructive animate-in shake-in duration-300">
+                                <ShieldAlert className="h-4 w-4 shrink-0" />
+                                <p className="text-[10px] font-black leading-relaxed uppercase tracking-widest">{error}</p>
+                            </div>
+                        )}
                     </div>
                 ) : (
-                    <div className="space-y-10 text-center animate-in zoom-in-95 duration-500">
-                        <div className="mx-auto w-24 h-24 bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center text-emerald-500 shadow-inner">
+                    <div className="flex-1 flex flex-col justify-center items-center text-center space-y-10 animate-in fade-in zoom-in-95 duration-500">
+                        <div className="w-24 h-24 bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center text-emerald-500 shadow-inner">
                             <UserCheck className="h-10 w-10" strokeWidth={2.5} />
                         </div>
                         
                         <div className="space-y-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Identity Confirmed</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500">Identity Confirmed</p>
                             <h2 className="text-4xl font-bold tracking-tight text-white uppercase">{identifiedStaff.name}</h2>
                         </div>
 
@@ -190,7 +203,7 @@ export default function ManualHandshakePage() {
 
                         <Button 
                             onClick={handleProceed}
-                            className="w-full h-16 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl bg-primary text-white hover:bg-primary/90 shadow-primary/10 transition-all active:scale-[0.98]"
+                            className="w-full h-16 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10 transition-all active:scale-[0.98]"
                         >
                             <div className="flex items-center gap-2">
                                 <Check className="h-4 w-4" strokeWidth={4} />
