@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-export default function ManualHandshakePage() {
+export function ManualHandshakePage() {
     const router = useRouter();
     const { toast } = useToast();
     const [isVerifying, startTransition] = useTransition();
@@ -191,19 +191,19 @@ export default function ManualHandshakePage() {
                         
                         <div className="space-y-3">
                             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500">Identity Confirmed</p>
-                            <h2 className="text-4xl font-bold tracking-tight text-white uppercase">{identifiedStaff.name}</h2>
+                            <h2 className="text-5xl font-black tracking-tight text-white uppercase">{identifiedStaff.name}</h2>
                         </div>
 
-                        <div className="p-6 bg-zinc-900/20 rounded-[2rem] border border-white/[0.03] flex items-start gap-4 text-left">
+                        <div className="p-6 bg-zinc-900/40 rounded-[2rem] border border-white/5 flex items-start gap-4 text-left">
                             <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                            <p className="text-[11px] font-medium text-zinc-500 leading-relaxed uppercase tracking-tighter">
+                            <p className="text-[11px] font-medium text-zinc-400 leading-relaxed uppercase tracking-tighter">
                                 Authorized session identified. Proceed to terminal to load batch nodes.
                             </p>
                         </div>
 
                         <Button 
                             onClick={handleProceed}
-                            className="w-full h-16 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10 transition-all active:scale-[0.98]"
+                            className="w-full h-16 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10 transition-all active:scale-[0.98]"
                         >
                             <div className="flex items-center gap-2">
                                 <Check className="h-4 w-4" strokeWidth={4} />
@@ -213,7 +213,7 @@ export default function ManualHandshakePage() {
 
                         <button 
                             onClick={() => { setIdentifiedStaff(null); setPin(''); setTimeout(() => inputRef.current?.focus(), 100); }}
-                            className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 hover:text-white transition-colors"
+                            className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600 hover:text-white transition-colors"
                         >
                             Reset Protocol
                         </button>
@@ -223,3 +223,5 @@ export default function ManualHandshakePage() {
         </div>
     );
 }
+
+export default ManualHandshakePage;
