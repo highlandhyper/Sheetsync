@@ -34,6 +34,10 @@ import {
   Zap,
   Edit,
   X,
+  PackageSearch,
+  Activity,
+  Send,
+  Boxes
 } from 'lucide-react';
 
 import { format, parseISO, isValid } from 'date-fns';
@@ -373,7 +377,6 @@ export default function OnDisplayStaffPage() {
   }
 
   const currentItem = displayItems[selectedItemIndex];
-  const isCurrentItemSynced = syncedItemIds.has(currentItem?.id);
   const progress = items.length
     ? Math.round((syncedItemIds.size / items.length) * 100)
     : 0;
@@ -389,10 +392,10 @@ export default function OnDisplayStaffPage() {
               <Image src="/logo-pwa.jpg" alt="Logo" width={44} height={44} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black uppercase tracking-tighter">On Display Protocol</p>
+              <p className="truncate text-sm font-black uppercase tracking-tighter">PROTOCOL ACTIVE</p>
               <div className="mt-1 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-500">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Handshake Active
+                Registry Handshake
               </div>
             </div>
           </div>
@@ -421,11 +424,11 @@ export default function OnDisplayStaffPage() {
           <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between px-1">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">
-                  Action Queue
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500">
+                  ACTION QUEUE
                 </p>
                 <p className="text-sm font-bold text-zinc-500">
-                  Identify and update batch nodes.
+                  Identify and synchronize nodes.
                 </p>
               </div>
               <Badge variant="outline" className="bg-emerald-500/[0.06] text-emerald-500 border-emerald-500/20 font-black text-[10px] uppercase tracking-widest h-7 px-3">
@@ -433,7 +436,7 @@ export default function OnDisplayStaffPage() {
               </Badge>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {displayItems.map((it, idx) => {
                 const isSynced = syncedItemIds.has(it.id);
 
@@ -443,45 +446,49 @@ export default function OnDisplayStaffPage() {
                     type="button"
                     onClick={() => handleSelectBatch(idx)}
                     className={cn(
-                      'group flex min-h-[96px] w-full items-center gap-4 rounded-[2rem] border border-zinc-800/80 bg-zinc-900/40 p-5 text-left shadow-sm transition-all active:scale-[0.985] hover:shadow-xl hover:bg-white/[0.02]',
-                      isSynced && 'border-emerald-500/20 bg-emerald-500/[0.03] opacity-80'
+                      'group flex min-h-[90px] w-full items-center gap-4 rounded-[1.5rem] border border-zinc-800/80 bg-zinc-900/40 p-4 text-left transition-all active:scale-[0.985] hover:bg-zinc-800/60',
+                      isSynced && 'border-emerald-500/20 bg-emerald-500/[0.02] opacity-80'
                     )}
                   >
                     <div
                       className={cn(
-                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-300',
+                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500',
                         isSynced
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-emerald-500/10 text-emerald-500 group-hover:scale-105'
+                          ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                          : 'bg-zinc-800 text-zinc-500 group-hover:text-emerald-500'
                       )}
                     >
                       {isSynced ? (
-                        <Check className="h-7 w-7" strokeWidth={4} />
+                        <Check className="h-6 w-6" strokeWidth={4} />
                       ) : (
-                        <Package className="h-7 w-7" strokeWidth={2.5} />
+                        <Package className="h-6 w-6" strokeWidth={2.5} />
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <h2 className={cn(
-                          "line-clamp-1 text-base font-black leading-tight tracking-tight uppercase",
-                          isSynced && "text-emerald-400"
+                          "line-clamp-1 text-[15px] font-black leading-tight tracking-tight uppercase",
+                          isSynced ? "text-emerald-400" : "text-white"
                       )}>
                         {it.productName}
                       </h2>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                        <span className={cn("px-2.5 py-1 rounded-lg", isSynced ? "bg-emerald-500/10 text-emerald-500" : "bg-zinc-900/70 text-emerald-500")}>
-                          {it.quantity} Units
-                        </span>
-                        <span className="truncate">{it.location || 'Registry'}</span>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[9px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/40 text-emerald-500 border border-white/5">
+                          <Activity className="h-3 w-3" />
+                          {it.quantity} UNITS
+                        </div>
+                        <div className="flex items-center gap-1.5 text-zinc-500">
+                          <MapPin className="h-3 w-3" />
+                          {it.location || 'UNMAPPED'}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-white/[0.035] group-hover:bg-emerald-500/10 transition-colors">
+                    <div className="shrink-0 flex items-center justify-center h-9 w-9 rounded-full bg-white/[0.035] group-hover:bg-emerald-500/10 transition-colors">
                        <ChevronRight className={cn(
-                           "h-6 w-6 transition-all group-active:translate-x-1",
-                           isSynced ? "text-emerald-500/40" : "text-zinc-500 group-hover:text-emerald-400"
+                           "h-5 w-5 transition-all group-active:translate-x-1",
+                           isSynced ? "text-emerald-500/40" : "text-zinc-600 group-hover:text-emerald-400"
                        )} />
                     </div>
                   </button>
@@ -507,7 +514,7 @@ export default function OnDisplayStaffPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500 mb-2">Identification Node</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500 mb-2">IDENTIFICATION NODE</p>
                   <h1 className="text-3xl font-black leading-[0.95] tracking-tighter uppercase sm:text-4xl text-white">
                     {currentItem?.productName}
                   </h1>
@@ -520,8 +527,8 @@ export default function OnDisplayStaffPage() {
                   <p className="text-4xl font-black tabular-nums tracking-tighter leading-none text-white">{currentItem?.quantity}</p>
                 </div>
                 <div className="rounded-[2rem] bg-zinc-900/40 p-6 border border-white/5">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Operating Zone</p>
-                  <p className="truncate text-base font-black uppercase tracking-tight text-emerald-500">{currentItem?.location || 'Unmapped'}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Current Zone</p>
+                  <p className="truncate text-sm font-black uppercase tracking-tight text-emerald-500">{currentItem?.location || 'Unmapped'}</p>
                 </div>
               </div>
             </div>
@@ -559,27 +566,26 @@ export default function OnDisplayStaffPage() {
 
               {requestType === 'edit' ? (
                 <div className="space-y-8 animate-in fade-in duration-300">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 ml-6">Units Observed</Label>
+                  <div className="space-y-3 text-center">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600">UNITS OBSERVED</Label>
                     <div className="relative group">
-                      <Hash className="absolute left-8 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-800 group-focus-within:text-emerald-500 transition-colors" />
                       <Input
                         type="number"
                         min={0}
                         inputMode="decimal"
                         value={qty}
                         onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                        className="h-28 rounded-[2.5rem] border-zinc-900 bg-zinc-900/40 pl-20 text-6xl font-black tabular-nums shadow-inner focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500/30 text-white"
+                        className="h-28 text-center rounded-[2.5rem] border-zinc-900 bg-zinc-900/40 text-7xl font-black tabular-nums shadow-inner focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500/30 text-white placeholder:text-zinc-800"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 ml-6">Target Zone Mapping</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600 ml-6">ZONE MAPPING</Label>
                     <button
                       type="button"
                       onClick={() => setIsLocationPickerOpen(true)}
-                      className="relative flex h-20 w-full items-center rounded-[1.5rem] bg-zinc-900/40 border border-zinc-900 pl-16 pr-12 text-left text-base font-black uppercase tracking-widest outline-none shadow-inner group hover:border-emerald-500/20 transition-all"
+                      className="relative flex h-20 w-full items-center rounded-[1.5rem] bg-zinc-900/40 border border-zinc-900 pl-16 pr-12 text-left text-sm font-black uppercase tracking-widest outline-none shadow-inner group hover:border-emerald-500/20 transition-all"
                     >
                       <MapPin className="absolute left-7 top-1/2 -translate-y-1/2 h-6 w-6 text-zinc-800 group-hover:text-emerald-500 transition-colors" />
                       <span className="truncate text-white">{loc || 'Select Zone'}</span>
@@ -603,7 +609,7 @@ export default function OnDisplayStaffPage() {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={cn(
-                  'h-20 w-full rounded-full text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] mt-4',
+                  'h-20 w-full rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] mt-4',
                   requestType === 'delete'
                     ? 'bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20'
                     : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10'
@@ -614,7 +620,7 @@ export default function OnDisplayStaffPage() {
                 ) : (
                   <div className="flex items-center gap-4">
                     <SendHorizontal className="h-6 w-6" strokeWidth={3} />
-                    {requestType === 'delete' ? 'Authorize Removal' : 'Synchronize Node'}
+                    {requestType === 'delete' ? 'AUTHORIZE REMOVAL' : 'SYNCHRONIZE NODE'}
                   </div>
                 )}
               </Button>
@@ -638,10 +644,10 @@ export default function OnDisplayStaffPage() {
             </div>
 
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600">
-                REGISTRY SYNC
+              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-700">
+                PROTOCOL PROGRESS
               </p>
-              <p className="truncate text-sm font-black uppercase tracking-tight text-zinc-300">
+              <p className="truncate text-sm font-black uppercase tracking-tight text-zinc-400">
                 {syncedItemIds.size} / {items.length} VERIFIED
               </p>
             </div>
@@ -650,7 +656,7 @@ export default function OnDisplayStaffPage() {
           <Button
             onClick={handleFinalize}
             disabled={isFinalizing || syncedItemIds.size === 0}
-            className="h-14 shrink-0 rounded-full bg-zinc-900 border border-white/5 px-8 text-[11px] font-black uppercase tracking-widest text-white hover:bg-zinc-800 disabled:opacity-20 transition-all"
+            className="h-14 shrink-0 rounded-full bg-emerald-600 px-8 text-[11px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-20 transition-all shadow-xl shadow-emerald-500/10"
           >
             {isFinalizing ? (
               <Loader2 className="h-5 w-5 animate-spin" />
