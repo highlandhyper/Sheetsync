@@ -34,10 +34,10 @@ export default function LoginPage() {
       {/* DYNAMIC ACCENTS */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       
-      <div className="relative z-10 w-full max-w-[1200px] flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-32 px-4 sm:px-6">
+      <div className="relative z-10 w-full max-w-[1200px] flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-32 px-4 sm:px-6 animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out">
         
         {/* LEFT PANEL: Branding (Hidden on mobile) */}
-        <div className="hidden lg:flex flex-col space-y-8 max-w-sm animate-in fade-in slide-in-from-left-8 duration-1000">
+        <div className="hidden lg:flex flex-col space-y-8 max-w-sm animate-in fade-in slide-in-from-left-8 duration-1000 delay-200">
             <div className="space-y-4">
                 <h2 className="text-6xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">
                     Sheet<span className="text-primary">Sync</span><br/>Inventory
@@ -54,7 +54,7 @@ export default function LoginPage() {
         </div>
 
         {/* RIGHT PANEL: AUTHENTICATION */}
-        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-700 ease-out">
+        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-700 delay-300 ease-out">
             {/* MOBILE ONLY BRANDING */}
             <div className="lg:hidden text-center mb-10 space-y-3">
                 <h1 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -105,9 +104,26 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary/40" strokeWidth={3} />
-        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 animate-pulse">Initializing Registry...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-background overflow-hidden relative">
+        {/* ATMOSPHERIC LAYER */}
+        <div className="absolute inset-0 bg-tech-grid opacity-30" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000 ease-out">
+            <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/10 mb-8 relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] animate-ping opacity-10" />
+                <ShieldCheck className="h-14 w-14 text-primary relative z-10" strokeWidth={1.2} />
+            </div>
+            
+            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground mb-2">Secure Handshake</h1>
+            <div className="flex items-center gap-3">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+            </div>
+            
+            <p className="mt-10 text-[9px] font-black uppercase tracking-[0.5em] text-muted-foreground/30 animate-pulse">Establishing Industrial Registry Link</p>
+        </div>
       </div>
     );
   }
@@ -147,9 +163,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
           <main className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
             "p-4 sm:p-6 md:p-8",
-            "pb-32 md:pb-8" 
+            "pb-32 md:pb-8",
+            "animate-in fade-in slide-in-from-bottom-6 duration-1000 ease-out" 
           )}>
-            <div className="container mx-auto max-w-full lg:max-w-[1700px] animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="container mx-auto max-w-full lg:max-w-[1700px]">
                 {children}
             </div>
           </main>
