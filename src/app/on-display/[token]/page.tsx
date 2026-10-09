@@ -337,27 +337,6 @@ export default function OnDisplayStaffPage() {
                     />
                 </div>
 
-                <div className="flex flex-col items-center justify-center space-y-24">
-                    <p className="text-[11px] font-medium text-zinc-600 text-center">
-                        You can request a new code
-                    </p>
-
-                    <div className="flex flex-col items-center space-y-6">
-                        <button 
-                            onClick={() => window.close()}
-                            className="flex items-center gap-2 text-[15px] font-medium text-zinc-600 hover:text-white transition-colors"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            Return to Portal
-                        </button>
-
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-800">
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            Industrial Protocol
-                        </div>
-                    </div>
-                </div>
-
                 {isVerifying && (
                     <div className="mt-8 flex items-center justify-center gap-2 text-emerald-500 animate-pulse">
                         <Loader2 className="h-4 w-4 animate-spin" />
