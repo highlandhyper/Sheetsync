@@ -1,3 +1,4 @@
+
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
 import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
@@ -41,15 +42,29 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-// Expiry Watch Column Mapping (1-based for A1 notation helpers, but we use 0-based for row access)
-const WATCH_COL_ID = 1;        // Col A (Index 0)
-const WATCH_COL_BARCODE = 2;   // Col B (Index 1)
-const WATCH_COL_PRODUCT = 3;   // Col C (Index 2)
-const WATCH_COL_EXPIRY = 4;    // Col D (Index 3)
-const WATCH_COL_SUPPLIER = 5;  // Col E (Index 4)
-const WATCH_COL_STATUS = 6;    // Col F (Index 5)
-const WATCH_COL_TIMESTAMP = 7; // Col G (Index 6)
-const WATCH_COL_STAFF = 8;     // Col H (Index 7)
+// Expiry Watch Column Mapping (1-based for A1 notation helpers)
+const WATCH_COL_ID = 1;        // Col A
+const WATCH_COL_BARCODE = 2;   // Col B
+const WATCH_COL_PRODUCT = 3;   // Col C
+const WATCH_COL_EXPIRY = 4;    // Col D
+const WATCH_COL_SUPPLIER = 5;  // Col E
+const WATCH_COL_STATUS = 6;    // Col F
+const WATCH_COL_TIMESTAMP = 7; // Col G
+const WATCH_COL_STAFF = 8;     // Col H
+
+// On Display Alerts Column Mapping (1-based for A1 notation helpers)
+const ODA_COL_ID = 1;          // Col A
+const ODA_COL_BARCODE = 2;     // Col B
+const ODA_COL_PRODUCT = 3;     // Col C
+const ODA_COL_EXPIRY = 4;      // Col D
+const ODA_COL_STAFF = 5;       // Col E
+const ODA_COL_TOKEN = 6;       // Col F
+const ODA_COL_PIN = 7;         // Col G
+const ODA_COL_EXPIRES_AT = 8;  // Col H
+const ODA_COL_USED = 9;        // Col I
+const ODA_COL_SENT_AT = 10;    // Col J
+const ODA_COL_LOG_ROW = 11;    // Col K
+const ODA_COL_LOG_ID = 12;     // Col L
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
@@ -73,7 +88,16 @@ function parseFlexibleTimestamp(val: any): Date | null {
   const iso = parseISO(s);
   if (isValid(iso)) return iso;
   
-  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss.SSSX"];
+  const formats = [
+    "d/M/yyyy HH:mm:ss", 
+    "yyyy-MM-dd HH:mm:ss", 
+    "d/M/yyyy", 
+    "MM/dd/yyyy", 
+    "yyyy-MM-dd", 
+    "yyyy-MM-dd'T'HH:mm:ss.SSSX", 
+    "dd/MM/yyyy HH:mm:ss",
+    "dd/MM/yyyy"
+  ];
   for (const f of formats) {
     try {
       const d = dateParse(s, f, new Date());
@@ -277,10 +301,8 @@ export async function addExpiryReminder(reminder: Omit<ExpiryReminder, 'id' | 't
 }
 
 export async function resolveExpiryWatch(id: string, email: string) {
-    // CRITICAL FIX: findRowByUniqueValue uses 0-based column index. Col A is 0.
     const row = await findRowByUniqueValue(EXPIRY_WATCH_SHEET_NAME, id, WATCH_COL_ID - 1); 
     if (row) {
-        // Status is Column F (6th column). 64 + 6 = 70 ('F')
         const colLetter = String.fromCharCode(64 + WATCH_COL_STATUS);
         await updateSheetData(`${EXPIRY_WATCH_SHEET_NAME}!${colLetter}${row}`, [['resolved']]);
         await logAuditEvent(email, 'RESOLVE_DIARY', id, `Registry resolution for ${id}.`);
