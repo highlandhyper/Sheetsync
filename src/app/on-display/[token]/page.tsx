@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
+import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   verifyOnDisplayTokenAction,
@@ -24,7 +23,6 @@ import {
   Info,
   Layers,
   Loader2,
-  LockKeyhole,
   LogOut,
   MapPin,
   Package,
@@ -35,7 +33,6 @@ import {
   UserCheck,
   Zap,
   Edit,
-  Search,
   X,
 } from 'lucide-react';
 
@@ -95,14 +92,41 @@ export default function OnDisplayStaffPage() {
   const verificationProcessedRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // AUTO-HANDSHAKE: If a PIN is provided in the URL (from the Handshake page), verify automatically
+  const handleVerify = useCallback(async (providedPin?: string) => {
+    const pinToUse = providedPin || accessKey;
+    if (!pinToUse || pinToUse.length < 4) return;
+
+    setIsVerifying(true);
+    setErrorMessage('');
+
+    try {
+      const res = await verifyOnDisplayTokenAction(token, pinToUse);
+
+      if (res.success && res.data && res.data.length > 0) {
+        setItems(res.data);
+        const first = res.data[0];
+        setQty(first.quantity);
+        setLoc(first.location);
+        setIsVerified(true);
+      } else {
+        setErrorMessage(res.message || 'Access key rejection.');
+        setAccessKey('');
+        inputRef.current?.focus();
+      }
+    } catch {
+      setErrorMessage('Registry handshake failure.');
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [accessKey, token]);
+
   useEffect(() => {
     if (urlPin && token && !isVerified && !verificationProcessedRef.current) {
         verificationProcessedRef.current = true;
         setAccessKey(urlPin);
         handleVerify(urlPin);
     }
-  }, [urlPin, token, isVerified]);
+  }, [urlPin, token, isVerified, handleVerify]);
 
   const availableLocations = useMemo(
     () =>
@@ -126,39 +150,6 @@ export default function OnDisplayStaffPage() {
       })),
     [items]
   );
-
-  const handleVerify = async (providedPin?: string) => {
-    const pinToUse = providedPin || accessKey;
-    if (!pinToUse || pinToUse.length < 4) return;
-
-    setIsVerifying(true);
-    setErrorMessage('');
-
-    try {
-      const res = await verifyOnDisplayTokenAction(token, pinToUse);
-
-      if (res.success && res.data && res.data.length > 0) {
-        setItems(res.data);
-        const first = res.data[0];
-        setQty(first.quantity);
-        setLoc(first.location);
-        setIsVerified(true);
-
-        toast({
-          title: 'Registry Handshake Successful',
-          description: `${res.data.length} Batch Nodes loaded for identification.`,
-        });
-      } else {
-        setErrorMessage(res.message || 'Access Key rejection. Registry protocol failed.');
-        setAccessKey('');
-        inputRef.current?.focus();
-      }
-    } catch {
-      setErrorMessage('Handshake handshake timeout. Please check your signal.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -199,7 +190,7 @@ export default function OnDisplayStaffPage() {
         setSyncedItemIds((prev) => new Set(prev).add(item.id));
         toast({
           title: requestType === 'delete' ? 'Removal protocol logged' : 'Registry update submitted',
-          description: `${item.productName} batch node synchronized.`,
+          description: `${item.productName} synchronized.`,
         });
         setView('products');
       } else {
@@ -230,7 +221,7 @@ export default function OnDisplayStaffPage() {
         toast({
           variant: 'destructive',
           title: 'Handshake Error',
-          description: 'Failed to finalize session with registry.',
+          description: 'Failed to finalize session.',
         });
       }
     });
@@ -238,35 +229,32 @@ export default function OnDisplayStaffPage() {
 
   if (success) {
     return (
-      <div className="min-h-[100dvh] bg-[#09090b] px-5 py-8 sm:flex sm:items-center sm:justify-center">
-        <div className="absolute inset-0 bg-tech-grid opacity-10" />
-        <div className="mx-auto flex w-full max-w-md flex-col items-center text-center relative z-10">
-          <div className="mb-7 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-emerald-500/10 ring-8 ring-emerald-500/5">
+      <div className="min-h-[100dvh] bg-[#09090b] px-8 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
+        <div className="mx-auto flex w-full max-w-md flex-col items-center text-center relative z-10 animate-in fade-in zoom-in-95 duration-700">
+          <div className="mb-10 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-emerald-500/10 ring-8 ring-emerald-500/5">
             <div className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-emerald-500 text-white shadow-xl shadow-emerald-500/25">
-              <Check className="h-8 w-8" strokeWidth={3} />
+              <Check className="h-8 w-8" strokeWidth={4} />
             </div>
           </div>
 
-          <Badge className="mb-4 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 hover:bg-emerald-500/10">
-            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-            Registry Nominal
-          </Badge>
+          <div className="space-y-4">
+              <h1 className="text-4xl font-bold tracking-tighter uppercase leading-none text-white">
+                PROTOCOL <br/> <span className="text-emerald-500">COMPLETE</span>
+              </h1>
+              <p className="max-w-xs mx-auto text-[11px] font-bold uppercase tracking-widest text-zinc-500 leading-relaxed opacity-60">
+                Identity handshake terminated. Registry synchronized.
+              </p>
+          </div>
 
-          <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-white">
-            PROTOCOL <br/> <span className="text-emerald-500">COMPLETE</span>
-          </h1>
-          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-zinc-500">
-            Identity handshake terminated. Your inventory adjustments have been synchronized with the master registry.
-          </p>
-
-          <Card className="mt-8 w-full rounded-[2rem] border-zinc-800 bg-zinc-900/50 p-6 text-left shadow-sm">
-            <div className="flex items-center gap-4">
+          <Card className="mt-12 w-full rounded-[2.5rem] border-zinc-800 bg-zinc-900/20 p-8 text-left shadow-2xl">
+            <div className="flex items-center gap-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                <ShieldCheck className="h-6 w-6 text-emerald-500" />
               </div>
-              <div>
-                <p className="text-sm font-black uppercase tracking-tight text-white">Security Handshake</p>
-                <p className="mt-0.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-tight text-white">Security Handshake</p>
+                <p className="mt-1 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
                   Access Key Expired & Logged
                 </p>
               </div>
@@ -274,11 +262,11 @@ export default function OnDisplayStaffPage() {
           </Card>
 
           <Button
-            variant="outline"
-            className="mt-6 h-14 w-full rounded-2xl font-black uppercase tracking-widest text-[10px] border-zinc-800 text-zinc-400 hover:text-white"
+            variant="ghost"
+            className="mt-10 h-14 w-full rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] text-zinc-600 hover:text-white hover:bg-white/[0.03] transition-colors"
             onClick={() => window.close()}
           >
-            Close Portal
+            Close Secure Portal
           </Button>
         </div>
       </div>
@@ -287,41 +275,39 @@ export default function OnDisplayStaffPage() {
 
   if (!isVerified) {
     return (
-      <div className="min-h-[100dvh] bg-[#09090b] px-6 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
-        {/* ATMOSPHERIC LAYER */}
-        <div className="absolute inset-0 bg-tech-grid opacity-10 pointer-events-none" />
+      <div className="min-h-[100dvh] bg-[#09090b] px-8 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(41,171,226,0.05)_0%,transparent_70%)] pointer-events-none" />
 
         <div className="mx-auto flex w-full max-w-sm flex-col relative z-10 animate-in fade-in zoom-in-95 duration-700">
             <div className="space-y-12">
-                {/* HEADER */}
-                <div className="space-y-4">
-                    <h1 className="text-4xl font-bold tracking-tight text-white">
+                <div className="space-y-4 text-center">
+                    <h1 className="text-4xl font-bold tracking-tight text-white uppercase">
                         Confirmation
                     </h1>
-                    <p className="text-sm font-medium text-zinc-500 leading-relaxed">
-                        Enter the 4-digit industrial access key dispatched to your terminal node via SMS.
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest leading-relaxed opacity-60">
+                        Enter the 4-digit industrial access key dispatched via SMS.
                     </p>
                 </div>
 
-                {/* PIN INPUT GROUP */}
-                <div className="space-y-8">
-                    <div className="relative flex justify-between gap-3 sm:gap-4">
+                <div className="space-y-10">
+                    <div className="relative flex justify-between gap-4">
                         {[0, 1, 2, 3].map((index) => (
                             <div
                                 key={index}
                                 className={cn(
-                                    "flex-1 h-20 sm:h-24 rounded-[1.25rem] flex items-center justify-center text-3xl sm:text-4xl font-bold transition-all duration-200",
-                                    "bg-zinc-900/50 border-2",
-                                    accessKey.length === index && !errorMessage ? "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(41,171,226,0.1)]" : "border-transparent",
-                                    errorMessage ? "border-destructive/30" : ""
+                                    "flex-1 h-20 sm:h-24 rounded-3xl flex items-center justify-center text-4xl font-black transition-all duration-300",
+                                    "bg-zinc-900/30 border border-white/[0.03]",
+                                    accessKey.length === index && !errorMessage ? "bg-primary/5 border-primary/30 shadow-[0_0_25px_rgba(41,171,226,0.15)]" : "",
+                                    errorMessage ? "border-destructive/40 bg-destructive/5" : ""
                                 )}
                             >
                                 {accessKey[index] ? (
                                     <span className="text-white animate-in zoom-in-75 duration-200">{accessKey[index]}</span>
                                 ) : (
                                     <div className={cn(
-                                        "h-1.5 w-1.5 rounded-full bg-zinc-800",
-                                        accessKey.length === index && "animate-pulse bg-primary/40"
+                                        "h-1.5 w-1.5 rounded-full bg-zinc-800 transition-all",
+                                        accessKey.length === index && "animate-pulse bg-primary"
                                     )} />
                                 )}
                             </div>
@@ -340,23 +326,23 @@ export default function OnDisplayStaffPage() {
                     </div>
 
                     {errorMessage && (
-                        <div className="flex items-start gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/10 animate-in shake-in duration-300">
-                            <ShieldAlert className="h-5 w-5 shrink-0" />
-                            <p className="text-xs font-bold leading-relaxed uppercase tracking-tight">{errorMessage}</p>
+                        <div className="flex items-center justify-center gap-3 text-destructive animate-in shake-in duration-300">
+                            <ShieldAlert className="h-4 w-4 shrink-0" />
+                            <p className="text-[10px] font-black leading-relaxed uppercase tracking-[0.2em]">{errorMessage}</p>
                         </div>
                     )}
 
                     {isVerifying && (
                         <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verifying Identity...</span>
                         </div>
                     )}
                 </div>
 
-                <div className="pt-8 flex items-center justify-center gap-2.5 text-[8px] font-black uppercase tracking-[0.5em] text-zinc-800">
-                    <ShieldCheck className="h-3 w-3" />
-                    SECURE INDUSTRIAL PORTAL
+                <div className="pt-12 flex items-center justify-center gap-3 text-[8px] font-black uppercase tracking-[0.6em] text-zinc-800">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Industrial Protocol
                 </div>
             </div>
         </div>
@@ -372,21 +358,19 @@ export default function OnDisplayStaffPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-32">
-      {/* ATMOSPHERIC LAYER */}
-      <div className="fixed inset-0 bg-tech-grid opacity-10 pointer-events-none" />
+      <div className="fixed inset-0 bg-tech-grid opacity-[0.03] pointer-events-none" />
 
-      {/* Mobile-first sticky header */}
-      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-primary/10 border border-primary/20 shadow-sm">
-              <Image src="/logo-pwa.jpg" alt="Logo" width={40} height={40} />
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 px-6 py-5 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.25rem] overflow-hidden bg-primary/5 border border-primary/20 shadow-sm">
+              <Image src="/logo-pwa.jpg" alt="Logo" width={44} height={44} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black uppercase tracking-tight">On Display Protocol</p>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+              <p className="truncate text-sm font-black uppercase tracking-tighter">On Display Protocol</p>
+              <div className="mt-1 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Registry Link Active
+                Handshake Active
               </div>
             </div>
           </div>
@@ -396,13 +380,13 @@ export default function OnDisplayStaffPage() {
             size="sm"
             onClick={handleFinalize}
             disabled={isFinalizing}
-            className="h-10 shrink-0 rounded-xl px-3 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 hover:text-destructive border border-destructive/10"
+            className="h-11 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5 hover:text-destructive border border-destructive/10"
           >
             {isFinalizing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                <LogOut className="mr-2 h-4 w-4" />
                 Exit
               </>
             )}
@@ -410,26 +394,25 @@ export default function OnDisplayStaffPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:space-y-8 sm:py-10 relative z-10">
+      <main className="mx-auto max-w-2xl space-y-8 px-6 py-8 sm:py-12 relative z-10">
         {view === 'products' ? (
           <>
-            {/* Product-first landing screen */}
-            <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="px-1 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/60">
                     Action Queue
                   </p>
-                  <p className="mt-1 text-sm font-bold text-muted-foreground">
-                    Identify and update specific batch nodes.
+                  <p className="text-sm font-bold text-muted-foreground">
+                    Identify and update batch nodes.
                   </p>
                 </div>
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest h-6">
-                    {items.length} Batches
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[10px] uppercase tracking-widest h-7 px-3">
+                    {items.length} Units
                 </Badge>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {displayItems.map((it, idx) => {
                   const isSynced = syncedItemIds.has(it.id);
 
@@ -439,67 +422,49 @@ export default function OnDisplayStaffPage() {
                       type="button"
                       onClick={() => handleSelectBatch(idx)}
                       className={cn(
-                        'group flex min-h-[100px] w-full items-center gap-5 rounded-[2rem] border bg-card p-5 text-left shadow-sm transition-all active:scale-[0.985] hover:shadow-md',
+                        'group flex min-h-[110px] w-full items-center gap-6 rounded-[2.5rem] border bg-card p-6 text-left shadow-sm transition-all active:scale-[0.985] hover:shadow-xl',
                         isSynced
-                          ? 'border-emerald-500/25 bg-emerald-500/[0.045]'
-                          : 'border-border/60 hover:border-primary/30 hover:bg-primary/[0.02]'
+                          ? 'border-emerald-500/20 bg-emerald-500/[0.03]'
+                          : 'border-border/50 hover:border-primary/20 hover:bg-primary/[0.01]'
                       )}
                     >
                       <div
                         className={cn(
-                          'flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl transition-all duration-300',
+                          'flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] transition-all duration-300',
                           isSynced
                             ? 'bg-emerald-500 text-white scale-90'
-                            : 'bg-primary/10 text-primary group-hover:scale-105'
+                            : 'bg-primary/10 text-primary group-hover:scale-105 group-hover:bg-primary/20'
                         )}
                       >
                         {isSynced ? (
-                          <Check className="h-8 w-8" strokeWidth={3} />
+                          <Check className="h-8 w-8" strokeWidth={4} />
                         ) : (
-                          <Package className="h-8 w-8" />
+                          <Package className="h-8 w-8" strokeWidth={2.5} />
                         )}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-3">
                           <h2 className={cn(
                               "line-clamp-2 text-base font-black leading-tight tracking-tight uppercase",
                               isSynced && "text-emerald-700 dark:text-emerald-400"
                           )}>
                             {it.productName}
                           </h2>
-                          {isSynced && (
-                            <Badge className="shrink-0 rounded-lg bg-emerald-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-500/10">
-                              Nominal
-                            </Badge>
-                          )}
                         </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                          <span className={cn("px-2 py-0.5 rounded bg-muted/60", isSynced ? "bg-emerald-500/10 text-emerald-600" : "text-primary")}>
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-80">
+                          <span className={cn("px-2.5 py-1 rounded-lg", isSynced ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-primary")}>
                             {it.quantity} Units
                           </span>
-                          <span className="opacity-30">|</span>
                           <span className="truncate">{it.location || 'Registry'}</span>
-                          <span className="opacity-30">|</span>
-                          <span>
-                            {it.expiryDate
-                              ? format(parseISO(it.expiryDate), 'dd MMM yy')
-                              : 'No expiry'}
-                          </span>
+                          <span>{it.expiryDate ? format(parseISO(it.expiryDate), 'dd MMM yy') : 'N/A'}</span>
                         </div>
-
-                        {it.barcode && (
-                          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono font-bold text-muted-foreground/40 uppercase">
-                            <Barcode className="h-3 w-3" />
-                            <span>{it.barcode}</span>
-                          </div>
-                        )}
                       </div>
 
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-muted/30 group-hover:bg-primary/10 transition-colors">
                          <ChevronRight className={cn(
-                             "h-6 w-6 shrink-0 transition-all group-active:translate-x-1",
+                             "h-6 w-6 transition-all group-active:translate-x-1",
                              isSynced ? "text-emerald-500/40" : "text-muted-foreground/30 group-hover:text-primary"
                          )} />
                       </div>
@@ -508,247 +473,183 @@ export default function OnDisplayStaffPage() {
                 })}
               </div>
             </section>
-
-            <section className="rounded-[2rem] border-border/60 bg-muted/30 p-6 shadow-inner">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/10">
-                  <Info className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-black uppercase tracking-tight">Handshake Protocol</p>
-                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
-                    Tap any batch card to load its registry data. Update the observed count or zone mapping to synchronize the shelf with the central system.
-                  </p>
-                </div>
-              </div>
-            </section>
           </>
         ) : (
-          <>
-            {/* Edit page */}
-            <section className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-              <button
-                type="button"
-                onClick={() => setView('products')}
-                className="flex items-center gap-2 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/5 transition-all"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Back to Protocol Queue
-              </button>
+          <section className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+            <button
+              type="button"
+              onClick={() => setView('products')}
+              className="flex items-center gap-3 px-2 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:opacity-70 transition-all"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={3} />
+              Protocol Queue
+            </button>
 
-              <Card className="overflow-hidden rounded-[2.5rem] border-border/60 bg-card/70 backdrop-blur-xl shadow-3xl">
-                <div className="p-6 sm:p-8">
-                  <div className="flex items-start gap-5">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.25rem] bg-primary/10 text-primary border border-primary/10">
-                      <Package className="h-8 w-8" />
-                    </div>
+            <Card className="overflow-hidden rounded-[3rem] border-none bg-card/50 backdrop-blur-xl shadow-3xl">
+              <div className="p-8 sm:p-10">
+                <div className="flex items-start gap-6">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <Package className="h-9 w-9" strokeWidth={2.5} />
+                  </div>
 
-                    <div className="min-w-0 flex-1">
-                      <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest px-2 h-5 mb-1.5">
-                        BATCH HUD
-                      </Badge>
-                      <h1 className="text-2xl font-black leading-[1.1] tracking-tighter uppercase sm:text-3xl">
-                        {currentItem?.productName}
-                      </h1>
-
-                      <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                        <Badge variant="outline" className="font-mono text-[10px] h-8 bg-muted/50 border-border/50 px-3 flex gap-2">
-                          <Barcode className="h-3 w-3 text-primary" />
-                          {currentItem?.barcode}
-                        </Badge>
-                        <Badge className="text-[9px] h-8 font-black uppercase tracking-widest bg-primary/5 text-primary border-none px-3">
-                            <Clock3 className="mr-1.5 h-3 w-3" />
-                            {currentItem?.expiryLabel || 'No expiry'}
-                        </Badge>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary text-[9px] font-black uppercase tracking-widest px-3 h-6 mb-1">
+                      BATCH HUD
+                    </Badge>
+                    <h1 className="text-3xl font-black leading-tight tracking-tighter uppercase sm:text-4xl">
+                      {currentItem?.productName}
+                    </h1>
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      <div className="flex items-center gap-2 font-mono text-xs font-bold text-muted-foreground">
+                        <Barcode className="h-4 w-4 text-primary/50" />
+                        {currentItem?.barcode}
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-8 grid grid-cols-2 gap-4">
-                    <div className="rounded-3xl bg-muted/40 p-5 border border-white/5">
-                      <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
-                        <Layers className="h-4 w-4" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Registry Qty</span>
-                      </div>
-                      <p className="text-3xl font-black tabular-nums tracking-tighter leading-none">
-                        {currentItem?.quantity}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-muted/40 p-5 border border-white/5">
-                      <div className="flex items-center gap-2 text-muted-foreground/60 mb-2">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Registry Zone</span>
-                      </div>
-                      <p className="truncate text-xs font-black uppercase tracking-tight text-primary">
-                        {currentItem?.location || 'Unmapped'}
-                      </p>
-                    </div>
+                <div className="mt-10 grid grid-cols-2 gap-4">
+                  <div className="rounded-[2rem] bg-muted/30 p-6 border border-white/[0.03]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-3">Registry Count</p>
+                    <p className="text-4xl font-black tabular-nums tracking-tighter leading-none">{currentItem?.quantity}</p>
+                  </div>
+                  <div className="rounded-[2rem] bg-muted/30 p-6 border border-white/[0.03]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-3">Operating Zone</p>
+                    <p className="truncate text-[11px] font-black uppercase tracking-tight text-primary">{currentItem?.location || 'Unmapped'}</p>
                   </div>
                 </div>
-              </Card>
+              </div>
+            </Card>
 
-              <div className="space-y-4 pt-4">
-                <div className="flex items-center gap-3 px-1">
-                    <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Database className="h-4 w-4 text-primary" />
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                        Sync Adjustment
-                    </p>
-                </div>
+            <div className="space-y-6 pt-2">
+              <div className="flex items-center gap-3 px-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Registry Sync</p>
+              </div>
 
-                <Card className="rounded-[2.5rem] border-border/60 bg-card/70 backdrop-blur-xl shadow-3xl">
-                  <div className="p-5 sm:p-8">
-                    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/40 p-1.5 border border-white/5 mb-8">
-                      <button
-                        type="button"
-                        onClick={() => setRequestType('edit')}
-                        className={cn(
-                          'flex h-12 items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                          requestType === 'edit'
-                            ? 'bg-background text-primary shadow-sm'
-                            : 'text-muted-foreground/40 hover:text-foreground'
-                        )}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                        Adjust Count
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRequestType('delete')}
-                        className={cn(
-                          'flex h-12 items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                          requestType === 'delete'
-                            ? 'bg-background text-destructive shadow-sm'
-                            : 'text-muted-foreground/40 hover:text-foreground'
-                        )}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Purge Node
-                      </button>
-                    </div>
-
-                    {requestType === 'edit' ? (
-                      <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="on-display-qty"
-                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1"
-                          >
-                            Count Observed
-                          </Label>
-
-                          <div className="relative group">
-                            <Hash className="pointer-events-none absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
-                            <Input
-                              id="on-display-qty"
-                              type="number"
-                              min={0}
-                              inputMode="decimal"
-                              value={qty}
-                              onChange={(e) =>
-                                setQty(
-                                  e.target.value === ''
-                                    ? 0
-                                    : parseFloat(e.target.value)
-                                )
-                              }
-                              className="h-20 rounded-[1.5rem] border-none bg-muted/40 pl-14 text-4xl font-black tabular-nums shadow-inner focus-visible:ring-primary/20"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label
-                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1"
-                          >
-                            Operating Zone
-                          </Label>
-
-                          <button
-                            type="button"
-                            onClick={() => setIsLocationPickerOpen(true)}
-                            className="relative flex h-16 w-full items-center rounded-[1.25rem] bg-muted/40 pl-14 pr-12 text-left text-sm font-black uppercase tracking-wider outline-none ring-0 focus:ring-2 focus:ring-primary/20 shadow-inner"
-                          >
-                            <MapPin className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground/30" />
-                            <span className="truncate">{loc || 'Select Zone'}</span>
-                            <ChevronsUpDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/20" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-5 rounded-3xl border-2 border-dashed border-destructive/20 bg-destructive/5 p-6 space-y-4 text-center animate-in zoom-in-95 duration-300">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-destructive/10 text-destructive shadow-lg shadow-destructive/10">
-                          <AlertTriangle className="h-8 w-8" />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-base font-black uppercase tracking-tight text-destructive">
-                            Registry Purge
-                          </p>
-                          <p className="text-xs font-bold leading-relaxed text-destructive/60 uppercase tracking-tighter">
-                            Acknowledge removal of batch node from the On-Display zone.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
+              <Card className="rounded-[3rem] border-none bg-card shadow-3xl overflow-hidden">
+                <div className="p-8 sm:p-10">
+                  <div className="grid grid-cols-2 gap-3 p-1.5 rounded-[1.75rem] bg-muted/30 mb-10">
+                    <button
+                      type="button"
+                      onClick={() => setRequestType('edit')}
                       className={cn(
-                        'mt-10 h-16 w-full rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl transition-all active:scale-[0.98]',
-                        requestType === 'delete'
-                          ? 'bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20'
-                          : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                        'flex h-14 items-center justify-center gap-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all',
+                        requestType === 'edit'
+                          ? 'bg-background text-primary shadow-xl'
+                          : 'text-muted-foreground/40 hover:text-foreground'
                       )}
                     >
-                      {isSubmitting ? (
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <SendHorizontal className="h-5 w-5" />
-                          {requestType === 'delete'
-                            ? 'Authorize Removal'
-                            : isCurrentItemSynced
-                              ? 'Update Registry'
-                              : 'Sync Adjustment'}
-                        </div>
+                      <Edit className="h-4 w-4" />
+                      Adjust
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRequestType('delete')}
+                      className={cn(
+                        'flex h-14 items-center justify-center gap-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all',
+                        requestType === 'delete'
+                          ? 'bg-background text-destructive shadow-xl'
+                          : 'text-muted-foreground/40 hover:text-foreground'
                       )}
-                    </Button>
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Purge
+                    </button>
                   </div>
-                </Card>
-              </div>
-            </section>
-          </>
+
+                  {requestType === 'edit' ? (
+                    <div className="space-y-10 animate-in fade-in duration-300">
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Units Observed</Label>
+                        <div className="relative group">
+                          <Hash className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors" />
+                          <Input
+                            type="number"
+                            min={0}
+                            inputMode="decimal"
+                            value={qty}
+                            onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                            className="h-24 rounded-[2rem] border-none bg-muted/30 pl-16 text-5xl font-black tabular-nums shadow-inner focus-visible:ring-primary/10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Target Zone</Label>
+                        <button
+                          type="button"
+                          onClick={() => setIsLocationPickerOpen(true)}
+                          className="relative flex h-16 w-full items-center rounded-2xl bg-muted/30 pl-14 pr-12 text-left text-sm font-black uppercase tracking-widest outline-none shadow-inner"
+                        >
+                          <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/20" />
+                          <span className="truncate">{loc || 'Select Zone'}</span>
+                          <ChevronsUpDown className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center animate-in zoom-in-95 duration-300">
+                      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive mb-6">
+                        <AlertTriangle className="h-10 w-10" strokeWidth={2.5} />
+                      </div>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-destructive">Registry Purge</h4>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mt-2 max-w-[200px] mx-auto leading-relaxed">
+                        Acknowledge permanent removal from shelf.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className={cn(
+                      'mt-12 h-18 w-full rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98]',
+                      requestType === 'delete'
+                        ? 'bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20'
+                        : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                    )}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <SendHorizontal className="h-5 w-5" strokeWidth={3} />
+                        {requestType === 'delete' ? 'Authorize Removal' : 'Sync Adjustment'}
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </section>
         )}
 
-        {/* Compact guidance */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-3xl border border-border/60 bg-card/60 p-5 shadow-sm">
-            <div className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-5 w-5" />
+          <div className="rounded-[2.5rem] border border-border/40 bg-card/40 p-8 shadow-sm">
+            <div className="flex gap-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+                <ShieldCheck className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1.5">Data Integrity</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
-                  Each batch node represents a unique registry entry. Verify every SKU.
+              <div className="space-y-1">
+                <p className="text-[11px] font-black uppercase tracking-widest">Integrity</p>
+                <p className="text-xs leading-relaxed text-muted-foreground font-medium">
+                  Each node represents a verified registry entry.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-card/60 p-5 shadow-sm">
-            <div className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
-                <Zap className="h-5 w-5" />
+          <div className="rounded-[2.5rem] border border-border/40 bg-card/40 p-8 shadow-sm">
+            <div className="flex gap-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/5 text-orange-600">
+                <Zap className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1.5">Finalization</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
-                  Ensure you "Exit" to finalize the handshake and expire the PIN.
+              <div className="space-y-1">
+                <p className="text-[11px] font-black uppercase tracking-widest">Handshake</p>
+                <p className="text-xs leading-relaxed text-muted-foreground font-medium">
+                  PIN will expire automatically upon session exit.
                 </p>
               </div>
             </div>
@@ -756,44 +657,25 @@ export default function OnDisplayStaffPage() {
         </section>
       </main>
 
-      {/* Mobile bottom action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/50 bg-background/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-2xl items-center gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-4">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/50 bg-background/95 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-2xl items-center gap-6">
+          <div className="flex min-w-0 flex-1 items-center gap-5">
             <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
               <svg className="h-14 w-14 -rotate-90 transition-all duration-700">
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  fill="transparent"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  className="text-muted/20"
-                />
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  fill="transparent"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeDasharray={`${2 * Math.PI * 24}`}
-                  strokeDashoffset={`${2 * Math.PI * 24 * (1 - progress / 100)}`}
-                  className="text-primary transition-all duration-700 ease-in-out"
-                />
+                <circle cx="28" cy="28" r="24" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-muted/10" />
+                <circle cx="28" cy="28" r="24" fill="transparent" stroke="currentColor" strokeWidth="4" strokeDasharray={`${2 * Math.PI * 24}`} strokeDashoffset={`${2 * Math.PI * 24 * (1 - progress / 100)}`} className="text-primary transition-all duration-700 ease-in-out" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[10px] font-black tabular-nums">{progress}%</span>
+                <span className="text-[11px] font-black tabular-nums">{progress}%</span>
               </div>
             </div>
 
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">
-                SESSION PROGRESS
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">
+                SESSION
               </p>
               <p className="truncate text-sm font-black uppercase tracking-tight">
-                {syncedItemIds.size} / {items.length} COMPLETED
+                {syncedItemIds.size} / {items.length} COMPLETE
               </p>
             </div>
           </div>
@@ -801,30 +683,30 @@ export default function OnDisplayStaffPage() {
           <Button
             onClick={handleFinalize}
             disabled={isFinalizing || syncedItemIds.size === 0}
-            className="h-14 shrink-0 rounded-2xl bg-emerald-600 px-6 text-[10px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-30 shadow-lg shadow-emerald-500/20"
+            className="h-16 shrink-0 rounded-2xl bg-emerald-600 px-8 text-[11px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-20 shadow-xl shadow-emerald-500/20"
           >
             {isFinalizing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <>
-                Finalize
-                <Check className="ml-2 h-4 w-4" strokeWidth={3} />
-              </>
+              <div className="flex items-center gap-2">
+                <span>Finalize</span>
+                <Check className="h-4 w-4" strokeWidth={4} />
+              </div>
             )}
           </Button>
         </div>
       </div>
 
       <Dialog open={isLocationPickerOpen} onOpenChange={setIsLocationPickerOpen}>
-          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
-              <DialogHeader className="border-b bg-muted/30 px-4 py-4 text-left">
-                  <DialogTitle className="text-base font-black uppercase tracking-tight">Operating Zone</DialogTitle>
-                  <DialogDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">Identify shelf mapping.</DialogDescription>
+          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-[2.5rem] border-none p-0 shadow-3xl bg-background">
+              <DialogHeader className="border-b bg-muted/20 px-6 py-6 text-left">
+                  <DialogTitle className="text-lg font-black uppercase tracking-tight">Operating Zone</DialogTitle>
+                  <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Identify shelf mapping.</DialogDescription>
               </DialogHeader>
               <Command className="min-h-0 flex-1 rounded-none bg-transparent">
-                  <CommandInput placeholder="Search zones..." className="h-12" />
-                  <CommandList className="max-h-[min(52dvh,360px)] p-1.5">
-                      <CommandEmpty className="py-8 text-xs text-muted-foreground uppercase font-bold tracking-widest">Zero zones identified.</CommandEmpty>
+                  <CommandInput placeholder="Search zones..." className="h-14 px-6 font-bold" />
+                  <CommandList className="max-h-[min(52dvh,380px)] p-2">
+                      <CommandEmpty className="py-12 text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center">Zero zones found</CommandEmpty>
                       <CommandGroup>
                           {availableLocations.map((location) => (
                               <CommandItem
@@ -834,18 +716,18 @@ export default function OnDisplayStaffPage() {
                                       setLoc(location);
                                       setIsLocationPickerOpen(false);
                                   }}
-                                  className="h-12 rounded-xl text-sm font-black uppercase tracking-tight"
+                                  className="h-14 rounded-2xl text-sm font-black uppercase tracking-tight px-4 cursor-pointer"
                               >
-                                  <Check className={cn('mr-3 h-4 w-4', loc === location ? 'opacity-100' : 'opacity-0')} />
+                                  <Check className={cn('mr-4 h-4 w-4 text-primary', loc === location ? 'opacity-100' : 'opacity-0')} />
                                   <span className="truncate">{location}</span>
                               </CommandItem>
                           ))}
                       </CommandGroup>
                   </CommandList>
               </Command>
-              <div className="border-t bg-muted/15 p-3">
-                  <Button type="button" variant="ghost" onClick={() => setIsLocationPickerOpen(false)} className="h-10 w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-destructive">
-                      Cancel
+              <div className="border-t bg-muted/10 p-4">
+                  <Button type="button" variant="ghost" onClick={() => setIsLocationPickerOpen(false)} className="h-12 w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-destructive">
+                      Cancel Selection
                   </Button>
               </div>
           </DialogContent>
@@ -853,4 +735,3 @@ export default function OnDisplayStaffPage() {
     </div>
   );
 }
-
