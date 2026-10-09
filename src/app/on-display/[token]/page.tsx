@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   verifyOnDisplayTokenAction,
   submitOnDisplayRequestAction,
@@ -71,6 +71,7 @@ const DEFAULT_ON_DISPLAY_LOCATIONS = ['On Display', 'Front Side', 'Back side'];
 export default function OnDisplayStaffPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const token = params?.token as string;
   const urlPin = searchParams?.get('pin');
   
@@ -382,61 +383,42 @@ export default function OnDisplayStaffPage() {
     : 0;
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white pb-32 relative overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-black text-white pb-32 relative overflow-x-hidden animate-in fade-in duration-700">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)]" />
+      <div className="absolute inset-0 bg-tech-grid opacity-[0.05] pointer-events-none" />
 
-      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-black/95 px-6 py-5 backdrop-blur-xl supports-[backdrop-filter]:bg-black/80">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-emerald-500/[0.06] border border-emerald-500/20 shadow-sm">
-              <Image src="/logo-pwa.jpg" alt="Logo" width={44} height={44} />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black uppercase tracking-tighter">PROTOCOL ACTIVE</p>
-              <div className="mt-1 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Registry Handshake
-              </div>
-            </div>
+      {/* TOP NAVIGATION */}
+      <header className="sticky top-0 z-40 px-6 py-6 sm:py-8 flex items-center justify-between">
+          <button 
+              onClick={() => router.push('/login')}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/80 text-zinc-300 hover:text-white transition-all active:scale-90"
+          >
+              <ArrowLeft className="h-5 w-5" />
+          </button>
+          
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/60 bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/10">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Protocol Active
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleFinalize}
-            disabled={isFinalizing}
-            className="h-11 shrink-0 rounded-lg px-4 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5 hover:text-destructive border border-destructive/10"
-          >
-            {isFinalizing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <LogOut className="mr-2 h-4 w-4" />
-                Exit
-              </>
-            )}
+          <Button variant="ghost" size="sm" className="h-8 rounded-full bg-zinc-900/80 text-[11px] text-zinc-400 px-3 hover:text-white border-none shadow-none">
+              Help?
           </Button>
-        </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-8 px-6 py-8 sm:py-12 relative z-10">
+      <main className="mx-auto max-w-[360px] space-y-10 px-6 py-4 relative z-10">
         {view === 'products' ? (
-          <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between px-1">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500">
-                  ACTION QUEUE
+          <section className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <div className="space-y-3 text-left">
+                <h1 className="text-3xl font-bold text-white tracking-tight">
+                    Action Queue
+                </h1>
+                <p className="text-[14px] font-medium text-zinc-500">
+                    Identify and synchronize the following nodes.
                 </p>
-                <p className="text-sm font-bold text-zinc-500">
-                  Identify and synchronize nodes.
-                </p>
-              </div>
-              <Badge variant="outline" className="bg-emerald-500/[0.06] text-emerald-500 border-emerald-500/20 font-black text-[10px] uppercase tracking-widest h-7 px-3">
-                  {items.length} Units
-              </Badge>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {displayItems.map((it, idx) => {
                 const isSynced = syncedItemIds.has(it.id);
 
@@ -446,16 +428,16 @@ export default function OnDisplayStaffPage() {
                     type="button"
                     onClick={() => handleSelectBatch(idx)}
                     className={cn(
-                      'group flex min-h-[90px] w-full items-center gap-4 rounded-[1.5rem] border border-zinc-800/80 bg-zinc-900/40 p-4 text-left transition-all active:scale-[0.985] hover:bg-zinc-800/60',
-                      isSynced && 'border-emerald-500/20 bg-emerald-500/[0.02] opacity-80'
+                      'group flex min-h-[100px] w-full items-center gap-5 rounded-[2rem] bg-zinc-900/30 p-5 text-left transition-all active:scale-[0.985] hover:bg-zinc-900/50',
+                      isSynced && 'bg-emerald-500/[0.03] ring-1 ring-emerald-500/20 opacity-90'
                     )}
                   >
                     <div
                       className={cn(
                         'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500',
                         isSynced
-                          ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                          : 'bg-zinc-800 text-zinc-500 group-hover:text-emerald-500'
+                          ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                          : 'bg-zinc-800 text-zinc-600 group-hover:text-emerald-500'
                       )}
                     >
                       {isSynced ? (
@@ -467,85 +449,89 @@ export default function OnDisplayStaffPage() {
 
                     <div className="min-w-0 flex-1">
                       <h2 className={cn(
-                          "line-clamp-1 text-[15px] font-black leading-tight tracking-tight uppercase",
+                          "line-clamp-1 text-[16px] font-bold leading-tight tracking-tight uppercase",
                           isSynced ? "text-emerald-400" : "text-white"
                       )}>
                         {it.productName}
                       </h2>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[9px] font-black uppercase tracking-widest">
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/40 text-emerald-500 border border-white/5">
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[9px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5 text-emerald-500/60">
                           <Activity className="h-3 w-3" />
                           {it.quantity} UNITS
                         </div>
-                        <div className="flex items-center gap-1.5 text-zinc-500">
+                        <div className="flex items-center gap-1.5 text-zinc-600">
                           <MapPin className="h-3 w-3" />
                           {it.location || 'UNMAPPED'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center justify-center h-9 w-9 rounded-full bg-white/[0.035] group-hover:bg-emerald-500/10 transition-colors">
+                    <div className="shrink-0">
                        <ChevronRight className={cn(
                            "h-5 w-5 transition-all group-active:translate-x-1",
-                           isSynced ? "text-emerald-500/40" : "text-zinc-600 group-hover:text-emerald-400"
+                           isSynced ? "text-emerald-500/20" : "text-zinc-800 group-hover:text-emerald-400"
                        )} />
                     </div>
                   </button>
                 );
               })}
             </div>
+            
+            <p className="text-center text-[10px] font-black uppercase tracking-[0.4em] text-zinc-800 py-10">
+                End of Action Queue
+            </p>
           </section>
         ) : (
-          <section className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+          <section className="space-y-10 animate-in fade-in slide-in-from-right-6 duration-700">
             <button
               type="button"
               onClick={() => setView('products')}
-              className="flex items-center gap-3 px-2 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 hover:opacity-70 transition-all"
+              className="flex items-center gap-3 px-2 py-2 text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500 hover:opacity-70 transition-all"
             >
               <ArrowLeft className="h-4 w-4" strokeWidth={3} />
               Return to Queue
             </button>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="flex items-center gap-6">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-emerald-500/10 text-emerald-500 ring-4 ring-emerald-500/5">
                   <Package className="h-9 w-9" strokeWidth={2.5} />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500 mb-2">IDENTIFICATION NODE</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-500/60 mb-2">IDENTIFICATION NODE</p>
                   <h1 className="text-3xl font-black leading-[0.95] tracking-tighter uppercase sm:text-4xl text-white">
                     {currentItem?.productName}
                   </h1>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-[2rem] bg-zinc-900/40 p-6 border border-white/5">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Registry Count</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-[2rem] bg-zinc-900/20 p-6 border border-white/5 shadow-inner">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Current Count</p>
                   <p className="text-4xl font-black tabular-nums tracking-tighter leading-none text-white">{currentItem?.quantity}</p>
                 </div>
-                <div className="rounded-[2rem] bg-zinc-900/40 p-6 border border-white/5">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Current Zone</p>
-                  <p className="truncate text-sm font-black uppercase tracking-tight text-emerald-500">{currentItem?.location || 'Unmapped'}</p>
+                <div className="rounded-[2rem] bg-zinc-900/20 p-6 border border-white/5 shadow-inner">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-3">Registry Zone</p>
+                  <p className="truncate text-xs font-black uppercase tracking-tight text-emerald-500/80">{currentItem?.location || 'Unmapped'}</p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6 pt-4">
-              <div className="grid grid-cols-2 gap-3 p-1.5 rounded-[1.5rem] bg-zinc-900/40 border border-white/5">
+            <div className="space-y-10">
+              <div className="grid grid-cols-2 gap-3 p-1.5 rounded-full bg-zinc-900/30 border border-white/5">
                 <button
                   type="button"
                   onClick={() => setRequestType('edit')}
                   className={cn(
-                    'flex h-14 items-center justify-center gap-2 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest transition-all',
+                    'flex h-12 items-center justify-center gap-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all',
                     requestType === 'edit'
-                      ? 'bg-emerald-600 text-white shadow-lg'
-                      : 'text-zinc-500 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/10'
+                      : 'text-zinc-600 hover:text-white'
                   )}
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3.5 w-3.5" />
                   Adjust Node
                 </button>
 
@@ -553,21 +539,21 @@ export default function OnDisplayStaffPage() {
                   type="button"
                   onClick={() => setRequestType('delete')}
                   className={cn(
-                    'flex h-14 items-center justify-center gap-2 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest transition-all',
+                    'flex h-12 items-center justify-center gap-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all',
                     requestType === 'delete'
-                      ? 'bg-destructive text-white shadow-lg'
-                      : 'text-zinc-500 hover:text-white'
+                      ? 'bg-destructive text-white shadow-xl shadow-destructive/20'
+                      : 'text-zinc-600 hover:text-white'
                   )}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                   Purge Batch
                 </button>
               </div>
 
               {requestType === 'edit' ? (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                  <div className="space-y-3 text-center">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600">UNITS OBSERVED</Label>
+                <div className="space-y-10 animate-in fade-in duration-300">
+                  <div className="space-y-4 text-center">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-700">UNITS OBSERVED</Label>
                     <div className="relative group">
                       <Input
                         type="number"
@@ -575,32 +561,32 @@ export default function OnDisplayStaffPage() {
                         inputMode="decimal"
                         value={qty}
                         onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                        className="h-28 text-center rounded-[2.5rem] border-zinc-900 bg-zinc-900/40 text-7xl font-black tabular-nums shadow-inner focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500/30 text-white placeholder:text-zinc-800"
+                        className="h-28 text-center rounded-[2.5rem] border-none bg-zinc-900/40 text-7xl font-black tabular-nums shadow-inner focus-visible:ring-emerald-500/10 text-white placeholder:text-zinc-800"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600 ml-6">ZONE MAPPING</Label>
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-700 ml-4">ZONE MAPPING</Label>
                     <button
                       type="button"
                       onClick={() => setIsLocationPickerOpen(true)}
-                      className="relative flex h-20 w-full items-center rounded-[1.5rem] bg-zinc-900/40 border border-zinc-900 pl-16 pr-12 text-left text-sm font-black uppercase tracking-widest outline-none shadow-inner group hover:border-emerald-500/20 transition-all"
+                      className="relative flex h-16 w-full items-center rounded-full bg-zinc-900/40 border-none pl-14 pr-10 text-left text-[11px] font-black uppercase tracking-widest outline-none shadow-inner group hover:bg-zinc-900/60 transition-all"
                     >
-                      <MapPin className="absolute left-7 top-1/2 -translate-y-1/2 h-6 w-6 text-zinc-800 group-hover:text-emerald-500 transition-colors" />
+                      <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-700 group-hover:text-emerald-500 transition-colors" />
                       <span className="truncate text-white">{loc || 'Select Zone'}</span>
-                      <ChevronsUpDown className="absolute right-7 top-1/2 -translate-y-1/2 h-6 w-6 opacity-10" />
+                      <ChevronsUpDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 opacity-10" />
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="py-12 text-center animate-in zoom-in-95 duration-300 bg-destructive/[0.03] rounded-[2.5rem] border border-destructive/10">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-destructive/10 text-destructive mb-6 ring-8 ring-destructive/5">
-                    <AlertTriangle className="h-12 w-12" strokeWidth={2.5} />
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-destructive/10 text-destructive mb-6 ring-8 ring-destructive/5">
+                    <AlertTriangle className="h-10 w-10" strokeWidth={2.5} />
                   </div>
-                  <h4 className="text-2xl font-black uppercase tracking-tight text-white">Permanent Purge</h4>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mt-3 max-w-[240px] mx-auto leading-relaxed">
-                    Authorize full removal of this batch from the industrial registry.
+                  <h4 className="text-xl font-black uppercase tracking-tight text-white">Permanent Purge</h4>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mt-3 max-w-[200px] mx-auto leading-relaxed">
+                    Authorize removal of this node from the registry.
                   </p>
                 </div>
               )}
@@ -609,7 +595,7 @@ export default function OnDisplayStaffPage() {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={cn(
-                  'h-20 w-full rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] mt-4',
+                  'h-20 w-full rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] mt-4 border-none',
                   requestType === 'delete'
                     ? 'bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20'
                     : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10'
@@ -630,25 +616,25 @@ export default function OnDisplayStaffPage() {
       </main>
 
       {/* FIXED PROGRESS HUB */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-900/80 bg-black/95 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-2xl items-center gap-8">
-          <div className="flex min-w-0 flex-1 items-center gap-5">
-            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
-              <svg className="h-14 w-14 -rotate-90 transition-all duration-700">
-                <circle cx="28" cy="28" r="25" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-zinc-900" />
-                <circle cx="28" cy="28" r="25" fill="transparent" stroke="currentColor" strokeWidth="4" strokeDasharray={`${2 * Math.PI * 25}`} strokeDashoffset={`${2 * Math.PI * 25 * (1 - progress / 100)}`} className="text-emerald-500 transition-all duration-1000 ease-in-out" />
+      <div className="fixed inset-x-0 bottom-0 z-50 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
+        <div className="mx-auto flex max-w-[360px] items-center gap-6 bg-zinc-900/90 border border-white/5 p-4 rounded-full backdrop-blur-3xl shadow-3xl">
+          <div className="flex min-w-0 flex-1 items-center gap-4 pl-2">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
+              <svg className="h-11 w-11 -rotate-90 transition-all duration-700">
+                <circle cx="22" cy="22" r="19" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-zinc-800" />
+                <circle cx="22" cy="22" r="19" fill="transparent" stroke="currentColor" strokeWidth="3" strokeDasharray={`${2 * Math.PI * 19}`} strokeDashoffset={`${2 * Math.PI * 19 * (1 - progress / 100)}`} className="text-emerald-500 transition-all duration-1000 ease-in-out" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[11px] font-black tabular-nums text-white">{progress}%</span>
+                <span className="text-[10px] font-black tabular-nums text-white">{progress}%</span>
               </div>
             </div>
 
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-700">
-                PROTOCOL PROGRESS
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-600">
+                STATUS
               </p>
-              <p className="truncate text-sm font-black uppercase tracking-tight text-zinc-400">
-                {syncedItemIds.size} / {items.length} VERIFIED
+              <p className="truncate text-[11px] font-bold uppercase tracking-tight text-zinc-400">
+                {syncedItemIds.size} / {items.length} Synced
               </p>
             </div>
           </div>
@@ -656,14 +642,14 @@ export default function OnDisplayStaffPage() {
           <Button
             onClick={handleFinalize}
             disabled={isFinalizing || syncedItemIds.size === 0}
-            className="h-14 shrink-0 rounded-full bg-emerald-600 px-8 text-[11px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-20 transition-all shadow-xl shadow-emerald-500/10"
+            className="h-12 shrink-0 rounded-full bg-emerald-600 px-6 text-[10px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-20 transition-all shadow-xl shadow-emerald-500/10 border-none"
           >
             {isFinalizing ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span>Finalize</span>
-                <Check className="h-4 w-4" strokeWidth={4} />
+                <Check className="h-3.5 w-3.5" strokeWidth={4} />
               </div>
             )}
           </Button>
