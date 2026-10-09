@@ -74,8 +74,8 @@ export default function ManualHandshakePage() {
                     <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 ring-8 ring-primary/5 shadow-2xl shadow-primary/10">
                         <SmartphoneNfc className="h-10 w-10 text-primary" strokeWidth={1.5} />
                     </div>
-                    <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">
-                        Registry <span className="text-primary">Handshake</span>
+                    <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
+                        Registry <br/> <span className="text-primary">Handshake</span>
                     </h1>
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
                         Secure Industrial Identification
@@ -87,10 +87,9 @@ export default function ManualHandshakePage() {
                         <div className="space-y-6">
                             <div className="space-y-2">
                                 <Label htmlFor="handshake-pin" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                                    Security PIN (From SMS)
+                                    Access Key (SMS PIN)
                                 </Label>
                                 <div className="relative group">
-                                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                                     <Input 
                                         id="handshake-pin"
                                         type="text"
@@ -104,17 +103,20 @@ export default function ManualHandshakePage() {
                                             setError('');
                                         }}
                                         onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-                                        className="h-14 rounded-2xl bg-muted/20 border-none pl-11 text-2xl font-black tracking-[0.5em] text-center placeholder:tracking-normal placeholder:text-muted-foreground/20 focus-visible:ring-primary/20 shadow-inner"
+                                        className={cn(
+                                            "h-24 rounded-3xl bg-muted/20 border-none text-5xl font-black tracking-[0.5em] text-center placeholder:tracking-normal placeholder:text-muted-foreground/10 focus-visible:ring-primary/20 shadow-inner transition-all",
+                                            error && "bg-destructive/10 ring-2 ring-destructive/20"
+                                        )}
                                         autoFocus
                                     />
                                 </div>
-                                <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter ml-1">
+                                <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter ml-1 text-center">
                                     Enter the 4-digit code provided in your SMS alert.
                                 </p>
                             </div>
 
                             {error && (
-                                <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 animate-in shake-in duration-300">
+                                <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-destructive/10 text-destructive border border-destructive/10 animate-in shake-in duration-300">
                                     <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
                                     <p className="text-[10px] font-bold leading-relaxed uppercase tracking-tighter">{error}</p>
                                 </div>
@@ -139,19 +141,19 @@ export default function ManualHandshakePage() {
                 ) : (
                     <Card className="rounded-[2.5rem] border-primary/20 bg-primary/[0.04] backdrop-blur-xl p-6 sm:p-8 shadow-3xl animate-in zoom-in-95 duration-500">
                         <div className="text-center space-y-6">
-                            <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
+                            <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner">
                                 <UserCheck className="h-8 w-8" strokeWidth={2} />
                             </div>
                             
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Identity Confirmed</p>
-                                <h2 className="text-2xl font-black uppercase tracking-tight text-foreground">{identifiedStaff.name}</h2>
+                                <h2 className="text-3xl font-black uppercase tracking-tight text-foreground">{identifiedStaff.name}</h2>
                             </div>
 
                             <div className="p-4 bg-background/60 rounded-2xl border border-primary/10 flex items-start gap-3 text-left">
                                 <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                                 <p className="text-[10px] font-bold text-muted-foreground leading-relaxed uppercase tracking-tighter">
-                                    Security session identified. Tapping "Open Terminal" will load your specific batch nodes from the registry.
+                                    Authorized session identified. Proceed to the terminal to load your specific batch nodes from the industrial registry.
                                 </p>
                             </div>
 
@@ -184,7 +186,7 @@ export default function ManualHandshakePage() {
                     
                     <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20">
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        Registry Handshake Protocol v2.0
+                        Industrial Protocol v2.5
                     </div>
                 </div>
             </div>
