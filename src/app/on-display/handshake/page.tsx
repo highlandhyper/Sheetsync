@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { verifyOnDisplayPinOnlyAction } from '@/app/actions';
 import { 
@@ -32,14 +32,17 @@ export default function ManualHandshakePage() {
     const [pin, setPin] = useState('');
     const [error, setError] = useState('');
     const [identifiedStaff, setIdentifiedStaff] = useState<{ name: string; token: string } | null>(null);
+    
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    const handleVerify = async () => {
-        if (pin.length < 4) return;
+    const handleVerify = async (val?: string) => {
+        const pinToVerify = val || pin;
+        if (pinToVerify.length < 4) return;
 
         setError('');
         startTransition(async () => {
             try {
-                const res = await verifyOnDisplayPinOnlyAction(pin);
+                const res = await verifyOnDisplayPinOnlyAction(pinToVerify);
                 if (res.success && res.data) {
                     setIdentifiedStaff({
                         name: res.data.staffName,
@@ -51,6 +54,8 @@ export default function ManualHandshakePage() {
                     });
                 } else {
                     setError(res.message || "Invalid Access Key.");
+                    setPin('');
+                    inputRef.current?.focus();
                 }
             } catch (e) {
                 setError("Registry connection failure. Try again.");
@@ -63,130 +68,140 @@ export default function ManualHandshakePage() {
         router.push(`/on-display/${identifiedStaff.token}?pin=${pin}`);
     };
 
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+        setPin(val);
+        setError('');
+        if (val.length === 4) {
+            handleVerify(val);
+        }
+    };
+
+    // Auto-focus on mount
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, []);
+
     return (
-        <div className="min-h-[100dvh] bg-background relative overflow-hidden flex flex-col items-center justify-center p-5">
+        <div className="min-h-[100dvh] bg-[#09090b] relative overflow-hidden flex flex-col items-center justify-center p-6 sm:p-8">
             {/* ATMOSPHERIC LAYER */}
-            <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-
-            <div className="relative z-10 w-full max-w-sm space-y-8 animate-in fade-in zoom-in-95 duration-700">
-                <div className="text-center space-y-3">
-                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 ring-8 ring-primary/5 shadow-2xl shadow-primary/10">
-                        <SmartphoneNfc className="h-10 w-10 text-primary" strokeWidth={1.5} />
-                    </div>
-                    <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
-                        Registry <br/> <span className="text-primary">Handshake</span>
-                    </h1>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
-                        Secure Industrial Identification
-                    </p>
-                </div>
-
+            <div className="absolute inset-0 bg-tech-grid opacity-10 pointer-events-none" />
+            
+            <div className="relative z-10 w-full max-w-sm space-y-12 animate-in fade-in zoom-in-95 duration-700">
                 {!identifiedStaff ? (
-                    <Card className="rounded-[2.5rem] border-border/60 bg-card/70 backdrop-blur-xl p-6 sm:p-8 shadow-3xl animate-in fade-in duration-500">
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="handshake-pin" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                                    Access Key (SMS PIN)
-                                </Label>
-                                <div className="relative group">
-                                    <Input 
-                                        id="handshake-pin"
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={4}
-                                        placeholder="••••"
-                                        value={pin}
-                                        onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, '');
-                                            setPin(val);
-                                            setError('');
-                                        }}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                    <div className="space-y-10">
+                        {/* HEADER */}
+                        <div className="space-y-4">
+                            <h1 className="text-4xl font-bold tracking-tight text-white">
+                                Confirmation
+                            </h1>
+                            <p className="text-sm font-medium text-zinc-500 leading-relaxed">
+                                Enter the 4-digit industrial access key dispatched to your terminal node via SMS.
+                            </p>
+                        </div>
+
+                        {/* PIN INPUT GROUP */}
+                        <div className="space-y-8">
+                            <div className="relative flex justify-between gap-3 sm:gap-4">
+                                {[0, 1, 2, 3].map((index) => (
+                                    <div
+                                        key={index}
                                         className={cn(
-                                            "h-24 rounded-3xl bg-muted/20 border-none text-5xl font-black tracking-[0.5em] text-center placeholder:tracking-normal placeholder:text-muted-foreground/10 focus-visible:ring-primary/20 shadow-inner transition-all",
-                                            error && "bg-destructive/10 ring-2 ring-destructive/20"
+                                            "flex-1 h-20 sm:h-24 rounded-[1.25rem] flex items-center justify-center text-3xl sm:text-4xl font-bold transition-all duration-200",
+                                            "bg-zinc-900/50 border-2",
+                                            pin.length === index && !error ? "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(41,171,226,0.1)]" : "border-transparent",
+                                            error ? "border-destructive/30" : ""
                                         )}
-                                        autoFocus
-                                    />
-                                </div>
-                                <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter ml-1 text-center">
-                                    Enter the 4-digit code provided in your SMS alert.
-                                </p>
+                                    >
+                                        {pin[index] ? (
+                                            <span className="text-white animate-in zoom-in-75 duration-200">{pin[index]}</span>
+                                        ) : (
+                                            <div className={cn(
+                                                "h-1.5 w-1.5 rounded-full bg-zinc-800",
+                                                pin.length === index && "animate-pulse bg-primary/40"
+                                            )} />
+                                        )}
+                                    </div>
+                                ))}
+                                
+                                {/* HIDDEN INPUT FOR CONTROL */}
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    value={pin}
+                                    onChange={handleInputChange}
+                                    className="absolute inset-0 opacity-0 cursor-default"
+                                    autoFocus
+                                />
                             </div>
 
                             {error && (
-                                <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-destructive/10 text-destructive border border-destructive/10 animate-in shake-in duration-300">
-                                    <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
-                                    <p className="text-[10px] font-bold leading-relaxed uppercase tracking-tighter">{error}</p>
+                                <div className="flex items-start gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/10 animate-in shake-in duration-300">
+                                    <ShieldAlert className="h-5 w-5 shrink-0" />
+                                    <p className="text-xs font-bold leading-relaxed uppercase tracking-tight">{error}</p>
                                 </div>
                             )}
 
-                            <Button 
-                                onClick={handleVerify}
-                                disabled={pin.length < 4 || isVerifying}
-                                className="w-full h-16 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
-                            >
-                                {isVerifying ? (
-                                    <Loader2 className="h-6 w-6 animate-spin" />
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <span>Verify Identity</span>
-                                        <ChevronRight className="h-5 w-5" />
-                                    </div>
-                                )}
-                            </Button>
-                        </div>
-                    </Card>
-                ) : (
-                    <Card className="rounded-[2.5rem] border-primary/20 bg-primary/[0.04] backdrop-blur-xl p-6 sm:p-8 shadow-3xl animate-in zoom-in-95 duration-500">
-                        <div className="text-center space-y-6">
-                            <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner">
-                                <UserCheck className="h-8 w-8" strokeWidth={2} />
-                            </div>
-                            
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Identity Confirmed</p>
-                                <h2 className="text-3xl font-black uppercase tracking-tight text-foreground">{identifiedStaff.name}</h2>
-                            </div>
-
-                            <div className="p-4 bg-background/60 rounded-2xl border border-primary/10 flex items-start gap-3 text-left">
-                                <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                                <p className="text-[10px] font-bold text-muted-foreground leading-relaxed uppercase tracking-tighter">
-                                    Authorized session identified. Proceed to the terminal to load your specific batch nodes from the industrial registry.
-                                </p>
-                            </div>
-
-                            <Button 
-                                onClick={handleProceed}
-                                className="w-full h-16 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl bg-primary text-white hover:bg-primary/90 shadow-primary/20 transition-all active:scale-[0.98]"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Check className="h-5 w-5" strokeWidth={3} />
-                                    <span>Open Terminal</span>
+                            {isVerifying && (
+                                <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verifying Identity...</span>
                                 </div>
-                            </Button>
-
-                            <button 
-                                onClick={() => { setIdentifiedStaff(null); setPin(''); }}
-                                className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-destructive transition-colors"
-                            >
-                                Not {identifiedStaff.name}? Switch PIN
-                            </button>
+                            )}
                         </div>
-                    </Card>
+                    </div>
+                ) : (
+                    <div className="space-y-10 text-center animate-in zoom-in-95 duration-500">
+                        <div className="mx-auto w-24 h-24 bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center text-emerald-500 shadow-inner">
+                            <UserCheck className="h-10 w-10" strokeWidth={2.5} />
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Identity Confirmed</p>
+                            <h2 className="text-4xl font-bold tracking-tight text-white">{identifiedStaff.name}</h2>
+                        </div>
+
+                        <div className="p-6 bg-zinc-900/50 rounded-3xl border border-zinc-800 flex items-start gap-4 text-left">
+                            <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                            <p className="text-xs font-medium text-zinc-400 leading-relaxed">
+                                Authorized session identified. Proceed to the terminal to load your specific batch nodes from the industrial registry.
+                            </p>
+                        </div>
+
+                        <Button 
+                            onClick={handleProceed}
+                            className="w-full h-16 rounded-[1.5rem] text-sm font-black uppercase tracking-widest shadow-2xl bg-primary text-white hover:bg-primary/90 shadow-primary/20 transition-all active:scale-[0.98]"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Check className="h-5 w-5" strokeWidth={3} />
+                                <span>Open Terminal</span>
+                            </div>
+                        </Button>
+
+                        <button 
+                            onClick={() => { setIdentifiedStaff(null); setPin(''); setTimeout(() => inputRef.current?.focus(), 100); }}
+                            className="text-[10px] font-black uppercase tracking-widest text-zinc-600 hover:text-destructive transition-colors"
+                        >
+                            Switch Identity Key
+                        </button>
+                    </div>
                 )}
 
-                <div className="pt-4 flex flex-col items-center gap-6">
-                    <Button variant="ghost" asChild className="h-10 rounded-xl px-4 text-muted-foreground/60 hover:text-foreground">
-                        <Link href="/login">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Return to Login
-                        </Link>
-                    </Button>
+                {/* FOOTER */}
+                <div className="pt-8 flex flex-col items-center gap-8">
+                    {!identifiedStaff && (
+                        <Button variant="ghost" asChild className="h-10 rounded-xl px-4 text-zinc-600 hover:text-white hover:bg-white/5 transition-colors">
+                            <Link href="/login">
+                                <ArrowLeft className="mr-2 h-4 w-4" /> Return to Portal
+                            </Link>
+                        </Button>
+                    )}
                     
-                    <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Industrial Protocol v2.5
+                    <div className="flex items-center justify-center gap-2.5 text-[8px] font-black uppercase tracking-[0.5em] text-zinc-800">
+                        <ShieldCheck className="h-3 w-3" />
+                        Industrial Protocol v3.0
                     </div>
                 </div>
             </div>

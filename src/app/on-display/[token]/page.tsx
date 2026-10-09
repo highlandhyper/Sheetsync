@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
@@ -92,6 +93,7 @@ export default function OnDisplayStaffPage() {
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
   const verificationProcessedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // AUTO-HANDSHAKE: If a PIN is provided in the URL (from the Handshake page), verify automatically
   useEffect(() => {
@@ -148,11 +150,22 @@ export default function OnDisplayStaffPage() {
         });
       } else {
         setErrorMessage(res.message || 'Access Key rejection. Registry protocol failed.');
+        setAccessKey('');
+        inputRef.current?.focus();
       }
     } catch {
       setErrorMessage('Handshake handshake timeout. Please check your signal.');
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setAccessKey(val);
+    setErrorMessage('');
+    if (val.length === 4) {
+        handleVerify(val);
     }
   };
 
@@ -225,7 +238,7 @@ export default function OnDisplayStaffPage() {
 
   if (success) {
     return (
-      <div className="min-h-[100dvh] bg-background px-5 py-8 sm:flex sm:items-center sm:justify-center">
+      <div className="min-h-[100dvh] bg-[#09090b] px-5 py-8 sm:flex sm:items-center sm:justify-center">
         <div className="absolute inset-0 bg-tech-grid opacity-10" />
         <div className="mx-auto flex w-full max-w-md flex-col items-center text-center relative z-10">
           <div className="mb-7 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-emerald-500/10 ring-8 ring-emerald-500/5">
@@ -239,21 +252,21 @@ export default function OnDisplayStaffPage() {
             Registry Nominal
           </Badge>
 
-          <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
+          <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-white">
             PROTOCOL <br/> <span className="text-emerald-500">COMPLETE</span>
           </h1>
-          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-muted-foreground">
+          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-zinc-500">
             Identity handshake terminated. Your inventory adjustments have been synchronized with the master registry.
           </p>
 
-          <Card className="mt-8 w-full rounded-[2rem] border-border/60 bg-card p-6 text-left shadow-sm">
+          <Card className="mt-8 w-full rounded-[2rem] border-zinc-800 bg-zinc-900/50 p-6 text-left shadow-sm">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10">
                 <CheckCircle2 className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm font-black uppercase tracking-tight">Security Handshake</p>
-                <p className="mt-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <p className="text-sm font-black uppercase tracking-tight text-white">Security Handshake</p>
+                <p className="mt-0.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                   Access Key Expired & Logged
                 </p>
               </div>
@@ -262,7 +275,7 @@ export default function OnDisplayStaffPage() {
 
           <Button
             variant="outline"
-            className="mt-6 h-14 w-full rounded-2xl font-black uppercase tracking-widest text-[10px]"
+            className="mt-6 h-14 w-full rounded-2xl font-black uppercase tracking-widest text-[10px] border-zinc-800 text-zinc-400 hover:text-white"
             onClick={() => window.close()}
           >
             Close Portal
@@ -274,84 +287,78 @@ export default function OnDisplayStaffPage() {
 
   if (!isVerified) {
     return (
-      <div className="min-h-[100dvh] bg-background px-5 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
+      <div className="min-h-[100dvh] bg-[#09090b] px-6 py-8 sm:flex sm:items-center sm:justify-center overflow-hidden">
         {/* ATMOSPHERIC LAYER */}
-        <div className="absolute inset-0 bg-tech-grid opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute inset-0 bg-tech-grid opacity-10 pointer-events-none" />
 
-        <div className="mx-auto flex w-full max-w-md flex-col relative z-10 animate-in fade-in zoom-in-95 duration-700">
-          <div className="pt-8 text-center sm:pt-0">
-            <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 ring-8 ring-primary/5 shadow-2xl shadow-primary/10">
-                <Image src="/logo-pwa.jpg" alt="Logo" width={60} height={60} className="rounded-2xl" />
+        <div className="mx-auto flex w-full max-w-sm flex-col relative z-10 animate-in fade-in zoom-in-95 duration-700">
+            <div className="space-y-12">
+                {/* HEADER */}
+                <div className="space-y-4">
+                    <h1 className="text-4xl font-bold tracking-tight text-white">
+                        Confirmation
+                    </h1>
+                    <p className="text-sm font-medium text-zinc-500 leading-relaxed">
+                        Enter the 4-digit industrial access key dispatched to your terminal node via SMS.
+                    </p>
+                </div>
+
+                {/* PIN INPUT GROUP */}
+                <div className="space-y-8">
+                    <div className="relative flex justify-between gap-3 sm:gap-4">
+                        {[0, 1, 2, 3].map((index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "flex-1 h-20 sm:h-24 rounded-[1.25rem] flex items-center justify-center text-3xl sm:text-4xl font-bold transition-all duration-200",
+                                    "bg-zinc-900/50 border-2",
+                                    accessKey.length === index && !errorMessage ? "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(41,171,226,0.1)]" : "border-transparent",
+                                    errorMessage ? "border-destructive/30" : ""
+                                )}
+                            >
+                                {accessKey[index] ? (
+                                    <span className="text-white animate-in zoom-in-75 duration-200">{accessKey[index]}</span>
+                                ) : (
+                                    <div className={cn(
+                                        "h-1.5 w-1.5 rounded-full bg-zinc-800",
+                                        accessKey.length === index && "animate-pulse bg-primary/40"
+                                    )} />
+                                )}
+                            </div>
+                        ))}
+                        
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={accessKey}
+                            onChange={handleInputChange}
+                            className="absolute inset-0 opacity-0 cursor-default"
+                            autoFocus
+                        />
+                    </div>
+
+                    {errorMessage && (
+                        <div className="flex items-start gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/10 animate-in shake-in duration-300">
+                            <ShieldAlert className="h-5 w-5 shrink-0" />
+                            <p className="text-xs font-bold leading-relaxed uppercase tracking-tight">{errorMessage}</p>
+                        </div>
+                    )}
+
+                    {isVerifying && (
+                        <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verifying Identity...</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="pt-8 flex items-center justify-center gap-2.5 text-[8px] font-black uppercase tracking-[0.5em] text-zinc-800">
+                    <ShieldCheck className="h-3 w-3" />
+                    SECURE INDUSTRIAL PORTAL
+                </div>
             </div>
-
-            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
-              REGISTRY <br/> <span className="text-primary">HANDSHAKE</span>
-            </h1>
-            <p className="mx-auto mt-4 max-w-xs text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-50">
-              Identity Verification Required
-            </p>
-          </div>
-
-          <Card className="mt-10 rounded-[2.5rem] border-border/60 bg-card/70 backdrop-blur-xl p-6 sm:p-8 shadow-3xl">
-            <div className="space-y-6">
-              <div>
-                <Label
-                  htmlFor="access-key"
-                  className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-1"
-                >
-                  One-Time PIN
-                </Label>
-
-                <Input
-                  id="access-key"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={4}
-                  autoFocus
-                  placeholder="••••"
-                  value={accessKey}
-                  onChange={(e) => {
-                    setAccessKey(e.target.value.replace(/\D/g, ''));
-                    setErrorMessage('');
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-                  className={cn(
-                    'mt-3 h-24 rounded-3xl border-none bg-muted/20 text-center text-5xl font-black tracking-[0.5em] tabular-nums shadow-inner focus-visible:ring-primary/20 transition-all',
-                    errorMessage && 'bg-destructive/10 ring-2 ring-destructive/20'
-                  )}
-                />
-
-                {errorMessage && (
-                  <div className="mt-4 flex items-start gap-3 rounded-2xl bg-destructive/10 p-4 text-destructive border border-destructive/10 animate-in shake-in duration-300">
-                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p className="text-[10px] font-bold leading-relaxed uppercase tracking-tighter">{errorMessage}</p>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                onClick={() => handleVerify()}
-                disabled={accessKey.length < 4 || isVerifying}
-                className="h-16 w-full rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
-              >
-                {isVerifying ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                ) : (
-                  <>
-                    Confirm Identity
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </Card>
-
-          <div className="mt-10 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/20">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            SECURE INDUSTRIAL PORTAL
-          </div>
         </div>
       </div>
     );
@@ -846,3 +853,4 @@ export default function OnDisplayStaffPage() {
     </div>
   );
 }
+
