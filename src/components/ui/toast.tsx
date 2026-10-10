@@ -29,7 +29,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed inset-x-0 top-2 z-[100] flex max-h-screen w-full flex-col gap-2 px-2 sm:inset-x-auto sm:right-4 sm:top-4 sm:w-[390px] sm:px-0",
+      "fixed inset-x-0 top-2 z-[100] flex max-h-screen w-full flex-col gap-2 px-2 sm:inset-x-auto sm:right-4 sm:top-4 sm:w-[380px] sm:px-0",
       className,
     )}
     {...props}
@@ -40,9 +40,11 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 const toastVariants = cva(
   [
     "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden",
-    "rounded-2xl border p-4 pr-10",
-    "bg-background/95 text-foreground shadow-xl shadow-black/[0.08]",
-    "supports-[backdrop-filter]:bg-background/80 supports-[backdrop-filter]:backdrop-blur-xl",
+    "rounded-xl border p-4 pr-10",
+    "bg-white/95 dark:bg-neutral-950/95 text-black dark:text-white",
+    "border-neutral-200 dark:border-white/10",
+    "shadow-lg shadow-black/[0.06] dark:shadow-black/40",
+    "supports-[backdrop-filter]:backdrop-blur-xl",
     "transition-all",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
@@ -54,10 +56,9 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "border-border/60",
+        default: "",
         destructive:
-          "destructive border-destructive/20 bg-destructive/[0.06] text-foreground",
+          "border-red-200 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/10",
       },
     },
     defaultVariants: {
@@ -88,10 +89,12 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/70 px-3 text-xs font-semibold",
-      "transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-3 text-[12px] font-medium",
+      "text-neutral-700 dark:text-neutral-300",
+      "transition-colors hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white",
+      "focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-white/20",
       "disabled:pointer-events-none disabled:opacity-50",
-      "group-[.destructive]:border-destructive/20 group-[.destructive]:hover:bg-destructive/10 group-[.destructive]:hover:text-destructive",
+      "group-[.destructive]:border-red-200 dark:group-[.destructive]:border-red-500/20 group-[.destructive]:hover:bg-red-50 dark:group-[.destructive]:hover:bg-red-500/10 group-[.destructive]:hover:text-red-600 dark:group-[.destructive]:hover:text-red-400",
       className,
     )}
     {...props}
@@ -107,14 +110,15 @@ const ToastClose = React.forwardRef<
     ref={ref}
     toast-close=""
     className={cn(
-      "absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-lg",
-      "text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground",
-      "focus:outline-none focus:ring-2 focus:ring-ring",
+      "absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg",
+      "text-neutral-400 dark:text-neutral-500 transition-colors",
+      "hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white",
+      "focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-white/20",
       className,
     )}
     {...props}
   >
-    <X className="h-4 w-4" />
+    <X className="h-3.5 w-3.5" strokeWidth={1.75} />
     <span className="sr-only">Close notification</span>
   </ToastPrimitives.Close>
 ))
@@ -122,7 +126,7 @@ ToastClose.displayName = ToastPrimitives.Close.displayName
 
 function getToastIcon(
   children: React.ReactNode,
-  variant?: "default" | "destructive",
+  variant?: "default" | "destructive" | null,
 ) {
   if (variant === "destructive") {
     return AlertCircle
@@ -136,7 +140,8 @@ function getToastIcon(
     text.includes("registered") ||
     text.includes("applied") ||
     text.includes("complete") ||
-    text.includes("logged")
+    text.includes("logged") ||
+    text.includes("unlocked")
   ) {
     return CheckCircle2
   }
@@ -145,7 +150,7 @@ function getToastIcon(
     return RefreshCw
   }
 
-  if (text.includes("unlocked") || text.includes("authorized")) {
+  if (text.includes("authorized")) {
     return ShieldCheck
   }
 
@@ -191,33 +196,37 @@ function getToastIcon(
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & {
-    variant?: "default" | "destructive"
+    variant?: "default" | "destructive" | null
   }
 >(({ className, variant, children, ...props }, ref) => {
   const Icon = getToastIcon(children, variant)
   const isRefreshing = Icon === RefreshCw
+  const isDestructive = variant === "destructive"
 
   return (
     <ToastPrimitives.Title
       ref={ref}
       className={cn(
-        "flex min-w-0 items-start gap-3 text-sm font-semibold leading-5",
+        "flex min-w-0 items-start gap-3 text-[14px] font-medium leading-5",
         className,
       )}
       {...props}
     >
       <div
         className={cn(
-          "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
-          variant === "destructive"
-            ? "border-destructive/15 bg-destructive/10 text-destructive"
-            : "border-primary/15 bg-primary/10 text-primary",
+          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+          isDestructive
+            ? "border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400"
+            : "border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-600 dark:text-neutral-300",
         )}
       >
-        <Icon className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+        <Icon
+          className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+          strokeWidth={1.75}
+        />
       </div>
 
-      <span className="min-w-0 flex-1 break-words pr-1">
+      <span className="min-w-0 flex-1 break-words pr-1 pt-1">
         {children}
       </span>
     </ToastPrimitives.Title>
@@ -232,7 +241,7 @@ const ToastDescription = React.forwardRef<
   <ToastPrimitives.Description
     ref={ref}
     className={cn(
-      "ml-12 -mt-1 text-xs leading-5 text-muted-foreground",
+      "ml-11 -mt-0.5 text-[13px] leading-5 text-neutral-500 dark:text-neutral-400",
       className,
     )}
     {...props}

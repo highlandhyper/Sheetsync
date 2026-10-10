@@ -9,12 +9,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
-  ShieldCheck,
-  KeyRound,
   Loader2,
   RefreshCw,
   AlertCircle,
@@ -60,10 +57,7 @@ export function SpecialEntryActivationDialog({
     let timer: NodeJS.Timeout;
 
     if (resendCooldown > 0) {
-      timer = setTimeout(
-        () => setResendCooldown(resendCooldown - 1),
-        1000
-      );
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
     }
 
     return () => clearTimeout(timer);
@@ -71,9 +65,7 @@ export function SpecialEntryActivationDialog({
 
   const handleActivate = async () => {
     setIsVerifying(true);
-
     const success = await onActivate(otp);
-
     setIsVerifying(false);
 
     if (success) {
@@ -81,7 +73,6 @@ export function SpecialEntryActivationDialog({
         title: 'Silent Mode Activated',
         description: `Authorization confirmed for ${session.staffName}.`,
       });
-
       onOpenChange(false);
     } else {
       setIsError(true);
@@ -91,9 +82,7 @@ export function SpecialEntryActivationDialog({
 
   const handleResend = async () => {
     setIsResending(true);
-
     const success = await onResend();
-
     setIsResending(false);
 
     if (success) {
@@ -101,7 +90,6 @@ export function SpecialEntryActivationDialog({
         title: 'New Key Dispatched',
         description: 'Identity key routed to mobile terminal.',
       });
-
       setResendCooldown(30);
       setOtp('');
       setIsError(false);
@@ -120,56 +108,52 @@ export function SpecialEntryActivationDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-border/60 bg-background p-0 shadow-2xl sm:max-w-[440px]"
+        className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl sm:max-w-[420px]"
         onPointerDownOutside={(event) => event.preventDefault()}
       >
         {/* Header */}
-        <div className="border-b border-border/50 bg-muted/20 px-4 py-4 sm:px-5 sm:py-5">
+        <div className="border-b border-neutral-100 dark:border-white/5 px-5 py-5">
           <DialogHeader className="space-y-0 text-left">
             <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-[18px] w-[18px]" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5">
+                <LockKeyhole
+                  className="h-[18px] w-[18px] text-neutral-700 dark:text-neutral-300"
+                  strokeWidth={1.75}
+                />
               </div>
 
               <div className="min-w-0 flex-1">
-                <DialogTitle className="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                <DialogTitle className="text-base font-semibold tracking-tight text-black dark:text-white sm:text-lg">
                   Verify access
                 </DialogTitle>
-
-                <DialogDescription className="mt-1 text-[10px] font-medium leading-4 text-muted-foreground sm:text-[11px]">
-                  Enter the 4-digit security key sent to the authorized mobile number.
+                <DialogDescription className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400 leading-snug">
+                  Enter the 4-digit security key sent to the authorized mobile
+                  number.
                 </DialogDescription>
-              </div>
-
-              <div className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2 py-1 text-[8px] font-semibold text-emerald-600 sm:flex">
-                <LockKeyhole className="h-3 w-3" />
-                Secure
               </div>
             </div>
           </DialogHeader>
         </div>
 
-        <div className="space-y-4 p-4 sm:p-5">
+        <div className="space-y-5 p-5">
           {/* Session identity */}
-          <div className="grid min-w-0 grid-cols-2 gap-2">
-            <div className="min-w-0 rounded-xl bg-muted/30 px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                <UserRound className="h-3 w-3" />
+          <div className="grid min-w-0 grid-cols-2 gap-2.5">
+            <div className="min-w-0 rounded-xl bg-neutral-50 dark:bg-white/5 px-3.5 py-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <UserRound className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Personnel
               </div>
-
-              <p className="mt-1 truncate text-[10px] font-semibold text-foreground sm:text-[11px]">
+              <p className="mt-1.5 truncate text-[13px] font-medium text-black dark:text-white">
                 {displayStaffName}
               </p>
             </div>
 
-            <div className="min-w-0 rounded-xl bg-muted/30 px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                <Smartphone className="h-3 w-3" />
+            <div className="min-w-0 rounded-xl bg-neutral-50 dark:bg-white/5 px-3.5 py-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Smartphone className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Delivery
               </div>
-
-              <p className="mt-1 truncate text-[10px] font-semibold text-foreground sm:text-[11px]">
+              <p className="mt-1.5 truncate text-[13px] font-medium text-black dark:text-white">
                 SMS Gateway
               </p>
             </div>
@@ -180,64 +164,56 @@ export function SpecialEntryActivationDialog({
             <div className="flex items-center justify-between gap-3">
               <Label
                 htmlFor="special-entry-otp"
-                className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+                className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
               >
                 Security key
               </Label>
-
-              <span className="text-[8px] font-medium text-muted-foreground">
+              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 4 digits
               </span>
             </div>
 
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
-
-              <Input
-                id="special-entry-otp"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={4}
-                value={otp}
-                disabled={isBusy}
-                onChange={(event) => {
-                  setIsError(false);
-
-                  const value = event.target.value.replace(/[^0-9]/g, '');
-
-                  setOtp(value);
-                }}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === 'Enter' &&
-                    otp.length === 4 &&
-                    !isBusy
-                  ) {
-                    handleActivate();
-                  }
-                }}
-                placeholder="••••"
-                autoFocus
-                className={cn(
-                  'h-14 rounded-xl border-border/60 bg-background pl-10 pr-3 text-center font-mono text-2xl font-bold tracking-[0.35em] shadow-none',
-                  'placeholder:tracking-[0.35em] placeholder:text-muted-foreground/30',
-                  isError
-                    ? 'border-destructive bg-destructive/[0.025] text-destructive focus-visible:ring-destructive/20'
-                    : 'focus-visible:border-primary focus-visible:ring-primary/15'
-                )}
-              />
-            </div>
+            <input
+              id="special-entry-otp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              value={otp}
+              disabled={isBusy}
+              onChange={(event) => {
+                setIsError(false);
+                const value = event.target.value.replace(/[^0-9]/g, '');
+                setOtp(value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && otp.length === 4 && !isBusy) {
+                  handleActivate();
+                }
+              }}
+              placeholder="••••"
+              autoFocus
+              className={cn(
+                'w-full h-14 rounded-xl border text-center font-mono text-2xl font-semibold tracking-[0.4em]',
+                'bg-neutral-50 dark:bg-white/5',
+                'border-neutral-200 dark:border-white/10',
+                'text-black dark:text-white',
+                'placeholder:tracking-[0.4em] placeholder:text-neutral-300 dark:placeholder:text-neutral-600',
+                'outline-none transition-all',
+                'focus:border-neutral-400 dark:focus:border-white/25 focus:ring-0',
+                isError &&
+                  'border-red-400/60 dark:border-red-400/40 bg-red-50/50 dark:bg-red-500/5 text-red-600 dark:text-red-400'
+              )}
+            />
 
             {isError && (
-              <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-destructive">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 px-3.5 py-3 text-red-600 dark:text-red-400">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold">
+                  <p className="text-[13px] font-medium">
                     Security key not accepted
                   </p>
-                  <p className="mt-0.5 text-[8px] leading-3.5 opacity-80">
+                  <p className="mt-0.5 text-[12px] leading-snug opacity-80">
                     Check the latest SMS and enter the current 4-digit key.
                   </p>
                 </div>
@@ -249,19 +225,18 @@ export function SpecialEntryActivationDialog({
           {verificationAttempts > 0 && !isResending && (
             <div
               className={cn(
-                'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5',
+                'flex min-w-0 items-center gap-2.5 rounded-xl px-3.5 py-3',
                 verificationAttempts >= 2
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                  ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                  : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
               )}
             >
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-
+              <AlertCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-semibold">
+                <p className="text-[13px] font-medium">
                   Attempt {verificationAttempts} of 3
                 </p>
-                <p className="mt-0.5 text-[8px] leading-3.5 opacity-80">
+                <p className="mt-0.5 text-[12px] leading-snug opacity-80">
                   Access is blocked after 3 failed verification attempts.
                 </p>
               </div>
@@ -272,7 +247,7 @@ export function SpecialEntryActivationDialog({
           <Button
             onClick={handleActivate}
             disabled={otp.length < 4 || isBusy}
-            className="h-11 w-full rounded-xl text-[10px] font-semibold shadow-none"
+            className="h-11 w-full rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 active:scale-[0.98] transition-all border-none shadow-none"
           >
             {isVerifying ? (
               <>
@@ -281,21 +256,20 @@ export function SpecialEntryActivationDialog({
               </>
             ) : (
               <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
+                <CheckCircle2 className="mr-2 h-4 w-4" strokeWidth={1.75} />
                 Verify & activate
               </>
             )}
           </Button>
 
           {/* Resend */}
-          <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border/50 pt-3">
+          <div className="flex min-w-0 items-center justify-between gap-3 border-t border-neutral-100 dark:border-white/5 pt-4">
             <div className="min-w-0">
-              <p className="text-[9px] font-medium text-muted-foreground">
-                Didn’t receive the key?
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                Didn&apos;t receive the key?
               </p>
-
               {resendCooldown > 0 && (
-                <p className="mt-0.5 text-[8px] text-muted-foreground/70">
+                <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
                   New key available in {resendCooldown}s
                 </p>
               )}
@@ -304,13 +278,9 @@ export function SpecialEntryActivationDialog({
             <Button
               variant="ghost"
               size="sm"
-              disabled={
-                resendCooldown > 0 ||
-                isResending ||
-                isVerifying
-              }
+              disabled={resendCooldown > 0 || isResending || isVerifying}
               onClick={handleResend}
-              className="h-9 shrink-0 rounded-lg px-3 text-[9px] font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+              className="h-9 shrink-0 rounded-lg px-3 text-[13px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
             >
               {isResending ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -320,9 +290,9 @@ export function SpecialEntryActivationDialog({
                     'mr-1.5 h-3.5 w-3.5',
                     resendCooldown > 0 && 'opacity-30'
                   )}
+                  strokeWidth={1.75}
                 />
               )}
-
               {resendCooldown > 0 ? 'Please wait' : 'Resend key'}
             </Button>
           </div>

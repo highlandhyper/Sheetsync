@@ -28,11 +28,9 @@ import { format, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -57,7 +55,7 @@ export default function OnDisplayStaffPage() {
   const router = useRouter();
   const token = params?.token as string;
   const urlPin = searchParams?.get('pin');
-  
+
   const { toast } = useToast();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -80,39 +78,42 @@ export default function OnDisplayStaffPage() {
   const verificationProcessedRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleVerify = useCallback(async (providedPin?: string) => {
-    const pinToUse = providedPin || accessKey;
-    if (!pinToUse || pinToUse.length < 4) return;
+  const handleVerify = useCallback(
+    async (providedPin?: string) => {
+      const pinToUse = providedPin || accessKey;
+      if (!pinToUse || pinToUse.length < 4) return;
 
-    setIsVerifying(true);
-    setErrorMessage('');
+      setIsVerifying(true);
+      setErrorMessage('');
 
-    try {
-      const res = await verifyOnDisplayTokenAction(token, pinToUse);
+      try {
+        const res = await verifyOnDisplayTokenAction(token, pinToUse);
 
-      if (res.success && res.data && res.data.length > 0) {
-        setItems(res.data);
-        const first = res.data[0];
-        setQty(first.quantity);
-        setLoc(first.location);
-        setIsVerified(true);
-      } else {
-        setErrorMessage(res.message || 'Access key rejection.');
-        setAccessKey('');
-        inputRef.current?.focus();
+        if (res.success && res.data && res.data.length > 0) {
+          setItems(res.data);
+          const first = res.data[0];
+          setQty(first.quantity);
+          setLoc(first.location);
+          setIsVerified(true);
+        } else {
+          setErrorMessage(res.message || 'Access key rejection.');
+          setAccessKey('');
+          inputRef.current?.focus();
+        }
+      } catch {
+        setErrorMessage('Registry handshake failure.');
+      } finally {
+        setIsVerifying(false);
       }
-    } catch {
-      setErrorMessage('Registry handshake failure.');
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [accessKey, token]);
+    },
+    [accessKey, token]
+  );
 
   useEffect(() => {
     if (urlPin && token && !isVerified && !verificationProcessedRef.current) {
-        verificationProcessedRef.current = true;
-        setAccessKey(urlPin);
-        handleVerify(urlPin);
+      verificationProcessedRef.current = true;
+      setAccessKey(urlPin);
+      handleVerify(urlPin);
     }
   }, [urlPin, token, isVerified, handleVerify]);
 
@@ -144,7 +145,7 @@ export default function OnDisplayStaffPage() {
     setAccessKey(val);
     setErrorMessage('');
     if (val.length === 4) {
-        handleVerify(val);
+      handleVerify(val);
     }
   };
 
@@ -177,7 +178,10 @@ export default function OnDisplayStaffPage() {
       if (res.success) {
         setSyncedItemIds((prev) => new Set(prev).add(item.id));
         toast({
-          title: requestType === 'delete' ? 'Removal protocol logged' : 'Registry update submitted',
+          title:
+            requestType === 'delete'
+              ? 'Removal protocol logged'
+              : 'Registry update submitted',
           description: `${item.productName} synchronized.`,
         });
         setView('products');
@@ -218,37 +222,47 @@ export default function OnDisplayStaffPage() {
   // --- SUCCESS VIEW ---
   if (success) {
     return (
-      <div className="min-h-[100dvh] bg-black text-white flex flex-col items-center justify-center px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_60%)] pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col items-center text-center max-w-[320px] animate-in fade-in zoom-in-95 duration-700">
-          <div className="h-20 w-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-8 ring-8 ring-emerald-500/5">
-            <UserCheck className="h-9 w-9 text-emerald-500" strokeWidth={2.5} />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0a0a0f] text-black dark:text-white flex flex-col items-center justify-center px-6 relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,255,255,0.06) 0%, transparent 55%)',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col items-center text-center max-w-[340px]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 mb-8">
+            <UserCheck
+              className="h-7 w-7 text-neutral-700 dark:text-neutral-300"
+              strokeWidth={1.75}
+            />
           </div>
 
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-500 mb-4">Identity Confirmed</p>
-          <h1 className="text-3xl font-bold tracking-tight mb-10 leading-tight">
-            PROTOCOL<br/>COMPLETE
+          <h1 className="text-[28px] font-semibold tracking-tight mb-2">
+            Protocol complete
           </h1>
+          <p className="text-[14px] text-neutral-500 dark:text-neutral-400 mb-10">
+            Session synchronized. Access key has been revoked.
+          </p>
 
-          <div className="w-full p-5 bg-zinc-900/40 rounded-2xl border border-white/5 flex items-start gap-4 text-left mb-10">
-            <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] font-medium text-zinc-400 leading-relaxed uppercase tracking-tight">
-              Identity handshake terminated. Registry session synchronized and access key revoked.
+          <div className="w-full p-4 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/5 flex items-start gap-3 text-left mb-10">
+            <ShieldCheck
+              className="h-5 w-5 text-neutral-500 dark:text-neutral-400 shrink-0 mt-0.5"
+              strokeWidth={1.75}
+            />
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              Identity handshake terminated. Registry session synchronized and
+              access key revoked.
             </p>
           </div>
 
           <Button
-            className="w-full h-14 rounded-full text-xs font-bold uppercase tracking-[0.2em] bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.98]"
+            className="w-full h-11 rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 active:scale-[0.98] transition-all border-none shadow-none"
             onClick={() => window.close()}
           >
-            Close Secure Portal
+            Close secure portal
           </Button>
-          
-          <div className="mt-10 flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.4em] text-zinc-800">
-            <ShieldCheck className="h-3 w-3" />
-            Industrial Protocol
-          </div>
         </div>
       </div>
     );
@@ -257,92 +271,110 @@ export default function OnDisplayStaffPage() {
   // --- OTP / VERIFICATION VIEW ---
   if (!isVerified) {
     return (
-      <div className="min-h-[100dvh] bg-black text-white flex flex-col items-center justify-start pt-12 pb-12 px-6 relative overflow-hidden animate-in fade-in duration-700">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] pointer-events-none" />
-        
-        <div className="w-full max-w-[320px] flex-1 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-16">
-                <button 
-                    onClick={() => window.close()}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/60 text-zinc-400 hover:text-white transition-all active:scale-90"
-                >
-                    <ArrowLeft className="h-5 w-5" />
-                </button>
-                
-                <Button variant="ghost" size="sm" className="h-8 rounded-full bg-zinc-900/60 text-[11px] text-zinc-500 px-3 hover:text-white border-none">
-                    Help?
-                </Button>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0a0a0f] text-black dark:text-white flex flex-col items-center justify-start pt-10 pb-12 px-6 relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,255,255,0.06) 0%, transparent 55%)',
+          }}
+        />
+
+        <div className="relative z-10 w-full max-w-[340px] flex-1 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-12">
+            <button
+              onClick={() => window.close()}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+            <span className="text-[13px] text-neutral-400 dark:text-neutral-500">
+              Help?
+            </span>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="space-y-2 mb-10 text-center">
+              <h1 className="text-[28px] font-semibold tracking-tight">
+                Confirmation
+              </h1>
+              <p className="text-[14px] text-neutral-500 dark:text-neutral-400">
+                Enter the 4-digit code sent to you by SMS.
+              </p>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-                <div className="space-y-3 mb-10 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight">
-                        Confirmation
-                    </h1>
-                    <p className="text-[14px] font-medium text-zinc-500">
-                        Enter a 4-digit code sent to you by SMS.
-                    </p>
-                </div>
-
-                {/* OTP Input */}
-                <div className="relative flex items-center justify-center gap-3 mb-12">
-                    {[0, 1, 2, 3].map((index) => (
-                        <div
-                            key={index}
-                            className={cn(
-                                "flex h-14 w-14 items-center justify-center rounded-xl border text-2xl font-bold transition-all duration-300",
-                                "bg-zinc-900/30 text-white",
-                                accessKey.length === index && !errorMessage ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-zinc-800",
-                                errorMessage ? "border-destructive/40 bg-destructive/5" : ""
-                            )}
-                        >
-                            {accessKey[index] ? (
-                                <span className="text-white animate-in zoom-in-75 duration-200">{accessKey[index]}</span>
-                            ) : (
-                                <div className={cn(
-                                    "h-1.5 w-1.5 rounded-full bg-zinc-700 transition-all",
-                                    accessKey.length === index && "animate-pulse bg-emerald-500"
-                                )} />
-                            )}
-                        </div>
-                    ))}
-                    
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        pattern="[0-9]*"
-                        maxLength={4}
-                        value={accessKey}
-                        onChange={handleInputChange}
-                        className="absolute inset-0 h-full w-full opacity-0 cursor-default"
-                        autoFocus
+            {/* OTP boxes */}
+            <div className="relative flex items-center justify-center gap-3 mb-8">
+              {[0, 1, 2, 3].map((index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    'flex h-14 w-14 items-center justify-center rounded-xl border text-2xl font-semibold transition-all',
+                    'bg-neutral-50 dark:bg-white/5 text-black dark:text-white',
+                    accessKey.length === index && !errorMessage
+                      ? 'border-neutral-400 dark:border-white/30 ring-2 ring-black/5 dark:ring-white/10'
+                      : 'border-neutral-200 dark:border-white/10',
+                    errorMessage &&
+                      'border-red-400/60 dark:border-red-400/40 bg-red-50/50 dark:bg-red-500/5'
+                  )}
+                >
+                  {accessKey[index] ? (
+                    <span className="animate-in zoom-in-75 duration-200">
+                      {accessKey[index]}
+                    </span>
+                  ) : (
+                    <div
+                      className={cn(
+                        'h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600 transition-all',
+                        accessKey.length === index &&
+                          'animate-pulse bg-neutral-500 dark:bg-neutral-400'
+                      )}
                     />
+                  )}
                 </div>
+              ))}
 
-                <p className="text-[11px] font-medium text-zinc-600 text-center mb-auto">
-                    You can request a new code
-                </p>
+              <input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={accessKey}
+                onChange={handleInputChange}
+                className="absolute inset-0 h-full w-full opacity-0 cursor-default"
+                autoFocus
+              />
             </div>
 
-            {/* Footer */}
-            <div className="pt-12 flex flex-col items-center space-y-8">
-                <button 
-                    onClick={() => window.close()}
-                    className="flex items-center gap-2 text-[14px] font-medium text-zinc-600 hover:text-white transition-colors"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Return to Portal
-                </button>
+            {errorMessage && (
+              <p className="text-[13px] text-red-500 dark:text-red-400 mb-4 text-center">
+                {errorMessage}
+              </p>
+            )}
 
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-800">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Industrial Protocol
-                </div>
-            </div>
+            {isVerifying && (
+              <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mb-4" />
+            )}
+
+            <p className="text-[13px] text-neutral-400 dark:text-neutral-500 text-center">
+              You can request a new code if needed
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="pt-10 flex flex-col items-center">
+            <button
+              onClick={() => window.close()}
+              className="flex items-center gap-2 text-[14px] text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+              Return to portal
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -355,41 +387,39 @@ export default function OnDisplayStaffPage() {
     : 0;
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white pb-24 relative overflow-x-hidden animate-in fade-in duration-700">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] pointer-events-none" />
-
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0a0a0f] text-black dark:text-white pb-28 relative overflow-x-hidden">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 px-6 py-6 flex items-center justify-between bg-black/80 backdrop-blur-md">
-          <button 
-              onClick={() => router.push('/login')}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/60 text-zinc-400 hover:text-white transition-all active:scale-90"
-          >
-              <ArrowLeft className="h-5 w-5" />
-          </button>
-          
-          <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.3em] text-emerald-500/80 bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/10">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Protocol Active
-          </div>
+      <header className="sticky top-0 z-40 px-5 py-4 flex items-center justify-between bg-white/90 dark:bg-[#0a0a0f]/90 backdrop-blur-md border-b border-neutral-100 dark:border-white/5">
+        <button
+          onClick={() => router.push('/login')}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+        </button>
 
-          <Button variant="ghost" size="sm" className="h-8 rounded-full bg-zinc-900/60 text-[11px] text-zinc-500 px-3 hover:text-white border-none">
-              Help?
-          </Button>
+        <div className="flex items-center gap-2 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-pulse" />
+          Protocol active
+        </div>
+
+        <span className="text-[13px] text-neutral-400 dark:text-neutral-500 w-9 text-right">
+          Help
+        </span>
       </header>
 
-      <main className="mx-auto max-w-[320px] px-6 py-4">
+      <main className="mx-auto max-w-[360px] px-5 py-6">
         {view === 'products' ? (
-          <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-2 text-center pt-4">
-                <h1 className="text-3xl font-bold tracking-tight">
-                    Action Queue
-                </h1>
-                <p className="text-[14px] font-medium text-zinc-500">
-                    Identify and synchronize the following nodes.
-                </p>
+          <section className="space-y-6">
+            <div className="space-y-1.5 text-center pt-2">
+              <h1 className="text-[26px] font-semibold tracking-tight">
+                Action queue
+              </h1>
+              <p className="text-[14px] text-neutral-500 dark:text-neutral-400">
+                Select an item to update or remove.
+              </p>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-2.5 pt-2">
               {displayItems.map((it, idx) => {
                 const isSynced = syncedItemIds.has(it.id);
 
@@ -399,157 +429,193 @@ export default function OnDisplayStaffPage() {
                     type="button"
                     onClick={() => handleSelectBatch(idx)}
                     className={cn(
-                      'group flex items-center gap-4 w-full rounded-2xl bg-zinc-900/20 p-4 text-left transition-all active:scale-[0.99] hover:bg-zinc-900/40 border border-white/5',
-                      isSynced && 'bg-emerald-500/[0.03] border-emerald-500/20'
+                      'group flex items-center gap-3.5 w-full rounded-xl p-3.5 text-left transition-all active:scale-[0.99]',
+                      'border border-neutral-150 dark:border-white/10',
+                      'bg-neutral-50 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/[0.07]',
+                      isSynced &&
+                        'border-neutral-300 dark:border-white/20 bg-neutral-100/80 dark:bg-white/[0.08]'
                     )}
                   >
                     <div
                       className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-500',
+                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all',
                         isSynced
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-zinc-800 text-zinc-600 group-hover:text-emerald-500'
+                          ? 'bg-black dark:bg-white text-white dark:text-black'
+                          : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-500 dark:text-neutral-400'
                       )}
                     >
                       {isSynced ? (
-                        <Check className="h-5 w-5" strokeWidth={3} />
+                        <Check className="h-5 w-5" strokeWidth={2.5} />
                       ) : (
-                        <Package className="h-5 w-5" strokeWidth={2.5} />
+                        <Package className="h-5 w-5" strokeWidth={1.75} />
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h2 className={cn(
-                          "line-clamp-1 text-[15px] font-bold leading-tight tracking-tight",
-                          isSynced ? "text-emerald-400" : "text-white"
-                      )}>
+                      <h2
+                        className={cn(
+                          'line-clamp-1 text-[15px] font-medium leading-tight',
+                          isSynced
+                            ? 'text-neutral-600 dark:text-neutral-300'
+                            : 'text-black dark:text-white'
+                        )}
+                      >
                         {it.productName}
                       </h2>
-
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[9px] font-bold uppercase tracking-widest">
-                        <div className="flex items-center gap-1.5 text-emerald-500/60">
-                          {it.quantity} UNITS
-                        </div>
-                        <div className="flex items-center gap-1.5 text-zinc-600">
-                          {it.location || 'UNMAPPED'}
-                        </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
+                        <span>{it.quantity} units</span>
+                        <span className="text-neutral-300 dark:text-neutral-600">
+                          ·
+                        </span>
+                        <span>{it.location || 'Unmapped'}</span>
                       </div>
                     </div>
 
-                    <div className="shrink-0">
-                       <ChevronRight className={cn(
-                           "h-5 w-5 transition-all group-active:translate-x-1",
-                           isSynced ? "text-emerald-500/20" : "text-zinc-700 group-hover:text-emerald-400"
-                       )} />
-                    </div>
+                    <ChevronRight
+                      className={cn(
+                        'h-4 w-4 shrink-0 transition-transform group-active:translate-x-0.5',
+                        isSynced
+                          ? 'text-neutral-300 dark:text-neutral-600'
+                          : 'text-neutral-400 dark:text-neutral-500'
+                      )}
+                      strokeWidth={1.75}
+                    />
                   </button>
                 );
               })}
             </div>
           </section>
         ) : (
-          <section className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+          <section className="space-y-6">
             <button
               type="button"
               onClick={() => setView('products')}
-              className="flex items-center gap-2 px-2 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-emerald-500 hover:opacity-70 transition-all"
+              className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" strokeWidth={3} />
-              Return to Queue
+              <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+              Back to queue
             </button>
 
-            <div className="space-y-6 text-center py-4">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 ring-4 ring-emerald-500/5">
-                <Package className="h-8 w-8" strokeWidth={2.5} />
+            <div className="space-y-4 text-center py-2">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5">
+                <Package
+                  className="h-6 w-6 text-neutral-700 dark:text-neutral-300"
+                  strokeWidth={1.75}
+                />
               </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-500/60">Identification Node</p>
-                <h1 className="text-3xl font-bold leading-[0.95] tracking-tight sm:text-4xl text-white">
+              <div>
+                <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">
+                  Selected item
+                </p>
+                <h1 className="text-[22px] font-semibold tracking-tight leading-tight">
                   {currentItem?.productName}
                 </h1>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-zinc-900/20 p-5 border border-white/5">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2">Current Count</p>
-                  <p className="text-3xl font-bold tabular-nums tracking-tight text-white">{currentItem?.quantity}</p>
-                </div>
-                <div className="rounded-2xl bg-zinc-900/20 p-5 border border-white/5">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2">Registry Zone</p>
-                  <p className="truncate text-[11px] font-bold uppercase tracking-tight text-emerald-500/80">{currentItem?.location || 'Unmapped'}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/5 p-4">
+                <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                  Current count
+                </p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {currentItem?.quantity}
+                </p>
+              </div>
+              <div className="rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/5 p-4">
+                <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                  Zone
+                </p>
+                <p className="truncate text-[13px] font-medium">
+                  {currentItem?.location || 'Unmapped'}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-6 pt-4">
-              <div className="grid grid-cols-2 gap-3 p-1.5 rounded-full bg-zinc-900/20 border border-white/5">
+            <div className="space-y-5 pt-2">
+              {/* Edit / Delete toggle */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-neutral-100 dark:bg-white/5">
                 <button
                   type="button"
                   onClick={() => setRequestType('edit')}
                   className={cn(
-                    'flex h-12 items-center justify-center gap-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all',
+                    'flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium transition-all',
                     requestType === 'edit'
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10'
-                      : 'text-zinc-600 hover:text-white'
+                      ? 'bg-white dark:bg-white text-black shadow-sm'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white'
                   )}
                 >
-                  <Edit className="h-4 w-4" />
-                  Adjust Node
+                  <Edit className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Adjust
                 </button>
-
                 <button
                   type="button"
                   onClick={() => setRequestType('delete')}
                   className={cn(
-                    'flex h-12 items-center justify-center gap-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all',
+                    'flex h-10 items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium transition-all',
                     requestType === 'delete'
-                      ? 'bg-destructive text-white shadow-lg shadow-destructive/20'
-                      : 'text-zinc-600 hover:text-white'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white'
                   )}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Purge Batch
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Remove
                 </button>
               </div>
 
               {requestType === 'edit' ? (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                  <div className="space-y-3 text-center">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-700">UNITS OBSERVED</Label>
-                    <div className="relative group">
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="decimal"
-                        value={qty}
-                        onChange={(e) => setQty(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                        className="h-24 text-center rounded-2xl border-none bg-zinc-900/40 text-5xl font-bold tabular-nums shadow-inner focus-visible:ring-emerald-500/10 text-white placeholder:text-zinc-800"
-                      />
-                    </div>
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">
+                      Units observed
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      inputMode="decimal"
+                      value={qty}
+                      onChange={(e) =>
+                        setQty(
+                          e.target.value === '' ? 0 : parseFloat(e.target.value)
+                        )
+                      }
+                      className="h-16 text-center rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-3xl font-semibold tabular-nums text-black dark:text-white focus-visible:ring-0 focus-visible:border-neutral-400 dark:focus-visible:border-white/25 shadow-none"
+                    />
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-700 ml-4">ZONE MAPPING</Label>
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">
+                      Zone mapping
+                    </Label>
                     <button
                       type="button"
                       onClick={() => setIsLocationPickerOpen(true)}
-                      className="relative flex h-14 w-full items-center rounded-2xl bg-zinc-900/40 border-none pl-12 pr-10 text-left text-[11px] font-bold uppercase tracking-widest outline-none shadow-inner group hover:bg-zinc-900/60 transition-all"
+                      className="relative flex h-11 w-full items-center rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 pr-10 text-left text-[14px] font-medium outline-none hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-all"
                     >
-                      <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 group-hover:text-emerald-500 transition-colors" />
-                      <span className="truncate text-white">{loc || 'Select Zone'}</span>
-                      <ChevronsUpDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-10" />
+                      <MapPin
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
+                        strokeWidth={1.75}
+                      />
+                      <span className="truncate text-black dark:text-white">
+                        {loc || 'Select zone'}
+                      </span>
+                      <ChevronsUpDown
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
+                        strokeWidth={1.75}
+                      />
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center animate-in zoom-in-95 duration-300 bg-destructive/[0.03] rounded-2xl border border-destructive/10">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive mb-4 ring-6 ring-destructive/5">
-                    <Trash2 className="h-8 w-8" strokeWidth={2.5} />
+                <div className="py-8 text-center rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 mb-3">
+                    <Trash2 className="h-5 w-5" strokeWidth={1.75} />
                   </div>
-                  <h4 className="text-lg font-bold uppercase tracking-tight text-white">Permanent Purge</h4>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mt-2 max-w-[180px] mx-auto leading-relaxed">
-                    Authorize removal of this node from the registry.
+                  <h4 className="text-[15px] font-semibold text-black dark:text-white">
+                    Permanent removal
+                  </h4>
+                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400 mt-1 max-w-[200px] mx-auto">
+                    This will request removal of the item from the registry.
                   </p>
                 </div>
               )}
@@ -558,19 +624,21 @@ export default function OnDisplayStaffPage() {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={cn(
-                  'h-14 w-full rounded-full text-xs font-bold uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] mt-2 border-none',
+                  'h-11 w-full rounded-xl text-[14px] font-medium transition-all active:scale-[0.98] border-none shadow-none',
                   requestType === 'delete'
-                    ? 'bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/10'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-black dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200'
                 )}
               >
                 {isSubmitting ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <div className="flex items-center gap-3">
-                    <SendHorizontal className="h-5 w-5" strokeWidth={3} />
-                    {requestType === 'delete' ? 'Authorize Removal' : 'Synchronize Node'}
-                  </div>
+                  <span className="flex items-center gap-2">
+                    <SendHorizontal className="h-4 w-4" strokeWidth={1.75} />
+                    {requestType === 'delete'
+                      ? 'Authorize removal'
+                      : 'Synchronize'}
+                  </span>
                 )}
               </Button>
             </div>
@@ -578,25 +646,45 @@ export default function OnDisplayStaffPage() {
         )}
       </main>
 
-      {/* FOOTER PROGRESS BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-50 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 bg-gradient-to-t from-black via-black to-transparent">
-        <div className="mx-auto flex max-w-[320px] items-center gap-4 bg-zinc-900/80 border border-white/5 p-3 rounded-full backdrop-blur-xl shadow-2xl">
+      {/* FOOTER PROGRESS */}
+      <div className="fixed inset-x-0 bottom-0 z-50 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-white via-white to-transparent dark:from-[#0a0a0f] dark:via-[#0a0a0f]">
+        <div className="mx-auto flex max-w-[360px] items-center gap-3 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 p-2.5 rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/30">
           <div className="flex min-w-0 flex-1 items-center gap-3 pl-1">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-              <svg className="h-10 w-10 -rotate-90 transition-all duration-700">
-                <circle cx="20" cy="20" r="17" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-zinc-800" />
-                <circle cx="20" cy="20" r="17" fill="transparent" stroke="currentColor" strokeWidth="3" strokeDasharray={`${2 * Math.PI * 17}`} strokeDashoffset={`${2 * Math.PI * 17 * (1 - progress / 100)}`} className="text-emerald-500 transition-all duration-1000 ease-in-out" />
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+              <svg className="h-9 w-9 -rotate-90">
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="text-neutral-200 dark:text-neutral-800"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeDasharray={`${2 * Math.PI * 15}`}
+                  strokeDashoffset={`${2 * Math.PI * 15 * (1 - progress / 100)}`}
+                  className="text-black dark:text-white transition-all duration-700 ease-out"
+                />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[9px] font-bold tabular-nums text-white">{progress}%</span>
+                <span className="text-[9px] font-semibold tabular-nums">
+                  {progress}%
+                </span>
               </div>
             </div>
 
             <div className="min-w-0">
-              <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                 Synced
               </p>
-              <p className="truncate text-[11px] font-bold uppercase tracking-tight text-zinc-400">
+              <p className="text-[13px] font-medium tabular-nums">
                 {syncedItemIds.size} / {items.length}
               </p>
             </div>
@@ -605,59 +693,75 @@ export default function OnDisplayStaffPage() {
           <Button
             onClick={handleFinalize}
             disabled={isFinalizing || syncedItemIds.size === 0}
-            className="h-10 shrink-0 rounded-full bg-emerald-600 px-5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-emerald-700 disabled:opacity-20 transition-all shadow-lg shadow-emerald-500/10 border-none"
+            className="h-9 shrink-0 rounded-xl bg-black dark:bg-white px-4 text-[13px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-30 transition-all border-none shadow-none"
           >
             {isFinalizing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <div className="flex items-center gap-2">
-                <span>Finalize</span>
-                <Check className="h-3.5 w-3.5" strokeWidth={4} />
-              </div>
+              <span className="flex items-center gap-1.5">
+                Finalize
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </span>
             )}
           </Button>
         </div>
-        
-        <div className="mt-4 flex justify-center items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-800">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Industrial Protocol
-        </div>
       </div>
 
+      {/* Location picker */}
       <Dialog open={isLocationPickerOpen} onOpenChange={setIsLocationPickerOpen}>
-          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-2rem)] max-w-md flex-col gap-0 overflow-hidden rounded-[2.5rem] border-none p-0 shadow-3xl bg-black">
-              <DialogHeader className="border-b border-white/5 bg-zinc-900/40 px-8 py-8 text-left">
-                  <DialogTitle className="text-2xl font-bold uppercase tracking-tight text-white">Zone Mapping</DialogTitle>
-                  <DialogDescription className="text-[10px] font-bold uppercase tracking-[0.3em] text-emerald-500">Target storage region</DialogDescription>
-              </DialogHeader>
-              <Command className="min-h-0 flex-1 rounded-none bg-transparent">
-                  <CommandInput placeholder="SEARCH REGIONS..." className="h-16 px-8 font-bold uppercase tracking-widest text-white border-b-white/5" />
-                  <CommandList className="max-h-[min(52dvh,400px)] p-3">
-                      <CommandEmpty className="py-12 text-[10px] text-zinc-700 uppercase font-bold tracking-widest text-center">Zero regions identified</CommandEmpty>
-                      <CommandGroup>
-                          {availableLocations.map((location) => (
-                              <CommandItem
-                                  key={location}
-                                  value={location}
-                                  onSelect={() => {
-                                      setLoc(location);
-                                      setIsLocationPickerOpen(false);
-                                  }}
-                                  className="h-16 rounded-2xl text-sm font-bold uppercase tracking-widest px-6 cursor-pointer mb-2 data-[selected=true]:bg-emerald-500/10 data-[selected=true]:text-emerald-500 transition-all"
-                              >
-                                  <Check className={cn('mr-4 h-5 w-5', loc === location ? 'opacity-100' : 'opacity-0')} strokeWidth={3} />
-                                  <span className="truncate">{location}</span>
-                              </CommandItem>
-                          ))}
-                      </CommandGroup>
-                  </CommandList>
-              </Command>
-              <div className="border-t border-white/5 bg-zinc-900/20 p-4">
-                  <Button type="button" variant="ghost" onClick={() => setIsLocationPickerOpen(false)} className="h-12 w-full rounded-2xl text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-600 hover:text-white transition-colors">
-                      Cancel Protocol
-                  </Button>
-              </div>
-          </DialogContent>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-2rem)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 p-0 shadow-2xl bg-white dark:bg-neutral-950">
+          <DialogHeader className="border-b border-neutral-100 dark:border-white/5 px-5 py-5 text-left">
+            <DialogTitle className="text-lg font-semibold tracking-tight text-black dark:text-white">
+              Zone mapping
+            </DialogTitle>
+            <DialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
+              Select target storage region
+            </DialogDescription>
+          </DialogHeader>
+          <Command className="min-h-0 flex-1 rounded-none bg-transparent">
+            <CommandInput
+              placeholder="Search zones..."
+              className="h-12 px-5 text-[14px] border-b border-neutral-100 dark:border-white/5"
+            />
+            <CommandList className="max-h-[min(52dvh,360px)] p-2">
+              <CommandEmpty className="py-10 text-[13px] text-neutral-400 text-center">
+                No zones found
+              </CommandEmpty>
+              <CommandGroup>
+                {availableLocations.map((location) => (
+                  <CommandItem
+                    key={location}
+                    value={location}
+                    onSelect={() => {
+                      setLoc(location);
+                      setIsLocationPickerOpen(false);
+                    }}
+                    className="h-12 rounded-xl text-[14px] font-medium px-4 cursor-pointer mb-0.5 data-[selected=true]:bg-neutral-100 dark:data-[selected=true]:bg-white/10"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-3 h-4 w-4',
+                        loc === location ? 'opacity-100' : 'opacity-0'
+                      )}
+                      strokeWidth={2}
+                    />
+                    <span className="truncate">{location}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <div className="border-t border-neutral-100 dark:border-white/5 p-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsLocationPickerOpen(false)}
+              className="h-10 w-full rounded-xl text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
