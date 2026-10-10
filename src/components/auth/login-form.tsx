@@ -62,13 +62,13 @@ export function LoginForm({ onBack }: LoginFormProps) {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <div className="w-full px-6 pb-10 pt-1 bg-white text-black">
+    <div className="w-full px-6 pb-10 pt-1 bg-white dark:bg-neutral-950 text-black dark:text-white">
       {/* Close button */}
       <div className="mb-8">
         <button
           onClick={onBack}
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-black transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="h-5 w-5" strokeWidth={1.75} />
@@ -77,10 +77,10 @@ export function LoginForm({ onBack }: LoginFormProps) {
 
       {/* Header */}
       <div className="mb-9">
-        <h1 className="text-[28px] font-semibold tracking-tight text-black leading-none">
+        <h1 className="text-[28px] font-semibold tracking-tight text-black dark:text-white leading-none">
           Log In
         </h1>
-        <p className="mt-2 text-[15px] text-neutral-500">
+        <p className="mt-2 text-[15px] text-neutral-500 dark:text-neutral-400">
           Add your email and password.
         </p>
       </div>
@@ -91,7 +91,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
         <div className="space-y-2">
           <Label
             htmlFor="email"
-            className="text-[13px] font-medium text-neutral-600"
+            className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
           >
             Your email
           </Label>
@@ -102,13 +102,17 @@ export function LoginForm({ onBack }: LoginFormProps) {
             autoComplete="email"
             {...register('email')}
             className={cn(
-              'w-full h-12 rounded-2xl bg-neutral-100 border-0 px-4 text-[15px] text-black placeholder:text-neutral-400',
-              'outline-none transition-all focus:bg-white focus:ring-2 focus:ring-black/10',
-              errors.email && 'ring-2 ring-black/15'
+              'w-full h-12 rounded-2xl border-0 px-4 text-[15px]',
+              'bg-neutral-100 dark:bg-neutral-900',
+              'text-black dark:text-white',
+              'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
+              'outline-none transition-all',
+              'focus:bg-white dark:focus:bg-neutral-800 focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10',
+              errors.email && 'ring-2 ring-black/15 dark:ring-white/15'
             )}
           />
           {errors.email && (
-            <p className="text-[12px] text-neutral-500">
+            <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
               Please enter a valid email
             </p>
           )}
@@ -118,7 +122,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
         <div className="space-y-2">
           <Label
             htmlFor="password"
-            className="text-[13px] font-medium text-neutral-600"
+            className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
           >
             Your password
           </Label>
@@ -129,9 +133,13 @@ export function LoginForm({ onBack }: LoginFormProps) {
               autoComplete="current-password"
               {...register('password')}
               className={cn(
-                'w-full h-12 rounded-2xl bg-neutral-100 border-0 pl-4 pr-20 text-[15px] text-black placeholder:text-neutral-400',
-                'outline-none transition-all focus:bg-white focus:ring-2 focus:ring-black/10',
-                errors.password && 'ring-2 ring-black/15'
+                'w-full h-12 rounded-2xl border-0 pl-4 pr-20 text-[15px]',
+                'bg-neutral-100 dark:bg-neutral-900',
+                'text-black dark:text-white',
+                'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
+                'outline-none transition-all',
+                'focus:bg-white dark:focus:bg-neutral-800 focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10',
+                errors.password && 'ring-2 ring-black/15 dark:ring-white/15'
               )}
             />
             <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
@@ -139,7 +147,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
                 <button
                   type="button"
                   onClick={() => setValue('password', '')}
-                  className="p-2 text-neutral-400 hover:text-black transition-colors"
+                  className="p-2 text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
                   aria-label="Clear password"
                 >
                   <X className="h-4 w-4" strokeWidth={1.75} />
@@ -148,7 +156,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-2 text-neutral-400 hover:text-black transition-colors"
+                className="p-2 text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
@@ -160,7 +168,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
             </div>
           </div>
           {errors.password && (
-            <p className="text-[12px] text-neutral-500">
+            <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
               Password is required
             </p>
           )}
@@ -171,7 +179,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 rounded-2xl bg-black text-[15px] font-medium text-white hover:bg-neutral-800 active:scale-[0.98] transition-all border-none shadow-none"
+            className="w-full h-12 rounded-2xl bg-black dark:bg-white text-[15px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 active:scale-[0.98] transition-all border-none shadow-none"
           >
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -185,7 +193,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
         <div className="pt-1 text-center">
           <button
             type="button"
-            className="text-[13px] text-neutral-500 hover:text-black transition-colors"
+            className="text-[13px] text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
           >
             Forgot your password?
           </button>
