@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, SmartphoneNfc, ChevronRight, LogIn } from 'lucide-react';
+import { ShieldCheck, SmartphoneNfc, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ export default function LoginPage() {
         {!showForm ? (
           <div className="w-full max-w-md flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-700 ease-out">
             <div className="mb-10 space-y-4">
-                <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10 transition-transform hover:scale-105 duration-500">
+                <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10 transition-transform hover:scale-105 duration-500">
                     <ShieldCheck className="h-10 w-10 text-primary" />
                 </div>
                 <h1 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">

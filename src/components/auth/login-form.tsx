@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, X, Mail, KeyRound, ChevronRight } from 'lucide-react';
+import { Loader2, Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { cn } from '@/lib/utils';
@@ -90,7 +90,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
                 <input
                   id="email"
                   type="email"
-                  placeholder="alexsmith.mobbin+1@gmail.com"
+                  placeholder="name@company.com"
                   {...register('email')}
                   className={cn(
                       "w-full h-14 bg-muted/30 border-0 rounded-2xl px-5 font-medium transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 text-base placeholder:text-muted-foreground/30",
