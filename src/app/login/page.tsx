@@ -7,20 +7,19 @@ import { SmartphoneNfc, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 function LoginFormSkeleton() {
   return (
-    <div className="w-full space-y-8 p-6 bg-black">
-      <div className="space-y-3">
-        <Skeleton className="h-10 w-32 rounded-lg bg-zinc-800" />
-        <Skeleton className="h-4 w-48 rounded-lg bg-zinc-800" />
+    <div className="w-full space-y-6 px-6 pt-4 pb-10 bg-white">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-24 rounded-lg bg-neutral-200" />
+        <Skeleton className="h-4 w-48 rounded-lg bg-neutral-100" />
       </div>
-      <div className="space-y-6 pt-4">
-        <Skeleton className="h-14 w-full rounded-2xl bg-zinc-800" />
-        <Skeleton className="h-14 w-full rounded-2xl bg-zinc-800" />
+      <div className="space-y-5 pt-2">
+        <Skeleton className="h-12 w-full rounded-2xl bg-neutral-100" />
+        <Skeleton className="h-12 w-full rounded-2xl bg-neutral-100" />
       </div>
-      <Skeleton className="h-16 w-full rounded-full bg-zinc-800" />
+      <Skeleton className="h-12 w-full rounded-2xl bg-neutral-200" />
     </div>
   );
 }
@@ -29,78 +28,81 @@ export default function LoginPage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-black overflow-hidden">
-      {/* ATMOSPHERIC BACKGROUND */}
-      <div className="absolute inset-0 bg-tech-grid z-0 opacity-20" />
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.03)_0%,transparent_70%)]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
-      
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-white overflow-hidden">
+      {/* Soft background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.015)_0%,transparent_70%)]" />
+
       <div className="relative z-10 w-full max-w-[1200px] flex flex-col items-center justify-center px-6">
-        
-        {/* OPENING GATE (INITIAL VIEW) */}
+        {/* Landing view */}
         {!showForm ? (
-          <div className="w-full max-w-md flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-700 ease-out">
-            <div className="mb-10 space-y-4">
-                <div className="mx-auto w-24 h-24 overflow-hidden rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/10 transition-transform hover:scale-105 duration-500 border border-white/5 bg-zinc-900/50 p-0.5">
-                    <Image 
-                      src="/logo-pwa.jpg" 
-                      alt="Project Logo" 
-                      width={96} 
-                      height={96} 
-                      className="rounded-[2.4rem] object-cover"
-                      priority
-                    />
-                </div>
-                <h1 className="text-5xl font-black tracking-tighter text-white uppercase leading-none">
-                    Sheet<span className="text-emerald-500">Sync</span>
-                </h1>
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.5em] opacity-60">Industrial Inventory</p>
+          <div className="w-full max-w-sm flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500">
+            {/* Logo */}
+            <div className="mb-8">
+              <div className="mx-auto w-20 h-20 overflow-hidden rounded-3xl border border-neutral-200 shadow-sm mb-6">
+                <Image
+                  src="/logo-pwa.jpg"
+                  alt="Project Logo"
+                  width={80}
+                  height={80}
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <h1 className="text-4xl font-semibold tracking-tight text-black">
+                SheetSync
+              </h1>
+              <p className="mt-2 text-[13px] font-medium text-neutral-400 tracking-wide">
+                Industrial Inventory
+              </p>
             </div>
 
-            <div className="w-full space-y-4 mt-8">
-                <Button 
-                    onClick={() => setShowForm(true)}
-                    className="w-full h-16 text-lg font-black uppercase tracking-widest rounded-full shadow-2xl shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white group border-none"
+            {/* Actions */}
+            <div className="w-full space-y-3 mt-6">
+              <Button
+                onClick={() => setShowForm(true)}
+                className="w-full h-12 text-[15px] font-medium rounded-2xl bg-black hover:bg-neutral-800 text-white group border-none shadow-none"
+              >
+                Log In
+                <ChevronRight className="ml-1.5 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </Button>
+
+              <div className="pt-5">
+                <Button
+                  variant="ghost"
+                  asChild
+                  className="h-11 w-full rounded-2xl border border-neutral-200 bg-transparent text-neutral-500 hover:bg-neutral-50 hover:text-black transition-all text-[13px] font-medium"
                 >
-                    Log In
-                    <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <Link href="/on-display/handshake">
+                    <SmartphoneNfc className="mr-2 h-4 w-4" />
+                    Staff Handshake
+                  </Link>
                 </Button>
-
-                <div className="pt-8 border-t border-white/5 w-full">
-                    <Button variant="ghost" asChild className="h-12 w-full rounded-2xl border border-white/5 bg-zinc-900/30 text-zinc-400 hover:bg-zinc-900/50 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest">
-                        <Link href="/on-display/handshake">
-                            <SmartphoneNfc className="mr-2 h-4 w-4" />
-                            Staff Handshake
-                        </Link>
-                    </Button>
-                </div>
+              </div>
             </div>
 
-            <p className="mt-12 text-[8px] font-black uppercase tracking-[0.5em] text-zinc-800">
-                Secure Registry Terminal v5.0
+            <p className="mt-12 text-[11px] font-medium tracking-wide text-neutral-300">
+              Secure Registry Terminal
             </p>
           </div>
         ) : (
-          /* SLIDE-UP AUTH TERMINAL */
+          /* Slide-up form sheet */
           <div className="fixed inset-0 z-50 flex flex-col justify-end">
-            {/* Backdrop blur for transition focus */}
-            <div 
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500" 
-                onClick={() => setShowForm(false)}
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/25 backdrop-blur-[2px] animate-in fade-in duration-300"
+              onClick={() => setShowForm(false)}
             />
-            
-            <div className="relative w-full max-w-lg mx-auto bg-black rounded-t-[3rem] border-t border-white/5 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-500 ease-out flex flex-col h-[85vh] sm:h-auto">
-                {/* Atmospheric gradient for the form */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.05)_0%,transparent_50%)] pointer-events-none rounded-t-[3rem]" />
-                
-                {/* Pull handle for mobile affordance */}
-                <div className="relative z-10 mx-auto w-12 h-1.5 bg-zinc-800 rounded-full mt-4 mb-2" />
-                
-                <div className="relative z-10 flex-1 overflow-y-auto">
-                    <Suspense fallback={<LoginFormSkeleton />}>
-                        <LoginForm onBack={() => setShowForm(false)} />
-                    </Suspense>
-                </div>
+
+            {/* Sheet */}
+            <div className="relative w-full max-w-md mx-auto bg-white rounded-t-[1.75rem] shadow-[0_-12px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-400 ease-out flex flex-col max-h-[90vh]">
+              {/* Pull handle */}
+              <div className="mx-auto w-10 h-1 bg-neutral-200 rounded-full mt-3 mb-1 shrink-0" />
+
+              <div className="overflow-y-auto">
+                <Suspense fallback={<LoginFormSkeleton />}>
+                  <LoginForm onBack={() => setShowForm(false)} />
+                </Suspense>
+              </div>
             </div>
           </div>
         )}
