@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, X } from 'lucide-react';
+import { Loader2, Eye, EyeOff, X, ArrowLeft, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { cn } from '@/lib/utils';
@@ -60,22 +61,22 @@ export function LoginForm({ onBack }: LoginFormProps) {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <div className="w-full px-6 pb-12 pt-4">
+    <div className="w-full px-6 pb-12 pt-4 bg-black text-white">
       {/* DISMISS BUTTON */}
       <div className="mb-8">
         <button
           onClick={onBack}
           type="button"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 text-foreground transition-all hover:bg-muted active:scale-90"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/60 text-zinc-400 transition-all hover:text-white active:scale-90"
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
       {/* HEADER */}
       <div className="mb-10 space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">Log In</h1>
-        <p className="text-sm font-medium text-muted-foreground">Add your email and password.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Registry Entry</h1>
+        <p className="text-sm font-medium text-zinc-500">Provide account credentials to synchronize.</p>
       </div>
 
       {/* FORM */}
@@ -83,62 +84,55 @@ export function LoginForm({ onBack }: LoginFormProps) {
         <div className="space-y-6">
           {/* EMAIL FIELD */}
           <div className="space-y-2.5">
-            <Label htmlFor="email" className="ml-1 text-[11px] font-bold text-muted-foreground/60">
-                Your email
+            <Label htmlFor="email" className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-700">
+                Personnel email
             </Label>
             <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 group-focus-within:text-emerald-500 transition-colors" />
                 <input
                   id="email"
                   type="email"
                   placeholder="name@company.com"
                   {...register('email')}
                   className={cn(
-                      "w-full h-14 bg-muted/30 border-0 rounded-2xl px-5 font-medium transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 text-base placeholder:text-muted-foreground/30",
-                      errors.email && 'ring-2 ring-destructive/20'
+                      "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-5 font-bold transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
+                      errors.email && 'border-destructive/40 bg-destructive/5'
                   )}
                 />
             </div>
-            {errors.email && <p className="text-[10px] text-destructive font-bold ml-1">Valid email required</p>}
+            {errors.email && <p className="text-[9px] text-destructive font-bold uppercase tracking-tight ml-1">Valid identity required</p>}
           </div>
 
           {/* PASSWORD FIELD */}
           <div className="space-y-2.5">
-             <Label htmlFor="password" className="ml-1 text-[11px] font-bold text-muted-foreground/60">
-                Your password
+             <Label htmlFor="password" className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-700">
+                Access password
             </Label>
             <div className="relative group">
+              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 group-focus-within:text-emerald-500 transition-colors" />
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder=""
+                placeholder="••••••••"
                 {...register('password')}
                 className={cn(
-                    "w-full h-14 bg-muted/30 border-0 rounded-2xl px-5 font-medium transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 text-base",
-                    errors.password && 'ring-2 ring-destructive/20'
+                    "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-12 font-bold transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
+                    errors.password && 'border-destructive/40 bg-destructive/5'
                 )}
               />
               
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setValue('password', '')}
-                    className="text-muted-foreground/20 hover:text-muted-foreground transition-colors p-1"
-                  >
-                    <div className="h-5 w-5 rounded-full bg-muted-foreground/20 flex items-center justify-center">
-                        <X className="h-3 w-3 text-background" strokeWidth={4} />
-                    </div>
-                  </button>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-muted-foreground/30 hover:text-primary transition-colors p-1"
+                    className="text-zinc-700 hover:text-white transition-colors p-2"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
               </div>
             </div>
-            {errors.password && <p className="text-[10px] text-destructive font-bold ml-1">Password required</p>}
+            {errors.password && <p className="text-[9px] text-destructive font-bold uppercase tracking-tight ml-1">Security key required</p>}
           </div>
         </div>
 
@@ -147,18 +141,18 @@ export function LoginForm({ onBack }: LoginFormProps) {
           <Button 
             type="submit" 
             disabled={isLoading} 
-            className="w-full h-16 text-lg font-bold rounded-full shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] border-none"
+            className="w-full h-16 text-xs font-black uppercase tracking-[0.2em] rounded-full shadow-2xl shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-[0.98] border-none"
           >
             {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-                "Log In"
+                "Authorize Session"
             )}
           </Button>
 
           <div className="text-center">
-              <button type="button" className="text-xs font-bold text-muted-foreground/60 underline underline-offset-4 decoration-muted-foreground/20 hover:text-primary transition-colors">
-                  Forgot your password?
+              <button type="button" className="text-[10px] font-black uppercase tracking-widest text-zinc-700 hover:text-zinc-400 transition-colors">
+                  Identity Handshake Help
               </button>
           </div>
         </div>
