@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,10 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, X, ArrowLeft, KeyRound, Mail } from 'lucide-react';
+import { Loader2, Eye, EyeOff, X, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { cn } from '@/lib/utils';
@@ -28,7 +26,6 @@ export function LoginForm({ onBack }: LoginFormProps) {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -61,31 +58,35 @@ export function LoginForm({ onBack }: LoginFormProps) {
   const isLoading = authIsLoading || formIsSubmitting;
 
   return (
-    <div className="w-full px-6 pb-12 pt-4 bg-black text-white">
+    <div className="w-full px-8 pb-12 pt-4 bg-black text-white">
       {/* DISMISS BUTTON */}
-      <div className="mb-8">
+      <div className="mb-10 flex items-center justify-between">
         <button
           onClick={onBack}
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/60 text-zinc-400 transition-all hover:text-white active:scale-90"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 transition-all hover:text-white active:scale-90 border border-white/5"
         >
           <X className="h-5 w-5" />
         </button>
+        
+        <div className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/60 bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/10">
+          Secure Terminal
+        </div>
       </div>
 
       {/* HEADER */}
-      <div className="mb-10 space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Registry Entry</h1>
+      <div className="mb-12 space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight text-white leading-tight">Registry Entry</h1>
         <p className="text-sm font-medium text-zinc-500">Provide account credentials to synchronize.</p>
       </div>
 
       {/* FORM */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
         <div className="space-y-6">
           {/* EMAIL FIELD */}
-          <div className="space-y-2.5">
-            <Label htmlFor="email" className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-700">
-                Personnel email
+          <div className="space-y-3">
+            <Label htmlFor="email" className="ml-1 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                Personnel identity
             </Label>
             <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 group-focus-within:text-emerald-500 transition-colors" />
@@ -95,7 +96,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
                   placeholder="name@company.com"
                   {...register('email')}
                   className={cn(
-                      "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-5 font-bold transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
+                      "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-5 font-bold transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
                       errors.email && 'border-destructive/40 bg-destructive/5'
                   )}
                 />
@@ -104,9 +105,9 @@ export function LoginForm({ onBack }: LoginFormProps) {
           </div>
 
           {/* PASSWORD FIELD */}
-          <div className="space-y-2.5">
-             <Label htmlFor="password" className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-700">
-                Access password
+          <div className="space-y-3">
+             <Label htmlFor="password" className="ml-1 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                Access key
             </Label>
             <div className="relative group">
               <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-700 group-focus-within:text-emerald-500 transition-colors" />
@@ -116,7 +117,7 @@ export function LoginForm({ onBack }: LoginFormProps) {
                 placeholder="••••••••"
                 {...register('password')}
                 className={cn(
-                    "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-12 font-bold transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
+                    "w-full h-14 bg-zinc-900/40 border-zinc-800 border rounded-2xl pl-11 pr-12 font-bold transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-white placeholder:text-zinc-800",
                     errors.password && 'border-destructive/40 bg-destructive/5'
                 )}
               />
@@ -137,11 +138,11 @@ export function LoginForm({ onBack }: LoginFormProps) {
         </div>
 
         {/* ACTIONS */}
-        <div className="pt-4 space-y-6">
+        <div className="pt-4 space-y-8">
           <Button 
             type="submit" 
             disabled={isLoading} 
-            className="w-full h-16 text-xs font-black uppercase tracking-[0.2em] rounded-full shadow-2xl shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-[0.98] border-none"
+            className="w-full h-16 text-sm font-bold uppercase tracking-[0.2em] rounded-full shadow-2xl shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-[0.98] border-none"
           >
             {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -151,8 +152,8 @@ export function LoginForm({ onBack }: LoginFormProps) {
           </Button>
 
           <div className="text-center">
-              <button type="button" className="text-[10px] font-black uppercase tracking-widest text-zinc-700 hover:text-zinc-400 transition-colors">
-                  Identity Handshake Help
+              <button type="button" className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-800 hover:text-zinc-600 transition-colors">
+                  Industrial Protocol Active
               </button>
           </div>
         </div>

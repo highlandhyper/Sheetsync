@@ -1,26 +1,26 @@
-
 'use client';
 
 import { useState, Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, SmartphoneNfc, ChevronRight } from 'lucide-react';
+import { SmartphoneNfc, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 function LoginFormSkeleton() {
   return (
-    <div className="w-full space-y-8 p-6">
+    <div className="w-full space-y-8 p-6 bg-black">
       <div className="space-y-3">
-        <Skeleton className="h-10 w-32 rounded-lg" />
-        <Skeleton className="h-4 w-48 rounded-lg" />
+        <Skeleton className="h-10 w-32 rounded-lg bg-zinc-800" />
+        <Skeleton className="h-4 w-48 rounded-lg bg-zinc-800" />
       </div>
       <div className="space-y-6 pt-4">
-        <Skeleton className="h-14 w-full rounded-2xl" />
-        <Skeleton className="h-14 w-full rounded-2xl" />
+        <Skeleton className="h-14 w-full rounded-2xl bg-zinc-800" />
+        <Skeleton className="h-14 w-full rounded-2xl bg-zinc-800" />
       </div>
-      <Skeleton className="h-16 w-full rounded-full" />
+      <Skeleton className="h-16 w-full rounded-full bg-zinc-800" />
     </div>
   );
 }
@@ -33,7 +33,7 @@ export default function LoginPage() {
       {/* ATMOSPHERIC BACKGROUND */}
       <div className="absolute inset-0 bg-tech-grid z-0 opacity-20" />
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.03)_0%,transparent_70%)]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
       
       <div className="relative z-10 w-full max-w-[1200px] flex flex-col items-center justify-center px-6">
         
@@ -41,8 +41,15 @@ export default function LoginPage() {
         {!showForm ? (
           <div className="w-full max-w-md flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-700 ease-out">
             <div className="mb-10 space-y-4">
-                <div className="mx-auto w-20 h-20 bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/10 transition-transform hover:scale-105 duration-500 ring-4 ring-emerald-500/5">
-                    <ShieldCheck className="h-10 w-10 text-emerald-500" strokeWidth={2} />
+                <div className="mx-auto w-24 h-24 overflow-hidden rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/10 transition-transform hover:scale-105 duration-500 border border-white/5 bg-zinc-900/50 p-0.5">
+                    <Image 
+                      src="/logo-pwa.jpg" 
+                      alt="Project Logo" 
+                      width={96} 
+                      height={96} 
+                      className="rounded-[2.4rem] object-cover"
+                      priority
+                    />
                 </div>
                 <h1 className="text-5xl font-black tracking-tighter text-white uppercase leading-none">
                     Sheet<span className="text-emerald-500">Sync</span>
