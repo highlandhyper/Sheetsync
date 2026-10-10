@@ -14,9 +14,11 @@ import { cn } from '@/lib/utils';
 
 interface LoginFormProps {
   onBack?: () => void;
+  /** When true, renders the desktop variant */
+  desktop?: boolean;
 }
 
-export function LoginForm({ onBack }: LoginFormProps) {
+export function LoginForm({ onBack, desktop = false }: LoginFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { login, loading: authIsLoading } = useAuth();
@@ -61,6 +63,112 @@ export function LoginForm({ onBack }: LoginFormProps) {
 
   const isLoading = authIsLoading || formIsSubmitting;
 
+  /* ---------- DESKTOP VARIANT (centered elegant style) ---------- */
+  if (desktop) {
+    return (
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Email */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="email"
+            className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
+          >
+            E-mail
+          </Label>
+          <input
+            id="email"
+            type="email"
+            placeholder="name@company.com"
+            autoComplete="email"
+            {...register('email')}
+            className={cn(
+              'w-full h-11 rounded-xl border px-4 text-[14px]',
+              'bg-neutral-50 dark:bg-white/5',
+              'border-neutral-200 dark:border-white/10',
+              'text-black dark:text-white',
+              'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
+              'outline-none transition-all',
+              'focus:border-neutral-400 dark:focus:border-white/25 focus:ring-0',
+              errors.email && 'border-red-400/60 dark:border-red-400/40'
+            )}
+          />
+          {errors.email && (
+            <p className="text-[12px] text-neutral-500">Please enter a valid email</p>
+          )}
+        </div>
+
+        {/* Password */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="password"
+            className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
+          >
+            Password
+          </Label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              {...register('password')}
+              className={cn(
+                'w-full h-11 rounded-xl border pl-4 pr-11 text-[14px]',
+                'bg-neutral-50 dark:bg-white/5',
+                'border-neutral-200 dark:border-white/10',
+                'text-black dark:text-white',
+                'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
+                'outline-none transition-all',
+                'focus:border-neutral-400 dark:focus:border-white/25 focus:ring-0',
+                errors.password && 'border-red-400/60 dark:border-red-400/40'
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <Eye className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="text-[12px] text-neutral-500">Password is required</p>
+          )}
+        </div>
+
+        {/* Submit */}
+        <div className="pt-1">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-11 rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 active:scale-[0.98] transition-all border-none shadow-none"
+          >
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              'Sign in'
+            )}
+          </Button>
+        </div>
+
+        {/* Forgot password */}
+        <div className="text-center">
+          <button
+            type="button"
+            className="text-[13px] text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            Forgot your password?
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  /* ---------- MOBILE VARIANT (slide-up sheet) ---------- */
   return (
     <div className="w-full px-6 pb-10 pt-1 bg-white dark:bg-neutral-950 text-black dark:text-white">
       {/* Close button */}
@@ -90,13 +198,13 @@ export function LoginForm({ onBack }: LoginFormProps) {
         {/* Email */}
         <div className="space-y-2">
           <Label
-            htmlFor="email"
+            htmlFor="email-mobile"
             className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
           >
             Your email
           </Label>
           <input
-            id="email"
+            id="email-mobile"
             type="email"
             placeholder="name@company.com"
             autoComplete="email"
@@ -121,14 +229,14 @@ export function LoginForm({ onBack }: LoginFormProps) {
         {/* Password */}
         <div className="space-y-2">
           <Label
-            htmlFor="password"
+            htmlFor="password-mobile"
             className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400"
           >
             Your password
           </Label>
           <div className="relative">
             <input
-              id="password"
+              id="password-mobile"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               {...register('password')}
