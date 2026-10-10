@@ -101,8 +101,8 @@ function SessionTimer({ expiresAt }: { expiresAt: string }) {
     }, [expiresAt]);
 
     return (
-        <div className="flex items-center gap-1.5 font-mono text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20">
-            <Clock className="h-2.5 w-2.5" />
+        <div className="flex items-center gap-1.5 font-mono text-[11px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-white/5 px-2 py-0.5 rounded-lg border border-neutral-200 dark:border-white/10 md:font-black md:text-primary md:bg-primary/10 md:border-primary/20 md:text-[10px] md:rounded-md">
+            <Clock className="h-3 w-3 md:h-2.5 md:w-2.5" strokeWidth={1.75} />
             <span>{timeLeft}</span>
         </div>
     );
@@ -113,13 +113,13 @@ function OfflineOutboxBanner({ count, onOpen }: { count: number; onOpen: () => v
     return (
         <div 
             onClick={onOpen}
-            className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500 cursor-pointer hover:bg-amber-500/20 transition-all group shadow-sm active:scale-[0.98]"
+            className="mb-3 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-500/15 transition-all active:scale-[0.99] md:mb-2 md:p-2 md:rounded-xl"
         >
-            <div className="flex items-center gap-2">
-                <CloudOff className="h-3.5 w-3.5 text-amber-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">{count} Pending Logs</span>
+            <div className="flex items-center gap-2.5">
+                <CloudOff className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+                <span className="text-[13px] font-medium text-amber-800 dark:text-amber-300 md:text-[10px] md:font-black md:uppercase md:tracking-widest">{count} pending logs</span>
             </div>
-            <Badge variant="outline" className="h-5 px-1.5 bg-white/50 dark:bg-black/50 border-amber-500/30 text-amber-700 font-black uppercase text-[7px] tracking-widest">
+            <Badge variant="outline" className="h-6 px-2 bg-white dark:bg-black/40 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] font-medium md:h-5 md:px-1.5 md:text-[7px] md:font-black md:uppercase md:tracking-widest">
                 Queue
             </Badge>
         </div>
@@ -430,21 +430,20 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           const scanner = new Html5Qrcode(SCANNER_REGION_ID);
           scanner.start(
             { facingMode: 'environment' }, 
-            { 
-              fps: 20, 
-              qrbox: (vw, vh) => {
-                const edge = Math.floor(Math.min(vw, vh) * 0.7);
-                return { width: edge, height: edge };
+            {
+                fps: 20,
+                qrbox: (vw, vh) => {
+                  const edge = Math.floor(Math.min(vw, vh) * 0.7);
+                  return { width: edge, height: edge };
+                },
+                aspectRatio: 1.0,
+                disableFlip: true,
+                videoConstraints: {
+                  facingMode: "environment",
+                  width: { min: 640, ideal: 1280, max: 1920 },
+                  height: { min: 480, ideal: 720, max: 1080 },
+                },
               }, 
-              aspectRatio: 1.0,
-              disableFlip: true,
-              experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-              videoConstraints: {
-                facingMode: "environment",
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 },
-              }
-            }, 
             onScanSuccess, 
             () => {}
           ).then(() => {
@@ -466,18 +465,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   return (
     <>
-    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-2 overflow-x-hidden px-3 pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:px-4 md:px-0 md:pb-4">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-3 overflow-x-hidden px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:px-4 md:px-0 md:pb-4 md:space-y-2">
         <OfflineOutboxBanner count={pendingActions.length} onOpen={() => setIsOutboxOpen(true)} />
 
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             {currentStep === 0 && (
                 <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <FilePlus className="h-5 w-5" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 md:h-9 md:w-9 md:rounded-xl md:bg-primary/10 md:text-primary">
+                        <FilePlus className="h-5 w-5" strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">
-                            <h1 className="truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">
+                            <h1 className="truncate text-[22px] font-semibold tracking-tight text-black dark:text-white sm:text-2xl md:text-lg md:font-bold">
                                 Log New Item
                             </h1>
                             <Button
@@ -513,8 +512,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 </Badge>
                             )}
                         </div>
-                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">
-                            Standard SKU identification protocol.
+                        <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400 sm:text-xs md:text-[11px]">
+                            Scan or enter a barcode to log stock.
                         </p>
                     </div>
                 </div>
@@ -546,19 +545,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-2">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                    {React.createElement(steps[currentStep].icon, { className: "h-3.5 w-3.5" })}
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 md:h-7 md:w-7 md:rounded-lg md:bg-primary/10 md:text-primary">
+                                    {React.createElement(steps[currentStep].icon, { className: "h-4 w-4 md:h-3.5 md:w-3.5", strokeWidth: 1.75 })}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                    <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400 md:text-[9px] md:font-semibold md:uppercase md:tracking-[0.12em]">
                                         Step {currentStep + 1} of {steps.length}
                                     </p>
-                                    <p className="truncate text-sm font-semibold text-foreground">
+                                    <p className="truncate text-[15px] font-semibold text-black dark:text-white md:text-sm">
                                         {steps[currentStep].name}
                                     </p>
                                 </div>
                             </div>
-                            <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+                            <span className="shrink-0 text-[13px] font-medium text-neutral-400 dark:text-neutral-500 md:text-[10px] md:font-semibold">
                                 {Math.round(((currentStep + 1) / steps.length) * 100)}%
                             </span>
                         </div>
@@ -800,9 +799,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                             onClick={prevStep}
                             variant="ghost"
                             disabled={isPending || isSubmitting || currentStep === 0}
-                            className="h-11 shrink-0 rounded-xl border-0 bg-muted/30 px-3 text-xs font-semibold shadow-none hover:bg-muted/45"
+                            className="h-12 shrink-0 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-4 text-[14px] font-medium text-neutral-600 dark:text-neutral-300 shadow-none hover:bg-neutral-50 dark:hover:bg-white/5 md:h-11 md:border-0 md:bg-muted/30 md:text-xs md:font-semibold md:px-3"
                         >
-                            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                            <ArrowLeft className="mr-1.5 h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} />
                             Back
                         </Button>
                         {currentStep < steps.length - 1 ? (
@@ -810,18 +809,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                 type="button"
                                 onClick={nextStep}
                                 disabled={isFetchingProduct || isPending || isSubmitting}
-                                className="h-11 flex-1 rounded-xl bg-primary text-xs font-semibold shadow-none"
+                                className="h-12 flex-1 rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black shadow-none hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none md:h-11 md:bg-primary md:text-xs md:font-semibold md:text-primary-foreground"
                             >
                                 {isFetchingProduct && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
                                 Continue
-                                <ArrowRight className="ml-1.5 h-4 w-4" />
+                                <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} />
                             </Button>
                         ) : (
                             <Button
                                 type="button"
                                 onClick={handleFormSubmit}
                                 disabled={isPending || isSubmitting}
-                                className="h-11 flex-1 rounded-xl bg-primary text-xs font-semibold shadow-none"
+                                className="h-12 flex-1 rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black shadow-none hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none md:h-11 md:bg-primary md:text-xs md:font-semibold md:text-primary-foreground"
                             >
                                 {isPending || isSubmitting ? (
                                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -940,19 +939,19 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     
     {/* SUCCESS TERMINAL */}
     <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-        <DialogContent className="max-w-xs w-[85%] p-5 overflow-hidden rounded-3xl border-none shadow-3xl bg-slate-950 text-white flex flex-col items-center text-center">
-            <div className="bg-primary/20 p-2 rounded-2xl mb-3 animate-bounce">
-                <PartyPopper className="h-7 w-7 text-primary" />
+        <DialogContent className="max-w-xs w-[85%] p-6 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 shadow-2xl bg-white dark:bg-neutral-950 flex flex-col items-center text-center md:border-none md:bg-slate-950 md:text-white md:rounded-3xl">
+            <div className="bg-neutral-100 dark:bg-white/5 p-3 rounded-2xl mb-4 md:bg-primary/20 md:p-2 md:mb-3">
+                <PartyPopper className="h-6 w-6 text-neutral-700 dark:text-neutral-200 md:h-7 md:w-7 md:text-primary" strokeWidth={1.75} />
             </div>
             <DialogHeader className="space-y-1">
-                <DialogTitle className="text-lg font-black uppercase tracking-tighter text-primary leading-none">Sync Confirmed</DialogTitle>
-                <DialogDescription className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Registry Handshake Successful</DialogDescription>
+                <DialogTitle className="text-lg font-semibold tracking-tight text-black dark:text-white leading-none md:text-primary md:font-black md:uppercase md:tracking-tighter">Item logged</DialogTitle>
+                <DialogDescription className="text-neutral-500 dark:text-neutral-400 text-[13px] md:text-slate-400 md:text-[9px] md:font-bold md:uppercase md:tracking-widest">Saved successfully</DialogDescription>
             </DialogHeader>
-            <Separator className="my-4 bg-slate-800" />
+            <Separator className="my-4 bg-neutral-100 dark:bg-white/10 md:bg-slate-800" />
             <div className="flex flex-col items-center gap-1">
-                <Heart className="h-3.5 w-3.5 text-red-500 fill-red-500" />
-                <p className="text-sm font-black uppercase tracking-tight truncate max-w-[180px]">Thank you, {submittedStaffName}!</p>
-                <p className="text-slate-500 text-[7px] font-black uppercase tracking-widest">Entry Buffered for Cloud Dispatch</p>
+                <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+                <p className="text-[15px] font-medium tracking-tight truncate max-w-[180px] text-black dark:text-white md:text-sm md:font-black md:uppercase">Thank you, {submittedStaffName}!</p>
+                <p className="text-neutral-400 dark:text-neutral-500 text-[12px] md:text-slate-500 md:text-[7px] md:font-black md:uppercase md:tracking-widest">Entry queued for sync</p>
             </div>
         </DialogContent>
     </Dialog>

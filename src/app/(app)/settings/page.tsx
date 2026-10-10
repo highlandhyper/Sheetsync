@@ -23,7 +23,6 @@ import {
   Cpu,
   MessageSquare,
   SmartphoneNfc,
-  Info,
   Volume2,
   Music,
   ExternalLink,
@@ -31,7 +30,6 @@ import {
   CheckCircle2,
   BellDot,
   Settings2,
-  Layers,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
@@ -45,7 +43,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -75,221 +72,93 @@ import { IdentityAudioSelector } from '@/components/settings/identity-audio-sele
 import { ManualOnDisplaySmsTerminal } from '@/components/settings/manual-on-display-sms-terminal';
 import { OnDisplayAlertsTerminal } from '@/components/settings/on-display-alerts-terminal';
 
-/* ═══════════════════════════════════════════
-   MOBILE: List-style row (reference design)
-   ═══════════════════════════════════════════ */
-interface SettingsRowProps {
-  icon: React.ElementType;
+type SectionId =
+  | 'appearance'
+  | 'notifications'
+  | 'sms'
+  | 'session'
+  | 'staff'
+  | 'locations'
+  | 'on-display'
+  | 'transmission'
+  | 'permissions'
+  | 'bulk-import'
+  | 'data-source'
+  | 'credentials';
+
+type NavItem = {
+  id: SectionId;
   label: string;
-  description?: string;
-  trailing?: React.ReactNode;
-  onClick?: () => void;
-  children?: React.ReactNode;
-  dialogClassName?: string;
-  onOpen?: () => void;
-  isManual?: boolean;
-  disabled?: boolean;
-}
-
-function SettingsRow({
-  icon: Icon,
-  label,
-  description,
-  trailing,
-  onClick,
-  children,
-  dialogClassName,
-  onOpen,
-  isManual,
-  disabled,
-}: SettingsRowProps) {
-  const rowContent = (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={isManual ? onClick : undefined}
-      className={cn(
-        'flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors',
-        'hover:bg-neutral-50 dark:hover:bg-white/[0.03]',
-        'active:bg-neutral-100 dark:active:bg-white/[0.05]',
-        'disabled:opacity-50 disabled:pointer-events-none'
-      )}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-        <Icon className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-medium text-black dark:text-white">{label}</p>
-        {description && (
-          <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400 line-clamp-1">
-            {description}
-          </p>
-        )}
-      </div>
-      {trailing ?? (
-        <ChevronRight className="h-4 w-4 shrink-0 text-neutral-300 dark:text-neutral-600" strokeWidth={1.75} />
-      )}
-    </button>
-  );
-
-  if (isManual || !children) return rowContent;
-
-  return (
-    <Dialog onOpenChange={(open) => { if (open && onOpen) onOpen(); }}>
-      <DialogTrigger asChild>{rowContent}</DialogTrigger>
-      <DialogContent
-        className={cn(
-          'w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl',
-          dialogClassName || 'sm:max-w-2xl'
-        )}
-      >
-        <div className="flex max-h-[calc(100dvh-1rem)] min-w-0 flex-col">
-          <DialogHeader className="shrink-0 border-b border-neutral-100 dark:border-white/5 px-5 py-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-                <Icon className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
-              </div>
-              <div className="min-w-0">
-                <DialogTitle className="text-base font-semibold tracking-tight text-black dark:text-white">
-                  {label}
-                </DialogTitle>
-                {description && (
-                  <DialogDescription className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-                    {description}
-                  </DialogDescription>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="min-w-0 overflow-y-auto p-5">{children}</div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SettingsGroup({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 divide-y divide-neutral-100 dark:divide-white/5',
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   DESKTOP: Original card-style row
-   ═══════════════════════════════════════════ */
-interface DesktopCardProps {
-  icon: React.ElementType;
-  title: string;
   description: string;
-  children?: React.ReactNode;
-  triggerText?: string;
-  dialogClassName?: string;
-  onOpen?: () => void;
-  isManual?: boolean;
-  onManualClick?: () => void;
-  badge?: string;
-  isLoading?: boolean;
-}
+  icon: React.ElementType;
+  adminOnly?: boolean;
+};
 
-function DesktopSettingsCard({
-  icon,
-  title,
-  description,
-  children,
-  triggerText = 'Configure',
-  dialogClassName,
-  onOpen,
-  isManual,
-  onManualClick,
-  badge,
-  isLoading = false,
-}: DesktopCardProps) {
-  const triggerButton = (
-    <Button
-      variant="outline"
-      onClick={isManual ? onManualClick : undefined}
-      disabled={isLoading}
-      className="h-9 shrink-0 rounded-lg px-3 text-[12px] font-medium shadow-none border-neutral-200 dark:border-white/10"
-    >
-      {isLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-      {triggerText}
-    </Button>
-  );
+const GENERAL_ITEMS: NavItem[] = [
+  { id: 'appearance', label: 'Appearance', description: 'Theme and interface', icon: Palette },
+  { id: 'notifications', label: 'Notifications', description: 'Browser alerts', icon: Bell },
+  { id: 'sms', label: 'SMS delivery', description: 'Security message routing', icon: Smartphone, adminOnly: true },
+  { id: 'session', label: 'Session security', description: 'Welcome and auto-lock', icon: Shield, adminOnly: true },
+];
 
+const WAREHOUSE_ITEMS: NavItem[] = [
+  { id: 'staff', label: 'Staff', description: 'Team members', icon: UserPlus },
+  { id: 'locations', label: 'Locations', description: 'Storage zones', icon: MapPin },
+  { id: 'on-display', label: 'On-Display protocol', description: 'Expiry alerts', icon: LayoutDashboard },
+  { id: 'transmission', label: 'Transmission log', description: 'Alert history', icon: History },
+  { id: 'permissions', label: 'Permissions', description: 'Viewer access', icon: ShieldCheck },
+];
+
+const SYSTEM_ITEMS: NavItem[] = [
+  { id: 'bulk-import', label: 'Bulk import', description: 'Import via SMS', icon: CloudUpload },
+  { id: 'data-source', label: 'Data source', description: 'Google Sheets registry', icon: Database },
+  { id: 'credentials', label: 'Admin credentials', description: 'Local access keys', icon: KeyRound },
+];
+
+const ALL_ITEMS = [...GENERAL_ITEMS, ...WAREHOUSE_ITEMS, ...SYSTEM_ITEMS];
+
+function AppearancePanel({ isAdmin }: { isAdmin: boolean }) {
   return (
-    <div className="group min-w-0 transition-colors hover:bg-neutral-50/50 dark:hover:bg-white/[0.02]">
-      <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-            {React.createElement(icon, { className: 'h-4 w-4', strokeWidth: 1.75 })}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <h3 className="min-w-0 truncate text-sm font-semibold tracking-tight text-black dark:text-white">
-                {title}
-              </h3>
-              {badge && (
-                <Badge
-                  variant="outline"
-                  className="shrink-0 rounded-md border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-1.5 py-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
-                >
-                  {badge}
-                </Badge>
-              )}
+    <div className="space-y-6">
+      <div className="hidden lg:block">
+        <h2 className="text-lg font-semibold text-black dark:text-white">Appearance</h2>
+        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Theme, multi-select, and audio preferences.</p>
+      </div>
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+        <div>
+          <p className="text-[13px] font-medium text-black dark:text-white mb-1">Theme</p>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Light, dark, or system</p>
+          <ThemeToggle />
+        </div>
+        <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
+          <p className="text-[13px] font-medium text-black dark:text-white mb-1">Batch processing</p>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Multi-select for bulk actions</p>
+          <MultiSelectToggle />
+        </div>
+        {isAdmin && (
+          <>
+            <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
+              <p className="text-[13px] font-medium text-black dark:text-white mb-1 flex items-center gap-1.5">
+                <Volume2 className="h-3.5 w-3.5" strokeWidth={1.75} /> Audio feedback
+              </p>
+              <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Thank-you sounds</p>
+              <AudioFeedbackToggle />
             </div>
-            <p className="mt-0.5 line-clamp-2 text-[12px] text-neutral-500 dark:text-neutral-400">
-              {description}
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0">
-          {isManual ? (
-            triggerButton
-          ) : (
-            <Dialog onOpenChange={(open) => { if (open && onOpen) onOpen(); }}>
-              <DialogTrigger asChild>{triggerButton}</DialogTrigger>
-              <DialogContent
-                className={cn(
-                  'w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl',
-                  dialogClassName || 'sm:max-w-2xl'
-                )}
-              >
-                <div className="flex max-h-[calc(100dvh-1rem)] min-w-0 flex-col">
-                  <DialogHeader className="shrink-0 border-b border-neutral-100 dark:border-white/5 px-5 py-4">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/5">
-                        {React.createElement(icon, { className: 'h-4 w-4 text-neutral-600 dark:text-neutral-300', strokeWidth: 1.75 })}
-                      </div>
-                      <div className="min-w-0">
-                        <DialogTitle className="truncate text-base font-semibold tracking-tight text-black dark:text-white">
-                          {title}
-                        </DialogTitle>
-                        <DialogDescription className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-                          {description}
-                        </DialogDescription>
-                      </div>
-                    </div>
-                  </DialogHeader>
-                  <div className="min-w-0 overflow-y-auto p-5">{children}</div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+            <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
+              <p className="text-[13px] font-medium text-black dark:text-white mb-1 flex items-center gap-1.5">
+                <Music className="h-3.5 w-3.5" strokeWidth={1.75} /> Identity prompt
+              </p>
+              <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Voice variants</p>
+              <IdentityAudioSelector />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─── Shared notification panel ─── */
-function NotificationTerminal() {
+function NotificationPanel() {
   const { settings, setSetting } = useGeneralSettings();
   const { requestPermission } = useNotifications();
   const { toast } = useToast();
@@ -307,7 +176,7 @@ function NotificationTerminal() {
         toast({
           variant: 'destructive',
           title: 'Action Required',
-          description: 'Please enable notification permissions in your browser settings.',
+          description: 'Enable notification permissions in your browser settings.',
         });
       }
     } else {
@@ -316,69 +185,33 @@ function NotificationTerminal() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex min-w-0 items-center gap-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-3.5 py-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-          <BellDot className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+    <div className="space-y-6">
+      <div className="hidden lg:block">
+        <h2 className="text-lg font-semibold text-black dark:text-white">Notifications</h2>
+        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Control browser alerts for security events.</p>
+      </div>
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
+            <BellDot className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-medium text-black dark:text-white">Browser notifications</p>
+            <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">OTP and security alerts on this device</p>
+          </div>
+          {isRequesting ? (
+            <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+          ) : (
+            <Switch checked={settings.isBrowserNotificationsEnabled} onCheckedChange={handleToggle} disabled={isRequesting} />
+          )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-medium text-black dark:text-white">Browser notifications</p>
-          <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-            Receive OTP and security alerts on this device.
-          </p>
-        </div>
-        {isRequesting ? (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-neutral-400" />
-        ) : (
-          <Switch
-            checked={settings.isBrowserNotificationsEnabled}
-            onCheckedChange={handleToggle}
-            disabled={isRequesting}
-          />
+        {settings.isBrowserNotificationsEnabled && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-neutral-50 dark:bg-white/5 px-3.5 py-2.5 text-neutral-600 dark:text-neutral-300">
+            <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
+            <span className="text-[13px] font-medium">Notifications active</span>
+          </div>
         )}
       </div>
-      {settings.isBrowserNotificationsEnabled && (
-        <div className="flex items-center gap-2 rounded-xl bg-neutral-100 dark:bg-white/5 px-3.5 py-2.5 text-neutral-600 dark:text-neutral-300">
-          <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span className="text-[13px] font-medium">Notifications active</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Shared dialog content panels ─── */
-function AppearancePanel({ role }: { role: string | null }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-        <h3 className="mb-1 text-[13px] font-medium text-black dark:text-white">Visual theme</h3>
-        <p className="mb-3 text-[12px] text-neutral-500 dark:text-neutral-400">Light, dark, or system</p>
-        <ThemeToggle />
-      </div>
-      <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-        <h3 className="mb-1 text-[13px] font-medium text-black dark:text-white">Batch processing</h3>
-        <p className="mb-3 text-[12px] text-neutral-500 dark:text-neutral-400">Multi-select for bulk actions</p>
-        <MultiSelectToggle />
-      </div>
-      {role === 'admin' && (
-        <>
-          <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-            <h3 className="mb-1 text-[13px] font-medium flex items-center gap-2 text-black dark:text-white">
-              <Volume2 className="h-3.5 w-3.5" strokeWidth={1.75} /> Audio feedback
-            </h3>
-            <p className="mb-3 text-[12px] text-neutral-500 dark:text-neutral-400">Global thank-you sounds</p>
-            <AudioFeedbackToggle />
-          </div>
-          <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-            <h3 className="mb-1 text-[13px] font-medium flex items-center gap-2 text-black dark:text-white">
-              <Music className="h-3.5 w-3.5" strokeWidth={1.75} /> Identity prompt
-            </h3>
-            <p className="mb-3 text-[12px] text-neutral-500 dark:text-neutral-400">Voice variants for identity checks</p>
-            <IdentityAudioSelector />
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -395,89 +228,107 @@ function SmsPanel({
   setSmsDeviceId: (v: string) => void;
 }) {
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
-        {smsEnvStatus?.hasApiKey ? (
-          <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none px-2.5 py-1 text-[11px] font-medium">
-            <Wifi className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> API ready
-          </Badge>
-        ) : (
-          <Badge className="bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-none px-2.5 py-1 text-[11px] font-medium">
-            <WifiOff className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> No API key
-          </Badge>
+    <div className="space-y-6">
+      <div className="hidden lg:block">
+        <h2 className="text-lg font-semibold text-black dark:text-white">SMS delivery</h2>
+        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Configure recipient and device for security messages.</p>
+      </div>
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+        <div className="flex flex-wrap gap-2">
+          {smsEnvStatus?.hasApiKey ? (
+            <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none text-[11px] font-medium">
+              <Wifi className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> API ready
+            </Badge>
+          ) : (
+            <Badge className="bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-none text-[11px] font-medium">
+              <WifiOff className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> No API key
+            </Badge>
+          )}
+          {smsEnvStatus?.hasDeviceId && (
+            <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none text-[11px] font-medium">
+              <Cpu className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> ENV loaded
+            </Badge>
+          )}
+        </div>
+        {!smsEnvStatus?.hasApiKey && (
+          <div className="flex items-start gap-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 p-3.5">
+            <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+            <p className="text-[13px] text-red-600 dark:text-red-400">TEXTBEE_API_KEY not detected. SMS is disabled.</p>
+          </div>
         )}
-        {smsEnvStatus?.hasDeviceId && (
-          <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none px-2.5 py-1 text-[11px] font-medium">
-            <Cpu className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> ENV loaded
-          </Badge>
-        )}
-      </div>
-      {!smsEnvStatus?.hasApiKey && (
-        <div className="flex items-start gap-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 p-3.5">
-          <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" strokeWidth={1.75} />
-          <p className="text-[13px] text-red-600 dark:text-red-400 leading-relaxed">
-            TEXTBEE_API_KEY not detected. SMS dispatch is disabled.
-          </p>
+        <div className="space-y-2">
+          <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Recipient phone</Label>
+          <div className="relative">
+            <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
+            <Input
+              placeholder="+974..."
+              value={permissions.smsRecipientNumber || ''}
+              onChange={(e) => setSmsRecipientNumber(e.target.value)}
+              className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 text-[14px] shadow-none"
+            />
+          </div>
         </div>
-      )}
-      <div className="space-y-2">
-        <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Recipient phone number</Label>
-        <div className="relative">
-          <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
-          <Input
-            placeholder="+974..."
-            value={permissions.smsRecipientNumber || ''}
-            onChange={(e) => setSmsRecipientNumber(e.target.value)}
-            className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 text-[14px] shadow-none"
-          />
+        <div className="space-y-2">
+          <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Device ID</Label>
+          <div className="relative">
+            <SmartphoneNfc className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
+            <Input
+              placeholder={smsEnvStatus?.hasDeviceId ? '******** (from ENV)' : '6a95...'}
+              value={permissions.smsDeviceId || ''}
+              onChange={(e) => setSmsDeviceId(e.target.value)}
+              className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 font-mono text-[13px] shadow-none"
+            />
+          </div>
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Textbee device ID</Label>
-        <div className="relative">
-          <SmartphoneNfc className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
-          <Input
-            placeholder={smsEnvStatus?.hasDeviceId ? '******** (Loaded from ENV)' : '6a95...'}
-            value={permissions.smsDeviceId || ''}
-            onChange={(e) => setSmsDeviceId(e.target.value)}
-            className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 font-mono text-[13px] shadow-none"
-          />
-        </div>
-      </div>
-      <div className="flex items-start gap-3 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/5 p-3.5">
-        <Info className="h-4 w-4 text-neutral-400 shrink-0 mt-0.5" strokeWidth={1.75} />
-        <p className="text-[12px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-          Environment variables take priority for maximum security.
-        </p>
       </div>
     </div>
   );
 }
 
-function SessionSecurityPanel() {
+function SessionPanel() {
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-        <h3 className="text-[14px] font-medium text-black dark:text-white mb-1">Greeting protocol</h3>
-        <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-4">Show admin welcome on session start</p>
-        <AdminWelcomeToggle />
+    <div className="space-y-6">
+      <div className="hidden lg:block">
+        <h2 className="text-lg font-semibold text-black dark:text-white">Session security</h2>
+        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Welcome screen and automatic lock timer.</p>
       </div>
-      <div className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-        <h3 className="text-[14px] font-medium text-black dark:text-white mb-1">Auto-lock timer</h3>
-        <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-4">Lock after idle period</p>
-        <InactivityTimeoutInput />
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+        <div>
+          <p className="text-[14px] font-medium text-black dark:text-white mb-1">Greeting</p>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Admin welcome on session start</p>
+          <AdminWelcomeToggle />
+        </div>
+        <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
+          <p className="text-[14px] font-medium text-black dark:text-white mb-1">Auto-lock</p>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Lock after idle period</p>
+          <InactivityTimeoutInput />
+        </div>
       </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════
-   MAIN PAGE
-   ═══════════════════════════════════════════ */
+function SectionPanel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-6">
+      <div className="hidden lg:block">
+        <h2 className="text-lg font-semibold text-black dark:text-white">{title}</h2>
+        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">{description}</p>
+      </div>
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">{children}</div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { role, user } = useAuth();
   const { toast } = useToast();
   const { permissions, setSmsRecipientNumber, setSmsDeviceId } = useAccessControl();
+  const isAdmin = role === 'admin';
+
+  const [activeSection, setActiveSection] = React.useState<SectionId>('appearance');
+  const [mobileView, setMobileView] = React.useState<'list' | 'detail'>('list');
+  const [animKey, setAnimKey] = React.useState(0);
 
   const [dbUrl, setDbUrl] = React.useState<string | null>(null);
   const [isDbAuthOpen, setIsDbAuthOpen] = React.useState(false);
@@ -489,36 +340,31 @@ export default function SettingsPage() {
   const [smsEnvStatus, setSmsEnvStatus] = React.useState<{ hasApiKey: boolean; hasDeviceId: boolean } | null>(null);
 
   React.useEffect(() => {
-    if (role === 'admin') {
+    if (isAdmin) {
       checkSmsConfigAction().then((res) => {
         if (res.success && res.data) setSmsEnvStatus(res.data);
       });
     }
-  }, [role]);
+  }, [isAdmin]);
 
   const handleInitiateBulkImport = async () => {
     if (!permissions.smsRecipientNumber) {
-      toast({
-        variant: 'destructive',
-        title: 'Security Config Missing',
-        description: 'SMS recipient number must be configured in SMS Delivery settings.',
-      });
+      toast({ variant: 'destructive', title: 'Config Missing', description: 'Set SMS recipient number first.' });
       return;
     }
     setIsSendingSms(true);
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
-    const msg = `SHEETSYNC SECURITY: Authorized request for Bulk Data Import. Authentication Key: ${pin}. Session access is restricted to single-use verification.`;
     try {
-      const res = await sendSmsAction(msg, permissions.smsRecipientNumber);
+      const res = await sendSmsAction(`SHEETSYNC SECURITY: Bulk Import key: ${pin}. Single-use only.`, permissions.smsRecipientNumber);
       if (res.success) {
         setGeneratedBulkPin(pin);
         setIsBulkSmsDialogOpen(true);
-        toast({ title: 'Verification Sent', description: 'Security key routed to authorized terminal.' });
+        toast({ title: 'Key Sent', description: 'Check your SMS.' });
       } else {
-        toast({ variant: 'destructive', title: 'Gateway Error', description: res.message || 'Failed to dispatch SMS.' });
+        toast({ variant: 'destructive', title: 'SMS Failed', description: res.message });
       }
     } catch {
-      toast({ variant: 'destructive', title: 'Connection Error', description: 'SMS Gateway unreachable.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'SMS gateway unreachable.' });
     } finally {
       setIsSendingSms(false);
     }
@@ -528,54 +374,295 @@ export default function SettingsPage() {
     if (dbUrl) return;
     try {
       const res = await getMasterSpreadsheetUrlAction();
-      if (res.success && res.data) {
-        setDbUrl(res.data);
-      } else {
-        toast({ variant: 'destructive', title: 'Access Error', description: res.message || 'Spreadsheet ID is not configured.' });
+      if (res.success && res.data) setDbUrl(res.data);
+      else {
+        toast({ variant: 'destructive', title: 'Error', description: res.message || 'Not configured.' });
         setIsMasterDbDialogOpen(false);
       }
     } catch {
-      toast({ variant: 'destructive', title: 'Auth Failure', description: 'Failed to verify database session.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to open registry.' });
       setIsMasterDbDialogOpen(false);
     }
   };
 
-  const handleDbAuthSuccess = () => {
-    setIsDbAuthOpen(false);
-    setIsMasterDbDialogOpen(true);
-    handleOpenMasterDb();
+  const openSection = (id: SectionId) => {
+    if (id === 'bulk-import') {
+      handleInitiateBulkImport();
+      return;
+    }
+    if (id === 'data-source') {
+      setIsDbAuthOpen(true);
+      return;
+    }
+    setActiveSection(id);
+    setMobileView('detail');
+    setAnimKey((k) => k + 1);
   };
 
-  /* Shared dialogs (used by both mobile + desktop) */
-  const sharedDialogs = (
-    <>
+  const goBackToList = () => {
+    setMobileView('list');
+    setAnimKey((k) => k + 1);
+  };
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'appearance':
+        return <AppearancePanel isAdmin={isAdmin} />;
+      case 'notifications':
+        return <NotificationPanel />;
+      case 'sms':
+        return (
+          <SmsPanel
+            smsEnvStatus={smsEnvStatus}
+            permissions={permissions}
+            setSmsRecipientNumber={setSmsRecipientNumber}
+            setSmsDeviceId={setSmsDeviceId}
+          />
+        );
+      case 'session':
+        return <SessionPanel />;
+      case 'staff':
+        return (
+          <SectionPanel title="Staff" description="Manage team members.">
+            <StaffManager />
+          </SectionPanel>
+        );
+      case 'locations':
+        return (
+          <SectionPanel title="Locations" description="Warehouse storage zones.">
+            <LocationManager />
+          </SectionPanel>
+        );
+      case 'on-display':
+        return (
+          <SectionPanel title="On-Display protocol" description="Trigger expiry alerts.">
+            <ManualOnDisplaySmsTerminal />
+          </SectionPanel>
+        );
+      case 'transmission':
+        return (
+          <SectionPanel title="Transmission log" description="Recent alerts.">
+            <OnDisplayAlertsTerminal />
+          </SectionPanel>
+        );
+      case 'permissions':
+        return (
+          <SectionPanel title="Permissions" description="Viewer access control.">
+            <AccessControlManager />
+          </SectionPanel>
+        );
+      case 'credentials':
+        return (
+          <SectionPanel title="Admin credentials" description="Local keys for protected actions.">
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+              <p className="text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                These credentials authorize deletions and quantity overrides.
+              </p>
+            </div>
+            <LocalCredentialsForm />
+          </SectionPanel>
+        );
+      default:
+        return <AppearancePanel isAdmin={isAdmin} />;
+    }
+  };
+
+  const NavButton = ({ id, label, description, icon: Icon }: NavItem) => (
+    <button
+      type="button"
+      onClick={() => openSection(id)}
+      className={cn(
+        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+        activeSection === id ? 'bg-neutral-100 dark:bg-white/10' : 'hover:bg-neutral-50 dark:hover:bg-white/[0.04]'
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" strokeWidth={1.75} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-medium text-black dark:text-white">{label}</p>
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1">{description}</p>
+      </div>
+    </button>
+  );
+
+  /* Mobile row WITH icon (same as desktop) */
+  const MobileRow = ({ id, label, icon: Icon }: NavItem) => (
+    <button
+      type="button"
+      onClick={() => openSection(id)}
+      disabled={id === 'bulk-import' && isSendingSms}
+      className="flex w-full items-center gap-3.5 px-1 py-3.5 text-left transition-colors active:opacity-60 disabled:opacity-50"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
+        <Icon className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+      </div>
+      <span className="flex-1 text-[16px] text-black dark:text-white">{label}</span>
+      {id === 'bulk-import' && isSendingSms ? (
+        <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+      ) : (
+        <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" strokeWidth={1.75} />
+      )}
+    </button>
+  );
+
+  return (
+    <div className="min-h-[100dvh] bg-neutral-50 dark:bg-[#0a0a0f] overflow-x-hidden">
+      {/* MOBILE */}
+      <div className="lg:hidden relative min-h-[100dvh]">
+        <div
+          key={`list-${animKey}`}
+          className={cn(
+            mobileView === 'list' ? 'block' : 'hidden',
+            'animate-in fade-in slide-in-from-left-4 duration-300 ease-out fill-mode-both'
+          )}
+        >
+          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-white dark:bg-neutral-950 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+              </Link>
+              <h1 className="text-[22px] font-semibold text-black dark:text-white">Settings</h1>
+            </div>
+          </header>
+
+          <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+            {GENERAL_ITEMS.filter((i) => !i.adminOnly || isAdmin).map((item) => (
+              <MobileRow key={item.id} {...item} />
+            ))}
+          </div>
+
+          {isAdmin && (
+            <>
+              <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
+              <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+                {WAREHOUSE_ITEMS.map((item) => (
+                  <MobileRow key={item.id} {...item} />
+                ))}
+              </div>
+              <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
+              <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+                {SYSTEM_ITEMS.map((item) => (
+                  <MobileRow key={item.id} {...item} />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="px-5 py-8 text-center space-y-1">
+            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">SheetSync</p>
+            <p className="text-[12px] text-neutral-300 dark:text-neutral-600">Version 5.0.0</p>
+          </div>
+        </div>
+
+        <div
+          key={`detail-${animKey}`}
+          className={cn(
+            mobileView === 'detail' ? 'block' : 'hidden',
+            'animate-in fade-in slide-in-from-right-8 duration-300 ease-out fill-mode-both'
+          )}
+        >
+          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-white dark:bg-neutral-950 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goBackToList}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors active:scale-90"
+              >
+                <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+              </button>
+              <h1 className="text-[17px] font-semibold text-black dark:text-white">
+                {ALL_ITEMS.find((i) => i.id === activeSection)?.label}
+              </h1>
+            </div>
+          </header>
+          <div className="p-4 pb-10">{renderContent()}</div>
+        </div>
+      </div>
+
+      {/* DESKTOP */}
+      <div className="hidden lg:block">
+        <div className="mx-auto max-w-6xl px-8 py-8">
+          <div className="mb-8 flex items-center gap-2 text-[13px] text-neutral-400">
+            <Link href="/dashboard" className="hover:text-black dark:hover:text-white transition-colors">Home</Link>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-black dark:text-white font-medium">Settings</span>
+          </div>
+
+          <div className="mb-8 flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-white/5">
+              <Settings2 className="h-6 w-6 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-black dark:text-white">Settings</h1>
+              <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">
+                Manage appearance, alerts, warehouse access, and system connections.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[240px_1fr] gap-10">
+            <nav className="space-y-6">
+              <div>
+                <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">General</p>
+                <div className="space-y-0.5">
+                  {GENERAL_ITEMS.filter((i) => !i.adminOnly || isAdmin).map((item) => (
+                    <NavButton key={item.id} {...item} />
+                  ))}
+                </div>
+              </div>
+              {isAdmin && (
+                <div>
+                  <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Warehouse</p>
+                  <div className="space-y-0.5">
+                    {WAREHOUSE_ITEMS.map((item) => (
+                      <NavButton key={item.id} {...item} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {isAdmin && (
+                <div>
+                  <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">System</p>
+                  <div className="space-y-0.5">
+                    {SYSTEM_ITEMS.map((item) => (
+                      <NavButton key={item.id} {...item} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </nav>
+            <main className="min-w-0 animate-in fade-in duration-200" key={activeSection}>
+              {renderContent()}
+            </main>
+          </div>
+        </div>
+      </div>
+
+      {/* Dialogs */}
       <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-lg overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
           <div className="p-5">
             <DialogHeader>
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
                   <Database className="h-5 w-5 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
                 </div>
-                <div>
-                  <DialogTitle className="text-lg font-semibold text-black dark:text-white">Cloud tunnel</DialogTitle>
-                  <p className="text-[12px] text-neutral-500 dark:text-neutral-400">Authorized access</p>
-                </div>
+                <DialogTitle className="text-lg font-semibold text-black dark:text-white">Data source</DialogTitle>
               </div>
               <DialogDescription className="text-[14px] text-neutral-500 dark:text-neutral-400">
-                Secure link to the Google Sheets registry.
+                Open the connected Google Sheets registry.
               </DialogDescription>
             </DialogHeader>
           </div>
           <div className="space-y-4 px-5 pb-5">
-            <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-4">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" strokeWidth={1.75} />
-              <div>
-                <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">Integrity protocol</p>
-                <p className="mt-0.5 text-[12px] text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
-                  Manual changes to headers or column order will disrupt synchronization.
-                </p>
-              </div>
+            <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+              <p className="text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                Do not change headers or column order — this will break sync.
+              </p>
             </div>
             {dbUrl ? (
               <Button asChild className="h-11 w-full rounded-xl bg-black dark:bg-white text-[14px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none shadow-none">
@@ -584,14 +671,14 @@ export default function SettingsPage() {
                 </a>
               </Button>
             ) : (
-              <Button disabled className="h-11 w-full rounded-xl border border-dashed border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-[13px] font-medium opacity-60">
+              <Button disabled className="h-11 w-full rounded-xl border border-dashed border-neutral-200 dark:border-white/10 text-[13px] opacity-60">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connecting…
               </Button>
             )}
           </div>
-          <div className="flex justify-center border-t border-neutral-100 dark:border-white/5 p-3">
+          <div className="border-t border-neutral-100 dark:border-white/5 p-3 text-center">
             <DialogClose asChild>
-              <Button variant="ghost" className="text-[13px] text-neutral-500 dark:text-neutral-400">Close</Button>
+              <Button variant="ghost" className="text-[13px] text-neutral-500">Close</Button>
             </DialogClose>
           </div>
         </DialogContent>
@@ -600,62 +687,54 @@ export default function SettingsPage() {
       <AuthorizeActionDialog
         isOpen={isDbAuthOpen}
         onOpenChange={setIsDbAuthOpen}
-        onAuthorizationSuccess={handleDbAuthSuccess}
+        onAuthorizationSuccess={() => {
+          setIsDbAuthOpen(false);
+          setIsMasterDbDialogOpen(true);
+          handleOpenMasterDb();
+        }}
         fixedIdentifier={user?.email || undefined}
-        actionDescription={`Identity check required for ${user?.email}. Provide account credentials to establish a secure registry tunnel.`}
+        actionDescription={`Verify identity for ${user?.email} to open the data source.`}
       />
 
       <Dialog open={isBulkSmsDialogOpen} onOpenChange={setIsBulkSmsDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 shadow-2xl overflow-hidden p-0">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl overflow-hidden">
           <div className="p-5 border-b border-neutral-100 dark:border-white/5">
             <DialogHeader className="text-left">
               <div className="flex items-center gap-3 mb-1">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
                   <Key className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
                 </div>
-                <DialogTitle className="text-base font-semibold text-black dark:text-white">Security handshake</DialogTitle>
+                <DialogTitle className="text-base font-semibold text-black dark:text-white">Enter key</DialogTitle>
               </div>
-              <DialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Enter the 4-digit key sent to{' '}
-                {permissions.smsRecipientNumber?.slice(-4).padStart(permissions.smsRecipientNumber?.length || 4, '*')}
-              </DialogDescription>
+              <DialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">4-digit code sent via SMS</DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-5 space-y-5">
-            <div className="space-y-2">
-              <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Authentication key</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                className="h-16 text-center text-3xl font-semibold tracking-[0.35em] bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 rounded-xl shadow-none focus-visible:ring-0"
-                placeholder="••••"
-                autoFocus
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  if (val.length === 4) {
-                    if (val === generatedBulkPin) {
-                      setIsBulkSmsDialogOpen(false);
-                      setIsImportTerminalOpen(true);
-                      setGeneratedBulkPin('');
-                      toast({ title: 'Access Granted', description: 'Identity verified via SMS.' });
-                    } else {
-                      toast({ variant: 'destructive', title: 'Access Denied', description: 'Invalid security key.' });
-                      e.target.value = '';
-                    }
+          <div className="p-5">
+            <Input
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              className="h-14 text-center text-2xl font-semibold tracking-[0.35em] bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 rounded-xl shadow-none focus-visible:ring-0"
+              placeholder="••••"
+              autoFocus
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                if (val.length === 4) {
+                  if (val === generatedBulkPin) {
+                    setIsBulkSmsDialogOpen(false);
+                    setIsImportTerminalOpen(true);
+                    setGeneratedBulkPin('');
+                    toast({ title: 'Verified', description: 'Opening importer.' });
+                  } else {
+                    toast({ variant: 'destructive', title: 'Invalid key' });
+                    e.target.value = '';
                   }
-                }}
-              />
-            </div>
-            <div className="flex items-start gap-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 p-3.5">
-              <ShieldCheck className="h-4 w-4 text-neutral-400 shrink-0 mt-0.5" strokeWidth={1.75} />
-              <p className="text-[12px] text-neutral-500 dark:text-neutral-400 leading-relaxed">Key is valid for this session only.</p>
-            </div>
+                }
+              }}
+            />
           </div>
           <DialogFooter className="p-3 border-t border-neutral-100 dark:border-white/5">
-            <Button variant="ghost" onClick={() => setIsBulkSmsDialogOpen(false)} className="w-full text-[13px] text-neutral-500 dark:text-neutral-400">
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={() => setIsBulkSmsDialogOpen(false)} className="w-full text-[13px] text-neutral-500">Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -667,244 +746,6 @@ export default function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
-  );
-
-  return (
-    <>
-      {/* ════════ MOBILE LAYOUT (< lg) ════════ */}
-      <div className="lg:hidden mx-auto w-full min-w-0 max-w-lg min-h-[100dvh] bg-neutral-50 dark:bg-[#0a0a0f] pb-[calc(2rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-40 flex items-center gap-3 bg-neutral-50/90 dark:bg-[#0a0a0f]/90 backdrop-blur-md px-4 py-3 border-b border-neutral-200/60 dark:border-white/5">
-          <Link
-            href="/dashboard"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
-          </Link>
-          <h1 className="flex-1 text-center text-[17px] font-semibold text-black dark:text-white pr-9">
-            Settings
-          </h1>
-        </header>
-
-        <div className="px-4 pt-6 space-y-6">
-          <SettingsGroup>
-            <SettingsRow icon={Palette} label="Appearance" description="Theme, multi-select, audio" dialogClassName="sm:max-w-2xl">
-              <AppearancePanel role={role} />
-            </SettingsRow>
-            <SettingsRow icon={Bell} label="Notifications" description="Browser alerts for security events">
-              <NotificationTerminal />
-            </SettingsRow>
-            {role === 'admin' && (
-              <SettingsRow icon={Smartphone} label="SMS delivery" description="Recipient and device for security messages" dialogClassName="sm:max-w-xl">
-                <SmsPanel smsEnvStatus={smsEnvStatus} permissions={permissions} setSmsRecipientNumber={setSmsRecipientNumber} setSmsDeviceId={setSmsDeviceId} />
-              </SettingsRow>
-            )}
-            {role === 'admin' && (
-              <SettingsRow icon={Shield} label="Session security" description="Welcome screen and auto-lock timer">
-                <SessionSecurityPanel />
-              </SettingsRow>
-            )}
-          </SettingsGroup>
-
-          {role === 'admin' && (
-            <SettingsGroup>
-              <SettingsRow icon={UserPlus} label="Staff" description="Manage staff members" dialogClassName="sm:max-w-4xl">
-                <StaffManager />
-              </SettingsRow>
-              <SettingsRow icon={MapPin} label="Locations" description="Warehouse storage zones" dialogClassName="sm:max-w-4xl">
-                <LocationManager />
-              </SettingsRow>
-              <SettingsRow icon={LayoutDashboard} label="On-Display protocol" description="Trigger expiry alerts for staff" dialogClassName="sm:max-w-md">
-                <ManualOnDisplaySmsTerminal />
-              </SettingsRow>
-              <SettingsRow icon={History} label="Transmission log" description="Recent On-Display alerts" dialogClassName="sm:max-w-4xl">
-                <OnDisplayAlertsTerminal />
-              </SettingsRow>
-              <SettingsRow icon={ShieldCheck} label="Permissions" description="Viewer access control" dialogClassName="sm:max-w-3xl">
-                <AccessControlManager />
-              </SettingsRow>
-            </SettingsGroup>
-          )}
-
-          {role === 'admin' && (
-            <SettingsGroup>
-              <SettingsRow
-                icon={CloudUpload}
-                label="Bulk import"
-                description="Import large datasets via SMS"
-                isManual
-                disabled={isSendingSms}
-                onClick={handleInitiateBulkImport}
-                trailing={isSendingSms ? <Loader2 className="h-4 w-4 animate-spin text-neutral-400" /> : <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" strokeWidth={1.75} />}
-              />
-              <SettingsRow icon={Database} label="Data source" description="Open Google Sheets registry" isManual onClick={() => setIsDbAuthOpen(true)} />
-              <SettingsRow icon={KeyRound} label="Admin credentials" description="Local credentials for protected actions" dialogClassName="sm:max-w-md">
-                <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3.5">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-                  <div>
-                    <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">Security notice</p>
-                    <p className="mt-0.5 text-[12px] text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
-                      These credentials authorize stock deletion and quantity overrides.
-                    </p>
-                  </div>
-                </div>
-                <LocalCredentialsForm />
-              </SettingsRow>
-            </SettingsGroup>
-          )}
-
-          <div className="pt-2 space-y-1 px-1">
-            <p className="text-[13px] text-neutral-400 dark:text-neutral-500 py-2">SheetSync Industrial Inventory</p>
-            <p className="text-[12px] text-neutral-300 dark:text-neutral-600 py-1">Version 5.0.0</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ════════ DESKTOP LAYOUT (≥ lg) ════════ */}
-      <div className="hidden lg:block mx-auto w-full min-w-0 max-w-[1680px] overflow-x-hidden px-6 pb-10 pt-6">
-        <header className="mb-8">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300">
-              <Settings2 className="h-6 w-6" strokeWidth={1.75} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-3xl font-bold tracking-tight text-black dark:text-white">Settings</h1>
-              <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-                Manage application behavior, alerts, warehouse access, and system connections.
-              </p>
-            </div>
-            <Badge variant="outline" className="shrink-0 rounded-lg border-neutral-200 dark:border-white/10 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-              v5.0.0
-            </Badge>
-          </div>
-        </header>
-
-        <div className="grid min-w-0 gap-8 grid-cols-[220px_minmax(0,1fr)]">
-          <aside>
-            <div className="sticky top-6 space-y-3">
-              <nav className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-2 shadow-sm">
-                <a href="#interface-settings" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-black dark:text-white transition-colors hover:bg-neutral-50 dark:hover:bg-white/5">
-                  <Palette className="h-4 w-4 text-neutral-500" strokeWidth={1.75} /> General
-                </a>
-                {role === 'admin' && (
-                  <a href="#warehouse-settings" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-black dark:text-white transition-colors hover:bg-neutral-50 dark:hover:bg-white/5">
-                    <Layers className="h-4 w-4 text-neutral-500" strokeWidth={1.75} /> Warehouse
-                  </a>
-                )}
-                {role === 'admin' && (
-                  <a href="#system-settings" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-black dark:text-white transition-colors hover:bg-neutral-50 dark:hover:bg-white/5">
-                    <Database className="h-4 w-4 text-neutral-500" strokeWidth={1.75} /> System
-                  </a>
-                )}
-              </nav>
-              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-3">
-                <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Access level</p>
-                <p className="mt-1 text-xs font-semibold text-black dark:text-white">
-                  {role === 'admin' ? 'Administrator' : 'Viewer'}
-                </p>
-                {role === 'admin' && (
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
-                    <span className={cn('h-2 w-2 rounded-full', smsEnvStatus?.hasApiKey ? 'bg-emerald-500' : 'bg-amber-500')} />
-                    {smsEnvStatus?.hasApiKey ? 'SMS gateway ready' : 'SMS gateway needs setup'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
-
-          <main className="min-w-0 space-y-8">
-            <section id="interface-settings" className="scroll-mt-6 space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-black dark:text-white">General</h2>
-                <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-                  Interface preferences, notifications, communication, and session behavior.
-                </p>
-              </div>
-              <div className="divide-y divide-neutral-100 dark:divide-white/5 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 shadow-sm">
-                <DesktopSettingsCard icon={Palette} title="Appearance & behavior" description="Theme, multi-select behavior, audio feedback, and identity prompts." triggerText="Open" dialogClassName="sm:max-w-4xl" badge="GENERAL">
-                  <AppearancePanel role={role} />
-                </DesktopSettingsCard>
-                <DesktopSettingsCard icon={Bell} title="Notifications" description="Control browser notifications for security events and access keys." triggerText="Open" badge="ALERTS">
-                  <NotificationTerminal />
-                </DesktopSettingsCard>
-                {role === 'admin' && (
-                  <DesktopSettingsCard icon={Smartphone} title="SMS delivery" description="Configure the TextBee recipient and device used for security messages." triggerText="Configure" badge="SMS" dialogClassName="sm:max-w-xl">
-                    <SmsPanel smsEnvStatus={smsEnvStatus} permissions={permissions} setSmsRecipientNumber={setSmsRecipientNumber} setSmsDeviceId={setSmsDeviceId} />
-                  </DesktopSettingsCard>
-                )}
-                {role === 'admin' && (
-                  <DesktopSettingsCard icon={Shield} title="Session security" description="Control admin welcome behavior and automatic session locking." triggerText="Configure" badge="SECURITY">
-                    <SessionSecurityPanel />
-                  </DesktopSettingsCard>
-                )}
-              </div>
-            </section>
-
-            {role === 'admin' && (
-              <section id="warehouse-settings" className="scroll-mt-6 space-y-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Warehouse</h2>
-                  <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">Staff, storage locations, and viewer permissions.</p>
-                </div>
-                <div className="divide-y divide-neutral-100 dark:divide-white/5 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 shadow-sm">
-                  <DesktopSettingsCard icon={UserPlus} title="Staff" description="Manage staff members available for inventory and Diary logging." triggerText="Manage" dialogClassName="sm:max-w-4xl" badge="PEOPLE">
-                    <StaffManager />
-                  </DesktopSettingsCard>
-                  <DesktopSettingsCard icon={MapPin} title="Locations" description="Manage warehouse locations available during inventory logging." triggerText="Manage" dialogClassName="sm:max-w-4xl" badge="WAREHOUSE">
-                    <LocationManager />
-                  </DesktopSettingsCard>
-                  <DesktopSettingsCard icon={LayoutDashboard} title="On-Display protocol" description="Manually trigger 7-day expiry alerts and temporary access for specific staff." triggerText="Open terminal" badge="ALERTS" dialogClassName="sm:max-w-md">
-                    <ManualOnDisplaySmsTerminal />
-                  </DesktopSettingsCard>
-                  <DesktopSettingsCard icon={History} title="Transmission Log" description="Review recently dispatched On-Display alerts and security tokens." triggerText="View History" badge="ALERTS" dialogClassName="sm:max-w-4xl">
-                    <OnDisplayAlertsTerminal />
-                  </DesktopSettingsCard>
-                  <DesktopSettingsCard icon={ShieldCheck} title="Permissions" description="Control which pages and actions are available to restricted users." triggerText="Manage" dialogClassName="sm:max-w-3xl" badge="ACCESS">
-                    <AccessControlManager />
-                  </DesktopSettingsCard>
-                </div>
-              </section>
-            )}
-
-            {role === 'admin' && (
-              <section id="system-settings" className="scroll-mt-6 space-y-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-black dark:text-white">System</h2>
-                  <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">Data import, registry access, and administrative credentials.</p>
-                </div>
-                <div className="divide-y divide-neutral-100 dark:divide-white/5 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 shadow-sm">
-                  <DesktopSettingsCard icon={CloudUpload} title="Bulk import" description="Import large datasets with mandatory SMS identity handshake." triggerText="Open importer" isManual isLoading={isSendingSms} onManualClick={handleInitiateBulkImport} badge="DATA" />
-                  <DesktopSettingsCard icon={Database} title="Data source" description="Open the connected Google Sheets registry after authorization." triggerText="Open source" isManual onManualClick={() => setIsDbAuthOpen(true)} badge="GOOGLE SHEETS" />
-                  <DesktopSettingsCard icon={KeyRound} title="Admin credentials" description="Manage local administrative credentials used for protected actions." triggerText="Manage" dialogClassName="sm:max-w-md" badge="SECURITY">
-                    <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3.5">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-                      <div>
-                        <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">Security notice</p>
-                        <p className="mt-0.5 text-[12px] text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
-                          These credentials authorize stock deletion and quantity overrides.
-                        </p>
-                      </div>
-                    </div>
-                    <LocalCredentialsForm />
-                  </DesktopSettingsCard>
-                </div>
-              </section>
-            )}
-
-            <div className="flex items-start gap-3 rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 p-4">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" strokeWidth={1.75} />
-              <div>
-                <p className="text-[12px] font-medium text-black dark:text-white">Data integrity</p>
-                <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-                  Verify that the Google Spreadsheet ID and Service Account credentials are correctly set in the environment variables.
-                </p>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-
-      {sharedDialogs}
-    </>
+    </div>
   );
 }
