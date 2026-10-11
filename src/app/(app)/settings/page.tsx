@@ -531,7 +531,7 @@ export default function SettingsPage() {
             'animate-in fade-in slide-in-from-left-4 duration-300 ease-out fill-mode-both'
           )}
         >
-          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background dark:bg-neutral-950 px-5 py-4">
+          <header className="sticky top-[-1rem] z-50 -mx-4 w-[calc(100%+2rem)] border-b border-neutral-200/60 dark:border-white/5 bg-background/95 dark:bg-neutral-950/95 backdrop-blur-md px-5 py-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/more"
@@ -577,7 +577,7 @@ export default function SettingsPage() {
             'animate-in fade-in slide-in-from-right-8 duration-300 ease-out fill-mode-both'
           )}
         >
-          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background dark:bg-neutral-950 px-4 py-3">
+          <header className="sticky top-[-1rem] z-50 -mx-4 w-[calc(100%+2rem)] border-b border-neutral-200/60 dark:border-white/5 bg-background/95 dark:bg-neutral-950/95 backdrop-blur-md px-4 py-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
