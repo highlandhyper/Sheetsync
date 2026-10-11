@@ -506,7 +506,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-50 dark:bg-[#0a0a0f] overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-white dark:bg-neutral-950 overflow-x-hidden">
       {/* MOBILE */}
       <div className="lg:hidden relative min-h-[100dvh]">
         <div
