@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { PropsWithChildren } from 'react';
@@ -13,6 +12,7 @@ interface AppData {
   inventoryItems: InventoryItem[];
   products: Product[];
   suppliers: Supplier[];
+  supplierContacts: Supplier[];
   uniqueLocations: string[];
   staffRegistry: StaffMember[];
   auditLogs: AuditLogEntry[];
@@ -59,6 +59,7 @@ const initialEmptyData: AppData = {
   inventoryItems: [],
   products: [],
   suppliers: [],
+  supplierContacts: [],
   uniqueLocations: [],
   staffRegistry: [],
   auditLogs: [],
@@ -169,7 +170,6 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         
         setData(prev => {
             const incomingStaff = response.data!.staffRegistry;
-            // Support clearing the registry by allowing empty arrays if provided by server
             const finalStaff = incomingStaff 
                 ? incomingStaff.map(s => ({ ...s, name: s.name.toUpperCase() }))
                 : prev.staffRegistry;
@@ -184,6 +184,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
                 suppliers: response.data!.suppliers && response.data!.suppliers.length > 0 
                     ? response.data!.suppliers 
                     : prev.suppliers,
+                supplierContacts: response.data!.supplierContacts || prev.supplierContacts,
                 lastSync: now 
             };
         });
