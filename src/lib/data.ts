@@ -14,6 +14,7 @@ const STAFF_LIST_KEY = "staffList";
 const PERMISSIONS_KEY = "permissions";
 const SPECIAL_REQUESTS_KEY = "specialRequests";
 const LOCATION_LIST_KEY = "locationList";
+const SUPPLIER_CONTACTS_KEY = "supplierContacts";
 
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -42,29 +43,27 @@ const AUDIT_COL_ACTION = 2;
 const AUDIT_COL_TARGET = 3;
 const AUDIT_COL_DETAILS = 4;
 
-// Expiry Watch Column Mapping (1-based for A1 notation helpers)
-const WATCH_COL_ID = 1;        // Col A
-const WATCH_COL_BARCODE = 2;   // Col B
-const WATCH_COL_PRODUCT = 3;   // Col C
-const WATCH_COL_EXPIRY = 4;    // Col D
-const WATCH_COL_SUPPLIER = 5;  // Col E
-const WATCH_COL_STATUS = 6;    // Col F
-const WATCH_COL_TIMESTAMP = 7; // Col G
-const WATCH_COL_STAFF = 8;     // Col H
+const WATCH_COL_ID = 1;
+const WATCH_COL_BARCODE = 2;
+const WATCH_COL_PRODUCT = 3;
+const WATCH_COL_EXPIRY = 4;
+const WATCH_COL_SUPPLIER = 5;
+const WATCH_COL_STATUS = 6;
+const WATCH_COL_TIMESTAMP = 7;
+const WATCH_COL_STAFF = 8;
 
-// On Display Alerts Column Mapping (1-based for A1 notation helpers)
-const ODA_COL_ID = 1;          // Col A
-const ODA_COL_BARCODE = 2;     // Col B
-const ODA_COL_PRODUCT = 3;     // Col C
-const ODA_COL_EXPIRY = 4;      // Col D
-const ODA_COL_STAFF = 5;       // Col E
-const ODA_COL_TOKEN = 6;       // Col F
-const ODA_COL_PIN = 7;         // Col G
-const ODA_COL_EXPIRES_AT = 8;  // Col H
-const ODA_COL_USED = 9;        // Col I
-const ODA_COL_SENT_AT = 10;    // Col J
-const ODA_COL_LOG_ROW = 11;    // Col K
-const ODA_COL_LOG_ID = 12;     // Col L
+const ODA_COL_ID = 1;
+const ODA_COL_BARCODE = 2;
+const ODA_COL_PRODUCT = 3;
+const ODA_COL_EXPIRY = 4;
+const ODA_COL_STAFF = 5;
+const ODA_COL_TOKEN = 6;
+const ODA_COL_PIN = 7;
+const ODA_COL_EXPIRES_AT = 8;
+const ODA_COL_USED = 9;
+const ODA_COL_SENT_AT = 10;
+const ODA_COL_LOG_ROW = 11;
+const ODA_COL_LOG_ID = 12;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
@@ -77,27 +76,15 @@ function parseFlexibleTimestamp(val: any): Date | null {
   if (val === undefined || val === null) return null;
   const s = String(val).trim();
   if (s === '') return null;
-  
   if (val instanceof Date && isValid(val)) return val;
   if (typeof val === 'number') {
     const d = new Date(Date.UTC(1899, 11, 30));
     d.setMilliseconds(d.getMilliseconds() + val * 24 * 60 * 60 * 1000);
     return isValid(d) ? d : null;
   }
-  
   const iso = parseISO(s);
   if (isValid(iso)) return iso;
-  
-  const formats = [
-    "d/M/yyyy HH:mm:ss", 
-    "yyyy-MM-dd HH:mm:ss", 
-    "d/M/yyyy", 
-    "MM/dd/yyyy", 
-    "yyyy-MM-dd", 
-    "yyyy-MM-dd'T'HH:mm:ss.SSSX", 
-    "dd/MM/yyyy HH:mm:ss",
-    "dd/MM/yyyy"
-  ];
+  const formats = ["d/M/yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "d/M/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss.SSSX", "dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy"];
   for (const f of formats) {
     try {
       const d = dateParse(s, f, new Date());
@@ -109,19 +96,14 @@ function parseFlexibleTimestamp(val: any): Date | null {
 
 function transformToProduct(row: any[]): Product | null {
   if (!row || row.length < 1) return null;
-  
   const barcodeA = String(row[DB_COL_BARCODE_A] || '').trim();
   const barcodeB = String(row[DB_COL_BARCODE_B] || '').trim();
   const barcode = barcodeA || barcodeB;
-  
   const productName = String(row[DB_COL_PRODUCT_NAME] || '').trim();
   const uniqueIdFromSheet = String(row[DB_COL_UNIQUE_ID] || '').trim();
-  
   if (!barcode || !productName || barcode.toLowerCase() === 'barcode') return null;
-  
   const costRaw = String(row[DB_COL_COST_PRICE] || '');
   const cost = parseFloat(costRaw.replace(/[^0-9.-]+/g,""));
-  
   return { 
     id: uniqueIdFromSheet || barcode,
     uniqueId: uniqueIdFromSheet || undefined,
@@ -138,10 +120,8 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
   const qtyRaw = String(row[INV_COL_QTY] || '0');
   const qty = parseFloat(qtyRaw.replace(/[^0-9.-]+/g,""));
   if (!barcode || isNaN(qty)) return null;
-  
   const exp = parseFlexibleTimestamp(row[INV_COL_EXPIRY]);
   const ts = parseFlexibleTimestamp(row[INV_COL_TIMESTAMP]);
-  
   return {
     id: String(row[INV_COL_UNIQUE_ID] || `tmp_${i}`).trim(),
     productName: String(row[INV_COL_PRODUCT_NAME] || 'Not Found').trim(),
@@ -159,7 +139,6 @@ function transformToInventoryItem(row: any[], i: number): InventoryItem | null {
 export async function getProducts(): Promise<Product[]> {
   const data = await readSheetData(DB_READ_RANGE);
   if (data === null) throw new Error("Registry Catalog Unavailable");
-  
   return data.reduce((acc: Product[], row) => {
     const p = transformToProduct(row);
     if (p && p.barcode) acc.push(p);
@@ -170,7 +149,6 @@ export async function getProducts(): Promise<Product[]> {
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   const data = await readSheetData(INVENTORY_READ_RANGE);
   if (data === null) throw new Error("Inventory Registry Offline");
-  
   return data.reduce((acc: InventoryItem[], row, i) => {
     const item = transformToInventoryItem(row, i);
     if (item && item.quantity > 0) acc.push(item);
@@ -181,13 +159,11 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
     const data = await readSheetData(EXPIRY_WATCH_READ_RANGE);
     if (!data) return [];
-    
     return data.map(row => {
         const expRaw = row[WATCH_COL_EXPIRY - 1];
         const expDate = parseFlexibleTimestamp(expRaw);
         const tsRaw = row[WATCH_COL_TIMESTAMP - 1];
         const tsDate = parseFlexibleTimestamp(tsRaw);
-
         return {
             id: String(row[WATCH_COL_ID - 1] || ''),
             barcode: String(row[WATCH_COL_BARCODE - 1] || ''),
@@ -204,11 +180,9 @@ export async function getExpiryReminders(): Promise<ExpiryReminder[]> {
 export async function getAllOnDisplayAlerts(): Promise<OnDisplayAlert[]> {
   const data = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!data) return [];
-
   return data.map((row) => {
     const expAtTs = parseFlexibleTimestamp(row[ODA_COL_EXPIRES_AT - 1]);
     const sentAtTs = parseFlexibleTimestamp(row[ODA_COL_SENT_AT - 1]);
-
     return {
       id: String(row[ODA_COL_ID - 1] || ''),
       barcode: String(row[ODA_COL_BARCODE - 1] || ''),
@@ -229,28 +203,22 @@ export async function getAllOnDisplayAlerts(): Promise<OnDisplayAlert[]> {
 export async function getOnDisplayItemByToken(token: string): Promise<{ items: InventoryItem[]; pin: string } | null> {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
-
   const matchingAlerts = alerts.filter(row => String(row[ODA_COL_TOKEN - 1]).trim() === token);
   if (matchingAlerts.length === 0) return null;
-
   const firstAlert = matchingAlerts[0];
   const isUsed = matchingAlerts.some(row => String(row[ODA_COL_USED - 1]).toLowerCase() === 'yes');
   const expiresAt = parseFlexibleTimestamp(firstAlert[ODA_COL_EXPIRES_AT - 1]);
   const pin = String(firstAlert[ODA_COL_PIN - 1] || '').trim();
-
   if (isUsed || (expiresAt && isBefore(expiresAt, new Date()))) return null;
-
   const staffName = String(firstAlert[ODA_COL_STAFF - 1]).trim().toUpperCase();
   const barcodes = new Set(matchingAlerts.map(row => String(row[ODA_COL_BARCODE - 1]).trim()));
   const inventory = await getInventoryItems();
-
   const items = inventory.filter(i =>
     barcodes.has(i.barcode.trim()) &&
     i.location === "On Display" &&
     i.staffName.trim().toUpperCase() === staffName &&
     i.quantity > 0
   );
-
   if (items.length === 0) return null;
   return { items, pin };
 }
@@ -258,34 +226,26 @@ export async function getOnDisplayItemByToken(token: string): Promise<{ items: I
 export async function getOnDisplayItemByPin(pin: string): Promise<{ items: InventoryItem[]; staffName: string; token: string } | null> {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return null;
-
   const matches = alerts.filter(row =>
     String(row[ODA_COL_PIN - 1]).trim() === pin &&
     String(row[ODA_COL_USED - 1]).toLowerCase() !== 'yes'
   );
-
   if (matches.length === 0) return null;
-
   const lastMatch = matches[matches.length - 1];
   const token = String(lastMatch[ODA_COL_TOKEN - 1]).trim();
   const staffName = String(lastMatch[ODA_COL_STAFF - 1]).trim().toUpperCase();
-
   const sessionData = await getOnDisplayItemByToken(token);
   if (!sessionData) return null;
-
   return { items: sessionData.items, staffName, token };
 }
 
 export async function markOnDisplayTokenUsed(token: string) {
   const alerts = await readSheetData(ON_DISPLAY_ALERTS_READ_RANGE);
   if (!alerts) return false;
-
   const matchingRows = alerts
     .map((row, index) => String(row[ODA_COL_TOKEN - 1]).trim() === token ? index + 2 : null)
     .filter((row): row is number => row !== null);
-
   if (matchingRows.length === 0) return false;
-
   await Promise.all(matchingRows.map(row =>
     updateSheetData(`${ON_DISPLAY_ALERTS_SHEET_NAME}!I${row}`, [['Yes']])
   ));
@@ -348,7 +308,8 @@ export async function getAppMetaData() {
     permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
     specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
     staff: processedStaff,
-    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"]
+    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"],
+    supplierContacts: (findJson(SUPPLIER_CONTACTS_KEY) as Supplier[]) || []
   };
 }
 
@@ -384,6 +345,14 @@ export async function saveLocationListToSheet(locations: string[]) {
   data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY) lastIdx = i; });
   if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(locations)]]);
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
+}
+
+export async function saveSupplierContactsToSheet(contacts: Supplier[]) {
+  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  let lastIdx = -1;
+  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === SUPPLIER_CONTACTS_KEY) lastIdx = i; });
+  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(contacts)]]);
+  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SUPPLIER_CONTACTS_KEY, JSON.stringify(contacts)]]);
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {

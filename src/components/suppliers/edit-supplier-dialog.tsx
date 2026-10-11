@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Hash, Mail, Phone, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,32 +18,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { editSupplierSchema, type EditSupplierFormValues } from '@/lib/schemas';
-import { editSupplierAction } from '@/app/actions'; 
+import { editSupplierAction, saveSupplierContactsAction } from '@/app/actions'; 
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
+import { Separator } from '../ui/separator';
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto font-bold">
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-      Save Changes
-    </Button>
-  );
-}
-
-interface EditSupplierDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  supplier: Supplier | null;
-}
-
-export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSupplierDialogProps) {
+export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen: boolean, onOpenChange: (open: boolean) => void, supplier: Supplier | null }) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { updateSupplier, refreshData } = useDataCache();
+  const { supplierContacts, refreshData } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
 
   const {
@@ -52,11 +39,6 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
     formState: { errors: formErrors, isDirty },
   } = useForm<EditSupplierFormValues>({
     resolver: zodResolver(editSupplierSchema),
-    defaultValues: {
-      supplierId: supplier?.id || '',
-      currentSupplierName: supplier?.name || '',
-      newSupplierName: supplier?.name || '',
-    }
   });
   
   useEffect(() => {
@@ -65,6 +47,9 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
         supplierId: supplier.id,
         currentSupplierName: supplier.name,
         newSupplierName: supplier.name,
+        supplierCode: supplier.supplierCode || '',
+        email: supplier.email || '',
+        phone: supplier.phone || '',
       });
     }
   }, [supplier, reset, isOpen]);
@@ -72,54 +57,29 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!supplier) return;
     
-    if (!isDirty) {
-        onOpenChange(false);
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('supplierId', supplier.id || data.supplierId);
-    formData.append('currentSupplierName', supplier.name || data.currentSupplierName);
-    formData.append('newSupplierName', data.newSupplierName);
-    formData.append('userEmail', user?.email || 'Admin');
-    
     startActionTransition(async () => {
-      // 1. OPTIMISTIC UPDATE: Instant feedback locally
-      const oldName = supplier.name;
-      const newName = data.newSupplierName;
+      const formData = new FormData();
+      formData.append('supplierId', supplier.id);
+      formData.append('currentSupplierName', supplier.name);
+      formData.append('newSupplierName', data.newSupplierName);
+      formData.append('userEmail', user?.email || 'Admin');
       
-      updateSupplier(oldName, newName);
-      onOpenChange(false); // CLOSE DIALOG INSTANTLY
-      
-      toast({
-        title: 'Registry Update Initiated',
-        description: `Renaming "${oldName}" to "${newName}" in background...`,
-      });
-
-      try {
-        const result = await editSupplierAction(undefined, formData);
-        
-        if (result.success) {
-          toast({
-            title: 'Update Successful',
-            description: `Registry updated. all associated logs now reflect "${newName}".`,
-          });
-          refreshData(); // Final sync to confirm all changes
-        } else {
-          toast({
-            title: 'Sync Error',
-            description: result.message || 'Cloud rename failed. Reverting local changes...',
-            variant: 'destructive',
-          });
-          refreshData(); // REVERT
-        }
-      } catch (error) {
-        toast({
-          title: 'Connection Error',
-          description: 'Failed to reach registry service. Reverting local changes...',
-          variant: 'destructive',
-        });
-        refreshData();
+      const res = await editSupplierAction(undefined, formData);
+      if (res.success) {
+          const otherContacts = supplierContacts.filter(c => c.id !== supplier.id);
+          const updatedContact: Supplier = {
+              ...supplier,
+              name: data.newSupplierName,
+              supplierCode: data.supplierCode,
+              email: data.email,
+              phone: data.phone
+          };
+          await saveSupplierContactsAction([...otherContacts, updatedContact]);
+          toast({ title: 'Success', description: 'Registry node synchronized.' });
+          refreshData();
+          onOpenChange(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Sync Error', description: res.message || 'Handshake failed.' });
       }
     });
   };
@@ -128,35 +88,67 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: EditSuppl
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Rename Master Registry: {supplier.name}</DialogTitle>
-          <DialogDescription>
-            Updating this name will propagate changes to all associated products and inventory logs. This ensures data consistency.
+      <DialogContent className="sm:max-w-[480px] rounded-[2rem] border-none shadow-3xl">
+        <DialogHeader className="p-2">
+          <DialogTitle className="text-xl font-black uppercase tracking-tight">Sync Registry Node</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Manage identification codes and contact terminal nodes.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <input type="hidden" {...register('supplierId')} value={supplier.id} />
-          <input type="hidden" {...register('currentSupplierName')} value={supplier.name} />
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="newSupplierName" className="text-left font-bold uppercase text-[10px] text-muted-foreground tracking-widest">
-                New Master Name
-              </Label>
-              <Input
-                id="newSupplierName"
-                placeholder="Enter new supplier name"
-                {...register('newSupplierName')}
-                className={cn("h-11 font-semibold", formErrors.newSupplierName && 'border-destructive')}
-              />
-              {formErrors.newSupplierName && <p className="text-xs text-destructive mt-1 font-medium">{formErrors.newSupplierName.message}</p>}
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 py-4 px-2">
+          <div className="space-y-2">
+            <Label htmlFor="newSupplierName" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Company Identity</Label>
+            <Input id="newSupplierName" {...register('newSupplierName')} className="h-11 font-bold bg-muted/10" />
+            {formErrors.newSupplierName && <p className="text-[10px] text-destructive font-bold">{formErrors.newSupplierName.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplierCode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Vendor Code</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                  <Input id="supplierCode" {...register('supplierCode')} className="h-11 font-black pl-9 bg-muted/10 uppercase" placeholder="142" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SMS Node</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974..." />
+                </div>
+              </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Dispatch Email</Label>
+            <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                <Input id="email" type="email" {...register('email')} className="h-11 font-bold pl-9 bg-muted/10" />
             </div>
           </div>
-          <DialogFooter className="gap-2">
+
+          <Separator className="my-4 opacity-50" />
+
+          <div className="rounded-xl bg-primary/5 p-4 border border-primary/10 flex items-center justify-between">
+              <div>
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest">Portal Access</p>
+                  <p className="text-[9px] font-medium text-muted-foreground mt-1">Direct link for vendor stock viewing.</p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[8px] tracking-widest text-primary" asChild>
+                  <a href={`/supplier-portal/${supplier.supplierCode}`} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-1 h-3 w-3" /> Preview Portal
+                  </a>
+              </Button>
+          </div>
+
+          <DialogFooter className="pt-4 flex gap-2">
             <DialogClose asChild>
-                <Button type="button" variant="outline" className="font-bold">Cancel</Button>
+                <Button type="button" variant="ghost" className="font-bold">Discard</Button>
             </DialogClose>
-            <SubmitButton isPending={isActionPending} />
+            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20">
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Apply Registry Changes
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

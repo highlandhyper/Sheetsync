@@ -20,7 +20,7 @@ export type LoginFormValues = z.infer<typeof loginSchema>;
 export const addProductSchema = z.object({
   barcode: z.string().min(1, "Barcode is required."),
   productName: z.string().min(1, "Product name is required."),
-  supplierName: z.string().min(1, "Supplier name is required. This name will be used to find an existing supplier or create a new one if it doesn't exist."),
+  supplierName: z.string().min(1, "Supplier name is required."),
   costPrice: z.coerce.number().nonnegative("Cost price must be a positive number.").optional(),
 });
 export type AddProductFormValues = z.infer<typeof addProductSchema>;
@@ -38,6 +38,9 @@ export type AddInventoryItemFormValues = z.infer<typeof addInventoryItemSchema>;
 
 export const addSupplierSchema = z.object({
   supplierName: z.string().min(1, "Supplier name is required."),
+  supplierCode: z.string().min(1, "Supplier code is required."),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
 });
 export type AddSupplierFormValues = z.infer<typeof addSupplierSchema>;
 
@@ -59,11 +62,12 @@ export const editInventoryItemSchema = z.object({
 export type EditInventoryItemFormValues = z.infer<typeof editInventoryItemSchema>;
 
 export const editSupplierSchema = z.object({
-  supplierId: z.string().min(1, "Supplier ID is required for tracking."), // Original ID for client tracking
+  supplierId: z.string().min(1, "Supplier ID is required for tracking."),
   currentSupplierName: z.string().min(1, "Current supplier name is required."),
-  newSupplierName: z.string().min(1, "New supplier name is required.").refine(val => val.trim().length > 0, {
-    message: "New supplier name cannot be empty.",
-  }),
+  newSupplierName: z.string().min(1, "New supplier name is required."),
+  supplierCode: z.string().min(1, "Supplier code is required."),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
 });
 export type EditSupplierFormValues = z.infer<typeof editSupplierSchema>;
 

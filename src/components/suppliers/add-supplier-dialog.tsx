@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Loader2, Building } from 'lucide-react';
+import { PlusCircle, Loader2, Building, Hash, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,28 +19,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addSupplierSchema, type AddSupplierFormValues } from '@/lib/schemas';
-import { addSupplierAction } from '@/app/actions';
+import { addSupplierAction, saveSupplierContactsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 
-interface SubmitButtonProps {
-  isPending: boolean;
-}
-
-function SubmitButton({ isPending }: SubmitButtonProps) {
-  return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building className="mr-2 h-4 w-4" /> }
-      Add Supplier
-    </Button>
-  );
-}
-
 export function AddSupplierDialog() {
   const { toast } = useToast();
-  const { addSupplier: addSupplierToCache } = useDataCache();
+  const { suppliers, supplierContacts, addSupplier: addSupplierToCache, refreshData } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
 
@@ -53,77 +40,98 @@ export function AddSupplierDialog() {
     resolver: zodResolver(addSupplierSchema),
     defaultValues: {
       supplierName: '',
+      supplierCode: '',
+      email: '',
+      phone: '',
     }
   });
   
   const processFormSubmit = (data: AddSupplierFormValues) => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
-      }
-    });
     startActionTransition(async () => {
-      const result = await addSupplierAction(undefined, formData);
-      if (result.success && result.data) {
-        toast({
-          title: 'Success!',
-          description: result.message,
-        });
-        addSupplierToCache(result.data); // Optimistically update cache
-        reset();
-        setIsOpen(false);
-      } else if (result.message && !result.success) {
-        toast({
-          title: 'Error Adding Supplier',
-          description: result.message,
-          variant: 'destructive',
-        });
+      const formData = new FormData();
+      formData.append('supplierName', data.supplierName);
+      
+      const res = await addSupplierAction(undefined, formData);
+      if (res.success && res.data) {
+          const newContact: Supplier = {
+              id: res.data.id,
+              name: data.supplierName,
+              supplierCode: data.supplierCode,
+              email: data.email,
+              phone: data.phone,
+              lastReportValue: 0
+          };
+          
+          await saveSupplierContactsAction([...supplierContacts, newContact]);
+          toast({ title: 'Success', description: 'Supplier and contact details registered.' });
+          refreshData();
+          setIsOpen(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: res.message || 'Handshake failed.' });
       }
     });
   };
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      reset(); 
-    }
+    if (!open) reset();
     setIsOpen(open);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
-          <Building className="mr-2 h-4 w-4" /> Add New Supplier
+        <Button className="rounded-xl font-bold h-11">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add New Supplier
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Add New Supplier</DialogTitle>
-          <DialogDescription>
-            Enter the name for the new supplier.
+      <DialogContent className="sm:max-w-[480px] rounded-[2rem] border-none shadow-3xl">
+        <DialogHeader className="p-2">
+          <DialogTitle className="text-xl font-black uppercase tracking-tight">Register Supplier</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Establish a new vendor node with automated reporting.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(processFormSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2 items-center">
-              <Label htmlFor="supplierName" className="text-left">
-                Supplier Name
-              </Label>
-              <Input
-                id="supplierName"
-                placeholder="e.g., Global Provisions Inc."
-                {...register('supplierName')}
-                className={cn(formErrors.supplierName && 'border-destructive')}
-              />
-              {formErrors.supplierName && <p className="text-sm text-destructive mt-1">{formErrors.supplierName.message}</p>}
-            </div>
+        <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-4 py-4 px-2">
+          <div className="space-y-2">
+            <Label htmlFor="supplierName" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Company Name</Label>
+            <Input id="supplierName" {...register('supplierName')} className="h-11 font-bold bg-muted/10" placeholder="e.g. Global Provisions" />
+            {formErrors.supplierName && <p className="text-[10px] text-destructive font-bold">{formErrors.supplierName.message}</p>}
           </div>
-          <DialogFooter>
+
+          <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplierCode" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Vendor Code</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                  <Input id="supplierCode" {...register('supplierCode')} className="h-11 font-black pl-9 bg-muted/10 uppercase" placeholder="142 / V025" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SMS Terminal</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974..." />
+                </div>
+              </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Weekly Report Email</Label>
+            <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                <Input id="email" type="email" {...register('email')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="vendor@domain.com" />
+            </div>
+            {formErrors.email && <p className="text-[10px] text-destructive font-bold">{formErrors.email.message}</p>}
+          </div>
+
+          <DialogFooter className="pt-4 flex gap-2">
             <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="ghost" className="font-bold">Cancel</Button>
             </DialogClose>
-            <SubmitButton isPending={isActionPending} />
+            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20">
+                {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building className="mr-2 h-4 w-4" />}
+                Initiate Registration
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

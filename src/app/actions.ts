@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -28,6 +29,7 @@ import {
   resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
   getAllOnDisplayAlerts,
+  saveSupplierContactsToSheet,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, isAfter, endOfDay } from 'date-fns';
@@ -81,6 +83,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
   auditLogs: AuditLogEntry[];
   specialRequests: SpecialEntryRequest[];
   expiryReminders: ExpiryReminder[];
+  supplierContacts: Supplier[];
 }>> {
   try {
     const promises: any[] = [getInventoryItems(), getAuditLogs(), getAppMetaData(), getExpiryReminders()];
@@ -95,7 +98,12 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     
     const calculatedSuppliers = skipProducts ? undefined : activeProducts.reduce((acc: any[], p: any) => {
         if (p.supplierName && !acc.some(s => s.name === p.supplierName)) {
-          acc.push({ name: p.supplierName, id: `s_${acc.length}` });
+          const contact = meta.supplierContacts.find((c: Supplier) => c.name.toLowerCase() === p.supplierName.toLowerCase());
+          acc.push({ 
+            name: p.supplierName, 
+            id: `s_${acc.length}`,
+            ...contact
+          });
         }
         return acc;
     }, []);
@@ -109,19 +117,11 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
       uniqueStaffNames: meta.staff.map((s: any) => s.name),
       auditLogs: auditLogs || [],
       specialRequests: meta.specialRequests || [],
-      expiryReminders: expiryReminders || []
+      expiryReminders: expiryReminders || [],
+      supplierContacts: meta.supplierContacts || []
     };
 
     return { success: true, data: sanitizeForJSON(result) };
-  } catch (error: any) {
-    return { success: false, message: error.message };
-  }
-}
-
-export async function fetchOnDisplayAlertsAction(): Promise<ActionResponse<OnDisplayAlert[]>> {
-  try {
-    const alerts = await getAllOnDisplayAlerts();
-    return { success: true, data: sanitizeForJSON(alerts) };
   } catch (error: any) {
     return { success: false, message: error.message };
   }
@@ -155,222 +155,6 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
     }
 }
 
-/**
- * Dispatches a manual priority reminder for a diary entry.
- * Data is passed directly from client to bypass redundant sheet reads.
- */
-export async function triggerManualExpirySmsAction(
-    phone: string, 
-    productName: string, 
-    expiryDate: string
-): Promise<ActionResponse> {
-    if (!phone) return { success: false, message: "Personnel terminal node (phone) not registered." };
-
-    const msg = `SHEETSYNC REGISTRY: Priority observation reminder for node ${productName}. Target expiry: ${expiryDate}. Identify and verify stock immediately.`;
-
-    return sendSmsAction(msg, phone);
-}
-
-/**
- * Dispatches a resolution confirmation message when a diary entry is cleared.
- */
-export async function triggerResolvedSmsAction(
-    phone: string, 
-    productName: string, 
-    staffName: string
-): Promise<ActionResponse> {
-    if (!phone) return { success: true }; // Silent pass if no phone
-
-    const msg = `SHEETSYNC SECURITY: Observation node ${productName} resolved and synchronized by ${staffName}. Registry updated.`;
-    
-    return sendSmsAction(msg, phone);
-}
-
-export async function triggerAdminExpiryEmailAction(item: InventoryItem): Promise<ActionResponse> {
-    if (!APPSCRIPT_API_URL) return { success: false, message: "Gateway URL missing." };
-
-    try {
-        const response = await fetch(APPSCRIPT_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'sendAdminExpiryAlert',
-                password: APPSCRIPT_PASS,
-                item: {
-                    productName: item.productName,
-                    barcode: item.barcode,
-                    quantity: item.quantity,
-                    expiryDate: item.expiryDate,
-                    staff: item.staffName,
-                    location: item.location
-                }
-            }),
-            redirect: 'follow'
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            if (result.status === 'success') {
-                return { success: true };
-            }
-        }
-        return { success: false };
-    } catch (e: any) {
-        console.error("Critical Email Dispatch Error:", e.message);
-        return { success: false, message: e.message };
-    }
-}
-
-export async function verifyOnDisplayTokenAction(token: string, pin: string): Promise<ActionResponse<InventoryItem[]>> {
-  try {
-    const data = await getOnDisplayItemByToken(token);
-    if (!data) return { success: false, message: "Link invalid or session expired." };
-    if (data.pin !== pin) return { success: false, message: "Invalid Access Key. Check your SMS." };
-    return { success: true, data: sanitizeForJSON(data.items) };
-  } catch (e) {
-    return { success: false, message: "Registry handshake failure." };
-  }
-}
-
-export async function verifyOnDisplayPinOnlyAction(pin: string): Promise<ActionResponse<{ staffName: string; token: string; items: InventoryItem[] }>> {
-  try {
-    const data = await getOnDisplayItemByPin(pin);
-    if (!data) return { success: false, message: "Invalid Access Key. Check your latest SMS." };
-    return { success: true, data: sanitizeForJSON(data) };
-  } catch (e) {
-    return { success: false, message: "Registry connection failure." };
-  }
-}
-
-export async function finalizeOnDisplaySessionAction(token: string): Promise<ActionResponse> {
-  try {
-    const success = await markOnDisplayTokenUsed(token);
-    if (success) return { success: true };
-    return { success: false, message: "Failed to finalize session." };
-  } catch (e) {
-    return { success: false, message: "Registry handshake failure." };
-  }
-}
-
-export async function submitOnDisplayRequestAction(token: string, pin: string, request: Partial<SpecialEntryRequest>): Promise<ActionResponse> {
-  try {
-    const data = await getOnDisplayItemByToken(token);
-    if (!data || data.pin !== pin) return { success: false, message: "Session invalid." };
-    
-    const item = data.items.find(i => i.id === request.editDetails?.itemId);
-    if (!item) return { success: false, message: "Batch identification node mismatch." };
-
-    const meta = await getAppMetaData();
-    const reqs = meta.specialRequests || [];
-    
-    const newRequest: SpecialEntryRequest = {
-      id: `oda_req_${Date.now()}`,
-      userEmail: 'staff_temp@system.com',
-      staffName: item.staffName,
-      status: 'pending',
-      type: 'on_display_request',
-      source: 'on_display_expiry',
-      requestedAt: new Date().toISOString(),
-      isDismissedByAdmin: false,
-      isReadByUser: false,
-      originalDetails: {
-        itemId: item.id,
-        location: item.location,
-        itemType: item.itemType,
-        quantity: item.quantity,
-        expiryDate: item.expiryDate
-      },
-      editDetails: request.editDetails as any
-    };
-
-    await saveSpecialRequestsToSheet([newRequest, ...reqs]);
-    
-    const actionDesc = request.editDetails?.requestType === 'delete' ? 'DELETION' : 'MODIFICATION';
-    await logAuditEvent(item.staffName, `REQUEST_${actionDesc}`, item.barcode, `Handshake request: ${token}`);
-    
-    return { success: true };
-  } catch (e) {
-    return { success: false, message: "Registry update failed." };
-  }
-}
-
-export async function approveRequestAction(requestId: string, adminEmail: string, durationMinutes?: number): Promise<ActionResponse> {
-  try {
-    const meta = await getAppMetaData();
-    const requests = meta.specialRequests || [];
-    const reqIndex = requests.findIndex(r => r.id === requestId);
-    if (reqIndex === -1) return { success: false, message: "Request node not found." };
-    const req = requests[reqIndex];
-
-    // APPLY REGISTRY CHANGE IF APPLICABLE
-    if ((req.type === 'on_display_request' || req.type === 'inventory_edit') && req.editDetails) {
-      if (req.editDetails.requestType === 'delete') {
-        await dbDeleteInventoryItemById(adminEmail, req.editDetails.itemId);
-      } else {
-        await dbUpdateInventoryItemDetails(adminEmail, req.editDetails.itemId, {
-          quantity: req.editDetails.quantity,
-          location: req.editDetails.location,
-          itemType: req.editDetails.itemType,
-          expiryDate: req.editDetails.expiryDate
-        });
-      }
-    }
-
-    req.status = 'approved';
-    req.approvedAt = new Date().toISOString();
-
-    // INDUSTRIAL DISPATCH HANDSHAKE: Send confirmation SMS to staff
-    const staff = meta.staff.find(s => s.name.toUpperCase() === req.staffName.toUpperCase());
-    if (staff?.phone) {
-        let msg = `SHEETSYNC SECURITY: Your request for registry modification has been approved by administrator. Registry synchronized.`;
-        
-        if ((req.type === 'inventory_edit' || req.type === 'on_display_request') && req.editDetails) {
-            const d = req.editDetails;
-            msg = `SHEETSYNC SECURITY: Adjustment for ${d.productName} approved. Registry corrected to ${d.quantity} units in zone "${d.location}". Audit trace logged.`;
-        } else if (req.type === 'product_add') {
-             msg = `SHEETSYNC SECURITY: Registration request for SKU ${req.reason} approved. Product added to master catalog by ${adminEmail}.`;
-        } else if (req.type === 'single' || req.type === 'timed') {
-             msg = `SHEETSYNC SECURITY: Silent entry authorized for terminal ${req.staffName}. Identification key dispatched via system gateway.`;
-        }
-
-        await sendSmsAction(msg, staff.phone).catch(() => {});
-    }
-
-    await saveSpecialRequestsToSheet(requests);
-    await logAuditEvent(adminEmail, 'APPROVE_REQUEST', req.id, `Applied sync for ${req.staffName}: ${req.type}`);
-    
-    revalidatePath('/approvals');
-    revalidatePath('/inventory');
-    return { success: true };
-  } catch (e: any) {
-    return { success: false, message: e.message || "Registry error." };
-  }
-}
-
-export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[]): Promise<ActionResponse> {
-    try {
-        await saveSpecialRequestsToSheet(requests);
-        revalidatePath('/approvals');
-        return { success: true };
-    } catch (e) { return { success: false }; }
-}
-
-export async function checkSmsConfigAction(): Promise<ActionResponse<{ hasApiKey: boolean; hasDeviceId: boolean }>> {
-  return {
-    success: true,
-    data: {
-      hasApiKey: !!process.env.TEXTBEE_API_KEY,
-      hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID
-    }
-  };
-}
-
-export async function getMasterSpreadsheetUrlAction(): Promise<ActionResponse<string>> {
-    const id = process.env.GOOGLE_SHEET_ID;
-    if (!id) return { success: false, message: "ID not set." };
-    return { success: true, data: `https://docs.google.com/spreadsheets/d/${id}/edit` };
-}
-
 export async function sendSmsAction(message: string, phone: string): Promise<ActionResponse> {
     const apiKey = process.env.TEXTBEE_API_KEY;
     const deviceId = process.env.TEXTBEE_DEVICE_ID;
@@ -392,114 +176,26 @@ export async function sendSmsAction(message: string, phone: string): Promise<Act
     }
 }
 
-export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
-    try {
-        await dbDeleteInventoryItemById(userEmail, itemId);
-        await logAuditEvent(userEmail, 'DELETE_INVENTORY', itemId, `[PURGED] ID: ${itemId}`);
-        revalidatePath('/inventory');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function bulkDeleteInventoryItemsAction(userEmail: string, itemIds: string[]): Promise<ActionResponse> {
-    try {
-        for (const id of itemIds) {
-            await dbDeleteInventoryItemById(userEmail, id);
-        }
-        await logAuditEvent(userEmail, 'BULK_DELETE_INVENTORY', `${itemIds.length} items`, `Purged batches: ${itemIds.join(', ')}`);
-        revalidatePath('/inventory');
-        return { true: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function returnInventoryItemAction(userEmail: string, itemId: string, returnedQty: number, staffName: string): Promise<ActionResponse> {
-    try {
-        const res = await dbProcessReturn(userEmail, itemId, returnedQty, staffName);
-        if (res.success) {
-            revalidatePath('/inventory');
-            return { success: true };
-        }
-        return { success: false, message: res.message };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function bulkReturnInventoryItemsAction(userEmail: string, itemIds: string[], staffName: string, type: 'all' | 'specific', quantity?: number): Promise<ActionResponse> {
-    try {
-        for (const id of itemIds) {
-            await dbProcessReturn(userEmail, id, type === 'all' ? undefined : quantity, staffName);
-        }
-        revalidatePath('/inventory');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function getPermissionsAction(): Promise<ActionResponse<Permissions>> {
-  try {
-    const data = await loadPermissionsFromSheet();
-    return { success: true, data: sanitizeForJSON(data) };
-  } catch (e: any) {
-    return { success: false, message: e.message };
-  }
-}
-
-export async function setPermissionsAction(permissions: Permissions): Promise<ActionResponse> {
-  try {
-    await savePermissionsToSheet(permissions);
-    return { success: true };
-  } catch (e: any) {
-    return { success: false, message: e.message };
-  }
-}
-
-export async function saveStaffListAction(staff: StaffMember[]): Promise<ActionResponse> {
-    try {
-        await saveStaffListToSheet(staff);
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function saveLocationListAction(locations: string[]): Promise<ActionResponse> {
-    try {
-        await saveLocationListToSheet(locations);
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
-  try {
-    const product = await getProductDetailsByBarcode(barcode);
-    if (!product) return { success: false, message: "Product not found." };
-    return { success: true, data: sanitizeForJSON(product) };
-  } catch (e: any) {
-    return { success: false, message: e.message };
-  }
-}
-
 export async function addInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway URL missing." };
 
     try {
+        const barcode = formData.get('barcode') as string;
+        const staffName = formData.get('staffName') as string;
+        const productName = formData.get('productName') as string;
+        const supplierName = formData.get('supplier') as string;
+        const quantity = formData.get('quantity') as string;
+
         const itemData = {
             action: 'standardLog',
             password: APPSCRIPT_PASS,
-            barcode: formData.get('barcode'),
-            quantity: formData.get('quantity'),
+            barcode,
+            quantity,
             expiryDate: formData.get('expiryDate'),
             location: formData.get('location'),
-            staffName: formData.get('staffName'),
-            productName: formData.get('productName'),
+            staffName,
+            productName,
+            supplierName,
             itemType: formData.get('itemType'),
             timestamp: new Date().toISOString(),
             disableNotification: formData.get('disableNotification') === 'true'
@@ -517,15 +213,20 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
         const result = await response.json();
         
         if (result.status === 'success') {
-            const staffName = itemData.staffName as string;
-            const location = itemData.location as string;
-            const expiryDateStr = itemData.expiryDate as string;
+            // SUPPLIER NOTIFICATION HANDSHAKE
+            const meta = await getAppMetaData();
+            const supplier = meta.supplierContacts.find((s: Supplier) => s.name.toLowerCase() === supplierName.toLowerCase());
+            
+            if (supplier?.phone) {
+                const msg = `SHEETSYNC: New item logged for your catalog. Product: ${productName}. Qty: ${quantity}. Full report link sent via email.`;
+                await sendSmsAction(msg, supplier.phone).catch(() => {});
+            }
 
             await logAuditEvent(
                 staffName, 
                 'LOG_INVENTORY', 
-                itemData.barcode as string, 
-                `[LOGGED] Qty: ${itemData.quantity} | Loc: ${location}`
+                barcode, 
+                `[LOGGED] Qty: ${quantity} | Loc: ${formData.get('location')}`
             );
             
             revalidatePath('/inventory');
@@ -535,11 +236,11 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
                     id: `log_${Date.now()}`,
                     barcode: itemData.barcode,
                     quantity: Number(itemData.quantity),
-                    expiryDate: expiryDateStr,
-                    location: location,
+                    expiryDate: itemData.expiryDate as string,
+                    location: itemData.location as string,
                     staffName: staffName,
                     productName: itemData.productName,
-                    itemType: itemData.itemType,
+                    itemType: itemData.itemType as any,
                     timestamp: itemData.timestamp
                 }) 
             };
@@ -551,22 +252,34 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
     }
 }
 
-export async function updateInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
+export async function saveSupplierContactsAction(contacts: Supplier[]): Promise<ActionResponse> {
     try {
-        const itemId = formData.get('itemId') as string;
-        const userEmail = formData.get('userEmail') as string;
-        const updates = {
-            quantity: parseFloat(formData.get('quantity') as string),
-            location: formData.get('location') as string,
-            itemType: formData.get('itemType') as any,
-            expiryDate: formData.get('expiryDate') as string,
-        };
+        await saveSupplierContactsToSheet(contacts);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
 
-        const result = await dbUpdateInventoryItemDetails(userEmail, itemId, updates);
-        await logAuditEvent(userEmail, 'UPDATE_INVENTORY', itemId, `[SYNC] Qty: ${updates.quantity} | Zone: ${updates.location}`);
-
+export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
+    try {
+        await dbDeleteInventoryItemById(userEmail, itemId);
+        await logAuditEvent(userEmail, 'DELETE_INVENTORY', itemId, `[PURGED] ID: ${itemId}`);
         revalidatePath('/inventory');
-        return { success: true, data: sanitizeForJSON(result) };
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function returnInventoryItemAction(userEmail: string, itemId: string, returnedQty: number, staffName: string): Promise<ActionResponse> {
+    try {
+        const res = await dbProcessReturn(userEmail, itemId, returnedQty, staffName);
+        if (res.success) {
+            revalidatePath('/inventory');
+            return { success: true };
+        }
+        return { success: false, message: res.message };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -597,76 +310,14 @@ export async function saveProductAction(prevState: any, formData: FormData): Pro
     }
 }
 
-export async function bulkDeleteProductsAction(userEmail: string, productIds: string[]): Promise<ActionResponse> {
-    try {
-        for (const barcode of productIds) {
-            await dbDeleteProductByBarcode(userEmail, barcode);
-        }
-        revalidatePath('/products/list');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function addSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse<Supplier>> {
-    try {
-        const name = formData.get('supplierName') as string;
-        const userEmail = formData.get('userEmail') as string || 'Admin';
-        await logAuditEvent(userEmail, 'ADD_SUPPLIER', name, `Master vendor created: ${name}`);
-        const newSupplier = { id: `s_${Date.now()}`, name, createdAt: new Date().toISOString() };
-        return { success: true, data: sanitizeForJSON(newSupplier), message: "Vendor registered." };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function editSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse> {
-    try {
-        const oldName = formData.get('currentSupplierName') as string;
-        const newName = formData.get('newSupplierName') as string;
-        const userEmail = formData.get('userEmail') as string || 'Admin';
-
-        const products = await getProducts();
-        const targets = products.filter(p => p.supplierName === oldName);
-        for (const p of targets) {
-            await dbUpdateProductAndSupplierLinks(userEmail, p.barcode, p.productName, newName, p.costPrice, p.uniqueId);
-        }
-
-        await logAuditEvent(userEmail, 'RENAME_SUPPLIER', oldName, `Renamed to ${newName}`);
-        revalidatePath('/suppliers');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function addExpiryWatchAction(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>): Promise<ActionResponse<ExpiryReminder>> {
-    try {
-        const res = await addExpiryReminder(reminder);
-        return { success: true, data: sanitizeForJSON(res) };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function resolveExpiryWatchAction(id: string, email: string): Promise<ActionResponse> {
-    try {
-        await dbResolveExpiryWatch(id, email);
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, message: e.message };
-    }
-}
-
-export async function clearDatabaseAction(userEmail: string): Promise<ActionResponse> {
-    await logAuditEvent(userEmail, 'WIPE_CATALOG', 'MASTER_DB', 'Industrial catalog wipe initiated.');
-    revalidatePath('/products/list');
-    return { success: true };
-}
-
-export async function batchImportProductsAction(userEmail: string, batch: any[][], startIndex: number): Promise<ActionResponse> {
-    return { success: true };
+export async function fetchProductAction(barcode: string): Promise<ActionResponse<Product>> {
+  try {
+    const product = await getProductDetailsByBarcode(barcode);
+    if (!product) return { success: false, message: "Product not found." };
+    return { success: true, data: sanitizeForJSON(product) };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
 }
 
 export async function fetchProductExternalDataAction(barcode: string): Promise<ActionResponse> {
@@ -701,6 +352,131 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
     }
 }
 
-export async function resendOtpAction(requestId: string, userEmail: string): Promise<ActionResponse> {
+export async function getMasterSpreadsheetUrlAction(): Promise<ActionResponse<string>> {
+    const id = process.env.GOOGLE_SHEET_ID;
+    if (!id) return { success: false, message: "ID not set." };
+    return { success: true, data: `https://docs.google.com/spreadsheets/d/${id}/edit` };
+}
+
+export async function checkSmsConfigAction(): Promise<ActionResponse<{ hasApiKey: boolean; hasDeviceId: boolean }>> {
+  return {
+    success: true,
+    data: {
+      hasApiKey: !!process.env.TEXTBEE_API_KEY,
+      hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID
+    }
+  };
+}
+
+export async function resolveExpiryWatchAction(id: string, email: string): Promise<ActionResponse> {
+    try {
+        await dbResolveExpiryWatch(id, email);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function clearDatabaseAction(userEmail: string): Promise<ActionResponse> {
+    await logAuditEvent(userEmail, 'WIPE_CATALOG', 'MASTER_DB', 'Industrial catalog wipe initiated.');
+    revalidatePath('/products/list');
     return { success: true };
+}
+
+export async function batchImportProductsAction(userEmail: string, batch: any[][], startIndex: number): Promise<ActionResponse> {
+    return { success: true };
+}
+
+export async function addExpiryWatchAction(reminder: Omit<ExpiryReminder, 'id' | 'timestamp' | 'status'>): Promise<ActionResponse<ExpiryReminder>> {
+    try {
+        const res = await addExpiryReminder(reminder);
+        return { success: true, data: sanitizeForJSON(res) };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[]): Promise<ActionResponse> {
+    try {
+        await saveSpecialRequestsToSheet(requests);
+        revalidatePath('/approvals');
+        return { success: true };
+    } catch (e) { return { success: false }; }
+}
+
+export async function approveRequestAction(requestId: string, adminEmail: string, durationMinutes?: number): Promise<ActionResponse> {
+  try {
+    const meta = await getAppMetaData();
+    const requests = meta.specialRequests || [];
+    const reqIndex = requests.findIndex(r => r.id === requestId);
+    if (reqIndex === -1) return { success: false, message: "Request node not found." };
+    const req = requests[reqIndex];
+
+    if ((req.type === 'on_display_request' || req.type === 'inventory_edit') && req.editDetails) {
+      if (req.editDetails.requestType === 'delete') {
+        await dbDeleteInventoryItemById(adminEmail, req.editDetails.itemId);
+      } else {
+        await dbUpdateInventoryItemDetails(adminEmail, req.editDetails.itemId, {
+          quantity: req.editDetails.quantity,
+          location: req.editDetails.location,
+          itemType: req.editDetails.itemType,
+          expiryDate: req.editDetails.expiryDate
+        });
+      }
+    }
+
+    req.status = 'approved';
+    req.approvedAt = new Date().toISOString();
+
+    const staff = meta.staff.find(s => s.name.toUpperCase() === req.staffName.toUpperCase());
+    if (staff?.phone) {
+        let msg = `SHEETSYNC SECURITY: Your request for registry modification has been approved by administrator. Registry synchronized.`;
+        await sendSmsAction(msg, staff.phone).catch(() => {});
+    }
+
+    await saveSpecialRequestsToSheet(requests);
+    await logAuditEvent(adminEmail, 'APPROVE_REQUEST', req.id, `Applied sync for ${req.staffName}: ${req.type}`);
+    
+    revalidatePath('/approvals');
+    revalidatePath('/inventory');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message || "Registry error." };
+  }
+}
+
+export async function saveStaffListAction(staff: StaffMember[]): Promise<ActionResponse> {
+    try {
+        await saveStaffListToSheet(staff);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function saveLocationListAction(locations: string[]): Promise<ActionResponse> {
+    try {
+        await saveLocationListToSheet(locations);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function getPermissionsAction(): Promise<ActionResponse<Permissions>> {
+  try {
+    const data = await loadPermissionsFromSheet();
+    return { success: true, data: sanitizeForJSON(data) };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
+}
+
+export async function setPermissionsAction(permissions: Permissions): Promise<ActionResponse> {
+  try {
+    await savePermissionsToSheet(permissions);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
 }

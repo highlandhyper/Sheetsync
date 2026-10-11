@@ -13,6 +13,11 @@ export interface Product {
 export interface Supplier {
   id: string; 
   name: string;
+  email?: string;
+  phone?: string;
+  supplierCode?: string; // e.g., 142 or V0256
+  lastReportValue?: number; // Total value of the previous weekly report
+  lastReportDate?: string;
   createdAt?: string;
 }
 
@@ -36,6 +41,7 @@ export interface InventoryItem {
   staffName: string;
   itemType: ItemType;
   timestamp?: string;
+  reportedAt?: string; // To track when it was included in a weekly report
 }
 
 export interface ExpiryReminder {
