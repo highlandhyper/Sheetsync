@@ -105,10 +105,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background overflow-hidden relative">
-        {/* ATMOSPHERIC LAYER */}
-        <div className="absolute inset-0 bg-tech-grid opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-        
         <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000 ease-out">
             <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/10 mb-8 relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] animate-ping opacity-10" />
@@ -133,7 +129,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4 overflow-hidden relative">
-        <div className="absolute inset-0 bg-tech-grid opacity-30" />
         <div className="relative z-10 flex flex-col items-center">
             <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 shadow-none mb-8 animate-in zoom-in-95 duration-500">
                 <ShieldCheck className="h-16 w-16 text-primary" strokeWidth={1.5} />
@@ -152,16 +147,10 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <SidebarProvider defaultOpen={true}>
         <AppSidebar className="noprint" />
         <SidebarInset className="flex min-w-0 flex-col relative overflow-hidden bg-background">
-          {/* ATMOSPHERIC LAYER */}
-          <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-            <div className="absolute inset-0 bg-tech-grid opacity-[0.2]" />
-            <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
-          </div>
-
           <Header className="noprint relative z-10" onManualLock={handleLock} />
           
           <main className={cn(
-            "flex-1 overflow-x-hidden overflow-y-auto relative z-10",
+            "flex-1 overflow-x-hidden overflow-y-auto relative z-10 bg-background",
             "p-4 sm:p-6 md:p-8",
             "pb-32 md:pb-8",
             "animate-in fade-in slide-in-from-bottom-6 duration-1000 ease-out" 

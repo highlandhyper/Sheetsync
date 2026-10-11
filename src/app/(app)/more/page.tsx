@@ -209,8 +209,8 @@ export default function SystemHubPage() {
   };
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-lg min-h-[100dvh] bg-neutral-50 dark:bg-[#0a0a0f] pb-[calc(2rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-neutral-50/90 dark:bg-[#0a0a0f]/90 backdrop-blur-md px-4 py-4">
+    <div className="mx-auto w-full min-w-0 max-w-lg min-h-[100dvh] bg-background dark:bg-[#0a0a0f] pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background/90 dark:bg-[#0a0a0f]/90 backdrop-blur-md px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[22px] font-semibold text-black dark:text-white">System Hub</h1>

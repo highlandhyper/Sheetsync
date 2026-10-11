@@ -537,13 +537,11 @@ export default function SettingsPage() {
 
           {isAdmin && (
             <>
-              <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
               <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {WAREHOUSE_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
                 ))}
               </div>
-              <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
               <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {SYSTEM_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
