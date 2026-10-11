@@ -75,7 +75,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
-type MetricTone = 'default' | 'warning' | 'danger';
+type MetricTone = 'default' | 'warning' | 'danger' | 'info' | 'success' | 'violet';
 
 const metricToneClasses: Record<MetricTone, { card: string; icon: string; dot: string }> = {
   default: {
@@ -93,6 +93,21 @@ const metricToneClasses: Record<MetricTone, { card: string; icon: string; dot: s
     icon: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400',
     dot: 'bg-red-500',
   },
+  info: {
+    card: 'border-blue-200 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/[0.05]',
+    icon: 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    dot: 'bg-blue-500',
+  },
+  success: {
+    card: 'border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/[0.05]',
+    icon: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    dot: 'bg-emerald-500',
+  },
+  violet: {
+    card: 'border-violet-200 dark:border-violet-500/20 bg-violet-50/50 dark:bg-violet-500/[0.05]',
+    icon: 'bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    dot: 'bg-violet-500',
+  }
 };
 
 function MetricCard({
@@ -192,7 +207,7 @@ function VolumeGaugeCard({
                 e.stopPropagation();
                 onIconClick?.(e);
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-black dark:bg-white text-white dark:text-black transition-all hover:opacity-80 active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-all hover:opacity-80 active:scale-95"
             >
               <Activity className="h-4 w-4" strokeWidth={1.75} />
             </button>
@@ -215,12 +230,12 @@ function VolumeGaugeCard({
                     isAnimationActive
                     animationDuration={800}
                   >
-                    <Cell fill="hsl(var(--foreground))" />
-                    <Cell fill="hsl(var(--foreground) / 0.08)" />
+                    <Cell fill="hsl(var(--primary))" />
+                    <Cell fill="hsl(var(--primary) / 0.1)" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-x-0 bottom-1.5 text-center text-[11px] font-semibold text-black dark:text-white">{percentage}%</div>
+              <div className="absolute inset-x-0 bottom-1.5 text-center text-[11px] font-semibold text-primary">{percentage}%</div>
             </div>
             <div className="min-w-0">
               <div className="text-2xl font-semibold tracking-tight text-black dark:text-white sm:text-[28px]">{value.toLocaleString()}</div>
@@ -248,7 +263,7 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
   }, []);
 
   const chartConfig = {
-    totalStock: { label: 'Units', color: 'hsl(var(--foreground))' },
+    totalStock: { label: 'Units', color: 'hsl(var(--primary))' },
   } satisfies ChartConfig;
 
   if (!data || data.length === 0) {
@@ -308,12 +323,12 @@ function StockBySupplierChart({ data }: { data: StockBySupplier[] }) {
             className="text-[10px] text-neutral-500 dark:text-neutral-400"
           />
           <ChartTooltip
-            cursor={{ fill: 'hsl(var(--foreground))', opacity: 0.04 }}
+            cursor={{ fill: 'hsl(var(--primary))', opacity: 0.04 }}
             content={<ChartTooltipContent className="rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-3 shadow-xl" />}
           />
           <Bar
             dataKey="totalStock"
-            fill="hsl(var(--foreground))"
+            fill="hsl(var(--primary))"
             radius={[0, 6, 6, 0]}
             onClick={(payload) => handleBarClick(payload)}
             className="cursor-pointer"
@@ -370,7 +385,7 @@ function StockTrendDetailedDialog({
   }, [dateRange, inventoryItems, initialData]);
 
   const chartConfig = {
-    totalStock: { label: 'Total units', color: 'hsl(var(--foreground))' },
+    totalStock: { label: 'Total units', color: 'hsl(var(--primary))' },
   } satisfies ChartConfig;
 
   return (
@@ -380,8 +395,8 @@ function StockTrendDetailedDialog({
           <DialogHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/5">
-                  <Activity className="h-5 w-5 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10">
+                  <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" strokeWidth={1.75} />
                 </div>
                 <DialogTitle className="text-xl font-semibold tracking-tight text-black dark:text-white sm:text-2xl">Inventory trend</DialogTitle>
                 <DialogDescription className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">
@@ -425,8 +440,8 @@ function StockTrendDetailedDialog({
               <AreaChart data={trendData} margin={{ top: 16, right: 20, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="inventoryTrendFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--foreground))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.06} />
@@ -436,7 +451,7 @@ function StockTrendDetailedDialog({
                 <Area
                   type="monotone"
                   dataKey="totalStock"
-                  stroke="hsl(var(--foreground))"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#inventoryTrendFill)"
@@ -493,7 +508,7 @@ function QuickAuthorizeCard() {
               <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Quick access</p>
               <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">Authorize a staff session</p>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black dark:bg-white text-white dark:text-black">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400">
               <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />
             </div>
           </div>
@@ -508,9 +523,9 @@ function QuickAuthorizeCard() {
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     {selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? (
-                      <Globe className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={1.75} />
+                      <Globe className="h-4 w-4 shrink-0 text-blue-500" strokeWidth={1.75} />
                     ) : (
-                      <User className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={1.75} />
+                      <User className="h-4 w-4 shrink-0 text-primary/60" strokeWidth={1.75} />
                     )}
                     <span className="truncate">{selectedStaff || 'Select personnel'}</span>
                   </div>
@@ -531,7 +546,7 @@ function QuickAuthorizeCard() {
                         }}
                         className="h-10 text-[13px] font-medium"
                       >
-                        <Globe className="mr-2 h-4 w-4" strokeWidth={1.75} />
+                        <Globe className="mr-2 h-4 w-4 text-blue-500" strokeWidth={1.75} />
                         All personnel
                         <Check className={cn('ml-auto h-4 w-4', selectedStaff === 'ALL PERSONNEL (GLOBAL)' ? 'opacity-100' : 'opacity-0')} strokeWidth={2} />
                       </CommandItem>
@@ -558,7 +573,7 @@ function QuickAuthorizeCard() {
             </Popover>
 
             <Button
-              className="h-10 w-full rounded-xl bg-black dark:bg-white text-[13px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none shadow-none"
+              className="h-10 w-full rounded-xl bg-primary text-[13px] font-medium text-primary-foreground hover:bg-primary/90 border-none shadow-none"
               disabled={!selectedStaff}
               onClick={handleOpenGrant}
             >
@@ -602,8 +617,8 @@ function ActiveAuthorizations() {
           <h2 className="text-[15px] font-semibold text-black dark:text-white">Active access</h2>
           <p className="hidden text-[13px] text-neutral-500 dark:text-neutral-400 sm:block">Temporary authorization sessions in use.</p>
         </div>
-        <Badge variant="outline" className="border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 text-[12px] font-medium">
-          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-neutral-400" />
+        <Badge variant="outline" className="border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
+          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           {activeSessions.length} active
         </Badge>
       </div>
@@ -617,7 +632,7 @@ function ActiveAuthorizations() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
                       {isGlobal ? <Globe className="h-4 w-4" strokeWidth={1.75} /> : <User className="h-4 w-4" strokeWidth={1.75} />}
                     </div>
                     <div className="min-w-0">
@@ -628,7 +643,7 @@ function ActiveAuthorizations() {
 
                   <div className="shrink-0 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-2.5 py-1.5 text-center">
                     <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">Passkey</p>
-                    <p className="mt-0.5 font-mono text-[13px] font-semibold tracking-wider text-black dark:text-white">{session.otp || '----'}</p>
+                    <p className="mt-0.5 font-mono text-[13px] font-semibold tracking-wider text-primary">{session.otp || '----'}</p>
                   </div>
                 </div>
 
@@ -645,7 +660,7 @@ function ActiveAuthorizations() {
 
                   {session.expiresAt && (
                     <div className="flex items-center gap-1.5 rounded-lg bg-neutral-50 dark:bg-white/5 px-2 py-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
-                      <Timer className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      <Timer className="h-3.5 w-3.5 text-blue-500" strokeWidth={1.75} />
                       Ends {format(parseISO(session.expiresAt), 'HH:mm')}
                     </div>
                   )}
@@ -665,12 +680,12 @@ function PendingApprovalsSummary() {
   if (pendingRequests.length === 0) return null;
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border-amber-200 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/[0.03] shadow-sm">
       <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
             <ShieldQuestion className="h-5 w-5" strokeWidth={1.75} />
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black dark:bg-white px-1 text-[10px] font-semibold text-white dark:text-black">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
               {pendingRequests.length}
             </span>
           </div>
@@ -682,7 +697,7 @@ function PendingApprovalsSummary() {
           </div>
         </div>
 
-        <Button asChild className="h-10 w-full rounded-xl bg-black dark:bg-white text-[13px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none shadow-none sm:w-auto">
+        <Button asChild className="h-10 w-full rounded-xl bg-amber-500 text-[13px] font-medium text-white hover:bg-amber-600 border-none shadow-none sm:w-auto">
           <Link href="/approvals">
             Review approvals
             <ArrowRight className="ml-2 h-4 w-4" strokeWidth={1.75} />
@@ -721,8 +736,8 @@ function ProactiveGrantDialog({
       <DialogContent className="max-h-[90dvh] w-[96%] max-w-md overflow-y-auto rounded-2xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
         <div className="border-b border-neutral-100 dark:border-white/5 p-5">
           <DialogHeader>
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/5">
-              <ShieldCheck className="h-5 w-5 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-500/10">
+              <ShieldCheck className="h-5 w-5 text-violet-600 dark:text-violet-400" strokeWidth={1.75} />
             </div>
             <DialogTitle className="text-xl font-semibold tracking-tight text-black dark:text-white">Authorize access</DialogTitle>
             <DialogDescription className="pt-1 text-[14px] text-neutral-500 dark:text-neutral-400">
@@ -741,10 +756,10 @@ function ProactiveGrantDialog({
                   variant={selectedDuration === option ? 'default' : 'outline'}
                   onClick={() => setSelectedDuration(option)}
                   className={cn(
-                    'h-12 rounded-xl text-[13px] font-medium',
+                    'h-12 rounded-xl text-[13px] font-medium transition-all',
                     selectedDuration === option
-                      ? 'bg-black dark:bg-white text-white dark:text-black border-none'
-                      : 'border-neutral-200 dark:border-white/10'
+                      ? 'bg-primary text-primary-foreground border-none shadow-md'
+                      : 'border-neutral-200 dark:border-white/10 hover:bg-muted/50'
                   )}
                 >
                   {option === 'single' ? 'Single use' : option === 'custom' ? 'Custom' : (
@@ -777,7 +792,7 @@ function ProactiveGrantDialog({
           <Button variant="ghost" className="h-10 w-full rounded-xl text-[13px] font-medium sm:w-auto" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleGrant} className="h-10 w-full rounded-xl bg-black dark:bg-white text-[13px] font-medium text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 border-none shadow-none sm:w-auto">
+          <Button onClick={handleGrant} className="h-10 w-full rounded-xl bg-primary text-[13px] font-medium text-primary-foreground hover:bg-primary/90 border-none shadow-none sm:w-auto">
             Continue
           </Button>
         </DialogFooter>
@@ -795,7 +810,7 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
       <CardHeader className="border-b border-neutral-100 dark:border-white/5 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
               <TrendingUp className="h-4 w-4" strokeWidth={1.75} />
             </div>
             <div>
@@ -803,7 +818,7 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
               <CardDescription className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">Click a bar to open that supplier.</CardDescription>
             </div>
           </div>
-          <Badge variant="outline" className="w-fit border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
+          <Badge variant="outline" className="w-fit border-blue-200 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/10 text-[12px] font-medium text-blue-700 dark:text-blue-300">
             {data.length} suppliers
           </Badge>
         </div>
@@ -821,7 +836,7 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
                 <p className="text-[13px] font-medium text-black dark:text-white">Top suppliers</p>
                 <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">By current stock</p>
               </div>
-              <Warehouse className="h-4 w-4 text-neutral-400" strokeWidth={1.75} />
+              <Warehouse className="h-4 w-4 text-blue-500" strokeWidth={1.75} />
             </div>
 
             {topSuppliers.length === 0 ? (
@@ -832,16 +847,16 @@ function VendorAnalytics({ data }: { data: StockBySupplier[] }) {
                   <div key={supplier.name} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white dark:bg-neutral-950 text-[10px] font-semibold text-neutral-500 border border-neutral-200 dark:border-white/10">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white dark:bg-neutral-950 text-[10px] font-semibold text-blue-500 border border-blue-200 dark:border-blue-500/20">
                           {index + 1}
                         </span>
                         <span className="truncate text-[12px] font-medium text-black dark:text-white">{supplier.name}</span>
                       </div>
-                      <span className="shrink-0 text-[12px] font-semibold tabular-nums text-black dark:text-white">{supplier.totalStock.toLocaleString()}</span>
+                      <span className="shrink-0 text-[12px] font-semibold tabular-nums text-primary">{supplier.totalStock.toLocaleString()}</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-white/10">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-500/10">
                       <div
-                        className="h-full rounded-full bg-black dark:bg-white transition-all duration-500"
+                        className="h-full rounded-full bg-blue-500 transition-all duration-500"
                         style={{ width: `${Math.max(6, (supplier.totalStock / maxSupplierStock) * 100)}%` }}
                       />
                     </div>
@@ -975,7 +990,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-2 py-0.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">
+              <Badge variant="outline" className="border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400">
                 Overview
               </Badge>
               <div
@@ -983,11 +998,11 @@ export default function DashboardPage() {
                   'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium',
                   isSyncing
                     ? 'border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                    : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-500 dark:text-neutral-400',
+                    : 'border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                 )}
               >
-                <span className={cn('h-1.5 w-1.5 rounded-full', isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-neutral-400')} />
-                {isSyncing ? 'Syncing' : 'Synced'}
+                <span className={cn('h-1.5 w-1.5 rounded-full', isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
+                {isSyncing ? 'Syncing Registry' : 'Registry Synchronized'}
               </div>
             </div>
 
@@ -1002,12 +1017,12 @@ export default function DashboardPage() {
               <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">Today</p>
               <p className="mt-0.5 truncate text-[12px] font-medium text-black dark:text-white">{mountedDate}</p>
             </div>
-            <div className="min-w-0 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-3 py-2.5">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">Suppliers</p>
+            <div className="min-w-0 rounded-xl border border-blue-100 dark:border-blue-500/10 bg-blue-50/30 dark:bg-blue-500/[0.03] px-3 py-2.5">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-blue-400">Suppliers</p>
               <p className="mt-0.5 text-[15px] font-semibold text-black dark:text-white">{metrics.totalSuppliers.toLocaleString()}</p>
             </div>
-            <div className="min-w-0 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-3 py-2.5">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">Products</p>
+            <div className="min-w-0 rounded-xl border border-primary/10 bg-primary/[0.03] px-3 py-2.5">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Products</p>
               <p className="mt-0.5 text-[15px] font-semibold text-black dark:text-white">{metrics.totalProducts.toLocaleString()}</p>
             </div>
           </div>
@@ -1022,7 +1037,7 @@ export default function DashboardPage() {
             description={
               <div className="flex items-center justify-between gap-3 text-[12px]">
                 <span className="text-neutral-500 dark:text-neutral-400">Added today</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-black dark:text-white">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
                   <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.75} />
                   {(metrics.netItemsAddedToday ?? 0).toLocaleString()}
                 </span>
@@ -1038,6 +1053,7 @@ export default function DashboardPage() {
           value={`QAR ${Math.round(metrics.totalStockValue).toLocaleString()}`}
           iconNode={<Wallet strokeWidth={1.75} />}
           description="Estimated inventory cost value"
+          tone="info"
         />
 
         <MetricCard
