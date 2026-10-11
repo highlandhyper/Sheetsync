@@ -230,6 +230,89 @@ function triggerSupplierInstantNotification_(item) {
 }
 
 // ============================================================
+// WEEKLY SUPPLIER REPORT ENGINE
+// ============================================================
+
+function generateWeeklySupplierReports() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
+  const meta = getAppMetaData();
+  const supplierContacts = meta.supplierContacts || [];
+  
+  if (logSheet.getLastRow() < 2) return { status: "success", message: "No data." };
+  
+  const data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 11).getValues();
+  const unreportedLogs = data.filter(row => row[10] === "" || row[10] === null);
+  
+  if (unreportedLogs.length === 0) return { status: "success", message: "No new logs." };
+  
+  const groupedBySupplier = {};
+  unreportedLogs.forEach(row => {
+    const name = row[7]; // Supplier Name
+    if (!groupedBySupplier[name]) groupedBySupplier[name] = [];
+    groupedBySupplier[name].push(row);
+  });
+  
+  let reportsSent = 0;
+  const now = new Date();
+  
+  Object.keys(groupedBySupplier).forEach(name => {
+    const contact = supplierContacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (contact && contact.email) {
+      const logs = groupedBySupplier[name];
+      const previousValue = contact.lastReportValue || 0;
+      
+      let tableRows = "";
+      logs.forEach(l => {
+        tableRows += `<tr><td>${l[6]}</td><td>${l[1]}</td><td>${l[2]}</td><td>${l[3]}</td></tr>`;
+      });
+      
+      const htmlBody = `
+        <div style="font-family:sans-serif; max-width:600px; border:1px solid #e2e8f0; border-radius:12px; padding:24px;">
+          <h2 style="color:#0f172a;">Weekly Inventory Report</h2>
+          <p>Dear ${name},</p>
+          <p>This is your automated weekly inventory log summary.</p>
+          <div style="background:#f8fafc; padding:16px; border-radius:8px; margin-bottom:20px;">
+            <p style="margin:0; font-size:12px; color:#64748b;">PREVIOUS REPORT VALUE</p>
+            <p style="margin:0; font-size:18px; font-weight:bold;">QAR ${previousValue.toLocaleString()}</p>
+          </div>
+          <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+            <tr style="background:#f1f5f9; text-align:left;">
+              <th style="padding:8px; font-size:12px;">Product</th>
+              <th style="padding:8px; font-size:12px;">Barcode</th>
+              <th style="padding:8px; font-size:12px;">Qty</th>
+              <th style="padding:8px; font-size:12px;">Expiry</th>
+            </tr>
+            ${tableRows}
+          </table>
+          <div style="margin-top:30px; text-align:center;">
+            <a href="${APP_URL}/supplier-portal/${contact.supplierCode}" style="background:#000; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:14px;">View Live Portal</a>
+          </div>
+        </div>
+      `;
+      
+      MailApp.sendEmail({
+        to: contact.email,
+        subject: `Weekly Inventory Report - ${name}`,
+        htmlBody: htmlBody
+      });
+      reportsSent++;
+    }
+  });
+  
+  // Mark as reported
+  const reportedDate = Utilities.formatDate(now, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  const lastRow = logSheet.getLastRow();
+  const statusColumnValues = [];
+  for (let i = 2; i <= lastRow; i++) {
+    statusColumnValues.push([reportedDate]);
+  }
+  logSheet.getRange(2, 11, statusColumnValues.length, 1).setValues(statusColumnValues);
+  
+  return { status: "success", reportsSent };
+}
+
+// ============================================================
 // AUDIT LOG HELPER
 // ============================================================
 
