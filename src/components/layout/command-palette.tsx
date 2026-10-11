@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  Building,
   Check,
   ChevronsUpDown,
   Edit,
@@ -60,6 +61,7 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useToast } from '@/hooks/use-toast';
 
 import { QuickProductEditDialog } from '@/components/products/quick-product-edit-dialog';
+import { QuickSupplierEditDialog } from '@/components/suppliers/quick-supplier-edit-dialog';
 import { cn } from '@/lib/utils';
 
 interface CommandPaletteProps {
@@ -97,6 +99,8 @@ export function CommandPalette({
     React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] =
     React.useState(false);
+  const [isQuickSupplierEditOpen, setIsQuickSupplierEditOpen] =
+    React.useState(false);
   const [staffName, setStaffName] = React.useState('');
   const [selectedReason, setSelectedReason] = React.useState('');
   const [customReason, setCustomReason] = React.useState('');
@@ -122,12 +126,17 @@ export function CommandPalette({
       if (isAlt) {
         const key = event.key.toLowerCase();
 
-        if (['s', 'e', 'm'].includes(key)) {
+        if (['s', 'e', 'm', 'u'].includes(key)) {
           event.preventDefault();
 
           if (key === 'e') {
             onOpenChange(false);
             setIsQuickEditOpen(true);
+          }
+
+          if (key === 'u') {
+            onOpenChange(false);
+            setIsQuickSupplierEditOpen(true);
           }
 
           if (key === 's') {
@@ -246,6 +255,28 @@ export function CommandPalette({
               </div>
 
               <CommandShortcut>ALT E</CommandShortcut>
+            </CommandItem>
+
+            <CommandItem
+              onSelect={() =>
+                runCommand(() => setIsQuickSupplierEditOpen(true))
+              }
+              className="cursor-pointer rounded-xl px-3 py-3"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Building className="h-4 w-4" />
+              </div>
+
+              <div className="ml-3 min-w-0 flex-1">
+                <p className="text-sm font-semibold">
+                  Quick supplier edit
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Update vendor details and sync
+                </p>
+              </div>
+
+              <CommandShortcut>ALT U</CommandShortcut>
             </CommandItem>
 
             <CommandItem
@@ -581,6 +612,11 @@ export function CommandPalette({
       <QuickProductEditDialog
         isOpen={isQuickEditOpen}
         onOpenChange={setIsQuickEditOpen}
+      />
+
+      <QuickSupplierEditDialog
+        isOpen={isQuickSupplierEditOpen}
+        onOpenChange={setIsQuickSupplierEditOpen}
       />
     </>
   );
