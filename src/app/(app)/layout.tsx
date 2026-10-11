@@ -105,20 +105,17 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background overflow-hidden relative">
-        <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000 ease-out">
-            <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/10 mb-8 relative">
-                <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] animate-ping opacity-10" />
-                <ShieldCheck className="h-14 w-14 text-primary relative z-10" strokeWidth={1.2} />
+        <div className="relative z-10 flex flex-col items-center animate-in fade-in duration-700">
+            <div className="p-5 bg-neutral-50 dark:bg-white/5 rounded-3xl border border-neutral-100 dark:border-white/5 mb-8">
+                <ShieldCheck className="h-10 w-10 text-neutral-400 dark:text-neutral-500" strokeWidth={1.5} />
             </div>
             
-            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground mb-2">Secure Handshake</h1>
-            <div className="flex items-center gap-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground mb-4">Secure handshake</h1>
             
-            <p className="mt-10 text-[9px] font-black uppercase tracking-[0.5em] text-muted-foreground/30 animate-pulse">Establishing Industrial Registry Link</p>
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-300 dark:text-neutral-700" strokeWidth={2.5} />
+                <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">Establishing registry link...</p>
+            </div>
         </div>
       </div>
     );
@@ -129,14 +126,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
   if (role === 'admin' && showAdminWelcomeScreen) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground animate-fade-in p-4 overflow-hidden relative">
-        <div className="relative z-10 flex flex-col items-center">
-            <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 shadow-none mb-8 animate-in zoom-in-95 duration-500">
-                <ShieldCheck className="h-16 w-16 text-primary" strokeWidth={1.5} />
+        <div className="relative z-10 flex flex-col items-center animate-in zoom-in-95 duration-500">
+            <div className="p-5 bg-neutral-50 dark:bg-white/5 rounded-3xl border border-neutral-100 dark:border-white/5 mb-8">
+                <ShieldCheck className="h-12 w-12 text-neutral-800 dark:text-neutral-200" strokeWidth={1.5} />
             </div>
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 text-center tracking-tighter uppercase leading-none">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2 text-center">
                 Welcome back
             </h1>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">Administrator Session Active</p>
+            <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400 opacity-60">Administrator session active</p>
         </div>
       </div>
     );
