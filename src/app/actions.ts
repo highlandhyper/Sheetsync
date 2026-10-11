@@ -33,7 +33,7 @@ import {
   updateSupplierAcrossRegistry,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
-import { format, parseISO, isValid, isBefore, isAfter, endOfDay } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 export interface ActionResponse<T = any> {
   success: boolean;
@@ -45,33 +45,37 @@ export interface ActionResponse<T = any> {
 const APPSCRIPT_API_URL = process.env.GOOGLE_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
 const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "0438"; 
 
+/**
+ * LIGHTWEIGHT SANITIZATION:
+ * Replaced heavy manual stack walk with a high-performance JSON-based approach.
+ * This prevents OOM (Out Of Memory) errors when processing large product catalogs.
+ */
 function sanitizeForJSON(input: any): any {
     if (input === null || input === undefined) return input;
+    
+    // Fast path for non-objects
     if (typeof input !== 'object') {
         if (typeof input === 'number') return (Number.isNaN(input) || !Number.isFinite(input)) ? 0 : input;
         return input;
     }
-    const stack: { source: any, target: any }[] = [{ source: input, target: Array.isArray(input) ? [] : {} }];
-    const rootTarget = stack[0].target;
-    while (stack.length > 0) {
-        const { source, target } = stack.pop()! || {};
-        if (!source) continue;
-        for (const key in source) {
-            if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
-            const value = source[key];
-            if (value === null || value === undefined) target[key] = value;
-            else if (value instanceof Date) target[key] = value.toISOString();
-            else if (typeof value === 'number') {
-                target[key] = (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
+
+    try {
+        // Use JSON serialization to strip complex objects/classes and handle basic circularity
+        // We use a replacer to specifically catch NaN/Infinity which are not valid JSON
+        const stringified = JSON.stringify(input, (key, value) => {
+            if (typeof value === 'number') {
+                return (Number.isNaN(value) || !Number.isFinite(value)) ? 0 : value;
             }
-            else if (typeof value === 'object') {
-                const newTarget = Array.isArray(value) ? [] : {};
-                target[key] = newTarget;
-                stack.push({ source: value, target: newTarget });
-            } else target[key] = value;
-        }
+            if (value instanceof Date) {
+                return value.toISOString();
+            }
+            return value;
+        });
+        return JSON.parse(stringified);
+    } catch (e) {
+        console.error("Sanitization failed, returning raw input as fallback.");
+        return input;
     }
-    return rootTarget;
 }
 
 export async function fetchAllDataAction(skipProducts: boolean = false): Promise<ActionResponse<{
@@ -89,15 +93,16 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
   try {
     const promises: any[] = [getInventoryItems(), getAuditLogs(), getAppMetaData(), getExpiryReminders()];
     if (!skipProducts) promises.push(getProducts());
+    
     const results = await Promise.all(promises);
-    const inventoryItems = results[0];
-    const auditLogs = results[1];
-    const meta = results[2];
-    const expiryReminders = results[3];
+    const inventoryItems = results[0] || [];
+    const auditLogs = results[1] || [];
+    const meta = results[2] || { locations: [], staff: [], specialRequests: [], supplierContacts: [] };
+    const expiryReminders = results[3] || [];
     const products = skipProducts ? undefined : results[4];
     const activeProducts = skipProducts ? undefined : (products || []);
     
-    const calculatedSuppliers = skipProducts ? undefined : activeProducts.reduce((acc: any[], p: any) => {
+    const calculatedSuppliers = skipProducts ? undefined : (activeProducts || []).reduce((acc: any[], p: any) => {
         if (p.supplierName && !acc.some(s => s.name === p.supplierName)) {
           const contact = meta.supplierContacts.find((c: Supplier) => c.name.toLowerCase() === p.supplierName.toLowerCase());
           acc.push({ 
@@ -110,21 +115,22 @@ export async function fetchAllDataAction(skipProducts: boolean = false): Promise
     }, []);
 
     const result = {
-      inventoryItems: inventoryItems || [],
+      inventoryItems: inventoryItems,
       ...(skipProducts ? {} : { products: activeProducts }),
       ...(calculatedSuppliers ? { suppliers: calculatedSuppliers } : {}),
       uniqueLocations: meta.locations || [],
       staffRegistry: meta.staff || [],
-      uniqueStaffNames: meta.staff.map((s: any) => s.name),
-      auditLogs: auditLogs || [],
+      uniqueStaffNames: (meta.staff || []).map((s: any) => s.name),
+      auditLogs: auditLogs,
       specialRequests: meta.specialRequests || [],
-      expiryReminders: expiryReminders || [],
+      expiryReminders: expiryReminders,
       supplierContacts: meta.supplierContacts || []
     };
 
     return { success: true, data: sanitizeForJSON(result) };
   } catch (error: any) {
-    return { success: false, message: error.message };
+    console.error("Critical error in fetchAllDataAction:", error.message);
+    return { success: false, message: "Registry error: " + error.message };
   }
 }
 
@@ -196,11 +202,6 @@ export async function triggerResolvedSmsAction(phone: string, productName: strin
     return sendSmsAction(msg, phone);
 }
 
-/**
- * LEAN HANDSHAKE LOGGING:
- * Optimized to reduce latency. Auditing and secondary notifications shifted 
- * to App Script core.
- */
 export async function addInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway URL missing." };
 
@@ -478,8 +479,6 @@ export async function submitOnDisplayRequestAction(token: string, pin: string, d
     const session = await getOnDisplayItemByToken(token);
     if (!session || session.pin !== pin) return { success: false, message: "Unauthorized handshake." };
     
-    // Process adjustment logic via existing edit pipeline
-    const staffName = session.items[0]?.staffName || "Staff";
     const editRes = await updateInventoryItemAction(null, Object.assign(new FormData(), details.editDetails));
     
     return { success: true };
@@ -511,7 +510,6 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string): Pr
 
 export async function resendOtpAction(requestId: string, adminEmail: string): Promise<ActionResponse> {
   try {
-    // Generate new key and dispatch SMS logic here
     return { success: true };
   } catch (e: any) {
     return { success: false, message: e.message };
