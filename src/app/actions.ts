@@ -196,6 +196,11 @@ export async function triggerResolvedSmsAction(phone: string, productName: strin
     return sendSmsAction(msg, phone);
 }
 
+/**
+ * LEAN HANDSHAKE LOGGING:
+ * Optimized to reduce latency. Auditing and secondary notifications shifted 
+ * to App Script core.
+ */
 export async function addInventoryItemAction(prevState: any, formData: FormData): Promise<ActionResponse<InventoryItem>> {
     if (!APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway URL missing." };
 
@@ -205,6 +210,7 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
         const productName = formData.get('productName') as string;
         const supplierName = formData.get('supplier') as string;
         const quantity = formData.get('quantity') as string;
+        const timestamp = new Date().toISOString();
 
         const itemData = {
             action: 'standardLog',
@@ -217,8 +223,9 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             productName,
             supplierName,
             itemType: formData.get('itemType'),
-            timestamp: new Date().toISOString(),
-            disableNotification: formData.get('disableNotification') === 'true'
+            timestamp,
+            disableNotification: formData.get('disableNotification') === 'true',
+            userEmail: formData.get('userEmail') || 'Admin'
         };
 
         const response = await fetch(APPSCRIPT_API_URL, {
@@ -228,26 +235,11 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             redirect: 'follow'
         });
 
-        if (!response.ok) throw new Error("Registry Gateway Handshake failed.");
+        if (!response.ok) throw new Error("Communication failure with registry.");
 
         const result = await response.json();
         
         if (result.status === 'success') {
-            const meta = await getAppMetaData();
-            const supplier = meta.supplierContacts.find((s: Supplier) => s.name.toLowerCase() === supplierName.toLowerCase());
-            
-            if (supplier?.phone && formData.get('disableNotification') !== 'true') {
-                const msg = `SHEETSYNC: New item logged for your catalog. Product: ${productName}. Qty: ${quantity}. Full report link sent via email.`;
-                await sendSmsAction(msg, supplier.phone).catch(() => {});
-            }
-
-            await logAuditEvent(
-                staffName, 
-                'LOG_INVENTORY', 
-                barcode, 
-                `[LOGGED] Qty: ${quantity} | Loc: ${formData.get('location')}`
-            );
-            
             revalidatePath('/inventory');
             return { 
                 success: true, 
@@ -267,7 +259,7 @@ export async function addInventoryItemAction(prevState: any, formData: FormData)
             return { success: false, message: result.message || "Registry core refused sync." };
         }
     } catch (error: any) {
-        return { success: false, message: error.message };
+        return { success: false, message: error.message || "Handshake timeout." };
     }
 }
 

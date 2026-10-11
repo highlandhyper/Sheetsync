@@ -10,6 +10,7 @@
 const DB_SHEET_NAME = "DB";
 const LOG_SHEET_NAME = "Form responses 2";
 const STAFF_SHEET_NAME = "Staff";
+const AUDIT_LOG_SHEET_NAME = "Audit Log";
 const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
 const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS";
 const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
@@ -33,7 +34,7 @@ const INV_COL_PRODUCT_NAME = 6;
 const INV_COL_SUPPLIER_NAME = 7;
 const INV_COL_TYPE = 8;
 const INV_COL_UNIQUE_ID = 9;
-const INV_COL_REPORTED_AT = 10; // Column K for weekly reporting track
+const INV_COL_REPORTED_AT = 10; 
 
 // ------------------------------------------------------------
 // EXPIRY WATCH COLUMNS
@@ -160,7 +161,7 @@ function doPost(e) {
 }
 
 // ============================================================
-// STANDARD LOG - MODIFIED FOR SUPPLIER PROTOCOL
+// STANDARD LOG - OPTIMIZED HANDSHAKE
 // ============================================================
 
 function submitData(item) {
@@ -171,7 +172,7 @@ function submitData(item) {
   const tz = ss.getSpreadsheetTimeZone();
   const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
   const nextRow = logSheet.getLastRow() + 1;
-  const uniqueId = `${nextRow}-${Utilities.formatDate(entryDate, tz, "yyyyMMddHHmmss")}`;
+  const uniqueId = item.id || `${nextRow}-${Utilities.formatDate(entryDate, tz, "yyyyMMddHHmmss")}`;
 
   logSheet.getRange(nextRow, 1, 1, 10).setValues([[
     Utilities.formatDate(entryDate, tz, "d/M/yyyy HH:mm:ss"),
@@ -179,7 +180,7 @@ function submitData(item) {
     item.quantity || "",
     item.expiryDate || "",
     item.location || "",
-    item.staff || item.identity || item.staffName || "",
+    item.staffName || item.staff || item.identity || "",
     item.productName || "",
     "", // Supplier (auto-filled by formula)
     item.itemType || item.type || "",
@@ -188,24 +189,28 @@ function submitData(item) {
 
   setFormResponseSupplierFormula_(logSheet, nextRow);
 
+  // INTERNAL AUDIT LOGGING: Fast, server-side
+  logAuditEvent_(item.userEmail || "Terminal", "LOG_INVENTORY", item.barcode || "N/A", `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
+
   if (item.disableNotification === true) return;
 
-  // 1. Immediate Staff alert
-  sendSevenDayExpiryStaffSmsIfDue_(item, entryDate);
-
-  // 2. IMMEDIATE SUPPLIER NOTIFICATION (SMS)
-  triggerSupplierInstantNotification_(item);
-
-  // 3. Expired Email check
-  if (item.expiryDate) {
-    const expiryDate = parseSevenDaySmsDate_(item.expiryDate, tz);
-    if (expiryDate) {
-      const todayKey = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
-      const expiryKey = Utilities.formatDate(expiryDate, tz, "yyyy-MM-dd");
-      if (expiryKey <= todayKey) {
-        sendExpiryAlertEmail(item, entryDate);
+  // ASYNCHRONOUS NOTIFICATIONS (Simulated via script flow)
+  try {
+    sendSevenDayExpiryStaffSmsIfDue_(item, entryDate);
+    triggerSupplierInstantNotification_(item);
+    
+    if (item.expiryDate) {
+      const expiryDate = parseSevenDaySmsDate_(item.expiryDate, tz);
+      if (expiryDate) {
+        const todayKey = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+        const expiryKey = Utilities.formatDate(expiryDate, tz, "yyyy-MM-dd");
+        if (expiryKey <= todayKey) {
+          sendExpiryAlertEmail(item, entryDate);
+        }
       }
     }
+  } catch (e) {
+      console.warn("Non-blocking notification error:", e);
   }
 }
 
@@ -225,144 +230,15 @@ function triggerSupplierInstantNotification_(item) {
 }
 
 // ============================================================
-// WEEKLY SUPPLIER REPORT ENGINE
+// AUDIT LOG HELPER
 // ============================================================
 
-function generateWeeklySupplierReports() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
-  const meta = getAppMetaData();
-  const suppliers = meta.supplierContacts;
-  
-  if (!suppliers || suppliers.length === 0) return { status: "error", message: "No supplier contacts." };
-
-  const lastRow = logSheet.getLastRow();
-  if (lastRow < 2) return { status: "success", message: "Empty registry." };
-
-  const logData = logSheet.getRange(2, 1, lastRow - 1, 11).getValues();
-  const now = new Date();
-  const results = [];
-  const updatedSuppliers = [...suppliers];
-
-  suppliers.forEach((supplier, sIdx) => {
-    if (!supplier.email) return;
-
-    const newItems = [];
-    const rowsToUpdate = [];
-    let batchValue = 0;
-
-    logData.forEach((row, rIdx) => {
-      const rowSupplier = String(row[INV_COL_SUPPLIER_NAME] || "").trim();
-      const reportedAt = row[INV_COL_REPORTED_AT];
-
-      if (rowSupplier.toLowerCase() === supplier.name.toLowerCase() && !reportedAt) {
-        newItems.push({
-          product: row[INV_COL_PRODUCT_NAME],
-          qty: row[INV_COL_QTY],
-          barcode: row[INV_COL_BARCODE],
-          expiry: row[INV_COL_EXPIRY]
-        });
-        rowsToUpdate.push(rIdx + 2);
-        // In a real environment, we'd lookup the cost from DB sheet here
-      }
-    });
-
-    if (newItems.length > 0) {
-      sendSupplierReportEmail_(supplier, newItems);
-      
-      // Update Column K (Reported At)
-      rowsToUpdate.forEach(rowNum => {
-        logSheet.getRange(rowNum, INV_COL_REPORTED_AT + 1).setValue(now);
-      });
-
-      // Update last report value (placeholder logic for demo, should sum actual SKU costs)
-      // updatedSuppliers[sIdx].lastReportValue = totalSumOfNewItems;
-      results.push({ supplier: supplier.name, count: newItems.length });
-    }
-  });
-
-  // Save updated report values back to APP_SETTINGS if needed
-  // saveSupplierContactsToSheet_(updatedSuppliers);
-
-  return { status: "success", reports: results };
-}
-
-// ============================================================
-// EMAIL HELPER (Supplier HTML)
-// ============================================================
-
-function sendSupplierReportEmail_(supplier, items) {
-  const portalUrl = `${APP_URL}/supplier-portal/${supplier.supplierCode}`;
-  const prevValue = supplier.lastReportValue || 0;
-
-  const htmlBody = `
-    <div style="font-family: sans-serif; padding: 25px; border: 1px solid #eee; border-radius: 15px; max-width: 600px;">
-      <h2 style="color: #29abe2; margin-top: 0;">SheetSync Weekly Inventory Report</h2>
-      <p>Dear <strong>${supplier.name}</strong>,</p>
-      <p>Please find the summary of new inventory logged for your account this week.</p>
-      
-      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-        <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #eee;">
-            <th style="padding: 12px; text-align: left; font-size: 12px;">PRODUCT</th>
-            <th style="padding: 12px; text-align: right; font-size: 12px;">QTY</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${items.map(i => `
-            <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 12px; font-size: 14px;">${i.product}</td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">${i.qty}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div style="background: #f1f8fe; padding: 15px; border-radius: 10px; margin: 25px 0;">
-        <p style="margin: 0; font-size: 10px; color: #666; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;">Previous Report Value</p>
-        <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #333;">QAR ${prevValue.toLocaleString()}</p>
-      </div>
-
-      <p style="font-size: 14px; margin-bottom: 25px;">You can monitor your live registry records via your secure terminal:</p>
-      <a href="${portalUrl}" style="display: block; text-align: center; padding: 14px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; letter-spacing: 0.05em;">OPEN SUPPLIER PORTAL</a>
-      
-      <p style="font-size: 10px; color: #999; margin-top: 40px; text-align: center;">SheetSync Industrial Protocol • Automated Registry Notification</p>
-    </div>
-  `;
-
-  MailApp.sendEmail({
-    to: supplier.email,
-    subject: `Weekly Inventory Update - ${supplier.name}`,
-    htmlBody: htmlBody
-  });
-}
-
-// ============================================================
-// SMS HELPER (Textbee)
-// ============================================================
-
-function sendTextbeeSms_(phone, message) {
-  const props = PropertiesService.getScriptProperties();
-  const apiKey = props.getProperty("TEXTBEE_API_KEY");
-  const deviceId = props.getProperty("TEXTBEE_DEVICE_ID");
-  if (!apiKey || !deviceId) return false;
-
-  try {
-    const res = UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
-      method: "post",
-      contentType: "application/json",
-      headers: { "x-api-key": apiKey },
-      payload: JSON.stringify({
-        message: message,
-        recipients: [normalizeStaffPhone_(phone)],
-        deviceId: deviceId
-      }),
-      muteHttpExceptions: true
-    });
-    return res.getResponseCode() === 200;
-  } catch (e) {
-    return false;
-  }
+function logAuditEvent_(user, action, target, details) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(AUDIT_LOG_SHEET_NAME);
+    if (!sheet) return;
+    const ts = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    sheet.appendRow([ts, user, action, target, details]);
 }
 
 // ============================================================
@@ -445,7 +321,7 @@ function addNewStaff(item) {
 function updateDbVersion() { PropertiesService.getScriptProperties().setProperty("DB_VERSION", Date.now().toString()); }
 
 // ============================================================
-// PRESERVED ON-DISPLAY & EXPIRY WATCH (UNCHANGED)
+// PRESERVED ON-DISPLAY & EXPIRY WATCH
 // ============================================================
 
 function processOnDisplayAlerts_(targetStaffName, forceManual) {
@@ -533,16 +409,6 @@ function sendOnDisplaySms_(staffName, items, token, pin) {
   return { success: sendTextbeeSms_(contact.phone, msg) };
 }
 
-function getStaffContactByName_(staffName) {
-  const meta = getAppMetaData();
-  const wanted = normalizeStaffName_(staffName);
-  for (let s of (meta.staff || [])) {
-    const sName = typeof s === "string" ? s : (s.name || s.staffName || "");
-    if (normalizeStaffName_(sName) === wanted) return { name: sName, phone: typeof s === "string" ? "" : (s.phone || "") };
-  }
-  return null;
-}
-
 function normalizeStaffName_(v) { return String(v || "").trim().toUpperCase(); }
 function normalizeLocation_(v) { return String(v || "").trim().toUpperCase(); }
 function normalizeStaffPhone_(v) {
@@ -614,6 +480,23 @@ function sendWipeAlertEmail(data) {
 function setFormResponseSupplierFormula_(sheet, row) {
   const f = '=IF(B' + row + '="","",IFERROR(INDEX(FILTER(DB!$D$2:$D$100000,((TRIM(DB!$A$2:$A$100000&"")=TRIM(B' + row + '&""))+(TRIM(DB!$B$2:$B$100000&"")=TRIM(B' + row + '&"")))>0),1),"Not Found"))';
   sheet.getRange(row, 8).setFormula(f);
+}
+
+function sendTextbeeSms_(phone, message) {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty("TEXTBEE_API_KEY");
+  const deviceId = props.getProperty("TEXTBEE_DEVICE_ID");
+  if (!apiKey || !deviceId) return false;
+  try {
+    const res = UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
+      method: "post",
+      contentType: "application/json",
+      headers: { "x-api-key": apiKey },
+      payload: JSON.stringify({ message: message, recipients: [normalizeStaffPhone_(phone)], deviceId: deviceId }),
+      muteHttpExceptions: true
+    });
+    return res.getResponseCode() === 200;
+  } catch (e) { return false; }
 }
 
 function ensureExpiryWatchSmsColumns_() {
