@@ -49,6 +49,7 @@ import {
 import { MultiSelectToggle } from '@/components/settings/multi-select-toggle';
 import { AdminWelcomeToggle } from '@/components/settings/admin-welcome-toggle';
 import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout-input';
+import { StaffMember } from '@/lib/types';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
 import {
@@ -506,7 +507,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-neutral-950 overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-background dark:bg-neutral-950 overflow-x-hidden">
       {/* MOBILE */}
       <div className="lg:hidden relative min-h-[100dvh]">
         <div
@@ -516,7 +517,7 @@ export default function SettingsPage() {
             'animate-in fade-in slide-in-from-left-4 duration-300 ease-out fill-mode-both'
           )}
         >
-          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-white dark:bg-neutral-950 px-5 py-4">
+          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background dark:bg-neutral-950 px-5 py-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/dashboard"
@@ -528,7 +529,7 @@ export default function SettingsPage() {
             </div>
           </header>
 
-          <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+          <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
             {GENERAL_ITEMS.filter((i) => !i.adminOnly || isAdmin).map((item) => (
               <MobileRow key={item.id} {...item} />
             ))}
@@ -537,13 +538,13 @@ export default function SettingsPage() {
           {isAdmin && (
             <>
               <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
-              <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+              <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {WAREHOUSE_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
                 ))}
               </div>
               <div className="h-2 bg-neutral-50 dark:bg-[#0a0a0f]" />
-              <div className="bg-white dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+              <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {SYSTEM_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
                 ))}
@@ -564,7 +565,7 @@ export default function SettingsPage() {
             'animate-in fade-in slide-in-from-right-8 duration-300 ease-out fill-mode-both'
           )}
         >
-          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-white dark:bg-neutral-950 px-4 py-3">
+          <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background dark:bg-neutral-950 px-4 py-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
