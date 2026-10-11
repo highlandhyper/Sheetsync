@@ -54,6 +54,8 @@ interface HubItem {
   icon: LucideIcon;
   description: string;
   role: 'admin' | 'viewer' | 'both';
+  colorClass?: string;
+  bgClass?: string;
 }
 
 const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
@@ -66,6 +68,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: LayoutDashboard,
         description: 'Live registry metrics & analytics',
         role: 'admin',
+        colorClass: 'text-blue-600 dark:text-blue-400',
+        bgClass: 'bg-blue-50 dark:bg-blue-500/10',
       },
       {
         href: '/approvals',
@@ -73,6 +77,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: ShieldCheck,
         description: 'Verify & authorize staff requests',
         role: 'admin',
+        colorClass: 'text-amber-600 dark:text-amber-400',
+        bgClass: 'bg-amber-50 dark:bg-amber-500/10',
       },
       {
         href: '/expiry-watch',
@@ -80,6 +86,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: Activity,
         description: 'Diary replacement protocol',
         role: 'both',
+        colorClass: 'text-rose-600 dark:text-rose-400',
+        bgClass: 'bg-rose-50 dark:bg-rose-500/10',
       },
       {
         href: '/inventory',
@@ -87,6 +95,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: ClipboardList,
         description: 'Master log of all units in stock',
         role: 'admin',
+        colorClass: 'text-slate-600 dark:text-slate-400',
+        bgClass: 'bg-slate-100 dark:bg-slate-500/10',
       },
       {
         href: '/inventory/add',
@@ -94,6 +104,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: ClipboardPlus,
         description: 'Standard SKU logging',
         role: 'both',
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        bgClass: 'bg-emerald-50 dark:bg-emerald-500/10',
       },
       {
         href: '/inventory/lookup',
@@ -101,6 +113,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: SearchCode,
         description: 'Trace log & audit history',
         role: 'both',
+        colorClass: 'text-indigo-600 dark:text-indigo-400',
+        bgClass: 'bg-indigo-50 dark:bg-indigo-500/10',
       },
       {
         href: '/products',
@@ -108,6 +122,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: UserCheck,
         description: 'Individual return tracking',
         role: 'both',
+        colorClass: 'text-orange-600 dark:text-orange-400',
+        bgClass: 'bg-orange-50 dark:bg-orange-500/10',
       },
       {
         href: '/products/by-supplier',
@@ -115,6 +131,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: Undo,
         description: 'Bulk vendor processing',
         role: 'admin',
+        colorClass: 'text-orange-700 dark:text-orange-500',
+        bgClass: 'bg-orange-50 dark:bg-orange-500/10',
       },
     ],
   },
@@ -127,6 +145,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: Edit3,
         description: 'Update registry definitions',
         role: 'admin',
+        colorClass: 'text-sky-600 dark:text-sky-400',
+        bgClass: 'bg-sky-50 dark:bg-sky-500/10',
       },
       {
         href: '/audit-log',
@@ -134,6 +154,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: FileText,
         description: 'Complete action history',
         role: 'admin',
+        colorClass: 'text-zinc-600 dark:text-zinc-400',
+        bgClass: 'bg-zinc-100 dark:bg-zinc-500/10',
       },
     ],
   },
@@ -146,6 +168,8 @@ const HUB_SECTIONS: { title: string; items: HubItem[] }[] = [
         icon: Settings,
         description: 'Interface & security config',
         role: 'both',
+        colorClass: 'text-violet-600 dark:text-violet-400',
+        bgClass: 'bg-violet-50 dark:bg-violet-500/10',
       },
     ],
   },
@@ -159,8 +183,11 @@ function HubRow({ item }: { item: HubItem }) {
       href={item.href}
       className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-white/[0.03] active:bg-neutral-100 dark:active:bg-white/[0.05]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-        <Icon className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+      <div className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+        item.bgClass || "bg-neutral-100 dark:bg-white/5"
+      )}>
+        <Icon className={cn("h-4 w-4", item.colorClass || "text-neutral-600 dark:text-neutral-300")} strokeWidth={2} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[15px] font-medium text-black dark:text-white">{item.label}</p>
@@ -218,14 +245,14 @@ export default function SystemHubPage() {
               Quick access to operations
             </p>
           </div>
-          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">v5.0.0</span>
+          <span className="text-[12px] text-neutral-400 dark:text-neutral-500 font-mono">v5.0.0</span>
         </div>
       </header>
 
       <div className="px-4 pt-5 space-y-5">
-        <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-4">
+        <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <Avatar className="h-11 w-11 shrink-0 rounded-full">
+            <Avatar className="h-11 w-11 shrink-0 rounded-full border border-border/50">
               <AvatarImage
                 src={`https://placehold.co/100x100.png?text=${getInitials(user.email)}`}
                 alt={user.email || 'User'}
@@ -236,31 +263,31 @@ export default function SystemHubPage() {
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium text-black dark:text-white">
+              <p className="truncate text-[15px] font-semibold text-black dark:text-white">
                 {user.displayName || user.email?.split('@')[0] || 'Personnel'}
               </p>
               <div className="mt-1 flex items-center gap-2">
                 <Badge
                   variant="secondary"
-                  className="rounded-md border-0 bg-neutral-100 dark:bg-white/5 px-1.5 py-0 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 capitalize"
+                  className="rounded-md border-0 bg-primary/10 px-1.5 py-0 text-[10px] font-bold text-primary capitalize tracking-tight"
                 >
                   {role}
                 </Badge>
                 <span
                   className={cn(
-                    'flex items-center gap-1 text-[12px] font-medium',
-                    isOnline ? 'text-neutral-500 dark:text-neutral-400' : 'text-red-500 dark:text-red-400'
+                    'flex items-center gap-1 text-[11px] font-bold uppercase tracking-tight',
+                    isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
                   )}
                 >
-                  {isOnline ? <Wifi className="h-3 w-3" strokeWidth={1.75} /> : <WifiOff className="h-3 w-3" strokeWidth={1.75} />}
+                  {isOnline ? <Wifi className="h-3 w-3" strokeWidth={2.5} /> : <WifiOff className="h-3 w-3" strokeWidth={2.5} />}
                   {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
             </div>
 
             <div className="shrink-0 text-right">
-              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">Last sync</p>
-              <p className="mt-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Last sync</p>
+              <p className="mt-0.5 text-[11px] font-bold text-neutral-700 dark:text-neutral-300">
                 {lastSync
                   ? formatDistanceToNow(new Date(lastSync), { addSuffix: true })
                   : 'Never'}
@@ -270,17 +297,17 @@ export default function SystemHubPage() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between px-0.5">
-            <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-400 dark:text-neutral-500">
               Quick controls
             </p>
             {pendingActions.length > 0 && (
               <button
                 type="button"
                 onClick={() => setIsQueueOpen(true)}
-                className="flex items-center gap-1 rounded-lg bg-red-50 dark:bg-red-500/10 px-2 py-1 text-[12px] font-medium text-red-600 dark:text-red-400"
+                className="flex items-center gap-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tight"
               >
-                <CloudOff className="h-3 w-3" strokeWidth={1.75} />
+                <CloudOff className="h-3 w-3" strokeWidth={2.5} />
                 {pendingActions.length} pending
               </button>
             )}
@@ -291,22 +318,25 @@ export default function SystemHubPage() {
               variant="outline"
               onClick={() => isOnline && !isSyncing && refreshData()}
               disabled={!isOnline || isSyncing}
-              className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[11px] font-medium shadow-none text-neutral-600 dark:text-neutral-300"
+              className={cn(
+                "h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[10px] font-bold uppercase tracking-tight shadow-none transition-all",
+                isOnline && !isSyncing ? "text-blue-600 dark:text-blue-400" : "text-neutral-400"
+              )}
             >
-              <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin')} strokeWidth={1.75} />
+              <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin')} strokeWidth={2.5} />
               Sync
             </Button>
 
             <Button
               variant="outline"
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[11px] font-medium shadow-none text-neutral-600 dark:text-neutral-300"
+              className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[10px] font-bold uppercase tracking-tight shadow-none text-neutral-600 dark:text-neutral-300"
             >
-              <Command className="h-4 w-4" strokeWidth={1.75} />
-              Command
+              <Command className="h-4 w-4" strokeWidth={2.5} />
+              Cmd
             </Button>
 
-            <div className="flex h-14 flex-col items-center justify-center gap-1 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">
+            <div className="flex h-14 flex-col items-center justify-center gap-1 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 text-[10px] font-bold uppercase tracking-tight text-neutral-600 dark:text-neutral-300">
               <NotificationCenter />
               <span>Alerts</span>
             </div>
@@ -315,19 +345,19 @@ export default function SystemHubPage() {
               <Button
                 variant="outline"
                 onClick={handleManualLock}
-                className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[11px] font-medium shadow-none text-neutral-600 dark:text-neutral-300"
+                className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[10px] font-bold uppercase tracking-tight shadow-none text-red-600 dark:text-red-400"
               >
-                <Lock className="h-4 w-4" strokeWidth={1.75} />
+                <Lock className="h-4 w-4" strokeWidth={2.5} />
                 Lock
               </Button>
             ) : (
               <Button
                 variant="outline"
                 onClick={() => logout()}
-                className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[11px] font-medium shadow-none text-neutral-600 dark:text-neutral-300"
+                className="h-14 flex-col gap-1 rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 px-1 text-[10px] font-bold uppercase tracking-tight shadow-none text-red-600 dark:text-red-400"
               >
-                <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                Logout
+                <LogOut className="h-4 w-4" strokeWidth={2.5} />
+                Exit
               </Button>
             )}
           </div>
@@ -344,10 +374,10 @@ export default function SystemHubPage() {
 
           return (
             <div key={section.title} className="space-y-2">
-              <p className="px-1 text-[12px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              <p className="px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-400 dark:text-neutral-500">
                 {section.title}
               </p>
-              <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 divide-y divide-neutral-100 dark:divide-white/5">
+              <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 divide-y divide-neutral-100 dark:divide-white/5 shadow-sm">
                 {visibleItems.map((item) => (
                   <HubRow key={item.href} item={item} />
                 ))}
@@ -360,38 +390,38 @@ export default function SystemHubPage() {
           <Button
             variant="outline"
             onClick={() => logout()}
-            className="h-11 w-full rounded-xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 text-[14px] font-medium text-neutral-600 dark:text-neutral-300 shadow-none hover:bg-neutral-50 dark:hover:bg-white/5"
+            className="h-12 w-full rounded-2xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 text-[13px] font-bold text-red-600 dark:text-red-400 shadow-none hover:bg-red-50 dark:hover:bg-red-500/5 transition-all"
           >
-            <LogOut className="mr-2 h-4 w-4" strokeWidth={1.75} />
-            Sign out
+            <LogOut className="mr-2 h-4 w-4" strokeWidth={2.5} />
+            Secure Sign Out
           </Button>
         )}
 
-        <p className="pb-2 text-center text-[12px] text-neutral-300 dark:text-neutral-600">
-          SheetSync secure hub
+        <p className="pb-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-300 dark:text-neutral-700">
+          SheetSync Secure Node
         </p>
       </div>
 
       <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
 
       <Dialog open={isQueueOpen} onOpenChange={setIsQueueOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-[460px] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
-          <DialogHeader className="border-b border-neutral-100 dark:border-white/5 p-4">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[460px] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-3xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
+          <DialogHeader className="border-b border-neutral-100 dark:border-white/5 p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10">
-                <ShieldAlert className="h-4 w-4 text-red-500 dark:text-red-400" strokeWidth={1.75} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-500/10">
+                <ShieldAlert className="h-5 w-5 text-amber-500 dark:text-amber-400" strokeWidth={2} />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-black dark:text-white">
-                  Pending sync
+                <DialogTitle className="text-base font-bold text-black dark:text-white uppercase tracking-tight">
+                  Transmission Buffer
                 </DialogTitle>
-                <DialogDescription className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-                  Queued actions waiting to upload.
+                <DialogDescription className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+                  Queued registry actions waiting for synchronization.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto p-3">
+          <div className="max-h-[calc(100dvh-7rem)] overflow-y-auto p-4">
             <OfflineQueueTerminal />
           </div>
         </DialogContent>
