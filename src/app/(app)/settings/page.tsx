@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -30,6 +31,7 @@ import {
   CheckCircle2,
   BellDot,
   Settings2,
+  Building,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
@@ -52,6 +54,7 @@ import { InactivityTimeoutInput } from '@/components/settings/inactivity-timeout
 import { StaffMember } from '@/lib/types';
 import { StaffManager } from '@/components/settings/staff-manager';
 import { LocationManager } from '@/components/settings/location-manager';
+import { SupplierManager } from '@/components/settings/supplier-manager';
 import {
   getMasterSpreadsheetUrlAction,
   checkSmsConfigAction,
@@ -79,6 +82,7 @@ type SectionId =
   | 'sms'
   | 'session'
   | 'staff'
+  | 'suppliers'
   | 'locations'
   | 'on-display'
   | 'transmission'
@@ -106,6 +110,7 @@ const GENERAL_ITEMS: NavItem[] = [
 
 const WAREHOUSE_ITEMS: NavItem[] = [
   { id: 'staff', label: 'Staff', description: 'Team members', icon: UserPlus, colorClass: 'text-indigo-600 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-500/10' },
+  { id: 'suppliers', label: 'Suppliers', description: 'Vendor maintenance', icon: Building, colorClass: 'text-sky-600 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-500/10' },
   { id: 'locations', label: 'Locations', description: 'Storage zones', icon: MapPin, colorClass: 'text-rose-600 dark:text-rose-400', bgClass: 'bg-rose-50 dark:bg-rose-500/10' },
   { id: 'on-display', label: 'On-Display protocol', description: 'Expiry alerts', icon: LayoutDashboard, colorClass: 'text-orange-600 dark:text-orange-400', bgClass: 'bg-orange-50 dark:bg-orange-500/10' },
   { id: 'transmission', label: 'Transmission log', description: 'Alert history', icon: History, colorClass: 'text-slate-600 dark:text-slate-400', bgClass: 'bg-slate-100 dark:bg-slate-500/10' },
@@ -127,7 +132,7 @@ function AppearancePanel({ isAdmin }: { isAdmin: boolean }) {
         <h2 className="text-lg font-semibold text-black dark:text-white">Appearance</h2>
         <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Theme, multi-select, and audio preferences.</p>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-5">
         <div>
           <p className="text-[13px] font-medium text-black dark:text-white mb-1">Theme</p>
           <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Light, dark, or system</p>
@@ -193,7 +198,7 @@ function NotificationPanel() {
         <h2 className="text-lg font-semibold text-black dark:text-white">Notifications</h2>
         <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Control browser alerts for security events.</p>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
             <BellDot className="h-4 w-4 text-blue-600 dark:text-blue-300" strokeWidth={1.75} />
@@ -236,7 +241,7 @@ function SmsPanel({
         <h2 className="text-lg font-semibold text-black dark:text-white">SMS delivery</h2>
         <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Configure recipient and device for security messages.</p>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-5">
         <div className="flex flex-wrap gap-2">
           {smsEnvStatus?.hasApiKey ? (
             <Badge className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-none text-[11px] font-medium">
@@ -267,7 +272,7 @@ function SmsPanel({
               placeholder="+974..."
               value={permissions.smsRecipientNumber || ''}
               onChange={(e) => setSmsRecipientNumber(e.target.value)}
-              className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 text-[14px] shadow-none"
+              className="h-11 rounded-xl border border-border/60 bg-background pl-10 text-[14px] shadow-none"
             />
           </div>
         </div>
@@ -279,7 +284,7 @@ function SmsPanel({
               placeholder={smsEnvStatus?.hasDeviceId ? '******** (from ENV)' : '6a95...'}
               value={permissions.smsDeviceId || ''}
               onChange={(e) => setSmsDeviceId(e.target.value)}
-              className="h-11 rounded-xl border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 pl-10 font-mono text-[13px] shadow-none"
+              className="h-11 rounded-xl border border-border/60 bg-background pl-10 font-mono text-[13px] shadow-none"
             />
           </div>
         </div>
@@ -295,7 +300,7 @@ function SessionPanel() {
         <h2 className="text-lg font-semibold text-black dark:text-white">Session security</h2>
         <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">Welcome screen and automatic lock timer.</p>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-5">
         <div>
           <p className="text-[14px] font-medium text-black dark:text-white mb-1">Greeting</p>
           <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Admin welcome on session start</p>
@@ -327,7 +332,7 @@ function SectionPanel({ title, description, children, icon: Icon, colorClass }: 
           </div>
         </div>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">{children}</div>
+      <div className="rounded-2xl border border-border/60 bg-card p-5">{children}</div>
     </div>
   );
 }
@@ -443,6 +448,12 @@ export default function SettingsPage() {
             <StaffManager />
           </SectionPanel>
         );
+      case 'suppliers':
+        return (
+          <SectionPanel title="Suppliers" description="Vendor maintenance registry." icon={icon} colorClass={color}>
+            <SupplierManager />
+          </SectionPanel>
+        );
       case 'locations':
         return (
           <SectionPanel title="Locations" description="Warehouse storage zones." icon={icon} colorClass={color}>
@@ -490,13 +501,13 @@ export default function SettingsPage() {
       onClick={() => openSection(item.id)}
       className={cn(
         'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-        activeSection === item.id ? 'bg-neutral-100 dark:bg-white/10' : 'hover:bg-neutral-50 dark:hover:bg-white/[0.04]'
+        activeSection === item.id ? 'bg-primary/5 text-primary' : 'hover:bg-muted/30'
       )}
     >
       <item.icon className={cn("h-4 w-4 shrink-0", item.colorClass)} strokeWidth={1.75} />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-black dark:text-white">{item.label}</p>
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1">{item.description}</p>
+        <p className="text-[13px] font-medium">{item.label}</p>
+        <p className="text-[11px] text-muted-foreground line-clamp-1">{item.description}</p>
       </div>
     </button>
   );
@@ -521,7 +532,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-background dark:bg-neutral-950 overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-background overflow-x-hidden">
       {/* MOBILE */}
       <div className="lg:hidden relative min-h-[100dvh]">
         <div
@@ -543,7 +554,7 @@ export default function SettingsPage() {
             </div>
           </header>
 
-          <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+          <div className="bg-background px-5 divide-y divide-neutral-100 dark:divide-white/5">
             {GENERAL_ITEMS.filter((i) => !i.adminOnly || isAdmin).map((item) => (
               <MobileRow key={item.id} {...item} />
             ))}
@@ -551,12 +562,12 @@ export default function SettingsPage() {
 
           {isAdmin && (
             <>
-              <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+              <div className="bg-background px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {WAREHOUSE_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
                 ))}
               </div>
-              <div className="bg-background dark:bg-neutral-950 px-5 divide-y divide-neutral-100 dark:divide-white/5">
+              <div className="bg-background px-5 divide-y divide-neutral-100 dark:divide-white/5">
                 {SYSTEM_ITEMS.map((item) => (
                   <MobileRow key={item.id} {...item} />
                 ))}
@@ -656,7 +667,7 @@ export default function SettingsPage() {
 
       {/* Dialogs */}
       <Dialog open={isMasterDbDialogOpen} onOpenChange={setIsMasterDbDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-2xl">
           <div className="p-5">
             <DialogHeader>
               <div className="mb-3 flex items-center gap-3">
@@ -710,7 +721,7 @@ export default function SettingsPage() {
       />
 
       <Dialog open={isBulkSmsDialogOpen} onOpenChange={setIsBulkSmsDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-0 shadow-2xl overflow-hidden">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-sm rounded-2xl border border-border/60 bg-card p-0 shadow-2xl overflow-hidden">
           <div className="p-5 border-b border-neutral-100 dark:border-white/5">
             <DialogHeader className="text-left">
               <div className="flex items-center gap-3 mb-1">
@@ -753,7 +764,7 @@ export default function SettingsPage() {
       </Dialog>
 
       <Dialog open={isImportTerminalOpen} onOpenChange={setIsImportTerminalOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-neutral-200 dark:border-white/10 p-0 shadow-2xl bg-white dark:bg-neutral-950">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-border/60 bg-card p-0 shadow-2xl">
           <div className="p-4 sm:p-5">
             <BulkImportTerminal />
           </div>

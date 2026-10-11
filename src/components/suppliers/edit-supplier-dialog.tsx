@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Hash, Mail, Phone, ExternalLink } from 'lucide-react';
+import { Loader2, Save, Hash, Mail, Phone, ExternalLink, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { editSupplierSchema, type EditSupplierFormValues } from '@/lib/schemas';
-import { editSupplierAction, saveSupplierContactsAction } from '@/app/actions'; 
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -28,9 +27,10 @@ import { Separator } from '../ui/separator';
 
 export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen: boolean, onOpenChange: (open: boolean) => void, supplier: Supplier | null }) {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { supplierContacts, refreshData } = useDataCache();
+  const { updateSupplier } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
+  const [isSyncWarningOpen, setIsSyncWarningOpen] = useState(false);
+  const [stagedData, setStagedData] = useState<EditSupplierFormValues | null>(null);
 
   const {
     register,
@@ -56,37 +56,38 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
 
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!supplier) return;
-    
-    startActionTransition(async () => {
-      const formData = new FormData();
-      formData.append('supplierId', supplier.id);
-      formData.append('currentSupplierName', supplier.name);
-      formData.append('newSupplierName', data.newSupplierName);
-      formData.append('userEmail', user?.email || 'Admin');
+
+    if (data.newSupplierName.trim() !== supplier.name.trim()) {
+        setStagedData(data);
+        setIsSyncWarningOpen(true);
+        return;
+    }
+
+    executeSave(data);
+  };
+
+  const executeSave = async (data: EditSupplierFormValues) => {
+      if (!supplier) return;
       
-      const res = await editSupplierAction(undefined, formData);
-      if (res.success) {
-          const otherContacts = supplierContacts.filter(c => c.id !== supplier.id);
-          const updatedContact: Supplier = {
-              ...supplier,
-              name: data.newSupplierName,
-              supplierCode: data.supplierCode,
-              email: data.email,
-              phone: data.phone
-          };
-          await saveSupplierContactsAction([...otherContacts, updatedContact]);
-          toast({ title: 'Success', description: 'Registry node synchronized.' });
-          refreshData();
-          onOpenChange(false);
-      } else {
-          toast({ variant: 'destructive', title: 'Sync Error', description: res.message || 'Handshake failed.' });
-      }
-    });
+      startActionTransition(async () => {
+          try {
+            await updateSupplier(supplier.id, supplier.name, data.newSupplierName, {
+                supplierCode: data.supplierCode,
+                email: data.email,
+                phone: data.phone
+            });
+            toast({ title: 'Registry Synchronized', description: 'Vendor data and cascading name updates initiated.' });
+            onOpenChange(false);
+          } catch (e) {
+              toast({ variant: 'destructive', title: 'Sync Failure', description: 'Could not connect to master registry.' });
+          }
+      });
   };
   
   if (!supplier) return null;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px] rounded-[2rem] border-none shadow-3xl">
         <DialogHeader className="p-2">
@@ -153,5 +154,28 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={isSyncWarningOpen} onOpenChange={setIsSyncWarningOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-3xl">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight">
+                    <ShieldAlert className="h-6 w-6" />
+                    Confirm Global Rename
+                </DialogTitle>
+                <DialogDescription className="pt-2 text-sm leading-relaxed">
+                    You are changing <span className="font-bold text-foreground">"{supplier?.name}"</span> to <span className="font-bold text-foreground">"{stagedData?.newSupplierName}"</span>.
+                    <br /><br />
+                    This is an industrial-level sync. The system will ripple this name across all product identities and log entries in the registry. 
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
+                <Button variant="ghost" onClick={() => setIsSyncWarningOpen(false)} className="font-bold h-12 sm:flex-1">Abort</Button>
+                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 sm:flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-white shadow-xl shadow-primary/20">
+                    Sync All Registry Nodes
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -1,9 +1,10 @@
+
 'use client';
 
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction, resolveExpiryWatchAction } from '@/app/actions';
+import { fetchAllDataAction, updateSpecialRequestsAction, saveStaffListAction, saveLocationListAction, addInventoryItemAction, returnInventoryItemAction, resolveExpiryWatchAction, updateSupplierAction } from '@/app/actions';
 import type { Product, Supplier, InventoryItem, AuditLogEntry, SpecialEntryRequest, OfflineAction, ExpiryReminder, StaffMember } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { saveInventory, getInventory, saveAuditLogs, getAuditLogs, saveProducts, getProducts } from '@/lib/db';
@@ -32,7 +33,7 @@ interface DataCacheContextType extends AppData {
   removeInventoryItem: (itemId: string) => void;
   removeInventoryItems: (itemIds: string[]) => void;
   addSupplier: (supplier: Supplier) => void;
-  updateSupplier: (oldName: string, newName: string) => void;
+  updateSupplier: (supplierId: string, oldName: string, newName: string, meta: Partial<Supplier>) => Promise<void>;
   addProduct: (product: Partial<Product> & { id: string }) => void;
   updateProduct: (updatedProduct: Partial<Product> & { id: string }) => void;
   removeProducts: (barcodes: string[]) => void;
@@ -354,14 +355,31 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         ...p, 
         inventoryItems: p.inventoryItems.filter(x => !ids.includes(x.id)) 
     })),
-    addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s] })),
-    updateSupplier: (oldName: string, newName: string) => {
+    addSupplier: (s: any) => setData(p => ({ ...p, suppliers: [...p.suppliers, s], supplierContacts: [...p.supplierContacts, s] })),
+    updateSupplier: async (id: string, oldName: string, newName: string, meta: Partial<Supplier>) => {
+        // 1. Optimistic UI update
         setData(p => ({
             ...p,
-            suppliers: p.suppliers.map(s => s.name === oldName ? { ...s, name: newName } : s),
+            supplierContacts: p.supplierContacts.map(s => s.id === id ? { ...s, name: newName, ...meta } : s),
+            suppliers: p.suppliers.map(s => s.name === oldName ? { ...s, name: newName, ...meta } : s),
             products: p.products.map(pr => pr.supplierName === oldName ? { ...pr, supplierName: newName } : pr),
             inventoryItems: p.inventoryItems.map(i => i.supplierName === oldName ? { ...i, supplierName: newName } : i)
         }));
+
+        // 2. Async DB update
+        if (navigator.onLine) {
+            const formData = new FormData();
+            formData.append('supplierId', id);
+            formData.append('currentSupplierName', oldName);
+            formData.append('newSupplierName', newName);
+            if (meta.supplierCode) formData.append('supplierCode', meta.supplierCode);
+            if (meta.email) formData.append('email', meta.email);
+            if (meta.phone) formData.append('phone', meta.phone);
+            formData.append('userEmail', user?.email || 'Admin');
+            
+            await updateSupplierAction(null, formData);
+            refreshData();
+        }
     },
     addProduct: (pr: any) => setData(p => ({
         ...p,
@@ -384,7 +402,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         ...p, 
         products: p.products.filter(x => !barcodes.includes(x.barcode)) 
     })),
-  }), [data, uniqueStaffNames, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction, resolveExpiryReminder, addExpiryReminderLocal]);
+  }), [data, uniqueStaffNames, isCacheReady, isSyncing, isQueueProcessing, isOnline, pendingActions, refreshData, updateSpecialRequests, updateStaffList, updateLocationList, queueAction, updateOfflineAction, removeOfflineAction, resolveExpiryReminder, addExpiryReminderLocal, user]);
 
   return (
     <DataCacheContext.Provider value={contextValue}>

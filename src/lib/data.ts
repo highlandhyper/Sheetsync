@@ -399,6 +399,48 @@ export async function updateProductAndSupplierLinks(email: string, b: string, n:
   return false;
 }
 
+/**
+ * CASCADING REGISTRY SYNC
+ * Updates supplier name across all data nodes (Contacts, Product Catalog, and Logs).
+ */
+export async function updateSupplierAcrossRegistry(email: string, supplierId: string, oldName: string, newName: string, meta: Partial<Supplier>) {
+    // 1. Update Contact Entry in APP_SETTINGS
+    const appMeta = await getAppMetaData();
+    const updatedContacts = appMeta.supplierContacts.map(c => 
+        c.id === supplierId ? { ...c, name: newName, ...meta } : c
+    );
+    await saveSupplierContactsToSheet(updatedContacts);
+
+    // 2. Cascade to Product Catalog (DB)
+    const productData = await readSheetData(DB_READ_RANGE);
+    if (productData) {
+        const productUpdates = productData.map((row, i) => {
+            if (String(row[DB_COL_SUPPLIER_NAME] || '').trim() === oldName) {
+                return { range: `${DB_SHEET_NAME}!D${i + 2}`, values: [[newName]] };
+            }
+            return null;
+        }).filter((u): u is { range: string; values: any[][] } => u !== null);
+        
+        if (productUpdates.length > 0) await batchUpdateSheetCells(productUpdates);
+    }
+
+    // 3. Cascade to Active Logs (Form responses)
+    const invData = await readSheetData(INVENTORY_READ_RANGE);
+    if (invData) {
+        const invUpdates = invData.map((row, i) => {
+            if (String(row[INV_COL_SUPPLIER_NAME] || '').trim() === oldName) {
+                return { range: `${FORM_RESPONSES_SHEET_NAME}!H${i + 2}`, values: [[newName]] };
+            }
+            return null;
+        }).filter((u): u is { range: string; values: any[][] } => u !== null);
+
+        if (invUpdates.length > 0) await batchUpdateSheetCells(invUpdates);
+    }
+
+    await logAuditEvent(email, 'SYNC_SUPPLIER', oldName, `[RENAMED] ${oldName} -> ${newName}. Registry cascaded.`);
+    return true;
+}
+
 export async function addInventoryItemToSheet(item: any) {
     const ts = item.timestamp ? new Date(item.timestamp) : new Date();
     const row = [

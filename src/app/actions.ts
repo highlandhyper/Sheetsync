@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -29,6 +30,7 @@ import {
   addProduct as dbAddProduct,
   getAllOnDisplayAlerts,
   saveSupplierContactsToSheet,
+  updateSupplierAcrossRegistry,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
 import { format, parseISO, isValid, isBefore, isAfter, endOfDay } from 'date-fns';
@@ -298,6 +300,29 @@ export async function saveSupplierContactsAction(contacts: Supplier[]): Promise<
     }
 }
 
+export async function updateSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse> {
+    try {
+        const id = formData.get('supplierId') as string;
+        const currentName = formData.get('currentSupplierName') as string;
+        const newName = formData.get('newSupplierName') as string;
+        const userEmail = formData.get('userEmail') as string || 'Admin';
+        
+        const meta = {
+            supplierCode: formData.get('supplierCode') as string,
+            email: formData.get('email') as string,
+            phone: formData.get('phone') as string,
+        };
+
+        await updateSupplierAcrossRegistry(userEmail, id, currentName, newName, meta);
+        revalidatePath('/settings');
+        revalidatePath('/products/list');
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
 export async function deleteInventoryItemAction(userEmail: string, itemId: string): Promise<ActionResponse> {
     try {
         await dbDeleteInventoryItemById(userEmail, itemId);
@@ -397,8 +422,8 @@ export async function addSupplierAction(prevState: any, formData: FormData): Pro
 
 export async function editSupplierAction(prevState: any, formData: FormData): Promise<ActionResponse> {
   try {
-    // Basic stub since real registry rename requires complex search/replace across all sheets
-    return { success: true };
+    const res = await updateSupplierAction(prevState, formData);
+    return res;
   } catch (e: any) {
     return { success: false, message: e.message };
   }
