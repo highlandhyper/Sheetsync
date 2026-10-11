@@ -393,7 +393,7 @@ export default function SystemHubPage() {
             className="h-12 w-full rounded-2xl border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 text-[13px] font-bold text-red-600 dark:text-red-400 shadow-none hover:bg-red-50 dark:hover:bg-red-500/5 transition-all"
           >
             <LogOut className="mr-2 h-4 w-4" strokeWidth={2.5} />
-            Secure Sign Out
+            Sign Out
           </Button>
         )}
 

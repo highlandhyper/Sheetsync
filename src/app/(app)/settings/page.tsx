@@ -93,27 +93,29 @@ type NavItem = {
   description: string;
   icon: React.ElementType;
   adminOnly?: boolean;
+  colorClass?: string;
+  bgClass?: string;
 };
 
 const GENERAL_ITEMS: NavItem[] = [
-  { id: 'appearance', label: 'Appearance', description: 'Theme and interface', icon: Palette },
-  { id: 'notifications', label: 'Notifications', description: 'Browser alerts', icon: Bell },
-  { id: 'sms', label: 'SMS delivery', description: 'Security message routing', icon: Smartphone, adminOnly: true },
-  { id: 'session', label: 'Session security', description: 'Welcome and auto-lock', icon: Shield, adminOnly: true },
+  { id: 'appearance', label: 'Appearance', description: 'Theme and interface', icon: Palette, colorClass: 'text-violet-600 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-500/10' },
+  { id: 'notifications', label: 'Notifications', description: 'Browser alerts', icon: Bell, colorClass: 'text-blue-600 dark:text-blue-400', bgClass: 'bg-blue-50 dark:bg-blue-500/10' },
+  { id: 'sms', label: 'SMS delivery', description: 'Security message routing', icon: Smartphone, adminOnly: true, colorClass: 'text-sky-600 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-500/10' },
+  { id: 'session', label: 'Session security', description: 'Welcome and auto-lock', icon: Shield, adminOnly: true, colorClass: 'text-emerald-600 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-500/10' },
 ];
 
 const WAREHOUSE_ITEMS: NavItem[] = [
-  { id: 'staff', label: 'Staff', description: 'Team members', icon: UserPlus },
-  { id: 'locations', label: 'Locations', description: 'Storage zones', icon: MapPin },
-  { id: 'on-display', label: 'On-Display protocol', description: 'Expiry alerts', icon: LayoutDashboard },
-  { id: 'transmission', label: 'Transmission log', description: 'Alert history', icon: History },
-  { id: 'permissions', label: 'Permissions', description: 'Viewer access', icon: ShieldCheck },
+  { id: 'staff', label: 'Staff', description: 'Team members', icon: UserPlus, colorClass: 'text-indigo-600 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-500/10' },
+  { id: 'locations', label: 'Locations', description: 'Storage zones', icon: MapPin, colorClass: 'text-rose-600 dark:text-rose-400', bgClass: 'bg-rose-50 dark:bg-rose-500/10' },
+  { id: 'on-display', label: 'On-Display protocol', description: 'Expiry alerts', icon: LayoutDashboard, colorClass: 'text-orange-600 dark:text-orange-400', bgClass: 'bg-orange-50 dark:bg-orange-500/10' },
+  { id: 'transmission', label: 'Transmission log', description: 'Alert history', icon: History, colorClass: 'text-slate-600 dark:text-slate-400', bgClass: 'bg-slate-100 dark:bg-slate-500/10' },
+  { id: 'permissions', label: 'Permissions', description: 'Viewer access', icon: ShieldCheck, colorClass: 'text-amber-600 dark:text-amber-400', bgClass: 'bg-amber-50 dark:bg-amber-500/10' },
 ];
 
 const SYSTEM_ITEMS: NavItem[] = [
-  { id: 'bulk-import', label: 'Bulk import', description: 'Import via SMS', icon: CloudUpload },
-  { id: 'data-source', label: 'Data source', description: 'Google Sheets registry', icon: Database },
-  { id: 'credentials', label: 'Admin credentials', description: 'Local access keys', icon: KeyRound },
+  { id: 'bulk-import', label: 'Bulk import', description: 'Import via SMS', icon: CloudUpload, colorClass: 'text-cyan-600 dark:text-cyan-400', bgClass: 'bg-cyan-50 dark:bg-cyan-500/10' },
+  { id: 'data-source', label: 'Data source', description: 'Google Sheets registry', icon: Database, colorClass: 'text-teal-600 dark:text-teal-400', bgClass: 'bg-teal-50 dark:bg-teal-500/10' },
+  { id: 'credentials', label: 'Admin credentials', description: 'Local access keys', icon: KeyRound, colorClass: 'text-red-600 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-500/10' },
 ];
 
 const ALL_ITEMS = [...GENERAL_ITEMS, ...WAREHOUSE_ITEMS, ...SYSTEM_ITEMS];
@@ -140,14 +142,14 @@ function AppearancePanel({ isAdmin }: { isAdmin: boolean }) {
           <>
             <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
               <p className="text-[13px] font-medium text-black dark:text-white mb-1 flex items-center gap-1.5">
-                <Volume2 className="h-3.5 w-3.5" strokeWidth={1.75} /> Audio feedback
+                <Volume2 className="h-3.5 w-3.5 text-violet-500" strokeWidth={1.75} /> Audio feedback
               </p>
               <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Thank-you sounds</p>
               <AudioFeedbackToggle />
             </div>
             <div className="border-t border-neutral-100 dark:border-white/5 pt-5">
               <p className="text-[13px] font-medium text-black dark:text-white mb-1 flex items-center gap-1.5">
-                <Music className="h-3.5 w-3.5" strokeWidth={1.75} /> Identity prompt
+                <Music className="h-3.5 w-3.5 text-violet-500" strokeWidth={1.75} /> Identity prompt
               </p>
               <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mb-3">Voice variants</p>
               <IdentityAudioSelector />
@@ -193,8 +195,8 @@ function NotificationPanel() {
       </div>
       <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-            <BellDot className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
+            <BellDot className="h-4 w-4 text-blue-600 dark:text-blue-300" strokeWidth={1.75} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-medium text-black dark:text-white">Browser notifications</p>
@@ -207,7 +209,7 @@ function NotificationPanel() {
           )}
         </div>
         {settings.isBrowserNotificationsEnabled && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-neutral-50 dark:bg-white/5 px-3.5 py-2.5 text-neutral-600 dark:text-neutral-300">
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/5 px-3.5 py-2.5 text-emerald-600 dark:text-emerald-300">
             <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
             <span className="text-[13px] font-medium">Notifications active</span>
           </div>
@@ -237,7 +239,7 @@ function SmsPanel({
       <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5 space-y-5">
         <div className="flex flex-wrap gap-2">
           {smsEnvStatus?.hasApiKey ? (
-            <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none text-[11px] font-medium">
+            <Badge className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-none text-[11px] font-medium">
               <Wifi className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> API ready
             </Badge>
           ) : (
@@ -246,7 +248,7 @@ function SmsPanel({
             </Badge>
           )}
           {smsEnvStatus?.hasDeviceId && (
-            <Badge className="bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 border-none text-[11px] font-medium">
+            <Badge className="bg-sky-100 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-none text-[11px] font-medium">
               <Cpu className="mr-1.5 h-3 w-3" strokeWidth={1.75} /> ENV loaded
             </Badge>
           )}
@@ -260,7 +262,7 @@ function SmsPanel({
         <div className="space-y-2">
           <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Recipient phone</Label>
           <div className="relative">
-            <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
+            <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500/60" strokeWidth={1.75} />
             <Input
               placeholder="+974..."
               value={permissions.smsRecipientNumber || ''}
@@ -272,7 +274,7 @@ function SmsPanel({
         <div className="space-y-2">
           <Label className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">Device ID</Label>
           <div className="relative">
-            <SmartphoneNfc className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.75} />
+            <SmartphoneNfc className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500/60" strokeWidth={1.75} />
             <Input
               placeholder={smsEnvStatus?.hasDeviceId ? '******** (from ENV)' : '6a95...'}
               value={permissions.smsDeviceId || ''}
@@ -309,12 +311,21 @@ function SessionPanel() {
   );
 }
 
-function SectionPanel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function SectionPanel({ title, description, children, icon: Icon, colorClass }: { title: string; description: string; children: React.ReactNode; icon?: React.ElementType; colorClass?: string }) {
   return (
     <div className="space-y-6">
       <div className="hidden lg:block">
-        <h2 className="text-lg font-semibold text-black dark:text-white">{title}</h2>
-        <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">{description}</p>
+        <div className="flex items-center gap-3">
+          {Icon && (
+            <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/50", colorClass)}>
+              <Icon className="h-5 w-5" strokeWidth={1.75} />
+            </div>
+          )}
+          <div>
+            <h2 className="text-lg font-semibold text-black dark:text-white">{title}</h2>
+            <p className="mt-0.5 text-[14px] text-neutral-500 dark:text-neutral-400">{description}</p>
+          </div>
+        </div>
       </div>
       <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 p-5">{children}</div>
     </div>
@@ -406,6 +417,10 @@ export default function SettingsPage() {
   };
 
   const renderContent = () => {
+    const activeItem = ALL_ITEMS.find(i => i.id === activeSection);
+    const icon = activeItem?.icon;
+    const color = activeItem?.colorClass;
+
     switch (activeSection) {
       case 'appearance':
         return <AppearancePanel isAdmin={isAdmin} />;
@@ -424,37 +439,37 @@ export default function SettingsPage() {
         return <SessionPanel />;
       case 'staff':
         return (
-          <SectionPanel title="Staff" description="Manage team members.">
+          <SectionPanel title="Staff" description="Manage team members." icon={icon} colorClass={color}>
             <StaffManager />
           </SectionPanel>
         );
       case 'locations':
         return (
-          <SectionPanel title="Locations" description="Warehouse storage zones.">
+          <SectionPanel title="Locations" description="Warehouse storage zones." icon={icon} colorClass={color}>
             <LocationManager />
           </SectionPanel>
         );
       case 'on-display':
         return (
-          <SectionPanel title="On-Display protocol" description="Trigger expiry alerts.">
+          <SectionPanel title="On-Display protocol" description="Trigger expiry alerts." icon={icon} colorClass={color}>
             <ManualOnDisplaySmsTerminal />
           </SectionPanel>
         );
       case 'transmission':
         return (
-          <SectionPanel title="Transmission log" description="Recent alerts.">
+          <SectionPanel title="Transmission log" description="Recent alerts." icon={icon} colorClass={color}>
             <OnDisplayAlertsTerminal />
           </SectionPanel>
         );
       case 'permissions':
         return (
-          <SectionPanel title="Permissions" description="Viewer access control.">
+          <SectionPanel title="Permissions" description="Viewer access control." icon={icon} colorClass={color}>
             <AccessControlManager />
           </SectionPanel>
         );
       case 'credentials':
         return (
-          <SectionPanel title="Admin credentials" description="Local keys for protected actions.">
+          <SectionPanel title="Admin credentials" description="Local keys for protected actions." icon={icon} colorClass={color}>
             <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3.5">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
               <p className="text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed">
@@ -469,36 +484,35 @@ export default function SettingsPage() {
     }
   };
 
-  const NavButton = ({ id, label, description, icon: Icon }: NavItem) => (
+  const NavButton = (item: NavItem) => (
     <button
       type="button"
-      onClick={() => openSection(id)}
+      onClick={() => openSection(item.id)}
       className={cn(
         'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-        activeSection === id ? 'bg-neutral-100 dark:bg-white/10' : 'hover:bg-neutral-50 dark:hover:bg-white/[0.04]'
+        activeSection === item.id ? 'bg-neutral-100 dark:bg-white/10' : 'hover:bg-neutral-50 dark:hover:bg-white/[0.04]'
       )}
     >
-      <Icon className="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" strokeWidth={1.75} />
+      <item.icon className={cn("h-4 w-4 shrink-0", item.colorClass)} strokeWidth={1.75} />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-black dark:text-white">{label}</p>
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1">{description}</p>
+        <p className="text-[13px] font-medium text-black dark:text-white">{item.label}</p>
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1">{item.description}</p>
       </div>
     </button>
   );
 
-  /* Mobile row WITH icon (same as desktop) */
-  const MobileRow = ({ id, label, icon: Icon }: NavItem) => (
+  const MobileRow = (item: NavItem) => (
     <button
       type="button"
-      onClick={() => openSection(id)}
-      disabled={id === 'bulk-import' && isSendingSms}
+      onClick={() => openSection(item.id)}
+      disabled={item.id === 'bulk-import' && isSendingSms}
       className="flex w-full items-center gap-3.5 px-1 py-3.5 text-left transition-colors active:opacity-60 disabled:opacity-50"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-        <Icon className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", item.bgClass)}>
+        <item.icon className={cn("h-4 w-4", item.colorClass)} strokeWidth={1.75} />
       </div>
-      <span className="flex-1 text-[16px] text-black dark:text-white">{label}</span>
-      {id === 'bulk-import' && isSendingSms ? (
+      <span className="flex-1 text-[16px] text-black dark:text-white">{item.label}</span>
+      {item.id === 'bulk-import' && isSendingSms ? (
         <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
       ) : (
         <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" strokeWidth={1.75} />
@@ -591,8 +605,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="mb-8 flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-white/5">
-              <Settings2 className="h-6 w-6 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/5">
+              <Settings2 className="h-6 w-6 text-primary" strokeWidth={1.75} />
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-black dark:text-white">Settings</h1>
@@ -646,8 +660,8 @@ export default function SettingsPage() {
           <div className="p-5">
             <DialogHeader>
               <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-                  <Database className="h-5 w-5 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-500/10">
+                  <Database className="h-5 w-5 text-teal-600 dark:text-teal-300" strokeWidth={1.75} />
                 </div>
                 <DialogTitle className="text-lg font-semibold text-black dark:text-white">Data source</DialogTitle>
               </div>
@@ -700,8 +714,8 @@ export default function SettingsPage() {
           <div className="p-5 border-b border-neutral-100 dark:border-white/5">
             <DialogHeader className="text-left">
               <div className="flex items-center gap-3 mb-1">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
-                  <Key className="h-4 w-4 text-neutral-600 dark:text-neutral-300" strokeWidth={1.75} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-50 dark:bg-cyan-500/10">
+                  <Key className="h-4 w-4 text-cyan-600 dark:text-cyan-300" strokeWidth={1.75} />
                 </div>
                 <DialogTitle className="text-base font-semibold text-black dark:text-white">Enter key</DialogTitle>
               </div>
