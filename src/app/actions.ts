@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -164,6 +163,34 @@ export async function triggerManualOnDisplaySmsAction(staffName: string): Promis
                 return { success: true, message: `SHEETSYNC SECURITY: Dispatched summarised alerts to ${staffName}.` };
             }
             return { success: false, message: result.message || "Registry core rejected handshake." };
+        }
+        return { success: false, message: "Gateway handshake failure (HTTP Error)." };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function sendManualSupplierReportAction(supplierName: string): Promise<ActionResponse> {
+    if (!supplierName || !APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway URL missing." };
+
+    try {
+        const response = await fetch(APPSCRIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sendManualSupplierReport',
+                password: APPSCRIPT_PASS,
+                supplierName: supplierName
+            }),
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success') {
+                return { success: true, message: `SHEETSYNC: Manual report dispatched to ${supplierName}.` };
+            }
+            return { success: false, message: result.message || "Registry core rejected report protocol." };
         }
         return { success: false, message: "Gateway handshake failure (HTTP Error)." };
     } catch (e: any) {

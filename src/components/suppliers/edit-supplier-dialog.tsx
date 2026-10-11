@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Hash, Mail, Phone, ExternalLink, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, Hash, Mail, Phone, ExternalLink, ShieldAlert, AlertTriangle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,11 +24,13 @@ import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { Separator } from '../ui/separator';
+import { sendManualSupplierReportAction } from '@/app/actions';
 
 export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen: boolean, onOpenChange: (open: boolean) => void, supplier: Supplier | null }) {
   const { toast } = useToast();
   const { updateSupplier } = useDataCache();
   const [isActionPending, startActionTransition] = useTransition();
+  const [isReporting, setIsReporting] = useState(false);
   const [isSyncWarningOpen, setIsSyncWarningOpen] = useState(false);
   const [stagedData, setStagedData] = useState<EditSupplierFormValues | null>(null);
 
@@ -53,6 +55,23 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
       });
     }
   }, [supplier, reset, isOpen]);
+
+  const handleDispatchReport = async () => {
+    if (!supplier) return;
+    setIsReporting(true);
+    try {
+        const res = await sendManualSupplierReportAction(supplier.name);
+        if (res.success) {
+            toast({ title: 'Report Dispatched', description: `Manual email report sent to ${supplier.name}.` });
+        } else {
+            toast({ variant: 'destructive', title: 'Dispatch Error', description: res.message || 'The vendor has no new logs.' });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Handshake Error', description: 'Communication with registry failed.' });
+    } finally {
+        setIsReporting(false);
+    }
+  };
 
   const handleFormSubmit = (data: EditSupplierFormValues) => {
     if (!supplier) return;
@@ -130,25 +149,45 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
 
           <Separator className="my-4 opacity-50" />
 
-          <div className="rounded-xl bg-primary/5 p-4 border border-primary/10 flex items-center justify-between">
-              <div>
-                  <p className="text-[10px] font-black uppercase text-primary tracking-widest">Portal Access</p>
-                  <p className="text-[9px] font-medium text-muted-foreground mt-1">Direct link for vendor stock viewing.</p>
+          <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-primary/5 p-4 border border-primary/10 flex flex-col justify-between">
+                  <div>
+                      <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Manual Report</p>
+                      <p className="text-[8px] font-medium text-muted-foreground mt-1.5 leading-snug">Dispatch email report immediately.</p>
+                  </div>
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="sm" 
+                    disabled={isReporting || !supplier.email}
+                    className="h-8 mt-4 font-black uppercase text-[8px] tracking-widest text-primary hover:bg-primary/5"
+                    onClick={handleDispatchReport}
+                  >
+                      {isReporting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
+                      Dispatch Email
+                  </Button>
               </div>
-              <Button variant="ghost" size="sm" className="h-8 font-black uppercase text-[8px] tracking-widest text-primary" asChild>
-                  <a href={`/supplier-portal/${supplier.supplierCode}`} target="_blank" rel="noreferrer">
-                      <ExternalLink className="mr-1 h-3 w-3" /> Preview Portal
-                  </a>
-              </Button>
+
+              <div className="rounded-xl bg-muted/20 p-4 border border-border/40 flex flex-col justify-between">
+                  <div>
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none">Portal Link</p>
+                      <p className="text-[8px] font-medium text-muted-foreground/60 mt-1.5 leading-snug">Preview secure vendor portal.</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-8 mt-4 font-black uppercase text-[8px] tracking-widest text-muted-foreground" asChild>
+                      <a href={`/supplier-portal/${supplier.supplierCode}`} target="_blank" rel="noreferrer">
+                          <ExternalLink className="mr-1 h-3 w-3" /> Open Portal
+                      </a>
+                  </Button>
+              </div>
           </div>
 
           <DialogFooter className="pt-4 flex gap-2">
             <DialogClose asChild>
                 <Button type="button" variant="ghost" className="font-bold">Discard</Button>
             </DialogClose>
-            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20">
+            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20 bg-primary text-white">
                 {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Apply Registry Changes
+                Sync Registry Node
             </Button>
           </DialogFooter>
         </form>

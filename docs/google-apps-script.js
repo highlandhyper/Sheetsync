@@ -110,7 +110,8 @@ function doPost(e) {
       "triggerWatchResolvedSms",
       "triggerOnDisplayAlerts",
       "sendAdminExpiryAlert",
-      "triggerWeeklyReports"
+      "triggerWeeklyReports",
+      "sendManualSupplierReport"
     ];
 
     if (restrictedActions.includes(action)) {
@@ -151,6 +152,9 @@ function doPost(e) {
     }
     if (action === "triggerWeeklyReports") {
       return jsonResponse(generateWeeklySupplierReports());
+    }
+    if (action === "sendManualSupplierReport") {
+      return jsonResponse(sendSingleSupplierReport_(data.supplierName));
     }
 
     return jsonResponse({ status: "error", message: "Unknown action: " + action });
@@ -227,6 +231,67 @@ function triggerSupplierInstantNotification_(item) {
     const msg = `SHEETSYNC: New item logged for your catalog. Product: ${item.productName}. Qty: ${item.quantity}. Live portal: ${APP_URL}/supplier-portal/${supplier.supplierCode}`;
     sendTextbeeSms_(supplier.phone, msg);
   }
+}
+
+// ============================================================
+// SINGLE SUPPLIER MANUAL REPORT
+// ============================================================
+
+function sendSingleSupplierReport_(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
+  const meta = getAppMetaData();
+  const contact = (meta.supplierContacts || []).find(c => c.name.toLowerCase() === name.toLowerCase());
+  
+  if (!contact || !contact.email) return { status: "error", message: "Supplier email not registered." };
+  
+  const data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 11).getValues();
+  const supplierLogs = data.filter(row => String(row[7]).toLowerCase() === name.toLowerCase() && (row[10] === "" || row[10] === null));
+  
+  if (supplierLogs.length === 0) return { status: "error", message: "No new logs identified for this vendor." };
+  
+  const reportedDate = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  
+  let tableRows = "";
+  supplierLogs.forEach(l => {
+    tableRows += `<tr><td>${l[6]}</td><td>${l[1]}</td><td>${l[2]}</td><td>${l[3]}</td></tr>`;
+  });
+  
+  const htmlBody = `
+    <div style="font-family:sans-serif; max-width:600px; border:1px solid #e2e8f0; border-radius:12px; padding:24px;">
+      <h2 style="color:#0f172a;">Manual Inventory Report</h2>
+      <p>Dear ${name},</p>
+      <p>This is a manual inventory summary requested from our terminal.</p>
+      <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+        <tr style="background:#f1f5f9; text-align:left;">
+          <th style="padding:8px; font-size:12px;">Product</th>
+          <th style="padding:8px; font-size:12px;">Barcode</th>
+          <th style="padding:8px; font-size:12px;">Qty</th>
+          <th style="padding:8px; font-size:12px;">Expiry</th>
+        </tr>
+        ${tableRows}
+      </table>
+      <div style="margin-top:30px; text-align:center;">
+        <a href="${APP_URL}/supplier-portal/${contact.supplierCode}" style="background:#000; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:14px;">View Live Portal</a>
+      </div>
+    </div>
+  `;
+  
+  MailApp.sendEmail({
+    to: contact.email,
+    subject: `Manual Inventory Report - ${name}`,
+    htmlBody: htmlBody
+  });
+  
+  // Mark these specific rows as reported
+  const allDataWithRows = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 11).getValues();
+  allDataWithRows.forEach((row, i) => {
+    if (String(row[7]).toLowerCase() === name.toLowerCase() && (row[10] === "" || row[10] === null)) {
+      logSheet.getRange(i + 2, 11).setValue(reportedDate);
+    }
+  });
+  
+  return { status: "success" };
 }
 
 // ============================================================
