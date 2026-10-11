@@ -10,8 +10,10 @@ import {
   Wallet,
   Barcode,
   ShieldCheck,
+  ArrowLeft,
 } from 'lucide-react';
 import { useDataCache } from '@/context/data-cache-context';
+import Link from 'next/link';
 
 function InventoryListSkeleton() {
   return (
@@ -105,6 +107,13 @@ export default function InventoryPage() {
     <div className="printable-area mx-auto w-full min-w-0 max-w-[1680px] overflow-x-hidden px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-4 sm:pt-3 md:px-5 lg:px-6 lg:pb-8">
       <header className="noprint mb-4 min-w-0 sm:mb-5">
         <div className="flex min-w-0 items-start gap-3">
+          <Link
+            href="/more"
+            className="md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-11 sm:w-11">
             <ClipboardList className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
           </div>

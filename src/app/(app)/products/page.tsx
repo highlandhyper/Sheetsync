@@ -5,6 +5,8 @@ import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { useDataCache } from '@/context/data-cache-context';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 function ReturnableInventoryByStaffSkeleton() {
   return (
@@ -65,11 +67,19 @@ export default function ReturnByStaffPage() {
   return (
     <div className="printable-area mx-auto w-full min-w-0 max-w-[1900px] overflow-x-hidden py-1 sm:py-2">
       <div className="noprint mb-3 min-w-0 px-3 sm:mb-5 sm:px-4 md:px-5 lg:px-4 xl:px-5 2xl:px-6">
-        <h1 className="truncate text-xl font-black uppercase leading-none tracking-tighter text-primary sm:text-3xl">
-          Return Inventory by Staff
-        </h1>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/more"
+            className="md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="truncate text-xl font-black uppercase leading-none tracking-tighter text-primary sm:text-3xl">
+            Return Inventory by Staff
+          </h1>
+        </div>
 
-        <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[10px] sm:tracking-[0.22em]">
+        <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[10px] sm:tracking-[0.22em] ml-13 md:ml-0">
           Personnel Audit & Return Protocol
         </p>
       </div>

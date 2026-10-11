@@ -5,6 +5,8 @@ import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataCache } from '@/context/data-cache-context';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 function ManageProductFormSkeleton() {
   return (
@@ -78,6 +80,16 @@ export default function ManageProductPage() {
 
   return (
     <div className="mx-auto w-full px-2 py-2 sm:px-4 md:px-6 lg:px-8">
+      <div className="mb-4 flex items-center md:hidden px-2">
+          <Link
+            href="/more"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <span className="ml-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">Manage Registry</span>
+      </div>
+
       <Suspense fallback={<ManageProductFormSkeleton />}>
         {isCacheReady ? (
           <EditOrCreateProductForm allSuppliers={suppliers} />

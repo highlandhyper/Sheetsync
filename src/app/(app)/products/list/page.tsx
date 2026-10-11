@@ -1,7 +1,8 @@
 'use client';
 
 import { Suspense } from 'react';
-import { Package } from 'lucide-react';
+import { Package, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 import { ProductListClient } from '@/components/products/product-list-client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -70,6 +71,13 @@ export default function ProductsListPage() {
     <div className="w-full py-1 sm:py-2">
       {/* Page heading */}
       <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-center gap-3 px-3 sm:mb-4 sm:px-4 lg:px-6">
+        <Link
+          href="/more"
+          className="md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-11 sm:w-11">
           <Package className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
         </div>

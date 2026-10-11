@@ -520,7 +520,7 @@ export default function SettingsPage() {
           <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-white/5 bg-background dark:bg-neutral-950 px-5 py-4">
             <div className="flex items-center gap-3">
               <Link
-                href="/dashboard"
+                href="/more"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
