@@ -398,6 +398,22 @@ function getSupplierContactByName_(name) {
   return (meta.supplierContacts || []).find(s => s.name.toLowerCase() === name.toLowerCase());
 }
 
+function getStaffContactByName_(staffName) {
+  const wantedName = normalizeStaffName_(staffName);
+  if (!wantedName) return null;
+  const meta = getAppMetaData();
+  const staffList = meta.staff || [];
+  for (let s of staffList) {
+    if (normalizeStaffName_(s.name) === wantedName) {
+      return {
+        name: s.name,
+        phone: String(s.phone || "")
+      };
+    }
+  }
+  return null;
+}
+
 function getAppMetaData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(APP_SETTINGS_SHEET_NAME);
