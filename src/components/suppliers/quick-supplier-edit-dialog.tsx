@@ -25,6 +25,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,9 +43,9 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { editSupplierSchema, type EditSupplierFormValues } from '@/lib/schemas';
+import { saveProductAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import type { Supplier } from '@/lib/types';
-import { Separator } from '@/components/ui/separator';
 
 interface QuickSupplierEditDialogProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export function QuickSupplierEditDialog({
     register,
     handleSubmit,
     reset,
-    formState: { errors, isDirty },
+    formState: { errors },
   } = useForm<EditSupplierFormValues>({
     resolver: zodResolver(editSupplierSchema),
   });
@@ -220,7 +221,7 @@ export function QuickSupplierEditDialog({
                     className="h-12 rounded-xl border-border/60 bg-muted/20 pl-10 pr-10 text-sm font-black uppercase tracking-tight shadow-none focus-visible:bg-background placeholder:font-bold placeholder:text-muted-foreground/20"
                   />
                   {searchTerm && (
-                    <Button variant="ghost" size="icon" onClick={() => handleSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9">
+                    <Button variant="ghost" size="icon" onClick={() => handleSearch('')} className="absolute right-1.5 top-1/2 h-9 w-9">
                       <X className="h-4 w-4" />
                     </Button>
                   )}
@@ -286,6 +287,22 @@ export function QuickSupplierEditDialog({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="flex items-center justify-between border-t border-border/60 bg-muted/15 px-4 py-3 sm:px-6">
+            <p className="hidden text-[10px] font-medium text-muted-foreground sm:block">
+              Changes sync to the product catalog
+            </p>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="ml-auto h-9 rounded-xl px-4 text-xs font-semibold text-muted-foreground"
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
