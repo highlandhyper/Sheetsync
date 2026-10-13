@@ -1,11 +1,16 @@
 
-// ============================================================
-// HIGHLAND HYPERMARKET - SHEETSYNC GOOGLE APPS SCRIPT
-// ============================================================
-
-// ============================================================
-// CONFIGURATION
-// ============================================================
+/**
+ * ============================================================
+ * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v6.0
+ * ============================================================
+ * 
+ * SECURITY NOTICE:
+ * This script uses ScriptProperties for secrets. Ensure the 
+ * following properties are set in Project Settings:
+ * 1. ADMIN_PASSWORD
+ * 2. TEXTBEE_API_KEY
+ * 3. TEXTBEE_DEVICE_ID
+ */
 
 const DB_SHEET_NAME = "DB";
 const LOG_SHEET_NAME = "Form responses 2";
@@ -17,12 +22,12 @@ const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
 
 const STAFF_LIST_KEY = "staffList";
 const SUPPLIER_CONTACTS_KEY = "supplierContacts";
+const SPECIAL_REQUESTS_KEY = "specialRequests";
 
-// App Domain
 const APP_URL = "https://sheetsync-five.vercel.app";
 
 // ------------------------------------------------------------
-// LOG SHEET COLUMNS (Form responses 2)
+// COLUMN MAPPINGS (Index 0 based for arrays, 1 based for ranges)
 // ------------------------------------------------------------
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -34,12 +39,9 @@ const INV_COL_PRODUCT_NAME = 6;
 const INV_COL_SUPPLIER_NAME = 7;
 const INV_COL_TYPE = 8;
 const INV_COL_UNIQUE_ID = 9;
-const INV_COL_REPORTED_AT = 10; // Column K (Weekly Mail)
-const INV_COL_DAILY_SMS_AT = 11; // Column L (Daily SMS Summary)
+const INV_COL_REPORTED_AT = 10; // Col K
+const INV_COL_DAILY_SMS_AT = 11; // Col L
 
-// ------------------------------------------------------------
-// EXPIRY WATCH COLUMNS
-// ------------------------------------------------------------
 const WATCH_COL_ID = 1;
 const WATCH_COL_BARCODE = 2;
 const WATCH_COL_PRODUCT = 3;
@@ -48,308 +50,188 @@ const WATCH_COL_SUPPLIER = 5;
 const WATCH_COL_STATUS = 6;
 const WATCH_COL_TIMESTAMP = 7;
 const WATCH_COL_STAFF = 8;
+const WATCH_COL_RESOLUTION_SMS_STATUS = 12; // Col L
+const WATCH_COL_RESOLUTION_SMS_SENT_AT = 13; // Col M
 
-// ------------------------------------------------------------
-// SECURITY / EMAIL
-// ------------------------------------------------------------
-const ADMIN_PASSWORD = "0438";
-const RECIPIENT_EMAIL = "ashiqmathath@gmail.com";
+const ODA_COL_ID = 1;
+const ODA_COL_TOKEN = 6;
+const ODA_COL_PIN = 7;
+const ODA_COL_USED = 9;
+const ODA_COL_LOG_ROW = 11;
+const ODA_COL_LOG_ID = 12;
 
 // ============================================================
-// GET REQUEST
+// ENTRY POINTS
 // ============================================================
 
 function doGet(e) {
   try {
-    if (e && e.parameter && e.parameter.action === "getProducts") {
-      return getProductJSON();
-    }
-    return ContentService.createTextOutput("System Active.");
+    if (e?.parameter?.action === "getProducts") return getProductJSON();
+    return ContentService.createTextOutput("SheetSync Registry Core Active.");
   } catch (error) {
-    console.error("doGet Error:", error);
-    return jsonResponse({
-      status: "error",
-      message: error.toString()
-    });
+    return jsonResponse({ status: "error", message: error.toString() });
   }
 }
 
-// ============================================================
-// POST REQUEST
-// ============================================================
-
 function doPost(e) {
   try {
-    if (!e || !e.postData || !e.postData.contents) {
-      throw new Error("No POST data received.");
-    }
-
+    if (!e?.postData?.contents) throw new Error("No data received.");
     const data = JSON.parse(e.postData.contents);
     const action = data.action || "";
 
-    const restrictedActions = [
-      "addProduct",
-      "addStaff",
-      "forensicWipe",
-      "triggerWatchSmsOnly",
-      "triggerWatchResolvedSms",
-      "triggerOnDisplayAlerts",
-      "sendAdminExpiryAlert",
-      "triggerWeeklyReports",
-      "triggerDailySmsSummary",
-      "sendManualSupplierReport"
-    ];
+    // Security Handshake
+    const props = PropertiesService.getScriptProperties();
+    const systemPass = props.getProperty("ADMIN_PASSWORD");
+    if (data.password !== systemPass) throw new Error("Unauthorized Identity");
 
-    if (restrictedActions.includes(action)) {
-      if (data.password !== ADMIN_PASSWORD) {
-        throw new Error("Unauthorized");
-      }
+    switch(action) {
+      case "standardLog": return jsonResponse(submitData(data));
+      case "addProduct": return jsonResponse(manageProduct(data));
+      case "addStaff": return jsonResponse(addNewStaff(data));
+      case "triggerOnDisplayAlerts": return jsonResponse(processOnDisplayAlerts_(data.staffName));
+      case "triggerWatchSmsOnly": return jsonResponse(processExpiryWatchReminderById_(data.reminderId));
+      case "triggerWatchResolvedSms": return jsonResponse(processExpiryWatchResolvedSmsById_(data.reminderId));
+      case "triggerWeeklyReports": return jsonResponse(generateWeeklySupplierReports());
+      case "triggerDailySmsSummary": return jsonResponse(generateDailySupplierSmsReports());
+      case "sendManualSupplierReport": return jsonResponse(sendSingleSupplierReport_(data.supplierName));
+      case "sendAdminExpiryAlert": return jsonResponse(handleAdminExpiryAlert_(data));
+      case "forensicWipe": return jsonResponse(handleForensicWipe_(data));
+      default: throw new Error("Protocol Unknown: " + action);
     }
-
-    if (action === "addProduct") return manageProduct(data);
-    if (action === "addStaff") return addNewStaff(data);
-    if (action === "forensicWipe") {
-      sendWipeAlertEmail(data);
-      return jsonResponse({ status: "success", message: "Forensic wipe alert processed" });
-    }
-    if (action === "triggerWatchSmsOnly") {
-      ensureExpiryWatchSmsColumns_();
-      let smsResult = { status: "scheduled", message: "Reminder saved." };
-      if (data.reminderId) smsResult = processExpiryWatchReminderById_(data.reminderId);
-      return jsonResponse({ status: "success", type: "expiryWatch", sms: smsResult });
-    }
-    if (action === "triggerWatchResolvedSms") {
-      ensureExpiryWatchSmsColumns_();
-      const smsResult = data.reminderId ? processExpiryWatchResolvedSmsById_(data.reminderId) : { status: "error", message: "No ID." };
-      return jsonResponse({ status: "success", type: "expiryWatchResolved", sms: smsResult });
-    }
-    if (action === "triggerOnDisplayAlerts") {
-      const requestedStaff = String(data.staffName || "").trim();
-      return jsonResponse(processOnDisplayAlerts_(requestedStaff, requestedStaff !== ""));
-    }
-    if (action === "sendAdminExpiryAlert") {
-      if (!data.item) throw new Error("Item data missing.");
-      sendExpiryAlertEmail(data.item, new Date());
-      return jsonResponse({ status: "success", message: "Admin alert email sent." });
-    }
-    if (action === "standardLog") {
-      submitData(data);
-      return jsonResponse({ status: "success", type: "standardLog" });
-    }
-    if (action === "triggerWeeklyReports") {
-      return jsonResponse(generateWeeklySupplierReports());
-    }
-    if (action === "triggerDailySmsSummary") {
-      return jsonResponse(generateDailySupplierSmsReports());
-    }
-    if (action === "sendManualSupplierReport") {
-      return jsonResponse(sendSingleSupplierReport_(data.supplierName));
-    }
-
-    return jsonResponse({ status: "error", message: "Unknown action: " + action });
   } catch (error) {
-    console.error("doPost Error:", error);
     return jsonResponse({ status: "error", message: error.toString() });
   }
 }
 
 // ============================================================
-// STANDARD LOG
+// CORE LOGIC: INVENTORY
 // ============================================================
 
 function submitData(item) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
-  const tz = ss.getSpreadsheetTimeZone();
-  const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
-  const nextRow = logSheet.getLastRow() + 1;
-  const uniqueId = item.id || `${nextRow}-${Utilities.formatDate(entryDate, tz, "yyyyMMddHHmmss")}`;
-
-  logSheet.getRange(nextRow, 1, 1, 10).setValues([[
-    Utilities.formatDate(entryDate, tz, "d/M/yyyy HH:mm:ss"),
-    item.barcode || "",
-    item.quantity || "",
-    item.expiryDate || "",
-    item.location || "",
-    item.staffName || item.staff || item.identity || "",
-    item.productName || "",
-    "", // Supplier (auto-filled by formula)
-    item.itemType || item.type || "",
-    uniqueId
-  ]]);
-
-  setFormResponseSupplierFormula_(logSheet, nextRow);
-  logAuditEvent_(item.userEmail || "Terminal", "LOG_INVENTORY", item.barcode || "N/A", `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
-
-  if (item.disableNotification === true) return;
-
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error("Registry Busy. Try again.");
+  
   try {
-    sendSevenDayExpiryStaffSmsIfDue_(item, entryDate);
-    // Instant supplier SMS removed as per protocol update. Handled by Daily Summary.
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(LOG_SHEET_NAME);
+    const tz = ss.getSpreadsheetTimeZone();
+    const entryDate = item.timestamp ? new Date(item.timestamp) : new Date();
+    const nextRow = sheet.getLastRow() + 1;
+    const uniqueId = item.id || `${nextRow}-${Utilities.formatDate(entryDate, tz, "yyyyMMddHHmmss")}`;
+
+    const rowData = [
+      Utilities.formatDate(entryDate, tz, "d/M/yyyy HH:mm:ss"),
+      item.barcode || "",
+      item.quantity || "",
+      item.expiryDate || "",
+      item.location || "",
+      item.staffName || item.staff || "",
+      item.productName || "",
+      "", // Supplier auto-lookup formula
+      item.itemType || "Expiry",
+      uniqueId
+    ];
+
+    sheet.getRange(nextRow, 1, 1, rowData.length).setValues([rowData]);
+    setSupplierFormula_(sheet, nextRow);
     
-    if (item.expiryDate) {
-      const expiryDate = parseSevenDaySmsDate_(item.expiryDate, tz);
-      if (expiryDate) {
-        const todayKey = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
-        const expiryKey = Utilities.formatDate(expiryDate, tz, "yyyy-MM-dd");
-        if (expiryKey <= todayKey) sendExpiryAlertEmail(item, entryDate);
-      }
+    logAuditEvent_(item.userEmail || "Terminal", "LOG_INVENTORY", item.barcode || "N/A", `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
+
+    // Post-sync hooks
+    if (item.disableNotification !== true) {
+      sendSevenDayExpiryStaffSmsIfDue_(item, entryDate);
     }
-  } catch (e) { console.warn("Non-blocking notification error:", e); }
+
+    return { status: "success", type: "standardLog", id: uniqueId };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ============================================================
-// DAILY SUPPLIER SMS SUMMARY ENGINE
+// CORE LOGIC: SUPPLIER REPORTING
 // ============================================================
 
 function generateDailySupplierSmsReports() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
   const meta = getAppMetaData();
-  const supplierContacts = meta.supplierContacts || [];
+  const contacts = meta.supplierContacts || [];
   
-  if (logSheet.getLastRow() < 2) return { status: "success", message: "No data." };
+  if (logSheet.getLastRow() < 2) return { status: "success", message: "Empty" };
   
-  // Read up to Col L (Daily SMS At)
   const data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 12).getValues();
-  const unreported = data.map((row, i) => ({ row: row, index: i + 2 }))
-                        .filter(item => item.row[7] && (item.row[11] === "" || item.row[11] === null));
+  const unreported = data.map((r, i) => ({ row: r, idx: i + 2 }))
+                        .filter(x => x.row[7] && !x.row[11]);
   
-  if (unreported.length === 0) return { status: "success", message: "No new logs for daily SMS." };
+  if (unreported.length === 0) return { status: "success", message: "Up-to-date" };
   
   const grouped = {};
-  unreported.forEach(item => {
-    const name = item.row[7];
-    if (!grouped[name]) grouped[name] = { items: [], rows: [] };
-    grouped[name].items.push(item.row);
-    grouped[name].rows.push(item.index);
+  unreported.forEach(x => {
+    const n = x.row[7];
+    if (!grouped[n]) grouped[n] = { items: [], rows: [] };
+    grouped[n].items.push(x.row);
+    grouped[n].rows.push(x.idx);
   });
   
-  const now = new Date();
-  const timestamp = Utilities.formatDate(now, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
-  let sentCount = 0;
+  const ts = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  let sent = 0;
 
   Object.keys(grouped).forEach(name => {
-    const contact = supplierContacts.find(c => c.name.toLowerCase() === name.toLowerCase());
-    if (contact && contact.phone) {
-      const totalUnits = grouped[name].items.reduce((s, row) => s + parseFloat(String(row[2] || 0)), 0);
-      const msg = `SHEETSYNC: Today's summary for your catalog. ${grouped[name].items.length} new items logged. Total Units: ${totalUnits}. View live portal: ${APP_URL}/supplier-portal/${contact.supplierCode}`;
-      
+    const contact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (contact?.phone) {
+      const units = grouped[name].items.reduce((s, r) => s + parseFloat(String(r[2] || 0)), 0);
+      const msg = `SHEETSYNC: Daily Summary. ${grouped[name].items.length} new items logged. Total Units: ${units}. Portal: ${APP_URL}/supplier-portal/${contact.supplierCode}`;
       if (sendTextbeeSms_(contact.phone, msg)) {
-        sentCount++;
-        grouped[name].rows.forEach(rowIdx => {
-          logSheet.getRange(rowIdx, 12).setValue(timestamp);
-        });
+        sent++;
+        grouped[name].rows.forEach(rIdx => logSheet.getRange(rIdx, 12).setValue(ts));
       }
     }
   });
 
-  return { status: "success", smsSent: sentCount };
+  return { status: "success", smsSent: sent };
 }
-
-// ============================================================
-// WEEKLY SUPPLIER EMAIL REPORT ENGINE
-// ============================================================
 
 function generateWeeklySupplierReports() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const logSheet = ss.getSheetByName(LOG_SHEET_NAME);
   const meta = getAppMetaData();
-  const supplierContacts = meta.supplierContacts || [];
+  const contacts = meta.supplierContacts || [];
   
-  if (logSheet.getLastRow() < 2) return { status: "success", message: "No data." };
+  if (logSheet.getLastRow() < 2) return { status: "success", message: "Empty" };
   
   const data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 11).getValues();
-  const unreportedLogs = data.map((row, i) => ({ row: row, index: i + 2 }))
-                             .filter(item => item.row[10] === "" || item.row[10] === null);
+  const unreported = data.map((r, i) => ({ row: r, idx: i + 2 }))
+                        .filter(x => !x.row[10]);
   
-  if (unreportedLogs.length === 0) return { status: "success", message: "No new logs for weekly report." };
+  if (unreported.length === 0) return { status: "success", message: "No new logs" };
   
-  const groupedBySupplier = {};
-  unreportedLogs.forEach(item => {
-    const name = item.row[7];
-    if (!groupedBySupplier[name]) groupedBySupplier[name] = { items: [], rows: [] };
-    groupedBySupplier[name].items.push(item.row);
-    groupedBySupplier[name].rows.push(item.index);
+  const grouped = {};
+  unreported.forEach(x => {
+    const n = x.row[7];
+    if (!grouped[n]) grouped[n] = { items: [], rows: [] };
+    grouped[n].items.push(x.row);
+    grouped[n].rows.push(x.idx);
   });
   
-  let reportsSent = 0;
-  const now = new Date();
-  const reportedDate = Utilities.formatDate(now, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  let sent = 0;
+  const ts = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
-  Object.keys(groupedBySupplier).forEach(name => {
-    const contactIndex = supplierContacts.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
-    const contact = supplierContacts[contactIndex];
-    
-    if (contact && contact.email) {
-      const logs = groupedBySupplier[name].items;
-      const previousValue = contact.lastReportValue || 0;
-      
-      let currentBatchValue = 0;
-      let tableRows = "";
-      logs.forEach(l => {
-        // Simple heuristic for value if not in log: Qty * 10 (or actual cost if we had it here)
-        // Ideally, we'd lookup cost from DB, but for now we rely on the metadata provided in APP_SETTINGS
-        tableRows += `<tr><td style="padding:8px; border-bottom:1px solid #eee;">${l[6]}</td><td style="padding:8px; border-bottom:1px solid #eee;">${l[1]}</td><td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${l[2]}</td><td style="padding:8px; border-bottom:1px solid #eee;">${l[3]}</td></tr>`;
-      });
-      
-      const htmlBody = `
-        <div style="font-family:sans-serif; max-width:600px; border:1px solid #e2e8f0; border-radius:12px; padding:24px;">
-          <h2 style="color:#0f172a; margin-bottom:4px;">Weekly Inventory Report</h2>
-          <p style="color:#64748b; font-size:12px; margin-bottom:20px;">System Dispatch: ${reportedDate}</p>
-          <p>Dear ${name},</p>
-          <p>This is your automated incremental inventory summary. The following items have been added to your catalog this week.</p>
-          
-          <div style="background:#f8fafc; padding:16px; border-radius:8px; margin-bottom:20px; border:1px solid #e2e8f0;">
-            <p style="margin:0; font-size:10px; color:#64748b; font-weight:bold; text-transform:uppercase;">Previous Report Value</p>
-            <p style="margin:0; font-size:20px; font-weight:bold; color:#0f172a;">QAR ${previousValue.toLocaleString()}</p>
-          </div>
-
-          <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:13px;">
-            <tr style="background:#f1f5f9; text-align:left;">
-              <th style="padding:8px; font-weight:bold;">Product</th>
-              <th style="padding:8px; font-weight:bold;">Barcode</th>
-              <th style="padding:8px; font-weight:bold; text-align:right;">Qty</th>
-              <th style="padding:8px; font-weight:bold;">Expiry</th>
-            </tr>
-            ${tableRows}
-          </table>
-
-          <div style="margin-top:30px; text-align:center;">
-            <a href="${APP_URL}/supplier-portal/${contact.supplierCode}" style="background:#000; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:14px; display:inline-block;">View Live Dashboard</a>
-          </div>
-        </div>
-      `;
-      
-      MailApp.sendEmail({ to: contact.email, subject: `Weekly Inventory Report - ${name}`, htmlBody: htmlBody });
-      reportsSent++;
-
-      // Update registry metadata: Mark items as reported and update "Last Report Value"
-      groupedBySupplier[name].rows.forEach(rowIdx => {
-        logSheet.getRange(rowIdx, 11).setValue(reportedDate);
-      });
-      
-      // Calculate new total value from inventory items linked to this supplier for the next previousValue
-      const totalInventoryForSupplier = data.filter(r => r[7] === name && r[2] > 0);
-      // Note: We don't have prices here easily, so we update the value based on your industrial logic elsewhere
-      // If the app calculates value, it should be synced here.
+  Object.keys(grouped).forEach(name => {
+    const contact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (contact?.email) {
+      sendWeeklyEmail_(contact, grouped[name].items);
+      sent++;
+      grouped[name].rows.forEach(rIdx => logSheet.getRange(rIdx, 11).setValue(ts));
     }
   });
   
-  return { status: "success", reportsSent };
+  return { status: "success", reportsSent: sent };
 }
 
 // ============================================================
-// HELPERS
+// HELPERS: INFRASTRUCTURE
 // ============================================================
-
-function logAuditEvent_(user, action, target, details) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(AUDIT_LOG_SHEET_NAME);
-  if (!sheet) return;
-  const ts = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
-  sheet.appendRow([ts, user, action, target, details]);
-}
 
 function getAppMetaData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -366,113 +248,57 @@ function getAppMetaData() {
   };
 }
 
-function getStaffContactByName_(staffName) {
-  const wantedName = String(staffName || "").trim().toUpperCase();
-  const meta = getAppMetaData();
-  const staffList = meta.staff || [];
-  for (let s of staffList) {
-    if (String(s.name || "").trim().toUpperCase() === wantedName) return s;
-  }
-  return null;
+function logAuditEvent_(user, action, target, details) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(AUDIT_LOG_SHEET_NAME);
+  if (!sheet) return;
+  const ts = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  sheet.appendRow([ts, user, action, target, details]);
 }
 
 function sendTextbeeSms_(phone, message) {
   const props = PropertiesService.getScriptProperties();
-  const apiKey = props.getProperty("TEXTBEE_API_KEY");
-  const deviceId = props.getProperty("TEXTBEE_DEVICE_ID");
-  if (!apiKey || !deviceId || !phone) return false;
+  const key = props.getProperty("TEXTBEE_API_KEY");
+  const devId = props.getProperty("TEXTBEE_DEVICE_ID");
+  if (!key || !devId || !phone) return false;
   try {
     const res = UrlFetchApp.fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
       method: "post",
       contentType: "application/json",
-      headers: { "x-api-key": apiKey },
-      payload: JSON.stringify({ message: message, recipients: [normalizeStaffPhone_(phone)], deviceId: deviceId }),
+      headers: { "x-api-key": key },
+      payload: JSON.stringify({ message, recipients: [normalizePhone_(phone)], deviceId: devId }),
       muteHttpExceptions: true
     });
     return res.getResponseCode() === 200;
   } catch (e) { return false; }
 }
 
-function normalizeStaffPhone_(v) {
-  let p = String(v || "").replace(/[\s\-\(\)]/g, "");
-  if (p.indexOf("00") === 0) p = "+" + p.substring(2);
-  if (/^\d{8}$/.test(p)) p = "+974" + p;
-  if (/^974\d{8}$/.test(p)) p = "+" + p;
-  return p;
+function normalizePhone_(v) {
+  let p = String(v || "").replace(/\D/g, "");
+  if (p.length === 8) p = "974" + p;
+  return "+" + p;
+}
+
+function setSupplierFormula_(sheet, row) {
+  const f = '=IF(B' + row + '="","",IFERROR(INDEX(FILTER(DB!$D$2:$D$100000,((TRIM(DB!$A$2:$A$100000&"")=TRIM(B' + row + '&""))+(TRIM(DB!$B$2:$B$100000&"")=TRIM(B' + row + '&"")))>0),1),"Not Found"))';
+  sheet.getRange(row, 8).setFormula(f);
 }
 
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function setFormResponseSupplierFormula_(sheet, row) {
-  const f = '=IF(B' + row + '="","",IFERROR(INDEX(FILTER(DB!$D$2:$D$100000,((TRIM(DB!$A$2:$A$100000&"")=TRIM(B' + row + '&""))+(TRIM(DB!$B$2:$B$100000&"")=TRIM(B' + row + '&"")))>0),1),"Not Found"))';
-  sheet.getRange(row, 8).setFormula(f);
-}
-
-function getProductJSON() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(DB_SHEET_NAME);
-  if (!sheet) throw new Error('DB not found.');
-  const props = PropertiesService.getScriptProperties();
-  const dbVersion = props.getProperty("DB_VERSION") || "1";
-  const productMap = {};
-  const supplierSet = new Set();
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 0) {
-    const data = sheet.getRange(1, 1, lastRow, 5).getValues();
-    data.forEach(row => {
-      const barcode = String(row[0] || "").trim();
-      const name = String(row[2] || "").trim();
-      const supplier = String(row[3] || "").trim();
-      if (barcode && name) productMap[barcode] = { name, supplier, cost: row[4] || "" };
-      if (supplier && supplier !== "Supplier") supplierSet.add(supplier);
-    });
-  }
-  const staffSheet = ss.getSheetByName(STAFF_SHEET_NAME);
-  let staffList = [];
-  if (staffSheet && staffSheet.getLastRow() > 0) staffList = staffSheet.getDataRange().getValues().flat().filter(String);
-  return jsonResponse({ version: dbVersion, products: productMap, suppliers: Array.from(supplierSet).sort(), staff: staffList.sort() });
-}
-
-function manageProduct(item) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const dbSheet = ss.getSheetByName(DB_SHEET_NAME);
-  const barcode = String(item.barcode || "").trim();
-  const data = dbSheet.getDataRange().getValues();
-  let foundRow = -1;
-  for (let i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === barcode) { foundRow = i + 1; break; } }
-  const rowData = [barcode, "", item.name || "", item.supplier || "", item.cost || ""];
-  if (foundRow !== -1) dbSheet.getRange(foundRow, 1, 1, 5).setValues([rowData]);
-  else dbSheet.appendRow(rowData);
-  updateDbVersion();
-  return jsonResponse({ status: "success" });
-}
-
-function addNewStaff(item) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const staffSheet = ss.getSheetByName(STAFF_SHEET_NAME);
-  staffSheet.appendRow([String(item.staffName || "").trim()]);
-  updateDbVersion();
-  return jsonResponse({ status: "success" });
-}
-
-function updateDbVersion() { PropertiesService.getScriptProperties().setProperty("DB_VERSION", Date.now().toString()); }
-
-// ============================================================
+// ------------------------------------------------------------
 // AUTOMATION INSTALLER
-// ============================================================
-
+// ------------------------------------------------------------
 function installSupplierAutomationTriggers() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(t => {
     const fn = t.getHandlerFunction();
-    if (fn === "generateDailySupplierSmsReports" || fn === "generateWeeklySupplierReports") ScriptApp.deleteTrigger(t);
+    if (["generateDailySupplierSmsReports", "generateWeeklySupplierReports", "automaticOnDisplayDailyCheck"].includes(fn)) ScriptApp.deleteTrigger(t);
   });
 
-  // Daily SMS Summary at 9:00 PM
   ScriptApp.newTrigger("generateDailySupplierSmsReports").timeBased().everyDays(1).atHour(21).create();
-  
-  // Weekly Email Report on Sunday at 10:00 PM
   ScriptApp.newTrigger("generateWeeklySupplierReports").timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(22).create();
+  ScriptApp.newTrigger("automaticOnDisplayDailyCheck").timeBased().everyDays(1).atHour(5).create();
 }
