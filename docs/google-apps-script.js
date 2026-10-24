@@ -1,16 +1,16 @@
-
 /**
  * ============================================================
- * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v7.0
+ * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v8.2
  * ============================================================
  * 
- * SECURITY NOTICE:
- * This script uses ScriptProperties for secrets. Ensure the 
- * following properties are set in Project Settings:
+ * INDUSTRIAL NOTIFICATION & AUDIT ENGINE
+ * 
+ * SECURITY:
+ * Ensure ScriptProperties are set:
  * 1. ADMIN_PASSWORD
  * 2. TEXTBEE_API_KEY
  * 3. TEXTBEE_DEVICE_ID
- * 4. RECIPIENT_EMAIL (Default: ashiqmathath@gmail.com)
+ * 4. RECIPIENT_EMAIL
  */
 
 const DB_SHEET_NAME = "DB";
@@ -23,9 +23,6 @@ const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
 
 const STAFF_LIST_KEY = "staffList";
 const SUPPLIER_CONTACTS_KEY = "supplierContacts";
-const SPECIAL_REQUESTS_KEY = "specialRequests";
-
-const APP_URL = "https://sheetsync-five.vercel.app";
 
 // ------------------------------------------------------------
 // COLUMN MAPPINGS
@@ -41,13 +38,7 @@ const INV_COL_SUPPLIER_NAME = 7;
 const INV_COL_TYPE = 8;
 const INV_COL_UNIQUE_ID = 9;
 const INV_COL_REPORTED_AT = 10;
-const INV_COL_DAILY_SMS_AT = 11;
 
-const WATCH_COL_ID = 1;
-const WATCH_COL_STATUS = 6;
-
-const ODA_COL_ID = 1;
-const ODA_COL_TOKEN = 6;
 const ODA_COL_PIN = 7;
 const ODA_COL_USED = 9;
 
@@ -56,12 +47,7 @@ const ODA_COL_USED = 9;
 // ============================================================
 
 function doGet(e) {
-  try {
-    if (e?.parameter?.action === "getProducts") return getProductJSON();
-    return ContentService.createTextOutput("SheetSync Registry Core Active.");
-  } catch (error) {
-    return jsonResponse({ status: "error", message: error.toString() });
-  }
+  return ContentService.createTextOutput("SheetSync Registry Core v8.2 Active.");
 }
 
 function doPost(e) {
@@ -77,16 +63,12 @@ function doPost(e) {
 
     switch(action) {
       case "standardLog": return jsonResponse(submitData(data));
-      case "addProduct": return jsonResponse(manageProduct(data));
-      case "addStaff": return jsonResponse(addNewStaff(data));
       case "triggerOnDisplayAlerts": return jsonResponse(processOnDisplayAlerts_(data.staffName));
-      case "triggerWatchSmsOnly": return jsonResponse(processExpiryWatchReminderById_(data.reminderId));
-      case "triggerWatchResolvedSms": return jsonResponse(processExpiryWatchResolvedSmsById_(data.reminderId));
       case "triggerWeeklyReports": return jsonResponse(generateWeeklySupplierReports());
       case "triggerDailySmsSummary": return jsonResponse(generateDailySupplierSmsReports());
       case "sendManualSupplierReport": return jsonResponse(sendSingleSupplierReport_(data.supplierName));
       case "sendAdminExpiryAlert": return jsonResponse(handleAdminExpiryAlert_(data));
-      case "forensicWipe": return jsonResponse(handleForensicWipe_(data));
+      case "verifyOnDisplayPinOnly": return jsonResponse(verifyOnDisplayPinOnly_(data.pin));
       default: throw new Error("Protocol Unknown: " + action);
     }
   } catch (error) {
@@ -126,6 +108,7 @@ function submitData(item) {
     sheet.getRange(nextRow, 1, 1, rowData.length).setValues([rowData]);
     setSupplierFormula_(sheet, nextRow);
     
+    // Industrial Auditing
     logAuditEvent_(item.userEmail || "Terminal", "LOG_INVENTORY", item.barcode || "N/A", `[LOGGED] Qty: ${item.quantity} | Loc: ${item.location}`);
 
     // FORENSIC EXPIRED ITEM CHECK
@@ -134,26 +117,28 @@ function submitData(item) {
       const today = new Date();
       today.setHours(0,0,0,0);
 
+      // Email Dispatch Protocol (Always active for expired identification)
       if (expiryDate && expiryDate <= today) {
-        sendExpiryAlertEmail(item, entryDate);
+        try { sendExpiryAlertEmail(item, entryDate); } catch (e) { console.warn("Forensic Email Failed"); }
       }
     }
 
-    // 7-DAY STAFF ALERT (SMS)
-    if (item.disableNotification !== true) {
-      sendSevenDayExpiryStaffSmsIfDue_(item, entryDate);
+    // 7-DAY STAFF ALERT (SMS) - Skip if silent entry
+    if (item.disableNotification !== true && item.expiryDate) {
+        const expiryDate = parseRegistryDate_(item.expiryDate, tz);
+        const threshold = new Date();
+        threshold.setHours(0,0,0,0);
+        threshold.setDate(threshold.getDate() + 7);
+        
+        if (expiryDate && expiryDate.getTime() === threshold.getTime()) {
+            sendSevenDayExpiryStaffSms_(item, entryDate);
+        }
     }
 
     return { status: "success", type: "standardLog", id: uniqueId };
   } finally {
     lock.releaseLock();
   }
-}
-
-function handleAdminExpiryAlert_(data) {
-  if (!data.item) throw new Error("Item data missing");
-  sendExpiryAlertEmail(data.item, new Date());
-  return { status: "success", message: "Forensic alert dispatched" };
 }
 
 // ============================================================
@@ -206,22 +191,17 @@ function sendExpiryAlertEmail(item, logDate) {
 }
 
 // ============================================================
-// HELPERS: INFRASTRUCTURE
+// HELPERS
 // ============================================================
 
 function parseRegistryDate_(value, tz) {
   if (value instanceof Date && !isNaN(value.getTime())) return value;
   const text = String(value || "").trim();
   if (!text) return null;
-
-  // Handles yyyy-MM-dd
   let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-
-  // Handles dd/MM/yyyy
   match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (match) return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-
   const parsed = new Date(text);
   return isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -246,5 +226,3 @@ function setSupplierFormula_(sheet, row) {
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
-
-// OMITTED: Additional standard functions (manageProduct, addNewStaff, etc. are preserved as in previous audit)

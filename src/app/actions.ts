@@ -1,15 +1,12 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 import {
   getProductDetailsByBarcode,
   processReturn as dbProcessReturn,
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
   deleteInventoryItemById as dbDeleteInventoryItemById,
-  deleteProductByBarcode as dbDeleteProductByBarcode,
   loadPermissionsFromSheet,
   savePermissionsToSheet,
   getInventoryItems,
@@ -33,12 +30,15 @@ import {
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
 
-const APPSCRIPT_API_URL = process.env.GOOGLE_SCRIPT_URL || "";
-const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || ""; 
+/**
+ * REGISTRY CONFIGURATION
+ * Checks for both secure and legacy (NEXT_PUBLIC) environment variables
+ */
+const APPSCRIPT_API_URL = process.env.GOOGLE_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
+const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ""; 
 
 /**
  * HIGH-PERFORMANCE JSON SANITIZER
- * Prevents memory overflows during serialization of 50k+ row datasets.
  */
 function sanitizeForJSON(input: any): any {
     if (input === null || input === undefined) return input;
@@ -59,10 +59,14 @@ function sanitizeForJSON(input: any): any {
 
 /**
  * ATOMIC REGISTRY HANDSHAKE
- * Dispatches action to Google Apps Script with secure credential validation.
+ * Dispatches action to Google Apps Script with robust environment checks.
  */
 async function dispatchToRegistry(action: string, payload: any = {}) {
-    if (!APPSCRIPT_API_URL) return { success: false, message: "Registry Gateway Offline" };
+    if (!APPSCRIPT_API_URL) {
+        console.error("Registry Gateway Error: GOOGLE_SCRIPT_URL is not defined in environment variables.");
+        return { success: false, message: "Registry Gateway Offline" };
+    }
+    
     try {
         const response = await fetch(APPSCRIPT_API_URL, {
             method: 'POST',
@@ -72,13 +76,17 @@ async function dispatchToRegistry(action: string, payload: any = {}) {
                 password: APPSCRIPT_PASS,
                 ...payload
             }),
-            redirect: 'follow'
+            redirect: 'follow',
+            cache: 'no-store'
         });
-        if (!response.ok) throw new Error("HTTP Error " + response.status);
+        
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        
         const result = await response.json();
         return result.status === 'success' ? { success: true, data: result } : { success: false, message: result.message };
     } catch (e: any) {
-        return { success: false, message: "Handshake Timeout: " + e.message };
+        console.error(`Handshake Failure [${action}]:`, e.message);
+        return { success: false, message: "Handshake Timeout: Check Google Script deployment." };
     }
 }
 
@@ -119,6 +127,7 @@ export async function fetchAllDataAction(skipProducts: boolean = false) {
 
 export async function addInventoryItemAction(prevState: any, formData: FormData) {
     const payload = Object.fromEntries(formData);
+    // Industrial Protocol: Notification and Auditing handled internally by Apps Script
     const result = await dispatchToRegistry('standardLog', payload);
     if (result.success) revalidatePath('/inventory');
     return result;
@@ -141,7 +150,6 @@ export async function fetchOnDisplayAlertsAction() {
   }
 }
 
-// RESTORED SECONDARY ACTIONS
 export async function updateInventoryItemAction(prevState: any, formData: FormData) {
   try {
     const itemId = formData.get('itemId') as string;
@@ -221,4 +229,226 @@ export async function approveRequestAction(requestId: string, adminEmail: string
   } catch (e: any) {
     return { success: false, message: e.message };
   }
+}
+
+export async function getPermissionsAction() {
+    try {
+        const perms = await loadPermissionsFromSheet();
+        return { success: true, data: sanitizeForJSON(perms) };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function setPermissionsAction(perms: Permissions) {
+    try {
+        await savePermissionsToSheet(perms);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[]) {
+    try {
+        await saveSpecialRequestsToSheet(requests);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function saveStaffListAction(staff: StaffMember[]) {
+    try {
+        await saveStaffListToSheet(staff);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function saveLocationListAction(locations: string[]) {
+    try {
+        await saveLocationListToSheet(locations);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function addSupplierAction(prevState: any, formData: FormData) {
+    try {
+        const name = formData.get('supplierName') as string;
+        const email = formData.get('userEmail') as string || 'Admin';
+        const id = `s_${Date.now()}`;
+        const newSupplier: Supplier = { id, name };
+        const meta = await getAppMetaData();
+        await saveSupplierContactsToSheet([...meta.supplierContacts, newSupplier]);
+        return { success: true, data: sanitizeForJSON(newSupplier) };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function updateSupplierAction(prevState: any, formData: FormData) {
+    try {
+        const email = formData.get('userEmail') as string || 'Admin';
+        const supplierId = formData.get('supplierId') as string;
+        const oldName = formData.get('currentSupplierName') as string;
+        const newName = formData.get('newSupplierName') as string;
+        const meta = {
+            supplierCode: formData.get('supplierCode') as string,
+            email: formData.get('email') as string,
+            phone: formData.get('phone') as string
+        };
+        await updateSupplierAcrossRegistry(email, supplierId, oldName, newName, meta);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function saveSupplierContactsAction(contacts: Supplier[]) {
+    try {
+        await saveSupplierContactsToSheet(contacts);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function resolveExpiryWatchAction(id: string, email: string) {
+    try {
+        await dbResolveExpiryWatch(id, email);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function checkSmsConfigAction() {
+    return {
+        success: true,
+        data: {
+            hasApiKey: !!process.env.TEXTBEE_API_KEY,
+            hasDeviceId: !!process.env.TEXTBEE_DEVICE_ID
+        }
+    };
+}
+
+export async function sendSmsAction(message: string, recipient: string) {
+    const apiKey = process.env.TEXTBEE_API_KEY;
+    const deviceId = process.env.TEXTBEE_DEVICE_ID;
+    
+    if (!apiKey || !deviceId) {
+        return { success: false, message: "SMS configuration missing on server." };
+    }
+
+    try {
+        const response = await fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey
+            },
+            body: JSON.stringify({
+                message,
+                recipients: [recipient],
+                deviceId
+            })
+        });
+        
+        if (!response.ok) throw new Error("Gateway HTTP " + response.status);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function resendOtpAction(requestId: string, adminEmail: string) {
+    // Legacy integration: Request new OTP dispatch via Apps Script
+    return dispatchToRegistry('resendOtp', { requestId, adminEmail });
+}
+
+export async function fetchProductAction(barcode: string) {
+    try {
+        const product = await getProductDetailsByBarcode(barcode);
+        return { success: true, data: sanitizeForJSON(product) };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function fetchProductExternalDataAction(barcode: string) {
+    try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+        const data = await res.json();
+        if (data.status === 1) {
+            return {
+                success: true,
+                data: {
+                    name: data.product.product_name,
+                    brand: data.product.brands,
+                    image: data.product.image_url
+                }
+            };
+        }
+        return { success: false, message: "Product not found in global registry." };
+    } catch (e) {
+        return { success: false, message: "Visual identification offline." };
+    }
+}
+
+export async function verifyOnDisplayTokenAction(token: string, pin: string) {
+    return dispatchToRegistry('verifyOnDisplayToken', { token, pin });
+}
+
+export async function verifyOnDisplayPinOnlyAction(pin: string) {
+    return dispatchToRegistry('verifyOnDisplayPinOnly', { pin });
+}
+
+export async function submitOnDisplayRequestAction(token: string, pin: string, request: any) {
+    return dispatchToRegistry('submitOnDisplayRequest', { token, pin, request });
+}
+
+export async function finalizeOnDisplaySessionAction(token: string) {
+    return dispatchToRegistry('finalizeOnDisplaySession', { token });
+}
+
+export async function triggerManualExpirySmsAction(phone: string, productName: string, expiryDate: string) {
+    return dispatchToRegistry('triggerManualExpirySms', { phone, productName, expiryDate });
+}
+
+export async function triggerResolvedSmsAction(phone: string, productName: string, staffName: string) {
+    return dispatchToRegistry('triggerResolvedSms', { phone, productName, staffName });
+}
+
+export async function bulkDeleteInventoryItemsAction(email: string, ids: string[]) {
+    try {
+        for (const id of ids) {
+            await dbDeleteInventoryItemById(email, id);
+        }
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function bulkReturnInventoryItemsAction(email: string, ids: string[], staff: string, type: 'all' | 'specific', qty?: number) {
+    try {
+        for (const id of ids) {
+            await dbProcessReturn(email, id, qty, staff);
+        }
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function getMasterSpreadsheetUrlAction() {
+    const id = process.env.GOOGLE_SHEET_ID;
+    if (!id) return { success: false };
+    return { success: true, data: `https://docs.google.com/spreadsheets/d/${id}/edit` };
 }
