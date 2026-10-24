@@ -437,16 +437,37 @@ export async function bulkDeleteInventoryItemsAction(email: string, ids: string[
 
 export async function bulkReturnInventoryItemsAction(email: string, ids: string[], staff: string, type: 'all' | 'specific', qty?: number) {
     try {
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return { success: false, message: "Select at least one inventory item to return." };
+        }
+        if (type === 'specific' && (!Number.isFinite(Number(qty)) || Number(qty) <= 0)) {
+            return { success: false, message: "Enter a return quantity greater than zero." };
+        }
+        const results: Array<{ id: string; success: boolean; message?: string }> = [];
         for (const id of ids) {
-            await dbProcessReturn(email, id, qty, staff);
+            const result = await dbProcessReturn(email, id, type === 'all' ? undefined : Number(qty), staff);
+            if (!result || result.success !== true) {
+                results.push({ id, success: false, message: result?.message || "Return operation did not complete." });
+                break;
+            }
+            results.push({ id, success: true });
+        }
+        const failed = results.find(result => !result.success);
+        if (failed) {
+            revalidatePath('/inventory');
+            return {
+                success: false,
+                message: `Return stopped for item ${failed.id}: ${failed.message}. Any earlier items in this batch may already have been returned; refresh inventory before retrying.`,
+                data: results
+            };
         }
         revalidatePath('/inventory');
-        return { success: true };
+        return { success: true, data: results };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        revalidatePath('/inventory');
+        return { success: false, message: e?.message || "Return processing failed. Refresh inventory before retrying." };
     }
 }
-
 export async function getMasterSpreadsheetUrlAction() {
     const id = process.env.GOOGLE_SHEET_ID;
     if (!id) return { success: false };

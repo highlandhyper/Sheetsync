@@ -475,20 +475,39 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) return { success: false, message: "Record identification failure." };
-  const fullRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
-  if (!fullRowData || !fullRowData[0]) return { success: false };
-  const currentItem = transformToInventoryItem(fullRowData[0], row - 2);
-  if (!currentItem) return { success: false };
-  const qtyToReturn = q === undefined ? currentItem.quantity : q;
-  const newQty = Math.max(0, currentItem.quantity - qtyToReturn);
-  if (newQty > 0) await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]]);
-  else await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
-  const auditDetails = `[RETURN] Product: ${currentItem.productName} | Barcode: ${currentItem.barcode} | Qty: ${qtyToReturn} | Staff: ${staff}`;
-  await logAuditEvent(email, 'RETURN_INVENTORY', id, auditDetails);
-  return { success: true };
-}
+  if (!row) return { success: false, message: "Record identification failure: inventory row not found." };
 
+  const fullRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
+  if (!fullRowData || !fullRowData[0]) {
+    return { success: false, message: "Return failed: could not read the inventory row." };
+  }
+  const currentItem = transformToInventoryItem(fullRowData[0], row - 2);
+  if (!currentItem) return { success: false, message: "Return failed: inventory record is invalid." };
+
+  const qtyToReturn = q === undefined ? currentItem.quantity : Number(q);
+  if (!Number.isFinite(qtyToReturn) || qtyToReturn <= 0) {
+    return { success: false, message: "Return quantity must be greater than zero." };
+  }
+  if (qtyToReturn > currentItem.quantity) {
+    return { success: false, message: `Return quantity (${qtyToReturn}) exceeds available quantity (${currentItem.quantity}).` };
+  }
+
+  const newQty = currentItem.quantity - qtyToReturn;
+  const saved = newQty > 0
+    ? await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]])
+    : await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
+  if (!saved) {
+    return { success: false, message: "Return was not saved to Google Sheets. Please refresh and try again." };
+  }
+
+  const auditDetails = `[RETURN] Product: ${currentItem.productName} | Barcode: ${currentItem.barcode} | Qty: ${qtyToReturn} | Remaining: ${newQty} | Staff: ${staff}`;
+  try {
+    await logAuditEvent(email, 'RETURN_INVENTORY', id, auditDetails);
+  } catch (error) {
+    console.error("Return saved, but audit logging failed:", error);
+  }
+  return { success: true, data: { id, quantityReturned: qtyToReturn, remainingQuantity: newQty } };
+}
 export async function deleteInventoryItemById(email: string, id: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
   if (row) return deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
