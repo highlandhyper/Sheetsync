@@ -400,11 +400,50 @@ export async function fetchProductExternalDataAction(barcode: string) {
 }
 
 export async function verifyOnDisplayTokenAction(token: string, pin: string) {
-    return dispatchToRegistry('verifyOnDisplayToken', { token, pin });
+    const normalizedToken = String(token || '').trim();
+    const normalizedPin = String(pin || '').replace(/\D/g, '').slice(0, 4);
+
+    if (!normalizedToken || !/^\d{4}$/.test(normalizedPin)) {
+        return { success: false, message: "Invalid access link or 4-digit PIN." };
+    }
+
+    try {
+        // Verify from the existing Sheets data layer. The deployed Apps Script
+        // does not implement verifyOnDisplayToken, so dispatching there fails.
+        const session = await getOnDisplayItemByToken(normalizedToken);
+        if (!session || session.pin !== normalizedPin) {
+            return { success: false, message: "Invalid, expired, or already used PIN. Check the SMS and try again." };
+        }
+
+        return { success: true, data: sanitizeForJSON(session.items) };
+    } catch (error: any) {
+        console.error("On-display token verification failed:", error);
+        return { success: false, message: "Could not verify access. Check the connection and try again." };
+    }
 }
 
 export async function verifyOnDisplayPinOnlyAction(pin: string) {
-    return dispatchToRegistry('verifyOnDisplayPinOnly', { pin });
+    const normalizedPin = String(pin || '').replace(/\D/g, '').slice(0, 4);
+    if (!/^\d{4}$/.test(normalizedPin)) {
+        return { success: false, message: "Enter the 4-digit PIN sent by SMS." };
+    }
+
+    try {
+        const session = await getOnDisplayItemByPin(normalizedPin);
+        if (!session) {
+            return { success: false, message: "Invalid, expired, or already used PIN. Check the SMS and try again." };
+        }
+        return {
+            success: true,
+            data: {
+                staffName: session.staffName,
+                token: session.token
+            }
+        };
+    } catch (error: any) {
+        console.error("On-display PIN verification failed:", error);
+        return { success: false, message: "Could not verify PIN. Check the connection and try again." };
+    }
 }
 
 export async function submitOnDisplayRequestAction(token: string, pin: string, request: any) {
