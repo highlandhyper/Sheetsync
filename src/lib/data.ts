@@ -480,7 +480,7 @@ export async function processReturn(email: string, id: string, q: number | undef
   // Legacy inventory rows may have a blank unique-ID cell (column J).
   // The list uses tmp_<zero-based data index> for those rows.
   let row: number | null = null;
-  const tempMatch = /^tmp_(\\d+)$/.exec(normalizedId);
+  const tempMatch = /^tmp_(\d+)$/.exec(normalizedId);
   if (tempMatch) {
     const candidateRow = Number(tempMatch[1]) + 2;
     const candidateData = await readSheetData(FORM_RESPONSES_SHEET_NAME + '!A' + candidateRow + ':J' + candidateRow);
