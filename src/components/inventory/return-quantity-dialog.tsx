@@ -19,7 +19,7 @@ from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { returnInventoryItemAction } from '@/app/actions';
+import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -78,34 +78,64 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     }
 
     setIsSubmitting(true);
-    
-    // OPTIMISTIC UPDATE
+
     const returnedQty = data.quantityToReturn;
     const newQty = item.quantity - returnedQty;
-    
-    if (newQty > 0) {
-        updateInventoryItem({ ...item, quantity: newQty });
-    } else {
-        removeInventoryItem(item.id);
-    }
-    
-    onOpenChange(false);
-    onReturnSuccess(item.id, returnedQty);
-    toast({ title: 'Success', description: "Processing return in background..." });
-
-    // SYSTEM ATTRIBUTION: Uses the logged-in Admin's identity
     const processingStaff = user.email.split('@')[0].toUpperCase();
 
-    return returnInventoryItemAction(user.email, item.id, returnedQty, processingStaff).then(response => {
-        setIsSubmitting(false);
-        if (!response.success) {
-            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Failed to process return on sheet.' });
-            refreshData(); 
+    try {
+      // Persist to Google Sheets first. Never hide the row or show success before
+      // the server confirms that the write/delete operation completed.
+      const response = await bulkReturnInventoryItemsAction(
+        user.email,
+        [item.id],
+        processingStaff,
+        'specific',
+        returnedQty
+      );
+
+      if (!response?.success) {
+        const message = response?.message || 'Google Sheets did not confirm the return. No success was reported.';
+        toast({ variant: 'destructive', title: 'Return failed', description: message });
+        try {
+          await refreshData();
+        } catch (refreshError) {
+          console.error('Failed to refresh inventory after return failure:', refreshError);
         }
-    }).catch(() => {
-        setIsSubmitting(false);
-        refreshData();
-    });
+        return;
+      }
+
+      // Update local cache only after the server action succeeds.
+      if (newQty > 0) {
+        updateInventoryItem({ ...item, quantity: newQty });
+      } else {
+        removeInventoryItem(item.id);
+      }
+
+      toast({ title: 'Return completed', description: `Successfully returned ${returnedQty} unit(s) of ${item.productName}.` });
+      onOpenChange(false);
+      onReturnSuccess(item.id, returnedQty);
+      reset();
+
+      try {
+        await refreshData();
+      } catch (refreshError) {
+        console.error('Return saved, but inventory refresh failed:', refreshError);
+      }
+    } catch (error) {
+      console.error('Return request failed:', error);
+      const message = error instanceof Error
+        ? error.message
+        : 'The return request failed before Google Sheets confirmed the change.';
+      toast({ variant: 'destructive', title: 'Return failed', description: message });
+      try {
+        await refreshData();
+      } catch (refreshError) {
+        console.error('Failed to refresh inventory after return request error:', refreshError);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
