@@ -404,7 +404,29 @@ export async function verifyOnDisplayTokenAction(token: string, pin: string) {
 }
 
 export async function verifyOnDisplayPinOnlyAction(pin: string) {
-    return dispatchToRegistry('verifyOnDisplayPinOnly', { pin });
+    const normalizedPin = String(pin || '').replace(/\D/g, '').slice(0, 4);
+    if (!/^\d{4}$/.test(normalizedPin)) {
+        return { success: false, message: "Enter the 4-digit PIN sent by SMS." };
+    }
+
+    try {
+        // The deployed Apps Script endpoint does not expose verifyOnDisplayPinOnly.
+        // Resolve the PIN through the app's existing Google Sheets data layer instead.
+        const session = await getOnDisplayItemByPin(normalizedPin);
+        if (!session) {
+            return { success: false, message: "Invalid, expired, or already used PIN. Check the SMS and try again." };
+        }
+        return {
+            success: true,
+            data: {
+                staffName: session.staffName,
+                token: session.token
+            }
+        };
+    } catch (error) {
+        console.error("On-display PIN verification failed:", error);
+        return { success: false, message: "Could not verify PIN. Check the connection and try again." };
+    }
 }
 
 export async function submitOnDisplayRequestAction(token: string, pin: string, request: any) {
