@@ -255,6 +255,7 @@ export async function deleteSheetRowsRange(sheetName: string, startIndex: number
     });
     return true;
   } catch (error: any) {
+    console.error(`[BULK_RETURN] Failed deleting row range from "${sheetName}" (startIndex=${startIndex}, endIndex=${endIndex}):`, error?.response?.data || error?.message || error);
     return false;
   }
 }
