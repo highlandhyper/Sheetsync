@@ -19,7 +19,7 @@ from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { returnInventoryItemAction } from '@/app/actions';
+import { bulkReturnInventoryItemsAction } from '@/app/actions';
 import type { InventoryItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -86,11 +86,12 @@ export function ReturnQuantityDialog({ item, isOpen, onOpenChange, onReturnSucce
     try {
       // Persist to Google Sheets first. Never hide the row or show success before
       // the server confirms that the write/delete operation completed.
-      const response = await returnInventoryItemAction(
+      const response = await bulkReturnInventoryItemsAction(
         user.email,
-        item.id,
-        returnedQty,
-        processingStaff
+        [item.id],
+        processingStaff,
+        'specific',
+        returnedQty
       );
 
       if (!response?.success) {
