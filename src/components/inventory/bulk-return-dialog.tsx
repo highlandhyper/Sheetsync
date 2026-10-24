@@ -50,7 +50,7 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onSuccess }: BulkReturnDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { inventoryItems, removeInventoryItems, updateInventoryItem, refreshData } = useDataCache();
+  const { refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnType, setReturnType] = useState<'all' | 'specific'>('all');
 
@@ -77,45 +77,89 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
   };
 
   const onSubmit = async (data: ReturnFormValues) => {
-    if (!user?.email) return;
-    setIsSubmitting(true);
-    
-    // OPTIMISTIC UPDATE
-    const itemsToProcess = inventoryItems.filter(i => itemIds.includes(i.id));
-    const returnedItemsList: string[] = [];
-    
-    itemsToProcess.forEach(item => {
-        const amountToReturn = data.returnType === 'all' ? item.quantity : (data.quantity || 1);
-        const newQty = item.quantity - amountToReturn;
-        
-        if (newQty <= 0) {
-            returnedItemsList.push(item.id);
-        } else {
-            updateInventoryItem({ ...item, quantity: newQty });
-        }
-    });
-    
-    if (returnedItemsList.length > 0) {
-        removeInventoryItems(returnedItemsList);
+    if (isSubmitting) return;
+
+    if (!user?.email) {
+      toast({
+        variant: 'destructive',
+        title: 'Return failed',
+        description: 'Your session could not be identified. Please sign in again and retry.',
+      });
+      return;
     }
 
-    onOpenChange(false);
-    onSuccess();
-    toast({ title: 'Bulk Update Applied', description: "Processing returns on the sheet in background..." });
+    if (itemIds.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No items selected',
+        description: 'Select at least one inventory item to return.',
+      });
+      return;
+    }
 
+    setIsSubmitting(true);
     const processingStaff = user.email.split('@')[0].toUpperCase();
 
-    // BACKGROUND SYNC
-    bulkReturnInventoryItemsAction(user.email, itemIds, processingStaff, data.returnType, data.quantity).then(response => {
-        setIsSubmitting(false);
-        if (!response.success) {
-            toast({ variant: 'destructive', title: 'Sync Error', description: response.message || 'Bulk return failed.' });
-            refreshData();
+    try {
+      // Wait for the server action to finish before closing the dialog or
+      // changing the local inventory cache. This prevents false success UI.
+      const response = await bulkReturnInventoryItemsAction(
+        user.email,
+        itemIds,
+        processingStaff,
+        data.returnType,
+        data.quantity
+      );
+
+      if (!response?.success) {
+        toast({
+          variant: 'destructive',
+          title: 'Return failed',
+          description: response?.message || 'The return could not be saved. Refresh inventory before retrying.',
+        });
+
+        // A batch may have partially completed, so always reconcile with Sheets.
+        try {
+          await refreshData();
+        } catch (refreshError) {
+          console.error('Failed to refresh inventory after return failure:', refreshError);
         }
-    }).catch(() => {
-        setIsSubmitting(false);
-        refreshData();
-    });
+        return;
+      }
+
+      try {
+        await refreshData();
+      } catch (refreshError) {
+        console.error('Return succeeded, but inventory refresh failed:', refreshError);
+      }
+
+      toast({
+        title: 'Return completed',
+        description: `Successfully processed return for ${itemIds.length} selected item(s).`,
+      });
+      onOpenChange(false);
+      onSuccess();
+      reset();
+      setReturnType('all');
+    } catch (error) {
+      console.error('Bulk return request failed:', error);
+
+      toast({
+        variant: 'destructive',
+        title: 'Return request failed',
+        description: error instanceof Error
+          ? error.message
+          : 'The server did not return a usable response. Refresh inventory before retrying.',
+      });
+
+      try {
+        await refreshData();
+      } catch (refreshError) {
+        console.error('Failed to refresh inventory after return request error:', refreshError);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -127,12 +171,13 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
             Processing return for <span className="text-primary font-bold">{itemCount} selected log entries</span>.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
           <RadioGroup
             value={returnType}
             onValueChange={(value: 'all' | 'specific') => setReturnType(value)}
             className="grid grid-cols-2 gap-3"
+            disabled={isSubmitting}
           >
             <div>
                 <RadioGroupItem value="all" id="bulkReturnAll" className="peer sr-only" />
@@ -165,6 +210,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
                 id="bulkQty"
                 type="number"
                 min="1"
+                disabled={isSubmitting}
                 {...register('quantity', { valueAsNumber: true })}
                 onKeyDown={(e) => {
                     if (['-', 'e', 'E', '+', '.'].includes(e.key)) {
@@ -185,7 +231,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
             </DialogClose>
             <Button type="submit" className="h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
-              Process Bulk
+              {isSubmitting ? 'Processing…' : 'Process Bulk'}
             </Button>
           </DialogFooter>
         </form>
