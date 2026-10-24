@@ -474,39 +474,51 @@ export async function updateInventoryItemDetails(email: string, id: string, u: a
 }
 
 export async function processReturn(email: string, id: string, q: number | undefined, staff: string) {
-  const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);
-  if (!row) return { success: false, message: "Record identification failure: inventory row not found." };
+  const normalizedId = String(id || '').trim();
+  if (!normalizedId) return { success: false, message: 'Return failed: selected item has no ID. Refresh inventory and select it again.' };
 
-  const fullRowData = await readSheetData(`${FORM_RESPONSES_SHEET_NAME}!A${row}:J${row}`);
+  // Legacy inventory rows may have a blank unique-ID cell (column J).
+  // The list uses tmp_<zero-based data index> for those rows.
+  let row: number | null = null;
+  const tempMatch = /^tmp_(\d+)$/.exec(normalizedId);
+  if (tempMatch) {
+    const candidateRow = Number(tempMatch[1]) + 2;
+    const candidateData = await readSheetData(FORM_RESPONSES_SHEET_NAME + '!A' + candidateRow + ':J' + candidateRow);
+    const candidate = candidateData?.[0];
+    if (candidate && !String(candidate[INV_COL_UNIQUE_ID] || '').trim()) row = candidateRow;
+    else return { success: false, message: 'This inventory row changed since it was loaded. Refresh inventory, select the item again, and retry.' };
+  } else {
+    row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, normalizedId, INV_COL_UNIQUE_ID);
+  }
+  if (!row) {
+    console.error('[BULK_RETURN] Inventory row not found', { id: normalizedId });
+    return { success: false, message: 'Inventory row not found for ID ' + normalizedId + '. Refresh inventory and select the item again.' };
+  }
+  const fullRowData = await readSheetData(FORM_RESPONSES_SHEET_NAME + '!A' + row + ':J' + row);
   if (!fullRowData || !fullRowData[0]) {
-    return { success: false, message: "Return failed: could not read the inventory row." };
+    console.error('[BULK_RETURN] Could not read row', { id: normalizedId, row });
+    return { success: false, message: 'Could not read inventory sheet row ' + row + '. Check Google Sheets access and retry.' };
   }
-  const currentItem = transformToInventoryItem(fullRowData[0], row - 2);
-  if (!currentItem) return { success: false, message: "Return failed: inventory record is invalid." };
-
+  const currentRow = fullRowData[0];
+  if (tempMatch && String(currentRow[INV_COL_UNIQUE_ID] || '').trim()) return { success: false, message: 'This inventory row changed during processing. Refresh inventory and retry.' };
+  const currentItem = transformToInventoryItem(currentRow, row - 2);
+  if (!currentItem) return { success: false, message: 'Inventory row ' + row + ' is invalid or has no barcode/quantity.' };
   const qtyToReturn = q === undefined ? currentItem.quantity : Number(q);
-  if (!Number.isFinite(qtyToReturn) || qtyToReturn <= 0) {
-    return { success: false, message: "Return quantity must be greater than zero." };
-  }
-  if (qtyToReturn > currentItem.quantity) {
-    return { success: false, message: `Return quantity (${qtyToReturn}) exceeds available quantity (${currentItem.quantity}).` };
-  }
-
+  if (!Number.isFinite(qtyToReturn) || qtyToReturn <= 0) return { success: false, message: 'Return quantity must be greater than zero.' };
+  if (qtyToReturn > currentItem.quantity) return { success: false, message: 'Return quantity (' + qtyToReturn + ') exceeds available quantity (' + currentItem.quantity + ').' };
   const newQty = currentItem.quantity - qtyToReturn;
   const saved = newQty > 0
-    ? await updateSheetData(`${FORM_RESPONSES_SHEET_NAME}!C${row}`, [[newQty]])
+    ? await updateSheetData(FORM_RESPONSES_SHEET_NAME + '!C' + row, [[newQty]])
     : await deleteSheetRow(FORM_RESPONSES_SHEET_NAME, row);
   if (!saved) {
-    return { success: false, message: "Return was not saved to Google Sheets. Please refresh and try again." };
+    console.error('[BULK_RETURN] Google Sheets write failed', { id: normalizedId, row, operation: newQty > 0 ? 'update quantity' : 'delete row' });
+    return { success: false, message: 'Google Sheets could not ' + (newQty > 0 ? 'update quantity' : 'delete the inventory row') + ' (row ' + row + '). Refresh inventory and check Vercel logs for the Google API error.' };
   }
-
-  const auditDetails = `[RETURN] Product: ${currentItem.productName} | Barcode: ${currentItem.barcode} | Qty: ${qtyToReturn} | Remaining: ${newQty} | Staff: ${staff}`;
-  try {
-    await logAuditEvent(email, 'RETURN_INVENTORY', id, auditDetails);
-  } catch (error) {
-    console.error("Return saved, but audit logging failed:", error);
-  }
-  return { success: true, data: { id, quantityReturned: qtyToReturn, remainingQuantity: newQty } };
+  const auditDetails = '[RETURN] Product: ' + currentItem.productName + ' | Barcode: ' + currentItem.barcode + ' | Qty: ' + qtyToReturn + ' | Remaining: ' + newQty + ' | Staff: ' + staff;
+  try { await logAuditEvent(email, 'RETURN_INVENTORY', normalizedId, auditDetails); }
+  catch (error) { console.error('[BULK_RETURN] Return saved, but audit logging failed:', error); }
+  console.info('[BULK_RETURN] Return saved', { id: normalizedId, row, quantityReturned: qtyToReturn, remainingQuantity: newQty });
+  return { success: true, data: { id: normalizedId, quantityReturned: qtyToReturn, remainingQuantity: newQty } };
 }
 export async function deleteInventoryItemById(email: string, id: string) {
   const row = await findRowByUniqueValue(FORM_RESPONSES_SHEET_NAME, id, INV_COL_UNIQUE_ID);

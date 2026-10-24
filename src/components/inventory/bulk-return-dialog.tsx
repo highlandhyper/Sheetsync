@@ -53,6 +53,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
   const { refreshData } = useDataCache();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnType, setReturnType] = useState<'all' | 'specific'>('all');
+  const [returnError, setReturnError] = useState<string | null>(null);
 
   const {
     register,
@@ -72,6 +73,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
       if (!open) {
         reset();
         setReturnType('all');
+        setReturnError(null);
       }
     }
   };
@@ -98,6 +100,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     }
 
     setIsSubmitting(true);
+    setReturnError(null);
     const processingStaff = user.email.split('@')[0].toUpperCase();
 
     try {
@@ -112,10 +115,12 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
       );
 
       if (!response?.success) {
+        const message = response?.message || 'The return could not be saved. Refresh inventory before retrying.';
+        setReturnError(message);
         toast({
           variant: 'destructive',
           title: 'Return failed',
-          description: response?.message || 'The return could not be saved. Refresh inventory before retrying.',
+          description: message,
         });
 
         // A batch may have partially completed, so always reconcile with Sheets.
@@ -137,6 +142,7 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
         title: 'Return completed',
         description: `Successfully processed return for ${itemIds.length} selected item(s).`,
       });
+      setReturnError(null);
       onOpenChange(false);
       onSuccess();
       reset();
@@ -144,12 +150,14 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
     } catch (error) {
       console.error('Bulk return request failed:', error);
 
+      const message = error instanceof Error
+        ? error.message
+        : 'The server did not return a usable response. Refresh inventory before retrying.';
+      setReturnError(message);
       toast({
         variant: 'destructive',
         title: 'Return request failed',
-        description: error instanceof Error
-          ? error.message
-          : 'The server did not return a usable response. Refresh inventory before retrying.',
+        description: message,
       });
 
       try {
@@ -171,6 +179,13 @@ export function BulkReturnDialog({ isOpen, onOpenChange, itemIds, itemCount, onS
             Processing return for <span className="text-primary font-bold">{itemCount} selected log entries</span>.
           </DialogDescription>
         </DialogHeader>
+
+        {returnError && (
+          <div role="alert" aria-live="assertive" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive break-words">
+            <p className="font-bold">Return failed</p>
+            <p className="mt-1">{returnError}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
           <RadioGroup
