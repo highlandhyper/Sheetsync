@@ -26,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
-import { approveRequestAction } from '@/app/actions';
+import { approveRequestAction, createProductFromApprovalAction } from '@/app/actions';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -77,6 +77,9 @@ export function ApprovalCenterClient() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [createProductName, setCreateProductName] = useState('');
+    const [createProductSupplier, setCreateProductSupplier] = useState('');
+    const [createProductCost, setCreateProductCost] = useState('');
 
     const filteredPending = useMemo(() => {
         const lower = searchTerm.toLowerCase().trim();
@@ -91,6 +94,9 @@ export function ApprovalCenterClient() {
     }, [pendingRequests, searchTerm]);
 
     const handleActionClick = (req: SpecialEntryRequest) => {
+        setCreateProductName(req.suggestedProductName || '');
+        setCreateProductSupplier('');
+        setCreateProductCost('');
         setSelectedRequest(req);
         setIsDetailDialogOpen(true);
     };
@@ -109,6 +115,18 @@ export function ApprovalCenterClient() {
         setIsDetailDialogOpen(false); setIsAuthDialogOpen(true);
     };
 
+    const handleCreateProductFromRequest = async () => {
+        if (!selectedRequest || selectedRequest.type !== 'product_add' || !authUser?.email) return;
+        if (!createProductName.trim()) { toast({ title: 'Product name required', description: 'Enter the confirmed product name.', variant: 'destructive' }); return; }
+        setIsProcessing(true);
+        try {
+            const result = await createProductFromApprovalAction(selectedRequest.id, createProductName, createProductSupplier, createProductCost, authUser.email);
+            if (!result.success) { toast({ title: 'Product not created', description: result.message || 'Please retry.', variant: 'destructive' }); return; }
+            toast({ title: 'Product created', description: 'Barcode registered and earlier inventory logs updated where details were blank.' });
+            setIsDetailDialogOpen(false); setSelectedRequest(null); await refreshData();
+        } catch { toast({ title: 'Creation failed', description: 'The product could not be created. Please retry.', variant: 'destructive' }); }
+        finally { setIsProcessing(false); }
+    };
     const handleRejectRequest = async (id: string) => {
         try {
             await rejectRequest(id);
@@ -368,12 +386,19 @@ export function ApprovalCenterClient() {
                                         <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Asset Barcode</p>
                                         <p className="font-mono text-xl font-black text-orange-900">{selectedRequest.reason}</p>
                                     </div>
-                                    {selectedRequest.suggestedProductName && (
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Optical Name Suggestion</p>
-                                            <p className="text-base font-bold text-orange-800">{selectedRequest.suggestedProductName}</p>
-                                        </div>
-                                    )}
+                                    <div className="space-y-1">
+                                        <Label htmlFor="approval-product-name" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Confirm product name *</Label>
+                                        <Input id="approval-product-name" value={createProductName} onChange={(event) => setCreateProductName(event.target.value)} placeholder="Product name from package" maxLength={180} className="bg-background text-foreground" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="approval-product-supplier" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Supplier name (optional)</Label>
+                                        <Input id="approval-product-supplier" value={createProductSupplier} onChange={(event) => setCreateProductSupplier(event.target.value)} placeholder="Supplier name" className="bg-background text-foreground" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="approval-product-cost" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Cost price (optional)</Label>
+                                        <Input id="approval-product-cost" type="number" min="0" step="any" value={createProductCost} onChange={(event) => setCreateProductCost(event.target.value)} placeholder="0.00" className="bg-background text-foreground" />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Confirming creates the product and updates previous logs for this barcode.</p>
                                 </div>
                             </div>
                         ) : (
@@ -391,9 +416,15 @@ export function ApprovalCenterClient() {
                         <DialogClose asChild>
                             <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90">
-                            {selectedRequest?.type === "supplier_dispute" ? (isProcessing ? "Updating…" : "Mark Reviewed") : "Authorize Change"}
-                        </Button>
+                        {selectedRequest?.type === 'product_add' ? (
+                            <Button onClick={handleCreateProductFromRequest} disabled={isProcessing || !createProductName.trim()} className="h-12 px-5 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
+                                {isProcessing ? "Creating…" : "Confirm & Create Product"}
+                            </Button>
+                        ) : (
+                            <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90">
+                                {selectedRequest?.type === "supplier_dispute" ? (isProcessing ? "Updating…" : "Mark Reviewed") : "Authorize Change"}
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
