@@ -108,7 +108,7 @@ export default function SupplierPortalPage() {
     }), [supplierStock, supplier, groupedStock]);
 
     const openProductDetails = useCallback((product: (typeof groupedStock)[number]) => {
-        window.history.pushState({ supplierStockDetail: true }, '');
+        window.history.pushState({ ...window.history.state, supplierStockDetail: true }, '');
         setSelectedProduct(product);
     }, [groupedStock]);
 
