@@ -322,7 +322,7 @@ export function QuickSupplierEditDialog({
             </DialogHeader>
             <DialogFooter className="pt-4 flex gap-2">
                 <Button variant="ghost" onClick={() => setIsSyncWarningOpen(false)} className="font-bold h-12 flex-1">Abort</Button>
-                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-white shadow-xl shadow-primary/20">
+                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/20">
                     Sync All Registry Nodes
                 </Button>
             </DialogFooter>
