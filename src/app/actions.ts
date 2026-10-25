@@ -91,6 +91,43 @@ async function dispatchToRegistry(action: string, payload: any = {}) {
     }
 }
 
+/**
+ * Supplier portal data is fetched independently of the staff/admin cache.
+ * The portal is accessed by supplier code and should work without staff Firebase login.
+ * Only the matching supplier's stock is returned to the browser.
+ */
+export async function fetchSupplierPortalData(supplierCodeInput: string) {
+  try {
+    const supplierCode = String(supplierCodeInput || '').trim();
+    if (!supplierCode) return { success: false, message: 'Supplier code is required.' };
+
+    const [inventoryItems, meta] = await Promise.all([
+      getInventoryItems(),
+      getAppMetaData(),
+    ]);
+
+    const supplier = (meta.supplierContacts || []).find(
+      (item: Supplier) => String(item.supplierCode || '').trim().toUpperCase() === supplierCode.toUpperCase()
+    );
+
+    if (!supplier) return { success: false, message: 'Supplier account not found.' };
+
+    const supplierStock = (inventoryItems || []).filter(
+      (item: InventoryItem) =>
+        String(item.supplierName || '').trim().toLowerCase() === String(supplier.name || '').trim().toLowerCase()
+        && Number(item.quantity) > 0
+    );
+
+    return {
+      success: true,
+      data: sanitizeForJSON({ supplier, inventoryItems: supplierStock }),
+    };
+  } catch (error: any) {
+    console.error('[SUPPLIER_PORTAL_DATA]', error);
+    return { success: false, message: 'Unable to load supplier stock. Please refresh and try again.' };
+  }
+}
+
 export async function fetchAllDataAction(skipProducts: boolean = false) {
   try {
     const promises: any[] = [getInventoryItems(), getAuditLogs(), getAppMetaData(), getExpiryReminders()];
