@@ -65,7 +65,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
-import { updateProductAddRequestAction, addInventoryItemAction, fetchProductAction, fetchProductExternalDataAction } from '@/app/actions';
+import { updateProductAddRequestAction, addInventoryItemAction, fetchProductAction, fetchProductExternalDataAction, uploadUnknownBarcodeImageAction } from '@/app/actions';
+import { captureBarcodeScanImage, normalizeBarcodeForLookup } from '@/lib/unknown-barcode-capture';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
@@ -193,6 +194,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
+  // Keep the frame from this scanner only; other barcode scanners are unaffected.
+  const capturedScanRef = useRef<{ barcode: string; imageBase64: string } | null>(null);
   const SCANNER_REGION_ID = 'scanner-log-new';
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -263,6 +266,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       const cachedProduct = cachedProducts.find(p => p.barcode === barcode || p.barcode.replace(/^0+/, '') === normalizedTerm);
       
       if (cachedProduct) {
+        if (capturedScanRef.current && normalizeBarcodeForLookup(capturedScanRef.current.barcode) === normalizeBarcodeForLookup(barcode)) {
+          capturedScanRef.current = null;
+        }
         setProductName(cachedProduct.productName);
         setProductSupplier(cachedProduct.supplierName || 'N/A');
         setIsFetchingProduct(false);
@@ -277,6 +283,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
       const response = await fetchProductAction(barcode);
       if (response.success && response.data) {
+          if (capturedScanRef.current && normalizeBarcodeForLookup(capturedScanRef.current.barcode) === normalizeBarcodeForLookup(barcode)) {
+            capturedScanRef.current = null;
+          }
           setProductName(response.data.productName);
           setProductSupplier(response.data.supplierName || 'N/A');
           setIsFetchingProduct(false);
@@ -292,6 +301,43 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           const requestId = await requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', barcode, (externalRes.success && externalRes.data?.name) || 'Unknown product');
           setProductAddRequestId(requestId);
           setHasRequestedProduct(true);
+
+          // Only the Log New Item camera scanner captures images. Upload only when
+          // this exact scanned barcode is confirmed missing from the registry.
+          const capturedScan = capturedScanRef.current;
+          if (capturedScan && normalizeBarcodeForLookup(capturedScan.barcode) === normalizeBarcodeForLookup(barcode)) {
+              capturedScanRef.current = null;
+              console.info('[UNKNOWN_BARCODE_UPLOAD] Log New Item: uploading captured unknown barcode', {
+                  barcode,
+                  imageLength: capturedScan.imageBase64.length,
+              });
+              try {
+                  const uploadResult = await uploadUnknownBarcodeImageAction({
+                      barcode,
+                      imageBase64: capturedScan.imageBase64,
+                      staffName: allFormValues.staffName || 'Viewer',
+                  });
+                  if (uploadResult.success) {
+                      console.info('[UNKNOWN_BARCODE_UPLOAD] Log New Item upload succeeded', { barcode });
+                      toast({ title: 'Barcode photo uploaded', description: 'The unknown barcode photo was saved to Google Drive.' });
+                  } else {
+                      console.error('[UNKNOWN_BARCODE_UPLOAD] Log New Item upload failed', {
+                          barcode,
+                          message: uploadResult.message || 'Unknown upload error',
+                      });
+                      toast({ title: 'Barcode photo upload failed', description: uploadResult.message || 'The item can still be logged. Check the Vercel logs and Apps Script configuration.' });
+                  }
+              } catch (uploadError) {
+                  console.error('[UNKNOWN_BARCODE_UPLOAD] Log New Item upload threw an error', {
+                      barcode,
+                      message: uploadError instanceof Error ? uploadError.message : String(uploadError),
+                  });
+                  toast({ title: 'Barcode photo upload failed', description: 'The item can still be logged. Check the Vercel logs and Apps Script configuration.' });
+              }
+          } else {
+              console.info('[UNKNOWN_BARCODE_UPLOAD] Log New Item: no matching camera image; skipping photo upload', { barcode });
+          }
+
           toast({ title: 'Admin notified', description: 'This barcode is not registered yet. You can continue logging; product and supplier details will sync after admin adds it.' });
           return true;
       }
@@ -420,6 +466,14 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const onScanSuccess = useCallback((decodedText: string) => {
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
+
+    // Capture while the Log New Item camera is still active. The frame is only
+    // uploaded later if registry lookup confirms this barcode is unknown.
+    const imageBase64 = captureBarcodeScanImage(SCANNER_REGION_ID);
+    capturedScanRef.current = imageBase64
+      ? { barcode: decodedText.trim(), imageBase64 }
+      : null;
+
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     if (html5QrcodeScannerRef.current) {
