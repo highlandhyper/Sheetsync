@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useDataCache } from '@/context/data-cache-context';
 import {
@@ -19,6 +19,9 @@ import {
     CalendarDays,
     Clock3,
     Boxes,
+    ArrowLeft,
+    ChevronRight,
+    X,
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,6 +44,7 @@ export default function SupplierPortalPage() {
     const [search, setSearch] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
     useEffect(() => {
         if (isCacheReady) {
@@ -66,20 +70,61 @@ export default function SupplierPortalPage() {
             });
     }, [inventoryItems, supplier]);
 
+    // One summary row per barcode; individual expiry/location logs stay available in the full list.
+    const groupedStock = useMemo(() => {
+        const groups = new Map<string, { key: string; productName: string; barcode: string; quantity: number; batches: typeof supplierStock }>();
+        supplierStock.forEach(item => {
+            const key = item.barcode?.trim() ? item.barcode.trim() : `no-barcode-${item.id}`;
+            const existing = groups.get(key);
+            if (existing) {
+                existing.quantity += Number(item.quantity) || 0;
+                existing.batches.push(item);
+            } else {
+                groups.set(key, {
+                    key,
+                    productName: item.productName || 'Unnamed product',
+                    barcode: item.barcode || '',
+                    quantity: Number(item.quantity) || 0,
+                    batches: [item],
+                });
+            }
+        });
+        return Array.from(groups.values()).sort((a, b) => a.productName.localeCompare(b.productName));
+    }, [supplierStock]);
+
     const filteredStock = useMemo(() => {
         const term = search.trim().toLowerCase();
-        if (!term) return supplierStock;
-        return supplierStock.filter(item =>
-            [item.productName, item.barcode, item.location, item.expiryDate]
+        if (!term) return groupedStock;
+        return groupedStock.filter(product =>
+            [product.productName, product.barcode, ...product.batches.flatMap(item => [item.location, item.expiryDate])]
                 .some(value => String(value ?? '').toLowerCase().includes(term))
         );
-    }, [supplierStock, search]);
+    }, [groupedStock, search]);
 
     const stats = useMemo(() => ({
-        totalUnits: supplierStock.reduce((sum, item) => sum + item.quantity, 0),
+        totalUnits: supplierStock.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
         totalValue: supplier?.lastReportValue || 0,
-        activeBatches: supplierStock.length,
-    }), [supplierStock, supplier]);
+        activeBatches: groupedStock.length,
+    }), [supplierStock, supplier, groupedStock]);
+
+    const openProductDetails = useCallback((product: (typeof groupedStock)[number]) => {
+        window.history.pushState({ supplierStockDetail: true }, '');
+        setSelectedProduct(product);
+    }, [groupedStock]);
+
+    const closeProductDetails = useCallback(() => {
+        if (window.history.state?.supplierStockDetail) {
+            window.history.back();
+        } else {
+            setSelectedProduct(null);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handlePopState = () => setSelectedProduct(null);
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
 
     const handleRefresh = async () => {
         if (isRefreshing) return;
@@ -209,75 +254,63 @@ export default function SupplierPortalPage() {
                             )}
                         </div>
                         <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-                            Showing {filteredStock.length} of {supplierStock.length} active items
+                            Showing {filteredStock.length} of {groupedStock.length} products
                         </p>
                     </div>
 
                     {filteredStock.length > 0 ? (
                         <>
-                            {/* Mobile-first product cards */}
-                            <div className="divide-y md:hidden">
-                                {filteredStock.map(item => (
-                                    <article key={item.id} className="space-y-3 p-4">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <h3 className="break-words text-sm font-semibold leading-snug">{item.productName}</h3>
+                            {/* Mobile product summaries: one row per barcode */}
+                            <div className="divide-y divide-border/50 md:hidden">
+                                {filteredStock.map(product => (
+                                    <article key={product.key} className="px-4 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-muted-foreground">
+                                                <Package className="h-5 w-5" strokeWidth={1.7} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="break-words text-sm font-semibold leading-snug">{product.productName}</h3>
                                                 <p className="mt-1 flex items-center gap-1.5 break-all font-mono text-[11px] text-muted-foreground">
-                                                    <Barcode className="h-3.5 w-3.5 shrink-0" /> {item.barcode || 'No barcode'}
+                                                    <Barcode className="h-3 w-3 shrink-0" /> {product.barcode || 'No barcode'}
                                                 </p>
+                                                <p className="mt-1 text-[11px] text-muted-foreground">{product.batches.length} stock log{product.batches.length === 1 ? '' : 's'} · expiry and location details</p>
                                             </div>
-                                            <div className="shrink-0 rounded-xl bg-primary/10 px-3 py-2 text-right">
-                                                <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Qty</p>
-                                                <p className="text-xl font-bold leading-tight tabular-nums text-primary">{item.quantity.toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                            <div className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/50 p-2.5">
-                                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] text-muted-foreground">Location</p>
-                                                    <p className="break-words font-medium">{item.location || 'Not specified'}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/50 p-2.5">
-                                                <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] text-muted-foreground">Expiry date</p>
-                                                    <p className="font-medium">{safeDate(item.expiryDate, 'dd MMM yyyy')}</p>
-                                                </div>
+                                            <div className="shrink-0 text-right">
+                                                <p className="text-lg font-semibold tabular-nums">{product.quantity.toLocaleString()}</p>
+                                                <p className="text-[10px] text-muted-foreground">total units</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                            <Clock3 className="h-3 w-3" />
-                                            Logged: {safeDate(item.timestamp, 'dd MMM yyyy, HH:mm')}
-                                        </div>
+                                        <Button type="button" variant="ghost" className="mt-3 h-10 w-full justify-between rounded-xl px-3 text-primary hover:bg-primary/5" onClick={() => openProductDetails(product)}>
+                                            <span className="text-sm font-medium">View full list <span className="font-normal text-muted-foreground">({product.batches.length})</span></span>
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
                                     </article>
                                 ))}
                             </div>
 
-                            {/* Wide-screen table */}
+                            {/* Desktop table uses the same grouped product summaries */}
                             <div className="hidden overflow-x-auto md:block">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/20">
                                             <TableHead className="pl-6 text-xs">Product / barcode</TableHead>
-                                            <TableHead className="text-right text-xs">Quantity</TableHead>
-                                            <TableHead className="text-xs">Location</TableHead>
-                                            <TableHead className="text-xs">Expiry date</TableHead>
-                                            <TableHead className="pr-6 text-xs">Logged at</TableHead>
+                                            <TableHead className="text-right text-xs">Total quantity</TableHead>
+                                            <TableHead className="text-center text-xs">Stock logs</TableHead>
+                                            <TableHead className="pr-6 text-right text-xs">Details</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredStock.map(item => (
-                                            <TableRow key={item.id}>
+                                        {filteredStock.map(product => (
+                                            <TableRow key={product.key}>
                                                 <TableCell className="max-w-[360px] pl-6">
-                                                    <p className="truncate font-semibold">{item.productName}</p>
-                                                    <p className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground"><Barcode className="h-3 w-3" />{item.barcode || 'No barcode'}</p>
+                                                    <p className="truncate font-semibold">{product.productName}</p>
+                                                    <p className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground"><Barcode className="h-3 w-3" />{product.barcode || 'No barcode'}</p>
                                                 </TableCell>
-                                                <TableCell className="text-right font-bold tabular-nums text-primary">{item.quantity.toLocaleString()}</TableCell>
-                                                <TableCell><Badge variant="secondary" className="max-w-[180px] truncate"><MapPin className="mr-1 h-3 w-3 shrink-0" />{item.location || 'Not specified'}</Badge></TableCell>
-                                                <TableCell className="text-sm">{safeDate(item.expiryDate, 'dd MMM yyyy')}</TableCell>
-                                                <TableCell className="pr-6 text-xs text-muted-foreground">{safeDate(item.timestamp, 'dd/MM/yy HH:mm')}</TableCell>
+                                                <TableCell className="text-right font-semibold tabular-nums">{product.quantity.toLocaleString()}</TableCell>
+                                                <TableCell className="text-center text-sm text-muted-foreground">{product.batches.length}</TableCell>
+                                                <TableCell className="pr-6 text-right">
+                                                    <Button type="button" variant="ghost" size="sm" className="gap-1 rounded-lg" onClick={() => openProductDetails(product)}>View full list <ChevronRight className="h-4 w-4" /></Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -299,6 +332,57 @@ export default function SupplierPortalPage() {
                 <footer className="pb-2 pt-2 text-center">
                     <p className="text-[10px] text-muted-foreground">SheetSync · Highland Hypermarket supplier portal</p>
                 </footer>
+            {selectedProduct && (
+                <div className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col bg-background" role="dialog" aria-modal="true" aria-label={`${selectedProduct.productName} stock details`}>
+                    <header className="sticky top-0 z-10 flex min-h-14 items-center gap-3 border-b border-border/50 bg-background/95 px-3 py-2 backdrop-blur">
+                        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full" aria-label="Back to products" onClick={closeProductDetails}>
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="truncate text-base font-semibold">{selectedProduct.productName}</h2>
+                            <p className="truncate font-mono text-[11px] text-muted-foreground">{selectedProduct.barcode || 'No barcode'}</p>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label="Close details" onClick={closeProductDetails}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </header>
+                    <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+                        <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
+                            <div className="mb-5 flex items-end justify-between">
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Combined active quantity</p>
+                                    <p className="mt-1 text-3xl font-semibold tabular-nums">{selectedProduct.quantity.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">units</span></p>
+                                </div>
+                                <span className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">{selectedProduct.batches.length} log{selectedProduct.batches.length === 1 ? '' : 's'}</span>
+                            </div>
+                            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Expiry and stock log list</p>
+                            <div className="divide-y divide-border/50">
+                                {selectedProduct.batches.map((item: (typeof supplierStock)[number], index: number) => (
+                                    <article key={item.id ?? `${item.barcode}-${index}`} className="py-4 first:pt-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold">{item.quantity.toLocaleString()} units</p>
+                                                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5 shrink-0" />Expires {safeDate(item.expiryDate, 'dd MMM yyyy')}</p>
+                                            </div>
+                                            <span className="shrink-0 rounded-full bg-muted/70 px-2.5 py-1 text-[10px] text-muted-foreground">Log {index + 1}</span>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                            <div className="flex items-start gap-2 text-xs">
+                                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                <span><span className="text-muted-foreground">Location </span>{item.location || 'Not specified'}</span>
+                                            </div>
+                                            <div className="flex items-start gap-2 text-xs">
+                                                <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                <span><span className="text-muted-foreground">Logged </span>{safeDate(item.timestamp, 'dd MMM yyyy, HH:mm')}</span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             </main>
         </div>
     );
