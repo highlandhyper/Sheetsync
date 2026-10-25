@@ -325,7 +325,7 @@ export function ApprovalCenterClient() {
                                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60 mb-1">Identification Node</p>
                                         <h4 className="text-lg font-black uppercase truncate leading-tight">{selectedRequest.editDetails.productName}</h4>
                                     </div>
-                                    <Badge className={cn("mt-1 uppercase font-black text-[9px] tracking-widest", selectedRequest.editDetails.requestType === 'delete' ? "bg-destructive text-white" : "bg-primary text-white")}>
+                                    <Badge className={cn("mt-1 uppercase font-black text-[9px] tracking-widest", selectedRequest.editDetails.requestType === 'delete' ? "bg-destructive text-white" : "bg-primary text-primary-foreground")}>
                                         {selectedRequest.editDetails.requestType === 'delete' ? 'PURGE' : 'ADJUST'}
                                     </Badge>
                                 </div>
@@ -391,7 +391,7 @@ export function ApprovalCenterClient() {
                         <DialogClose asChild>
                             <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
+                        <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90">
                             {selectedRequest?.type === "supplier_dispute" ? (isProcessing ? "Updating…" : "Mark Reviewed") : "Authorize Change"}
                         </Button>
                     </DialogFooter>
