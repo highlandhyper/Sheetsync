@@ -95,9 +95,18 @@ export function ApprovalCenterClient() {
         setIsDetailDialogOpen(true);
     };
 
-    const handleConfirmApproval = () => {
-        setIsDetailDialogOpen(false);
-        setIsAuthDialogOpen(true);
+    const handleConfirmApproval = async () => {
+        if (selectedRequest?.type === 'supplier_dispute') {
+            setIsProcessing(true);
+            try {
+                const result = await approveRequestAction(selectedRequest.id, authUser?.email || 'Admin');
+                if (result.success) { toast({ title: 'Dispute reviewed', description: 'The supplier dispute has been marked as reviewed.' }); setIsDetailDialogOpen(false); setSelectedRequest(null); await refreshData(); }
+                else toast({ title: 'Could not update dispute', description: result.message || 'Please retry.', variant: 'destructive' });
+            } catch { toast({ title: 'Connection error', description: 'The dispute status could not be updated.', variant: 'destructive' }); }
+            finally { setIsProcessing(false); }
+            return;
+        }
+        setIsDetailDialogOpen(false); setIsAuthDialogOpen(true);
     };
 
     const handleRejectRequest = async (id: string) => {
@@ -131,6 +140,7 @@ export function ApprovalCenterClient() {
     };
 
     const requestTypeMeta = (req: SpecialEntryRequest) => {
+        if (req.type === "supplier_dispute") return { label: "Supplier Dispute", icon: AlertCircle, badge: "border-amber-500/20 bg-amber-500/10 text-amber-700", iconClass: "bg-amber-500/10 text-amber-700", dialogTitle: "Review Supplier Dispute" };
         if (req.type === "on_display_request") return { 
             label: "On-Display", 
             icon: ShieldAlert, 
@@ -162,6 +172,7 @@ export function ApprovalCenterClient() {
     };
 
     const getProposalSummary = (req: SpecialEntryRequest) => {
+        if (req.type === 'supplier_dispute') return 'DISPUTED: ' + (req.suggestedProductName || 'Unknown product') + ' · Barcode ' + (req.disputedBarcode || 'N/A');
         if ((req.type === 'inventory_edit' || req.type === 'on_display_request') && req.editDetails) {
             const d = req.editDetails;
             const o = req.originalDetails;
@@ -294,7 +305,19 @@ export function ApprovalCenterClient() {
                     </DialogHeader>
 
                     <div className="p-8 space-y-6">
-                        {(selectedRequest?.type === 'on_display_request' || selectedRequest?.type === 'inventory_edit') && selectedRequest.editDetails ? (
+                        {selectedRequest?.type === 'supplier_dispute' ? (
+                            <div className="space-y-4">
+                                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5"><p className="text-xs font-bold uppercase tracking-widest text-amber-700">Supplier says this product does not belong to them</p><h3 className="mt-2 text-lg font-bold">{selectedRequest.suggestedProductName || "Unknown product"}</h3></div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Supplier</p><p className="mt-1 font-semibold">{selectedRequest.supplierName || selectedRequest.staffName}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Supplier ID</p><p className="mt-1 font-semibold">{selectedRequest.supplierCode || "—"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Barcode</p><p className="mt-1 break-all font-mono font-semibold">{selectedRequest.disputedBarcode || "No barcode"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Recorded quantity</p><p className="mt-1 font-semibold">{selectedRequest.disputedQuantity ?? "—"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4 sm:col-span-2"><p className="text-xs text-muted-foreground">Reason</p><p className="mt-1">{selectedRequest.reason || "No reason supplied."}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4 sm:col-span-2"><p className="text-xs text-muted-foreground">Submitted</p><p className="mt-1 font-medium">{format(parseISO(selectedRequest.requestedAt), "dd MMM yyyy, HH:mm")}</p></div>
+                                </div>
+                            </div>
+                        ) : (selectedRequest?.type === "on_display_request" || selectedRequest?.type === "inventory_edit") && selectedRequest.editDetails ? (
                             <div className="space-y-6">
                                 <div className="p-5 bg-primary/5 rounded-[1.5rem] border border-primary/10 flex items-start gap-4">
                                     <div className="h-10 w-10 bg-background rounded-xl flex items-center justify-center border border-primary/10 shadow-sm"><Database className="h-5 w-5 text-primary" /></div>
@@ -368,8 +391,8 @@ export function ApprovalCenterClient() {
                         <DialogClose asChild>
                             <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirmApproval} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
-                            Authorize Change
+                        <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
+                            {selectedRequest?.type === "supplier_dispute" ? (isProcessing ? "Updating…" : "Mark Reviewed") : "Authorize Change"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
