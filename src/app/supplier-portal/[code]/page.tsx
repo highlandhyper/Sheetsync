@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { submitSupplierDisputeAction } from '@/app/actions';
+import { fetchSupplierPortalData, submitSupplierDisputeAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { useDataCache } from '@/context/data-cache-context';
 import {
     Package,
     Layers,
@@ -44,7 +43,8 @@ function safeDate(value: string | undefined, pattern: string) {
 export default function SupplierPortalPage() {
     const params = useParams();
     const code = params?.code as string;
-    const { inventoryItems = [], supplierContacts = [], isCacheReady, refreshData } = useDataCache();
+    const [supplier, setSupplier] = useState<any>(null);
+    const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -78,18 +78,43 @@ export default function SupplierPortalPage() {
         });
     }, []);
 
-    useEffect(() => {
-        if (isCacheReady) {
+    const loadSupplierData = useCallback(async () => {
+        if (!code) {
+            setSupplier(null);
+            setInventoryItems([]);
             setIsLoading(false);
-            void refreshData();
-            setLastUpdated(new Date());
+            return;
         }
-    }, [isCacheReady, refreshData]);
 
-    const supplier = useMemo(
-        () => (supplierContacts || []).find(s => s.supplierCode?.toUpperCase() === code?.toUpperCase()),
-        [supplierContacts, code]
-    );
+        try {
+            const result = await fetchSupplierPortalData(code);
+            if (!result.success || !result.data) {
+                setSupplier(null);
+                setInventoryItems([]);
+                toast({
+                    title: 'Unable to load supplier stock',
+                    description: result.message || 'Check your connection and try again.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+            setSupplier(result.data.supplier || null);
+            setInventoryItems(result.data.inventoryItems || []);
+            setLastUpdated(new Date());
+        } catch {
+            toast({
+                title: 'Connection problem',
+                description: 'Supplier stock could not be loaded. Please try refreshing.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [code, toast]);
+
+    useEffect(() => {
+        void loadSupplierData();
+    }, [loadSupplierData]);
 
     const supplierStock = useMemo(() => {
         if (!supplier) return [];
@@ -174,8 +199,7 @@ export default function SupplierPortalPage() {
         if (isRefreshing) return;
         setIsRefreshing(true);
         try {
-            await refreshData();
-            setLastUpdated(new Date());
+            await loadSupplierData();
         } finally {
             setIsRefreshing(false);
         }
@@ -358,7 +382,8 @@ export default function SupplierPortalPage() {
                                             <TableHead className="pl-6 text-xs">Product / barcode</TableHead>
                                             <TableHead className="text-right text-xs">Total quantity</TableHead>
                                             <TableHead className="text-center text-xs">Stock logs</TableHead>
-                                            <TableHead className="text-right text-xs">Details</TableHead>\n                                            <TableHead className="pr-6 text-right text-xs">Dispute</TableHead>
+                                            <TableHead className="text-right text-xs">Details</TableHead>
+                                            <TableHead className="pr-6 text-right text-xs">Dispute</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
