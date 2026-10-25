@@ -369,10 +369,26 @@ export async function addProduct(email: string, p: any) {
   const uniqueId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const row = [p.barcode, '', p.productName, p.supplierName, p.costPrice || '', '', '', uniqueId];
   await appendSheetData(`${DB_SHEET_NAME}!A:H`, [row]);
+
+  // Backfill inventory logs created before this barcode was registered.
+  // Existing non-empty product/supplier cells are preserved.
+  const normalizedBarcode = String(p.barcode || '').trim().replace(/^0+/, '');
+  if (normalizedBarcode) {
+    const inventoryRows = await readSheetData(INVENTORY_READ_RANGE);
+    const updates: { range: string; values: any[][] }[] = [];
+    (inventoryRows || []).forEach((inventoryRow, index) => {
+      const loggedBarcode = String(inventoryRow[INV_COL_BARCODE] || '').trim();
+      if (!loggedBarcode || loggedBarcode.replace(/^0+/, '') !== normalizedBarcode) return;
+      const sheetRow = index + 2;
+      if (!String(inventoryRow[INV_COL_PRODUCT_NAME] || '').trim()) updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!G${sheetRow}`, values: [[p.productName || '']] });
+      if (!String(inventoryRow[INV_COL_SUPPLIER_NAME] || '').trim()) updates.push({ range: `${FORM_RESPONSES_SHEET_NAME}!H${sheetRow}`, values: [[p.supplierName || '']] });
+    });
+    if (updates.length) await batchUpdateSheetCells(updates);
+  }
+
   await logAuditEvent(email, 'CREATE_PRODUCT', p.barcode, `[CREATED] ${p.productName}`);
   return { id: uniqueId, uniqueId, ...p };
 }
-
 export async function deleteProductByBarcode(email: string, barcode: string) {
   let row = await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_UNIQUE_ID) ||
             await findRowByUniqueValue(DB_SHEET_NAME, barcode, DB_COL_BARCODE_A);
