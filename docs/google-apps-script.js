@@ -68,11 +68,74 @@ function doPost(e) {
       case "triggerDailySmsSummary": return jsonResponse(generateDailySupplierSmsReports());
       case "sendManualSupplierReport": return jsonResponse(sendSingleSupplierReport_(data.supplierName));
       case "sendAdminExpiryAlert": return jsonResponse(handleAdminExpiryAlert_(data));
+      case "uploadUnknownBarcodeImage": return jsonResponse(uploadUnknownBarcodeImage_(data));
       case "verifyOnDisplayPinOnly": return jsonResponse(verifyOnDisplayPinOnly_(data.pin));
       default: throw new Error("Protocol Unknown: " + action);
     }
   } catch (error) {
     return jsonResponse({ status: "error", message: error.toString() });
+  }
+}
+
+// ============================================================
+// UNKNOWN BARCODE PHOTO CAPTURE
+// Requires Script Property UNKNOWN_BARCODE_DRIVE_FOLDER_ID.
+// Files remain private and inherit the target Drive folder's permissions.
+// ============================================================
+
+function normalizeCapturedBarcode_(value) {
+  return String(value || "").trim().replace(/^0+/, "");
+}
+
+function uploadUnknownBarcodeImage_(data) {
+  const barcode = String(data.barcode || "").trim();
+  const imageBase64 = String(data.imageBase64 || "").trim();
+  const staffName = String(data.staffName || "Unknown staff").slice(0, 100);
+
+  if (!barcode || barcode.length > 100) throw new Error("Invalid barcode.");
+  if (!imageBase64 || imageBase64.length > 1000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64)) {
+    throw new Error("Invalid or oversized image.");
+  }
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error("Registry busy. Try again.");
+
+  try {
+    // Server-side master DB check prevents uploads even if the browser cache is stale.
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const db = ss.getSheetByName(DB_SHEET_NAME);
+    if (!db) throw new Error("Master product database sheet not found.");
+
+    const normalized = normalizeCapturedBarcode_(barcode);
+    const lastRow = db.getLastRow();
+    if (lastRow > 1) {
+      const storedBarcodes = db.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+      const exists = storedBarcodes.some(row => {
+        const stored = String(row[0] || "").trim();
+        return stored === barcode || normalizeCapturedBarcode_(stored) === normalized;
+      });
+      if (exists) return { status: "success", skipped: true, reason: "Product already exists." };
+    }
+
+    const folderId = PropertiesService.getScriptProperties().getProperty("UNKNOWN_BARCODE_DRIVE_FOLDER_ID");
+    if (!folderId) throw new Error("UNKNOWN_BARCODE_DRIVE_FOLDER_ID script property is not configured.");
+
+    const bytes = Utilities.base64Decode(imageBase64);
+    const timestamp = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyyMMdd_HHmmss");
+    const safeBarcode = barcode.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 60);
+    const filename = "unknown_barcode_" + safeBarcode + "_" + timestamp + ".jpg";
+    const blob = Utilities.newBlob(bytes, "image/jpeg", filename);
+    const file = DriveApp.getFolderById(folderId).createFile(blob);
+    file.setDescription(
+      "Unknown product barcode: " + barcode +
+      "\nCaptured at: " + new Date().toISOString() +
+      "\nStaff: " + staffName +
+      "\nSource: SheetSync HTML5 barcode scanner"
+    );
+
+    return { status: "success", uploaded: true, fileName: filename };
+  } finally {
+    lock.releaseLock();
   }
 }
 

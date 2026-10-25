@@ -27,6 +27,8 @@ import {
     Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { uploadUnknownBarcodeImageAction } from '@/app/actions';
+import { captureBarcodeScanImage, productBarcodeExists } from '@/lib/unknown-barcode-capture';
 import type { InventoryItem } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -149,11 +151,25 @@ export function InventoryBarcodeLookupClient() {
     if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
     playProfessionalBeep();
+
+    // Capture and upload only when the barcode is absent from the cached master
+    // product list. The Registry independently checks the live DB before saving.
+    if (!productBarcodeExists(cachedProducts, decodedText)) {
+      const imageBase64 = captureBarcodeScanImage(SCANNER_REGION_ID);
+      if (imageBase64) {
+        void uploadUnknownBarcodeImageAction({ barcode: decodedText, imageBase64 })
+          .then(result => {
+            if (!result.success) console.warn('[Unknown barcode capture] Upload was not completed.');
+          })
+          .catch(() => console.warn('[Unknown barcode capture] Upload request failed.'));
+      }
+    }
+
     setBarcodeToSearch(decodedText);
     setIsScannerDialogOpen(false);
     executeSearch(decodedText);
     setTimeout(() => { scanProcessedRef.current = false; }, 1000);
-  }, [executeSearch]);
+  }, [cachedProducts, executeSearch]);
 
   useEffect(() => {
     if (isScannerDialogOpen) {

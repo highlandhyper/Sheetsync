@@ -13,6 +13,8 @@ import {
 import { Card } from '@/components/ui/card';
 import type { InventoryItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { uploadUnknownBarcodeImageAction } from '@/app/actions';
+import { captureBarcodeScanImage, productBarcodeExists } from '@/lib/unknown-barcode-capture';
 import { cn } from '@/lib/utils';
 import { parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
@@ -61,7 +63,7 @@ export function HeaderBarcodeLookup() {
   
   const { toast } = useToast();
   const { role } = useAuth();
-  const { inventoryItems, uniqueLocations } = useDataCache();
+  const { inventoryItems, uniqueLocations, products: cachedProducts } = useDataCache();
   
   const spotlightInputRef = useRef<HTMLInputElement>(null);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -137,24 +139,38 @@ export function HeaderBarcodeLookup() {
   );
 
   const onScanSuccess = useCallback((decodedText: string) => {
-    if (scanProcessedRef.current) return;
+    if (scanProcessedRef.current || !decodedText) return;
     scanProcessedRef.current = true;
 
     playProfessionalBeep();
+
+    // Background capture is attempted only for barcodes absent from the local
+    // master list; the Registry checks the live Google Sheet again before upload.
+    if (!productBarcodeExists(cachedProducts, decodedText)) {
+      const imageBase64 = captureBarcodeScanImage(SCANNER_REGION_ID);
+      if (imageBase64) {
+        void uploadUnknownBarcodeImageAction({ barcode: decodedText, imageBase64 })
+          .then(result => {
+            if (!result.success) console.warn('[Unknown barcode capture] Upload was not completed.');
+          })
+          .catch(() => console.warn('[Unknown barcode capture] Upload request failed.'));
+      }
+    }
+
     setBarcode(decodedText);
     setIsScannerOpen(false);
-    
+
     toast({
       title: 'Visual ID Success',
       description: `Analyzing: ${decodedText}`,
     });
 
     executeSearch(decodedText);
-    
+
     setTimeout(() => {
         scanProcessedRef.current = false;
     }, 1000);
-  }, [executeSearch, toast]);
+  }, [cachedProducts, executeSearch, toast]);
   
   useEffect(() => {
     if (isScannerOpen) {
