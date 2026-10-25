@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addSupplierSchema, type AddSupplierFormValues } from '@/lib/schemas';
-import { addSupplierAction, saveSupplierContactsAction } from '@/app/actions';
+import { addSupplierAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ import { useDataCache } from '@/context/data-cache-context';
 
 export function AddSupplierDialog() {
   const { toast } = useToast();
-  const { suppliers, supplierContacts, addSupplier: addSupplierToCache, refreshData } = useDataCache();
+  const { refreshData } = useDataCache();
   const [isOpen, setIsOpen] = useState(false);
   const [isActionPending, startActionTransition] = useTransition();
 
@@ -49,25 +49,18 @@ export function AddSupplierDialog() {
   const processFormSubmit = (data: AddSupplierFormValues) => {
     startActionTransition(async () => {
       const formData = new FormData();
-      formData.append('supplierName', data.supplierName);
+      formData.append('supplierName', data.supplierName.trim());
+      formData.append('supplierCode', data.supplierCode.trim());
+      formData.append('phone', data.phone.trim());
+      formData.append('email', data.email?.trim() || '');
       
       const res = await addSupplierAction(undefined, formData);
       if (res.success && res.data) {
-          const newContact: Supplier = {
-              id: res.data.id,
-              name: data.supplierName,
-              supplierCode: data.supplierCode,
-              email: data.email,
-              phone: data.phone,
-              lastReportValue: 0
-          };
-          
-          await saveSupplierContactsAction([...supplierContacts, newContact]);
-          toast({ title: 'Success', description: 'Supplier and contact details registered.' });
-          refreshData();
+          toast({ title: 'Success', description: 'Supplier and phone number saved.' });
+          await refreshData();
           setIsOpen(false);
       } else {
-          toast({ variant: 'destructive', title: 'Error', description: res.message || 'Handshake failed.' });
+          toast({ variant: 'destructive', title: 'Error', description: res.message || 'Could not save supplier.' });
       }
     });
   };
@@ -107,19 +100,19 @@ export function AddSupplierDialog() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SMS Terminal</Label>
+                <Label htmlFor="phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Phone Number *</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974..." />
+                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974 XXXXXXXX" required />
                 </div>
               </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Weekly Report Email</Label>
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Weekly Report Email (Optional)</Label>
             <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-                <Input id="email" type="email" {...register('email')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="vendor@domain.com" />
+                <Input id="email" type="email" {...register('email')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="vendor@domain.com (optional)" />
             </div>
             {formErrors.email && <p className="text-[10px] text-destructive font-bold">{formErrors.email.message}</p>}
           </div>
