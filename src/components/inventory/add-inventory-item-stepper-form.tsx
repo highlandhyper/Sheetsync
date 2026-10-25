@@ -287,14 +287,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           }
           setProductLookupError('SKU not found in local registry. Admin has been notified. You can continue logging this item.');
           setIsFetchingProduct(false);
-          if (!hasRequestedProduct) {
-              await requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', barcode, (externalRes.success && externalRes.data?.name) || 'Unknown product');
-              setHasRequestedProduct(true);
-              toast({ title: 'Admin notified', description: 'This barcode is not registered yet. You can continue logging; product and supplier details will sync after admin adds it.' });
-          }
+          await requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', barcode, (externalRes.success && externalRes.data?.name) || 'Unknown product');
+          setHasRequestedProduct(true);
+          toast({ title: 'Admin notified', description: 'This barcode is not registered yet. You can continue logging; product and supplier details will sync after admin adds it.' });
           return true;
       }
-  }, [cachedProducts, hasRequestedProduct, requestSpecialEntry, allFormValues.staffName, toast]);
+  }, [cachedProducts, requestSpecialEntry, allFormValues.staffName, toast]);
 
   const onSubmit = async (data: AddInventoryItemFormValues) => {
     if (isSubmitting || submitLockRef.current) return;
