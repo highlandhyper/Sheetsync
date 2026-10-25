@@ -24,7 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { approveRequestAction, createProductFromApprovalAction } from '@/app/actions';
@@ -80,6 +81,7 @@ export function ApprovalCenterClient() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [createProductName, setCreateProductName] = useState('');
     const [createProductSupplier, setCreateProductSupplier] = useState('');
+    const [createProductSupplierSearchOpen, setCreateProductSupplierSearchOpen] = useState(false);
     const [createProductCost, setCreateProductCost] = useState('');
 
     const filteredPending = useMemo(() => {
@@ -398,21 +400,58 @@ export function ApprovalCenterClient() {
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="approval-product-supplier" className="text-xs font-medium">Supplier <span className="text-muted-foreground">(optional)</span></Label>
-                                        <Select value={createProductSupplier || '__none__'} onValueChange={(value) => setCreateProductSupplier(value === '__none__' ? '' : value)}>
-                                            <SelectTrigger id="approval-product-supplier" className="h-10 bg-background">
-                                                <SelectValue placeholder="Select a supplier" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="__none__">No supplier selected</SelectItem>
-                                                {suppliers
-                                                    .filter((supplier) => supplier.name?.trim())
-                                                    .slice()
-                                                    .sort((a, b) => a.name.localeCompare(b.name))
-                                                    .map((supplier) => (
-                                                        <SelectItem key={supplier.id || supplier.name} value={supplier.name}>{supplier.name}</SelectItem>
-                                                    ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <Popover open={createProductSupplierSearchOpen} onOpenChange={setCreateProductSupplierSearchOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    id="approval-product-supplier"
+                                                    type="button"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={createProductSupplierSearchOpen}
+                                                    className="h-10 w-full justify-between bg-background font-normal"
+                                                >
+                                                    <span className={cn("truncate", !createProductSupplier && "text-muted-foreground")}>
+                                                        {createProductSupplier || "Search or select a supplier"}
+                                                    </span>
+                                                    <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[260px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search supplier name..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No supplier found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            <CommandItem
+                                                                value="no supplier selected"
+                                                                onSelect={() => {
+                                                                    setCreateProductSupplier('');
+                                                                    setCreateProductSupplierSearchOpen(false);
+                                                                }}
+                                                            >
+                                                                No supplier selected
+                                                            </CommandItem>
+                                                            {suppliers
+                                                                .filter((supplier) => supplier.name?.trim())
+                                                                .slice()
+                                                                .sort((a, b) => a.name.localeCompare(b.name))
+                                                                .map((supplier) => (
+                                                                    <CommandItem
+                                                                        key={supplier.id || supplier.name}
+                                                                        value={supplier.name}
+                                                                        onSelect={() => {
+                                                                            setCreateProductSupplier(supplier.name);
+                                                                            setCreateProductSupplierSearchOpen(false);
+                                                                        }}
+                                                                    >
+                                                                        {supplier.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                         <p className="text-[11px] text-muted-foreground">Choose from the registered supplier list.</p>
                                     </div>
                                     <div className="space-y-1.5">
