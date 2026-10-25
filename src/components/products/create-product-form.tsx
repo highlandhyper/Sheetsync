@@ -116,6 +116,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
   const [isQuickAddSupplierOpen, setIsQuickAddSupplierOpen] = useState(false);
   const [quickSupplierName, setQuickSupplierName] = useState('');
+  const [quickSupplierPhone, setQuickSupplierPhone] = useState('');
   const [isQuickAdding, setIsQuickAdding] = useState(false);
   
   const [externalData, setExternalData] = useState<{ image?: string; brand?: string; name?: string } | null>(null);
@@ -316,10 +317,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   };
 
   const handleQuickAddSupplier = async () => {
-    if (!quickSupplierName.trim()) return;
+    if (!quickSupplierName.trim() || !quickSupplierPhone.trim()) {
+      toast({ title: 'Supplier details required', description: 'Enter the supplier name and phone number.', variant: 'destructive' });
+      return;
+    }
     setIsQuickAdding(true);
     const formData = new FormData();
     formData.append('supplierName', quickSupplierName.trim());
+    formData.append('supplierCode', `S${Date.now()}`);
+    formData.append('phone', quickSupplierPhone.trim());
+    formData.append('email', '');
     formData.append('userEmail', user?.email || 'Admin');
     
     try {
@@ -329,6 +336,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             setValue('supplierName', result.data.name, { shouldValidate: true, shouldDirty: true });
             setIsQuickAddSupplierOpen(false);
             setQuickSupplierName('');
+            setQuickSupplierPhone('');
             toast({ title: 'Success', description: 'Supplier added and selected.' });
             setTimeout(() => costInputRef.current?.focus(), 150);
         } else {
@@ -992,6 +1000,24 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 className="h-12 font-bold bg-muted/10"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="quick-supplier-phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Phone Number *</Label>
+              <Input
+                id="quick-supplier-phone"
+                type="tel"
+                placeholder="+974 XXXXXXXX"
+                value={quickSupplierPhone}
+                onChange={(e) => setQuickSupplierPhone(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleQuickAddSupplier();
+                  }
+                }}
+                className="h-12 font-bold bg-muted/10"
+                required
+              />
+            </div>
           </div>
           <DialogFooter className="p-6 pt-0 bg-muted/20 border-t border-white/5 flex gap-2">
             <DialogClose asChild>
@@ -999,8 +1025,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             </DialogClose>
             <Button 
               onClick={handleQuickAddSupplier} 
-              disabled={isQuickAdding || !quickSupplierName.trim()}
-              className="h-11 flex-1 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 bg-primary text-white"
+              disabled={isQuickAdding || !quickSupplierName.trim() || !quickSupplierPhone.trim()}
+              className="h-11 flex-1 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 bg-primary text-primary-foreground"
             >
               {isQuickAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Register Supplier
