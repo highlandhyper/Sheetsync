@@ -55,6 +55,7 @@ function doPost(e) {
     if (!e?.postData?.contents) throw new Error("No data received.");
     const data = JSON.parse(e.postData.contents);
     const action = data.action || "";
+    Logger.log("[REGISTRY_REQUEST] action=" + action);
 
     // Security Handshake
     const props = PropertiesService.getScriptProperties();
@@ -73,6 +74,7 @@ function doPost(e) {
       default: throw new Error("Protocol Unknown: " + action);
     }
   } catch (error) {
+    Logger.log("[REGISTRY_ERROR] " + (error && error.stack ? error.stack : String(error)));
     return jsonResponse({ status: "error", message: error.toString() });
   }
 }
@@ -89,6 +91,7 @@ function normalizeCapturedBarcode_(value) {
 
 function uploadUnknownBarcodeImage_(data) {
   const barcode = String(data.barcode || "").trim();
+  Logger.log("[UNKNOWN_BARCODE_UPLOAD] started barcode=" + barcode);
   const imageBase64 = String(data.imageBase64 || "").trim();
   const staffName = String(data.staffName || "Unknown staff").slice(0, 100);
 
@@ -126,6 +129,7 @@ function uploadUnknownBarcodeImage_(data) {
     const filename = "unknown_barcode_" + safeBarcode + "_" + timestamp + ".jpg";
     const blob = Utilities.newBlob(bytes, "image/jpeg", filename);
     const file = DriveApp.getFolderById(folderId).createFile(blob);
+    Logger.log("[UNKNOWN_BARCODE_UPLOAD] Drive file created id=" + file.getId() + " name=" + filename);
     file.setDescription(
       "Unknown product barcode: " + barcode +
       "\nCaptured at: " + new Date().toISOString() +
@@ -133,6 +137,7 @@ function uploadUnknownBarcodeImage_(data) {
       "\nSource: SheetSync HTML5 barcode scanner"
     );
 
+    Logger.log("[UNKNOWN_BARCODE_UPLOAD] success barcode=" + barcode + " file=" + filename);
     return { status: "success", uploaded: true, fileName: filename };
   } finally {
     lock.releaseLock();

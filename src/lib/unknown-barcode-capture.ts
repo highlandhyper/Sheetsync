@@ -10,7 +10,16 @@ export function captureBarcodeScanImage(regionId: string): string | null {
   try {
     const region = document.getElementById(regionId);
     const video = region?.querySelector('video') as HTMLVideoElement | null;
-    if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) {
+    if (!video) {
+      console.warn('[UNKNOWN_BARCODE_CAPTURE] No video element found in scanner region:', regionId);
+      return null;
+    }
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) {
+      console.warn('[UNKNOWN_BARCODE_CAPTURE] Camera frame not ready', {
+        readyState: video.readyState,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+      });
       return null;
     }
 
@@ -26,12 +35,26 @@ export function captureBarcodeScanImage(regionId: string): string | null {
     canvas.height = Math.max(1, Math.floor(sourceHeight * scale));
 
     const context = canvas.getContext('2d');
-    if (!context) return null;
+    if (!context) {
+      console.warn('[UNKNOWN_BARCODE_CAPTURE] Could not create canvas context.');
+      return null;
+    }
     context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.62);
-    return dataUrl.slice(dataUrl.indexOf(',') + 1) || null;
-  } catch {
+    const imageBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    if (!imageBase64) {
+      console.warn('[UNKNOWN_BARCODE_CAPTURE] Canvas returned an empty image.');
+      return null;
+    }
+    console.info('[UNKNOWN_BARCODE_CAPTURE] Image captured', {
+      width: canvas.width,
+      height: canvas.height,
+      imageLength: imageBase64.length,
+    });
+    return imageBase64;
+  } catch (error) {
+    console.error('[UNKNOWN_BARCODE_CAPTURE] Camera frame capture threw an error:', error);
     return null;
   }
 }

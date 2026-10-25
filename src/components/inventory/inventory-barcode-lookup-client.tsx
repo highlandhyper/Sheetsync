@@ -152,16 +152,44 @@ export function InventoryBarcodeLookupClient() {
     scanProcessedRef.current = true;
     playProfessionalBeep();
 
-    // Capture and upload only when the barcode is absent from the cached master
-    // product list. The Registry independently checks the live DB before saving.
-    if (!productBarcodeExists(cachedProducts, decodedText)) {
+    // Capture synchronously before closing the scanner, then report the actual outcome.
+    if (productBarcodeExists(cachedProducts, decodedText)) {
+      console.info('[UNKNOWN_BARCODE_CAPTURE] Skipped: barcode exists in cached product list.', decodedText);
+    } else {
       const imageBase64 = captureBarcodeScanImage(SCANNER_REGION_ID);
-      if (imageBase64) {
+      if (!imageBase64) {
+        toast({
+          variant: 'destructive',
+          title: 'Photo not captured',
+          description: 'The barcode was scanned, but the camera frame was unavailable. Please scan again.',
+        });
+      } else {
         void uploadUnknownBarcodeImageAction({ barcode: decodedText, imageBase64 })
           .then(result => {
-            if (!result.success) console.warn('[Unknown barcode capture] Upload was not completed.');
+            if (!result.success) {
+              toast({
+                variant: 'destructive',
+                title: 'Photo upload failed',
+                description: result.message || 'The Registry rejected the upload. Check Vercel logs.',
+              });
+            } else {
+              const outcome = result.data as { uploaded?: boolean; skipped?: boolean; reason?: string } | undefined;
+              toast({
+                title: outcome?.skipped ? 'Photo not needed' : 'Unknown barcode photo saved',
+                description: outcome?.skipped
+                  ? (outcome.reason || 'This barcode already exists in the live product database.')
+                  : 'The photo was sent to the Registry.',
+              });
+            }
           })
-          .catch(() => console.warn('[Unknown barcode capture] Upload request failed.'));
+          .catch(error => {
+            console.error('[UNKNOWN_BARCODE_CAPTURE] Upload action threw:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Photo upload request failed',
+              description: error instanceof Error ? error.message : 'Check the Vercel runtime logs.',
+            });
+          });
       }
     }
 
