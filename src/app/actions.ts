@@ -24,6 +24,7 @@ import {
   addExpiryReminder,
   resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
+  deleteProductByBarcode as dbDeleteProductByBarcode,
   getAllOnDisplayAlerts,
   saveSupplierContactsToSheet,
   updateSupplierAcrossRegistry,
@@ -568,6 +569,38 @@ export async function triggerManualExpirySmsAction(phone: string, productName: s
 
 export async function triggerResolvedSmsAction(phone: string, productName: string, staffName: string) {
     return dispatchToRegistry('triggerResolvedSms', { phone, productName, staffName });
+}
+
+export async function bulkDeleteProductsAction(email: string, ids: string[]) {
+    try {
+        const uniqueIds = Array.from(new Set((ids || []).map((id) => String(id || '').trim()).filter(Boolean)));
+        if (uniqueIds.length === 0) {
+            return { success: false, message: 'Select at least one product to delete.' };
+        }
+
+        const results: Array<{ id: string; success: boolean }> = [];
+        for (const id of uniqueIds) {
+            const deleted = await dbDeleteProductByBarcode(email || 'Admin', id);
+            results.push({ id, success: deleted });
+        }
+
+        const failed = results.filter((result) => !result.success);
+        revalidatePath('/products/list');
+        if (failed.length > 0) {
+            return {
+                success: false,
+                message: `Deleted ${results.length - failed.length} of ${results.length} selected products. ${failed.length} product(s) could not be found; refresh the catalog and try again.`,
+                data: results
+            };
+        }
+        return { success: true, data: results };
+    } catch (error: any) {
+        console.error('[PRODUCT_DELETE] Failed to delete catalog products:', error);
+        return {
+            success: false,
+            message: error?.message || 'Could not delete products from the catalog. Please refresh and try again.'
+        };
+    }
 }
 
 export async function bulkDeleteInventoryItemsAction(email: string, ids: string[]) {
