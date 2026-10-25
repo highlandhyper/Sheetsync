@@ -257,12 +257,12 @@ export function QuickSupplierEditDialog({
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">SMS Node</Label>
-                            <Input {...register('phone')} className="h-11 font-bold bg-background border-border/60" placeholder="+974..." />
+                            <Input {...register('phone')} className="h-11 font-bold bg-background border-border/60" placeholder="+974 XXXXXXXX" required />
                         </div>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dispatch Email</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dispatch Email (Optional)</Label>
                         <Input type="email" {...register('email')} className="h-11 font-bold bg-background border-border/60" placeholder="vendor@domain.com" />
                     </div>
                   </div>
