@@ -74,18 +74,6 @@ export default function SupplierPortalPage() {
         });
     }, []);
 
-    const reportProductDispute = useCallback((product: (typeof groupedStock)[number]) => {
-        const message = [
-            'Hello Highland Hypermarket, I would like to dispute a product listed in my supplier stock portal.',
-            `Supplier: ${supplier?.name || 'Unknown'} (ID: ${supplier?.supplierCode || code})`,
-            `Product: ${product.productName}`,
-            `Barcode: ${product.barcode || 'No barcode'}`,
-            `Recorded quantity: ${product.quantity}`,
-            'Reason: This product does not belong to my company. Please verify and correct the supplier stock record.',
-        ].join('\\n');
-        window.open(`https://wa.me/97444728867?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    }, [supplier, code]);
-
     useEffect(() => {
         if (isCacheReady) {
             setIsLoading(false);
@@ -131,6 +119,19 @@ export default function SupplierPortalPage() {
         });
         return Array.from(groups.values()).sort((a, b) => a.productName.localeCompare(b.productName));
     }, [supplierStock]);
+
+
+    const reportProductDispute = useCallback((product: (typeof groupedStock)[number]) => {
+        const message = [
+            'Hello Highland Hypermarket, I would like to dispute a product listed in my supplier stock portal.',
+            `Supplier: ${supplier?.name || 'Unknown'} (ID: ${supplier?.supplierCode || code})`,
+            `Product: ${product.productName}`,
+            `Barcode: ${product.barcode || 'No barcode'}`,
+            `Recorded quantity: ${product.quantity}`,
+            'Reason: This product does not belong to my company. Please verify and correct the supplier stock record.',
+        ].join('\\n');
+        window.open(`https://wa.me/97444728867?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    }, [supplier, code]);
 
     const filteredStock = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -237,6 +238,7 @@ export default function SupplierPortalPage() {
                     <Badge variant="outline" className="hidden shrink-0 items-center gap-1.5 border-emerald-500/30 bg-emerald-500/5 text-[10px] text-emerald-700 sm:inline-flex">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> LIVE
                     </Badge>
+                    </div>
                 </div>
             </header>
 
