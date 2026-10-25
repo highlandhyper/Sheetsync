@@ -65,7 +65,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import { addInventoryItemSchema, type AddInventoryItemFormValues } from '@/lib/schemas';
-import { addInventoryItemAction, fetchProductAction, fetchProductExternalDataAction } from '@/app/actions';
+import { updateProductAddRequestAction, addInventoryItemAction, fetchProductAction, fetchProductExternalDataAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useDataCache } from '@/context/data-cache-context';
@@ -187,6 +187,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
   const [suggestedProductName, setSuggestedProductName] = useState('');
+  const [productAddRequestId, setProductAddRequestId] = useState<string | undefined>();
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
   const [foundInGlobalRegistry, setFoundInGlobalRegistry] = useState(false);
 
@@ -255,6 +256,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setProductSupplier('');
       setHasRequestedProduct(false);
       setSuggestedProductName('');
+      setProductAddRequestId(undefined);
       setFoundInGlobalRegistry(false);
       
       const normalizedTerm = barcode.replace(/^0+/, '');
@@ -287,7 +289,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           }
           setProductLookupError('SKU not found in local registry. Admin has been notified. You can continue logging this item.');
           setIsFetchingProduct(false);
-          await requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', barcode, (externalRes.success && externalRes.data?.name) || 'Unknown product');
+          const requestId = await requestSpecialEntry(allFormValues.staffName || 'Viewer', 'product_add', barcode, (externalRes.success && externalRes.data?.name) || 'Unknown product');
+          setProductAddRequestId(requestId);
           setHasRequestedProduct(true);
           toast({ title: 'Admin notified', description: 'This barcode is not registered yet. You can continue logging; product and supplier details will sync after admin adds it.' });
           return true;
@@ -620,6 +623,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
 
                         {/* STEP 2: DETAILS */}
                         <div className={cn(currentStep !== 1 && "hidden", "space-y-2.5 sm:space-y-3")}>
+                            {productLookupError && (
+                                <div className="space-y-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                                    <Label htmlFor="suggested-product-name" className="text-xs font-semibold text-foreground">Product name for admin confirmation</Label>
+                                    <Input id="suggested-product-name" value={suggestedProductName} onChange={(event) => setSuggestedProductName(event.target.value)} onBlur={async () => {
+                                        if (productAddRequestId && suggestedProductName.trim()) {
+                                            const result = await updateProductAddRequestAction(productAddRequestId, suggestedProductName);
+                                            if (!result.success) toast({ title: 'Could not update request', description: result.message, variant: 'destructive' });
+                                        }
+                                    }} placeholder="Enter the name printed on the item" className="h-10 rounded-lg bg-background text-sm" maxLength={180} />
+                                    <p className="text-[10px] leading-relaxed text-muted-foreground">Admin will use this name to identify and confirm the product before registering it.</p>
+                                </div>
+                            )}
                             {productName && (
                                 <div className="relative overflow-hidden rounded-2xl border-0 bg-primary/[0.055] p-3">
                                     <div className="flex min-w-0 items-center gap-3">
