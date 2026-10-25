@@ -84,7 +84,17 @@ async function dispatchToRegistry(action: string, payload: any = {}) {
         if (!response.ok) throw new Error("HTTP " + response.status);
         
         const result = await response.json();
-        return result.status === 'success' ? { success: true, data: result } : { success: false, message: result.message };
+        if (action === 'uploadUnknownBarcodeImage') {
+            console.info('[UNKNOWN_BARCODE_UPLOAD] Apps Script response', {
+                status: result?.status || 'unknown',
+                uploaded: result?.uploaded === true,
+                skipped: result?.skipped === true,
+                message: result?.message || result?.reason || null,
+            });
+        }
+        return result.status === 'success'
+            ? { success: true, data: result, message: result.message || result.reason || undefined }
+            : { success: false, message: result.message || 'Apps Script returned an unsuccessful response.' };
     } catch (e: any) {
         console.error(`Handshake Failure [${action}]:`, e.message);
         return { success: false, message: "Handshake Timeout: Check Google Script deployment." };
@@ -111,10 +121,27 @@ export async function uploadUnknownBarcodeImageAction(input: {
 
   if (!barcode || barcode.length > 100) return { success: false, message: 'Invalid barcode.' };
   if (!imageBase64 || imageBase64.length > 1_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64)) {
+    console.error('[UNKNOWN_BARCODE_UPLOAD] Rejected before Apps Script: invalid image payload', {
+      barcode,
+      imageLength: imageBase64.length,
+    });
     return { success: false, message: 'Invalid or oversized image.' };
   }
 
-  return dispatchToRegistry('uploadUnknownBarcodeImage', { barcode, imageBase64, staffName });
+  console.info('[UNKNOWN_BARCODE_UPLOAD] Sending image to Apps Script', {
+    barcode,
+    imageLength: imageBase64.length,
+    configuredUrl: Boolean(APPSCRIPT_API_URL),
+    configuredPassword: Boolean(APPSCRIPT_PASS),
+  });
+  const result = await dispatchToRegistry('uploadUnknownBarcodeImage', { barcode, imageBase64, staffName });
+  if (!result.success) {
+    console.error('[UNKNOWN_BARCODE_UPLOAD] Apps Script request failed', {
+      barcode,
+      message: result.message || 'Unknown registry error',
+    });
+  }
+  return result;
 }
 
 export async function fetchSupplierPortalData(supplierCodeInput: string) {
