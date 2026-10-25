@@ -134,13 +134,13 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
                 <Label htmlFor="phone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SMS Node</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974..." />
+                  <Input id="phone" {...register('phone')} className="h-11 font-bold pl-9 bg-muted/10" placeholder="+974 XXXXXXXX" required />
                 </div>
               </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Dispatch Email</Label>
+            <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Dispatch Email (Optional)</Label>
             <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
                 <Input id="email" type="email" {...register('email')} className="h-11 font-bold pl-9 bg-muted/10" />
@@ -185,7 +185,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
             <DialogClose asChild>
                 <Button type="button" variant="ghost" className="font-bold">Discard</Button>
             </DialogClose>
-            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20 bg-primary text-white">
+            <Button type="submit" disabled={isActionPending} className="flex-1 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
                 {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Sync Registry Node
             </Button>
@@ -209,7 +209,7 @@ export function EditSupplierDialog({ isOpen, onOpenChange, supplier }: { isOpen:
             </DialogHeader>
             <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
                 <Button variant="ghost" onClick={() => setIsSyncWarningOpen(false)} className="font-bold h-12 sm:flex-1">Abort</Button>
-                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 sm:flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-white shadow-xl shadow-primary/20">
+                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 sm:flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/20">
                     Sync All Registry Nodes
                 </Button>
             </DialogFooter>
