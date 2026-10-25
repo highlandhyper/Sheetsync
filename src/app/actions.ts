@@ -96,6 +96,27 @@ async function dispatchToRegistry(action: string, payload: any = {}) {
  * The portal is accessed by supplier code and should work without staff Firebase login.
  * Only the matching supplier's stock is returned to the browser.
  */
+/**
+ * Sends an unknown barcode's cropped camera frame to the existing Registry Apps Script.
+ * Apps Script performs a second barcode-exists check against the master DB before saving.
+ */
+export async function uploadUnknownBarcodeImageAction(input: {
+  barcode: string;
+  imageBase64: string;
+  staffName?: string;
+}) {
+  const barcode = String(input?.barcode || '').trim();
+  const imageBase64 = String(input?.imageBase64 || '').trim();
+  const staffName = String(input?.staffName || 'Unknown staff').trim().slice(0, 100);
+
+  if (!barcode || barcode.length > 100) return { success: false, message: 'Invalid barcode.' };
+  if (!imageBase64 || imageBase64.length > 1_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64)) {
+    return { success: false, message: 'Invalid or oversized image.' };
+  }
+
+  return dispatchToRegistry('uploadUnknownBarcodeImage', { barcode, imageBase64, staffName });
+}
+
 export async function fetchSupplierPortalData(supplierCodeInput: string) {
   try {
     const supplierCode = String(supplierCodeInput || '').trim();
