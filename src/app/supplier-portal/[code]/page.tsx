@@ -139,12 +139,20 @@ export default function SupplierPortalPage() {
 
     if (isLoading) {
         return (
-            <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-5">
-                <div className="rounded-2xl border bg-muted/40 p-4">
-                    <ShieldCheck className="h-9 w-9 text-primary" strokeWidth={1.5} />
+            <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-5 text-center">
+                <img
+                    src="/logo-pwa.jpg"
+                    alt="SheetSync app logo"
+                    className="h-20 w-20 rounded-2xl object-contain"
+                    width={80}
+                    height={80}
+                />
+                <div className="space-y-1">
+                    <h1 className="text-lg font-semibold tracking-tight">Highland Hypermarket</h1>
+                    <p className="text-sm text-muted-foreground">Supplier Stock Portal</p>
                 </div>
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Loading supplier stock…</p>
+                <Loader2 className="mt-1 h-5 w-5 animate-spin text-primary" aria-label="Loading" />
+                <p className="text-sm text-muted-foreground">Loading your stock…</p>
             </main>
         );
     }
