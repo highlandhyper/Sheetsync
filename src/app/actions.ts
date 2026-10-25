@@ -310,15 +310,22 @@ export async function saveLocationListAction(locations: string[]) {
 
 export async function addSupplierAction(prevState: any, formData: FormData) {
     try {
-        const name = formData.get('supplierName') as string;
-        const email = formData.get('userEmail') as string || 'Admin';
-        const id = `s_${Date.now()}`;
-        const newSupplier: Supplier = { id, name };
+        const name = String(formData.get('supplierName') || '').trim();
+        const supplierCode = String(formData.get('supplierCode') || '').trim();
+        const phone = String(formData.get('phone') || '').trim();
+        const email = String(formData.get('email') || '').trim();
+        if (!name || !supplierCode || !phone) return { success: false, message: 'Supplier name, supplier code, and phone number are required.' };
+        if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return { success: false, message: 'Enter a valid email address or leave it blank.' };
         const meta = await getAppMetaData();
-        await saveSupplierContactsToSheet([...meta.supplierContacts, newSupplier]);
+        const duplicateCode = (meta.supplierContacts || []).some((item: Supplier) => String(item.supplierCode || '').trim().toLowerCase() === supplierCode.toLowerCase());
+        if (duplicateCode) return { success: false, message: 'This supplier code already exists.' };
+        const newSupplier: Supplier = { id: `s_${Date.now()}`, name, supplierCode, phone, email, lastReportValue: 0 };
+        const saved = await saveSupplierContactsToSheet([...(meta.supplierContacts || []), newSupplier]);
+        if (!saved) return { success: false, message: 'Supplier could not be saved to the registry.' };
+        revalidatePath('/suppliers');
         return { success: true, data: sanitizeForJSON(newSupplier) };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        return { success: false, message: e.message || 'Could not save supplier.' };
     }
 }
 
