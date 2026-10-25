@@ -62,7 +62,7 @@ export const editInventoryItemSchema = z.object({
 export type EditInventoryItemFormValues = z.infer<typeof editInventoryItemSchema>;
 
 export const editSupplierSchema = z.object({
-  supplierId: z.string().min(1, "Supplier ID is required for tracking."),
+  supplierId: z.string().optional().or(z.literal('')),
   currentSupplierName: z.string().min(1, "Current supplier name is required."),
   newSupplierName: z.string().min(1, "New supplier name is required."),
   supplierCode: z.string().min(1, "Supplier code is required."),
