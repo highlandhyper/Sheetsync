@@ -239,6 +239,50 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string) {
     }
 }
 
+export async function createProductFromApprovalAction(requestId: string, productName: string, supplierName: string, costPrice: string, adminEmail: string) {
+  try {
+    const name = productName.trim();
+    const barcode = '';
+    const meta = await getAppMetaData();
+    const requests = meta.specialRequests || [];
+    const req = requests.find(r => r.id === requestId && r.type === 'product_add' && r.status === 'pending');
+    if (!req) throw new Error('Pending product request not found.');
+    const requestedBarcode = String(req.reason || '').trim();
+    if (!requestedBarcode) throw new Error('The request does not contain a barcode.');
+    if (!name) throw new Error('Enter the confirmed product name.');
+    const existing = await getProductDetailsByBarcode(requestedBarcode);
+    if (existing) throw new Error('This barcode is already registered. Refresh the product list.');
+    const parsedCost = costPrice.trim() ? Number(costPrice) : undefined;
+    if (parsedCost !== undefined && (!Number.isFinite(parsedCost) || parsedCost < 0)) throw new Error('Cost price must be a valid non-negative number.');
+    await dbAddProduct(adminEmail || 'Admin', { barcode: requestedBarcode, productName: name, supplierName: supplierName.trim(), costPrice: parsedCost });
+    req.suggestedProductName = name;
+    req.status = 'approved';
+    req.approvedAt = new Date().toISOString();
+    req.isDismissedByAdmin = true;
+    await saveSpecialRequestsToSheet(requests);
+    revalidatePath('/approvals');
+    revalidatePath('/products/list');
+    revalidatePath('/inventory');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Could not create product.' };
+  }
+}
+
+export async function updateProductAddRequestAction(requestId: string, suggestedProductName: string) {
+  try {
+    const meta = await getAppMetaData();
+    const requests = meta.specialRequests || [];
+    const req = requests.find(r => r.id === requestId && r.type === 'product_add' && r.status === 'pending');
+    if (!req) throw new Error('Pending product request not found.');
+    req.suggestedProductName = suggestedProductName.trim().slice(0, 180) || 'Name not provided';
+    await saveSpecialRequestsToSheet(requests);
+    revalidatePath('/approvals');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Could not update product request.' };
+  }
+}
 export async function approveRequestAction(requestId: string, adminEmail: string, durationMinutes?: number) {
   try {
     const meta = await getAppMetaData();
