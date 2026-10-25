@@ -40,7 +40,7 @@ export const addSupplierSchema = z.object({
   supplierName: z.string().min(1, "Supplier name is required."),
   supplierCode: z.string().min(1, "Supplier code is required."),
   email: z.string().email("Invalid email").optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  phone: z.string().trim().min(1, "Phone number is required."),
 });
 export type AddSupplierFormValues = z.infer<typeof addSupplierSchema>;
 
@@ -67,7 +67,7 @@ export const editSupplierSchema = z.object({
   newSupplierName: z.string().min(1, "New supplier name is required."),
   supplierCode: z.string().min(1, "Supplier code is required."),
   email: z.string().email("Invalid email").optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  phone: z.string().trim().min(1, "Phone number is required."),
 });
 export type EditSupplierFormValues = z.infer<typeof editSupplierSchema>;
 
