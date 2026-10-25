@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { submitSupplierDisputeAction } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 import { useDataCache } from '@/context/data-cache-context';
 import {
     Package,
@@ -49,6 +51,8 @@ export default function SupplierPortalPage() {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const { toast } = useToast();
+    const [submittingDispute, setSubmittingDispute] = useState<string | null>(null);
 
     useEffect(() => {
         try {
@@ -121,17 +125,16 @@ export default function SupplierPortalPage() {
     }, [supplierStock]);
 
 
-    const reportProductDispute = useCallback((product: (typeof groupedStock)[number]) => {
-        const message = [
-            'Hello Highland Hypermarket, I would like to dispute a product listed in my supplier stock portal.',
-            `Supplier: ${supplier?.name || 'Unknown'} (ID: ${supplier?.supplierCode || code})`,
-            `Product: ${product.productName}`,
-            `Barcode: ${product.barcode || 'No barcode'}`,
-            `Recorded quantity: ${product.quantity}`,
-            'Reason: This product does not belong to my company. Please verify and correct the supplier stock record.',
-        ].join('\\n');
-        window.open(`https://wa.me/97444728867?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    }, [supplier, code]);
+    const reportProductDispute = useCallback(async (product: (typeof groupedStock)[number]) => {
+        if (!supplier?.supplierCode || submittingDispute) return;
+        setSubmittingDispute(product.key);
+        try {
+            const result = await submitSupplierDisputeAction({ supplierCode: supplier.supplierCode, productName: product.productName, barcode: product.barcode, quantity: product.quantity });
+            if (!result.success) { toast({ title: 'Dispute not submitted', description: result.message || 'Please try again.', variant: 'destructive' }); return; }
+            toast({ title: 'Dispute submitted', description: 'Your dispute is now waiting for Highland Hypermarket approval.' });
+        } catch { toast({ title: 'Submission failed', description: 'Could not send the dispute. Please try again.', variant: 'destructive' }); }
+        finally { setSubmittingDispute(null); }
+    }, [supplier, submittingDispute, toast]);
 
     const filteredStock = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -339,7 +342,7 @@ export default function SupplierPortalPage() {
                                                 <span className="truncate text-sm font-medium">View full list <span className="font-normal text-muted-foreground">({product.batches.length})</span></span>
                                                 <ChevronRight className="h-4 w-4 shrink-0" />
                                             </Button>
-                                            <Button type="button" variant="outline" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs" onClick={() => reportProductDispute(product)}>
+                                            <Button type="button" variant="outline" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs" onClick={() => void reportProductDispute(product)} disabled={!!submittingDispute}>
                                                 <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
                                             </Button>
                                         </div>
