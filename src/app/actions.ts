@@ -141,6 +141,37 @@ export async function sendManualSupplierReportAction(supplierName: string) {
     return dispatchToRegistry('sendManualSupplierReport', { supplierName });
 }
 
+export async function submitSupplierDisputeAction(input: { supplierCode: string; productName: string; barcode: string; quantity: number }) {
+  try {
+    const supplierCode = String(input.supplierCode || '').trim();
+    const productName = String(input.productName || '').trim();
+    const barcode = String(input.barcode || '').trim();
+    const quantity = Number(input.quantity);
+    if (!supplierCode || !productName || !Number.isFinite(quantity) || quantity < 0) return { success: false, message: 'Invalid supplier dispute details.' };
+    const meta = await getAppMetaData();
+    const supplier = (meta.supplierContacts || []).find((item: Supplier) => String(item.supplierCode || '').trim().toUpperCase() === supplierCode.toUpperCase());
+    if (!supplier) return { success: false, message: 'Supplier account could not be verified.' };
+    const requests = meta.specialRequests || [];
+    const duplicate = requests.find((request: SpecialEntryRequest) => request.type === 'supplier_dispute' && request.status === 'pending' && request.supplierCode?.toUpperCase() === supplierCode.toUpperCase() && request.disputedBarcode === barcode);
+    if (duplicate) return { success: false, message: 'A dispute for this product is already awaiting review.' };
+    const dispute: SpecialEntryRequest = {
+      id: `supplier_dispute_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      userEmail: supplier.email || `supplier-${supplierCode.toLowerCase()}@portal.local`,
+      staffName: supplier.name, supplierName: supplier.name, supplierCode: supplier.supplierCode || supplierCode,
+      disputedBarcode: barcode, disputedQuantity: quantity, suggestedProductName: productName,
+      reason: 'Supplier reports that this product does not belong to their company.',
+      status: 'pending', type: 'supplier_dispute', requestedAt: new Date().toISOString(),
+      isDismissedByAdmin: false, isReadByUser: false,
+    };
+    await saveSpecialRequestsToSheet([dispute, ...requests]);
+    revalidatePath('/approvals');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SUPPLIER_DISPUTE] Submission failed:', error);
+    return { success: false, message: error.message || 'Could not submit dispute.' };
+  }
+}
+
 export async function fetchOnDisplayAlertsAction() {
   try {
     const alerts = await getAllOnDisplayAlerts();
