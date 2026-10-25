@@ -360,25 +360,26 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         // 1. Optimistic UI update
         setData(p => ({
             ...p,
-            supplierContacts: p.supplierContacts.map(s => s.id === id ? { ...s, name: newName, ...meta } : s),
-            suppliers: p.suppliers.map(s => s.name === oldName ? { ...s, name: newName, ...meta } : s),
+            supplierContacts: id ? p.supplierContacts.map(s => s.id === id ? { ...s, name: newName, ...meta } : s) : [...p.supplierContacts, { id: `s_${Date.now()}`, name: newName, ...meta, lastReportValue: 0 } as Supplier],
+            suppliers: p.suppliers.some(s => s.id === id) ? p.suppliers.map(s => s.id === id ? { ...s, name: newName, ...meta } : s) : [...p.suppliers, { id: `s_${Date.now()}`, name: newName, ...meta, lastReportValue: 0 } as Supplier],
             products: p.products.map(pr => pr.supplierName === oldName ? { ...pr, supplierName: newName } : pr),
             inventoryItems: p.inventoryItems.map(i => i.supplierName === oldName ? { ...i, supplierName: newName } : i)
         }));
 
-        // 2. Async DB update
         if (navigator.onLine) {
             const formData = new FormData();
-            formData.append('supplierId', id);
+            formData.append('supplierId', id || '');
             formData.append('currentSupplierName', oldName);
             formData.append('newSupplierName', newName);
-            if (meta.supplierCode) formData.append('supplierCode', meta.supplierCode);
-            if (meta.email) formData.append('email', meta.email);
-            if (meta.phone) formData.append('phone', meta.phone);
+            formData.append('supplierCode', meta.supplierCode || '');
+            formData.append('email', meta.email || '');
+            formData.append('phone', meta.phone || '');
             formData.append('userEmail', user?.email || 'Admin');
-            
-            await updateSupplierAction(null, formData);
-            refreshData();
+            const result = await updateSupplierAction(null, formData);
+            if (!result.success) throw new Error(result.message || 'Supplier details could not be saved.');
+            await refreshData();
+        } else {
+            throw new Error('You must be online to save supplier details.');
         }
     },
     addProduct: (pr: any) => setData(p => ({
