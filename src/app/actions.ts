@@ -163,7 +163,8 @@ export async function submitSupplierDisputeAction(input: { supplierCode: string;
       status: 'pending', type: 'supplier_dispute', requestedAt: new Date().toISOString(),
       isDismissedByAdmin: false, isReadByUser: false,
     };
-    await saveSpecialRequestsToSheet([dispute, ...requests]);
+    const saved = await saveSpecialRequestsToSheet([dispute, ...requests]);
+    if (!saved) return { success: false, message: 'Could not save the dispute to the registry. Please try again.' };
     revalidatePath('/approvals');
     return { success: true };
   } catch (error: any) {
