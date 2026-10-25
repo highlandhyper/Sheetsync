@@ -374,7 +374,7 @@ export default function SupplierPortalPage() {
                                                     <Button type="button" variant="ghost" size="sm" className="gap-1 rounded-lg" onClick={() => openProductDetails(product)}>View full list <ChevronRight className="h-4 w-4" /></Button>
                                                 </TableCell>
                                                 <TableCell className="pr-6 text-right">
-                                                    <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => reportProductDispute(product)}>
+                                                    <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => void reportProductDispute(product)} disabled={!!submittingDispute}>
                                                         <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
                                                     </Button>
                                                 </TableCell>
