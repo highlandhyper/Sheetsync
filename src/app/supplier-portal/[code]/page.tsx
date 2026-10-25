@@ -32,6 +32,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function safeDate(value: string | undefined, pattern: string) {
@@ -53,6 +63,7 @@ export default function SupplierPortalPage() {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const { toast } = useToast();
     const [submittingDispute, setSubmittingDispute] = useState<string | null>(null);
+    const [pendingDispute, setPendingDispute] = useState<any>(null);
 
     useEffect(() => {
         try {
@@ -366,7 +377,7 @@ export default function SupplierPortalPage() {
                                                 <span className="truncate text-sm font-medium">View full list <span className="font-normal text-muted-foreground">({product.batches.length})</span></span>
                                                 <ChevronRight className="h-4 w-4 shrink-0" />
                                             </Button>
-                                            <Button type="button" variant="outline" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs" onClick={() => void reportProductDispute(product)} disabled={!!submittingDispute}>
+                                            <Button type="button" variant="outline" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs" onClick={() => setPendingDispute(product)} disabled={!!submittingDispute}>
                                                 <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
                                             </Button>
                                         </div>
@@ -399,7 +410,7 @@ export default function SupplierPortalPage() {
                                                     <Button type="button" variant="ghost" size="sm" className="gap-1 rounded-lg" onClick={() => openProductDetails(product)}>View full list <ChevronRight className="h-4 w-4" /></Button>
                                                 </TableCell>
                                                 <TableCell className="pr-6 text-right">
-                                                    <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => void reportProductDispute(product)} disabled={!!submittingDispute}>
+                                                    <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => setPendingDispute(product)} disabled={!!submittingDispute}>
                                                         <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
                                                     </Button>
                                                 </TableCell>
@@ -424,6 +435,38 @@ export default function SupplierPortalPage() {
                 <footer className="pb-2 pt-2 text-center">
                     <p className="text-[10px] text-muted-foreground">SheetSync · Highland Hypermarket supplier portal</p>
                 </footer>
+            <AlertDialog open={!!pendingDispute} onOpenChange={(open) => { if (!open && !submittingDispute) setPendingDispute(null); }}>
+                <AlertDialogContent className="w-[calc(100%-2rem)] rounded-2xl sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Submit stock dispute?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Confirm that you want to report a discrepancy for this product. The dispute will be sent to Highland Hypermarket for review.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {pendingDispute && (
+                        <div className="rounded-xl border bg-muted/40 p-3 text-sm">
+                            <p className="break-words font-semibold">{pendingDispute.productName}</p>
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">{pendingDispute.barcode || 'No barcode'}</p>
+                            <p className="mt-2 text-muted-foreground">Recorded quantity: <span className="font-semibold text-foreground">{Number(pendingDispute.quantity || 0).toLocaleString()}</span></p>
+                        </div>
+                    )}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={!!submittingDispute}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={!pendingDispute || !!submittingDispute}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                const product = pendingDispute;
+                                if (!product || submittingDispute) return;
+                                setPendingDispute(null);
+                                void reportProductDispute(product);
+                            }}
+                        >
+                            {submittingDispute ? 'Submitting…' : 'Confirm dispute'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             {selectedProduct && (
                 <div className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col bg-background" role="dialog" aria-modal="true" aria-label={`${selectedProduct.productName} stock details`}>
                     <header className="sticky top-0 z-10 flex min-h-14 items-center gap-3 border-b border-border/50 bg-background/95 px-3 py-2 backdrop-blur">
