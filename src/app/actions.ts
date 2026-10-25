@@ -331,16 +331,28 @@ export async function addSupplierAction(prevState: any, formData: FormData) {
 
 export async function updateSupplierAction(prevState: any, formData: FormData) {
     try {
-        const email = formData.get('userEmail') as string || 'Admin';
-        const supplierId = formData.get('supplierId') as string;
-        const oldName = formData.get('currentSupplierName') as string;
-        const newName = formData.get('newSupplierName') as string;
+        const email = String(formData.get('userEmail') || 'Admin');
+        const supplierId = String(formData.get('supplierId') || '').trim();
+        const oldName = String(formData.get('currentSupplierName') || '').trim();
+        const newName = String(formData.get('newSupplierName') || '').trim();
         const meta = {
-            supplierCode: formData.get('supplierCode') as string,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string
+            supplierCode: String(formData.get('supplierCode') || '').trim(),
+            email: String(formData.get('email') || '').trim(),
+            phone: String(formData.get('phone') || '').trim()
         };
-        await updateSupplierAcrossRegistry(email, supplierId, oldName, newName, meta);
+        if (!newName || !meta.supplierCode || !meta.phone) return { success: false, message: 'Supplier name, supplier code, and phone number are required.' };
+        if (meta.email && (!meta.email.includes('@') || !meta.email.split('@')[1]?.includes('.'))) return { success: false, message: 'Enter a valid email address or leave it blank.' };
+        if (!supplierId) {
+            const appMeta = await getAppMetaData();
+            const duplicateCode = (appMeta.supplierContacts || []).some((item: Supplier) => String(item.supplierCode || '').trim().toLowerCase() === meta.supplierCode.toLowerCase());
+            if (duplicateCode) return { success: false, message: 'This supplier code already exists.' };
+            const newSupplier: Supplier = { id: `s_${Date.now()}`, name: newName, ...meta, lastReportValue: 0 };
+            const saved = await saveSupplierContactsToSheet([...(appMeta.supplierContacts || []), newSupplier]);
+            if (!saved) return { success: false, message: 'Supplier could not be saved to the registry.' };
+        } else {
+            await updateSupplierAcrossRegistry(email, supplierId, oldName, newName, meta);
+        }
+        revalidatePath('/suppliers');
         return { success: true };
     } catch (e: any) {
         return { success: false, message: e.message };
