@@ -1,221 +1,303 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useDataCache } from '@/context/data-cache-context';
-import { 
-    Package, 
-    Layers, 
-    ShieldCheck, 
-    Loader2, 
-    Building, 
-    Barcode, 
-    MapPin, 
+import {
+    Package,
+    Layers,
+    ShieldCheck,
+    Loader2,
+    Building,
+    Barcode,
+    MapPin,
     AlertTriangle,
     Wallet,
-    Info
+    Info,
+    Search,
+    RefreshCw,
+    CalendarDays,
+    Clock3,
+    Boxes,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+function safeDate(value: string | undefined, pattern: string) {
+    if (!value) return '—';
+    const parsed = parseISO(value);
+    return isValid(parsed) ? format(parsed, pattern) : '—';
+}
 
 export default function SupplierPortalPage() {
     const params = useParams();
     const code = params?.code as string;
     const { inventoryItems = [], supplierContacts = [], isCacheReady, refreshData } = useDataCache();
     const [isLoading, setIsLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     useEffect(() => {
         if (isCacheReady) {
             setIsLoading(false);
-            // Auto-refresh on mount for live view
-            refreshData();
+            void refreshData();
+            setLastUpdated(new Date());
         }
     }, [isCacheReady, refreshData]);
 
-    const supplier = useMemo(() => 
-        (supplierContacts || []).find(s => s.supplierCode?.toUpperCase() === code?.toUpperCase())
-    , [supplierContacts, code]);
+    const supplier = useMemo(
+        () => (supplierContacts || []).find(s => s.supplierCode?.toUpperCase() === code?.toUpperCase()),
+        [supplierContacts, code]
+    );
 
     const supplierStock = useMemo(() => {
         if (!supplier) return [];
-        return (inventoryItems || []).filter(i => 
-            i.supplierName?.toLowerCase() === supplier.name.toLowerCase() && i.quantity > 0
-        ).sort((a, b) => {
-            const da = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
-            const db = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
-            return db - da;
-        });
+        return (inventoryItems || [])
+            .filter(i => i.supplierName?.toLowerCase() === supplier.name.toLowerCase() && i.quantity > 0)
+            .sort((a, b) => {
+                const da = a.timestamp ? parseISO(a.timestamp).getTime() : 0;
+                const db = b.timestamp ? parseISO(b.timestamp).getTime() : 0;
+                return db - da;
+            });
     }, [inventoryItems, supplier]);
 
-    const stats = useMemo(() => {
-        return {
-            totalUnits: supplierStock.reduce((s, i) => s + i.quantity, 0),
-            totalValue: supplier?.lastReportValue || 0,
-            activeBatches: supplierStock.length
-        };
-    }, [supplierStock, supplier]);
+    const filteredStock = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return supplierStock;
+        return supplierStock.filter(item =>
+            [item.productName, item.barcode, item.location, item.expiryDate]
+                .some(value => String(value ?? '').toLowerCase().includes(term))
+        );
+    }, [supplierStock, search]);
+
+    const stats = useMemo(() => ({
+        totalUnits: supplierStock.reduce((sum, item) => sum + item.quantity, 0),
+        totalValue: supplier?.lastReportValue || 0,
+        activeBatches: supplierStock.length,
+    }), [supplierStock, supplier]);
+
+    const handleRefresh = async () => {
+        if (isRefreshing) return;
+        setIsRefreshing(true);
+        try {
+            await refreshData();
+            setLastUpdated(new Date());
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen space-y-4">
-                <div className="p-5 bg-neutral-50 dark:bg-white/5 rounded-3xl border border-neutral-100 dark:border-white/5 mb-8 animate-pulse">
-                    <ShieldCheck className="h-10 w-10 text-neutral-400 dark:text-neutral-500" strokeWidth={1.5} />
+            <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-5">
+                <div className="rounded-2xl border bg-muted/40 p-4">
+                    <ShieldCheck className="h-9 w-9 text-primary" strokeWidth={1.5} />
                 </div>
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-5 w-5 animate-spin text-neutral-300 dark:text-neutral-700" strokeWidth={2.5} />
-                    <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">Establishing registry link...</p>
-                </div>
-            </div>
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading supplier stock…</p>
+            </main>
         );
     }
 
     if (!supplier) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-                <div className="bg-destructive/10 p-4 rounded-2xl mb-4">
+            <main className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
+                <div className="mb-4 rounded-2xl bg-destructive/10 p-4">
                     <AlertTriangle className="h-8 w-8 text-destructive" />
                 </div>
-                <h1 className="text-xl font-bold tracking-tight">Identity Denied</h1>
-                <p className="text-sm text-muted-foreground mt-2 max-w-xs leading-relaxed">
-                    The provided vendor code "{code}" does not match an active registry node.
+                <h1 className="text-xl font-bold">Supplier link unavailable</h1>
+                <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                    This supplier link does not match an active supplier record. Please contact Highland Hypermarket for a new link.
                 </p>
-            </div>
+            </main>
         );
     }
 
     return (
-        <div className="min-h-screen bg-muted/5 pb-20">
-            {/* PORTAL HEADER */}
-            <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10 px-6 py-5">
-                <div className="mx-auto max-w-6xl flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20 shadow-sm">
-                            <Building className="h-6 w-6" />
+        <div className="min-h-[100dvh] bg-muted/20 pb-8">
+            <header className="sticky top-0 z-30 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:px-6 sm:py-4">
+                <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-11 sm:w-11">
+                            <Building className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
-                        <div>
-                            <h1 className="text-xl font-bold tracking-tight leading-none mb-1">{supplier.name}</h1>
-                            <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 bg-primary/5 text-primary border-primary/10">ID: {supplier.supplierCode}</Badge>
-                                <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-                                    <ShieldCheck className="h-3 w-3 text-emerald-500" /> Authorized Stock Portal
+                        <div className="min-w-0">
+                            <h1 className="truncate text-base font-bold leading-tight sm:text-xl">{supplier.name}</h1>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="h-5 px-1.5 text-[10px]">ID: {supplier.supplierCode}</Badge>
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground sm:text-xs">
+                                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                                    Supplier portal
                                 </span>
                             </div>
                         </div>
                     </div>
-                    <Badge variant="outline" className="h-8 px-3 rounded-full font-bold text-[10px] uppercase tracking-wider border-emerald-500/20 text-emerald-600 bg-emerald-500/5">
-                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Live Registry Link
+                    <Badge variant="outline" className="hidden shrink-0 items-center gap-1.5 border-emerald-500/30 bg-emerald-500/5 text-[10px] text-emerald-700 sm:inline-flex">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> LIVE
                     </Badge>
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-6 py-8 space-y-6">
-                {/* SUMMARY GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="rounded-2xl border-none shadow-xl bg-black text-white">
-                        <CardContent className="p-6 flex items-center gap-5">
-                            <div className="bg-white/10 p-3 rounded-2xl"><Layers className="h-7 w-7 text-white" /></div>
-                            <div>
-                                <p className="text-[11px] font-medium uppercase tracking-wider opacity-60">Total Active Stock</p>
-                                <div className="flex items-baseline gap-1.5">
-                                    <span className="text-4xl font-bold tracking-tight">{stats.totalUnits}</span>
-                                    <span className="text-[11px] font-medium uppercase">Units</span>
-                                </div>
+            <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-7">
+                <section aria-label="Stock summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                    <Card className="col-span-2 overflow-hidden rounded-2xl border-0 bg-primary text-primary-foreground shadow-sm sm:col-span-1">
+                        <CardContent className="flex items-center gap-3 p-4 sm:gap-4 sm:p-5">
+                            <div className="rounded-xl bg-white/15 p-2.5"><Layers className="h-5 w-5 sm:h-6 sm:w-6" /></div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">Active stock units</p>
+                                <p className="mt-0.5 text-3xl font-bold leading-none tabular-nums sm:text-4xl">{stats.totalUnits.toLocaleString()}</p>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="rounded-2xl border-none shadow-xl bg-card">
-                        <CardContent className="p-6 flex items-center gap-5">
-                            <div className="bg-primary/5 p-3 rounded-2xl"><Wallet className="h-7 w-7 text-primary" /></div>
-                            <div>
-                                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Previous Report Value</p>
-                                <p className="text-2xl font-bold text-foreground">
-                                    <span className="text-[11px] mr-1 font-medium text-primary">QAR</span>
-                                    {stats.totalValue.toLocaleString()}
-                                </p>
+                    <Card className="rounded-2xl border-0 shadow-sm">
+                        <CardContent className="flex h-full items-center gap-3 p-4 sm:gap-4 sm:p-5">
+                            <div className="hidden rounded-xl bg-muted p-2.5 text-primary sm:block"><Wallet className="h-5 w-5" /></div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase leading-snug text-muted-foreground">Previous report value</p>
+                                <p className="mt-1 truncate text-xl font-bold tabular-nums sm:text-2xl"><span className="mr-1 text-[10px] font-semibold text-primary">QAR</span>{stats.totalValue.toLocaleString()}</p>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="rounded-2xl border-none shadow-xl bg-card">
-                        <CardContent className="p-6 flex items-center gap-5">
-                            <div className="bg-muted p-3 rounded-2xl"><Package className="h-7 w-7 text-muted-foreground" /></div>
-                            <div>
-                                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Active Identifiers</p>
-                                <p className="text-2xl font-bold text-foreground">{stats.activeBatches} SKUs</p>
+                    <Card className="rounded-2xl border-0 shadow-sm">
+                        <CardContent className="flex h-full items-center gap-3 p-4 sm:gap-4 sm:p-5">
+                            <div className="hidden rounded-xl bg-muted p-2.5 text-primary sm:block"><Package className="h-5 w-5" /></div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase leading-snug text-muted-foreground">Active products</p>
+                                <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl">{stats.activeBatches.toLocaleString()} <span className="text-xs font-medium text-muted-foreground">items</span></p>
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                </section>
 
-                {/* STOCK TABLE */}
-                <Card className="rounded-2xl border-none shadow-2xl overflow-hidden bg-card">
-                    <CardHeader className="p-8 pb-4 border-b border-white/5 bg-muted/20">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-lg font-bold tracking-tight">Active Stock Registry</CardTitle>
-                                <CardDescription className="text-xs font-medium mt-1">Current units identifying you as the master supplier.</CardDescription>
-                            </div>
-                            <div className="bg-background/80 p-2 rounded-xl flex items-center gap-2 text-[11px] font-bold px-4 border border-white/5">
-                                <Info className="h-3.5 w-3.5 text-primary" />
-                                Updated {format(new Date(), "HH:mm:ss")}
-                            </div>
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                    <div className="space-y-3 border-b bg-muted/20 p-4 sm:flex sm:items-center sm:justify-between sm:space-y-0 sm:p-5">
+                        <div>
+                            <h2 className="text-base font-bold sm:text-lg">Active stock</h2>
+                            <p className="mt-0.5 text-xs text-muted-foreground">Products currently recorded under your supplier account.</p>
                         </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {supplierStock.length > 0 ? (
-                            <Table>
-                                <TableHeader className="bg-muted/10">
-                                    <TableRow className="h-12 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-8">Identification</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Units</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider">Zone</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider">Threshold Date</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider pr-8">Registry Timestamp</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {supplierStock.map((item) => (
-                                        <TableRow key={item.id} className="h-16 group hover:bg-primary/[0.02] border-white/5">
-                                            <TableCell className="pl-8">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-sm text-foreground truncate max-w-[250px]">{item.productName}</span>
-                                                    <span className="font-mono text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5">
-                                                        <Barcode className="h-2.5 w-2.5" /> {item.barcode}
-                                                    </span>
+                        <div className="flex items-center justify-between gap-2 sm:justify-end">
+                            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <Info className="h-3.5 w-3.5" />
+                                {lastUpdated ? `Updated ${format(lastUpdated, 'HH:mm')}` : 'Live stock'}
+                            </span>
+                            <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5 px-3" onClick={handleRefresh} disabled={isRefreshing}>
+                                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                <span>{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="border-b p-3 sm:p-4">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={search}
+                                onChange={event => setSearch(event.target.value)}
+                                placeholder="Search product, barcode or location"
+                                aria-label="Search supplier stock"
+                                className="h-11 rounded-xl pl-9 text-base sm:text-sm"
+                            />
+                            {search && (
+                                <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 h-9 -translate-y-1/2 px-3" onClick={() => setSearch('')}>
+                                    Clear
+                                </Button>
+                            )}
+                        </div>
+                        <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+                            Showing {filteredStock.length} of {supplierStock.length} active items
+                        </p>
+                    </div>
+
+                    {filteredStock.length > 0 ? (
+                        <>
+                            {/* Mobile-first product cards */}
+                            <div className="divide-y md:hidden">
+                                {filteredStock.map(item => (
+                                    <article key={item.id} className="space-y-3 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="break-words text-sm font-semibold leading-snug">{item.productName}</h3>
+                                                <p className="mt-1 flex items-center gap-1.5 break-all font-mono text-[11px] text-muted-foreground">
+                                                    <Barcode className="h-3.5 w-3.5 shrink-0" /> {item.barcode || 'No barcode'}
+                                                </p>
+                                            </div>
+                                            <div className="shrink-0 rounded-xl bg-primary/10 px-3 py-2 text-right">
+                                                <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Qty</p>
+                                                <p className="text-xl font-bold leading-tight tabular-nums text-primary">{item.quantity.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/50 p-2.5">
+                                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-muted-foreground">Location</p>
+                                                    <p className="break-words font-medium">{item.location || 'Not specified'}</p>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <span className="text-base font-bold text-primary tabular-nums">{item.quantity}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-[9px] font-bold px-2 py-0 bg-muted/50 border-none uppercase">
-                                                    <MapPin className="mr-1 h-2.5 w-2.5 text-primary/40" /> {item.location}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                                                {item.expiryDate ? format(parseISO(item.expiryDate), "dd MMM yy") : "---"}
-                                            </TableCell>
-                                            <TableCell className="pr-8 text-[10px] font-mono text-muted-foreground/40 tabular-nums">
-                                                {item.timestamp ? format(parseISO(item.timestamp), "dd/MM/yy HH:mm") : "N/A"}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        ) : (
-                            <div className="py-24 text-center space-y-3 opacity-20">
-                                <Package className="h-16 w-16 mx-auto" strokeWidth={1} />
-                                <p className="text-[11px] font-bold uppercase tracking-widest">Zero Active Registry Links</p>
+                                            </div>
+                                            <div className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/50 p-2.5">
+                                                <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-muted-foreground">Expiry date</p>
+                                                    <p className="font-medium">{safeDate(item.expiryDate, 'dd MMM yyyy')}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                            <Clock3 className="h-3 w-3" />
+                                            Logged: {safeDate(item.timestamp, 'dd MMM yyyy, HH:mm')}
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-                
-                <footer className="pt-8 text-center">
-                    <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/30">SheetSync Industrial Protocol • Secure Portal v5.0</p>
+
+                            {/* Wide-screen table */}
+                            <div className="hidden overflow-x-auto md:block">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/20">
+                                            <TableHead className="pl-6 text-xs">Product / barcode</TableHead>
+                                            <TableHead className="text-right text-xs">Quantity</TableHead>
+                                            <TableHead className="text-xs">Location</TableHead>
+                                            <TableHead className="text-xs">Expiry date</TableHead>
+                                            <TableHead className="pr-6 text-xs">Logged at</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredStock.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="max-w-[360px] pl-6">
+                                                    <p className="truncate font-semibold">{item.productName}</p>
+                                                    <p className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground"><Barcode className="h-3 w-3" />{item.barcode || 'No barcode'}</p>
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold tabular-nums text-primary">{item.quantity.toLocaleString()}</TableCell>
+                                                <TableCell><Badge variant="secondary" className="max-w-[180px] truncate"><MapPin className="mr-1 h-3 w-3 shrink-0" />{item.location || 'Not specified'}</Badge></TableCell>
+                                                <TableCell className="text-sm">{safeDate(item.expiryDate, 'dd MMM yyyy')}</TableCell>
+                                                <TableCell className="pr-6 text-xs text-muted-foreground">{safeDate(item.timestamp, 'dd/MM/yy HH:mm')}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center px-5 py-12 text-center sm:py-16">
+                            <div className="rounded-2xl bg-muted p-4"><Boxes className="h-8 w-8 text-muted-foreground" /></div>
+                            <h3 className="mt-4 text-sm font-semibold">{search ? 'No matching products' : 'No active stock'}</h3>
+                            <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                                {search ? 'Try another product name, barcode or location.' : 'There are currently no active stock entries recorded for this supplier.'}
+                            </p>
+                            {search && <Button variant="outline" size="sm" className="mt-4" onClick={() => setSearch('')}>Clear search</Button>}
+                        </div>
+                    )}
+                </section>
+
+                <footer className="pb-2 pt-2 text-center">
+                    <p className="text-[10px] text-muted-foreground">SheetSync · Highland Hypermarket supplier portal</p>
                 </footer>
             </main>
         </div>
