@@ -97,13 +97,27 @@ export async function fetchAllDataAction(skipProducts: boolean = false) {
     
     const [inventoryItems, auditLogs, meta, expiryReminders, products] = await Promise.all(promises);
     
-    const calculatedSuppliers = skipProducts ? undefined : (products || []).reduce((acc: any[], p: any) => {
-        if (p.supplierName && !acc.some(s => s.name === p.supplierName)) {
-          const contact = meta.supplierContacts.find((c: Supplier) => c.name.toLowerCase() === p.supplierName.toLowerCase());
-          acc.push({ name: p.supplierName, id: `s_${acc.length}`, ...contact });
+    // Build supplier lookup indexes once. Avoid repeated linear scans across the
+    // full product registry (70k+ rows), which made initial sync unnecessarily slow.
+    const calculatedSuppliers = skipProducts ? undefined : (() => {
+        const contactsByName = new Map<string, Supplier>();
+        for (const contact of meta.supplierContacts || []) {
+          const key = String(contact.name || '').trim().toLowerCase();
+          if (key && !contactsByName.has(key)) contactsByName.set(key, contact);
         }
-        return acc;
-    }, []);
+
+        const seenNames = new Set<string>();
+        const result: Supplier[] = [];
+        for (const product of products || []) {
+          const name = String(product.supplierName || '').trim();
+          const key = name.toLowerCase();
+          if (!key || seenNames.has(key)) continue;
+          seenNames.add(key);
+          const contact = contactsByName.get(key);
+          result.push({ ...(contact || {}), name, id: contact?.id || `s_${result.length}` });
+        }
+        return result;
+    })();
 
     return { 
         success: true, 
