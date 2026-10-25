@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 import { approveRequestAction, createProductFromApprovalAction } from '@/app/actions';
@@ -68,7 +69,7 @@ const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label:
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, rejectRequest } = useSpecialEntry();
-    const { refreshData } = useDataCache();
+    const { refreshData, suppliers } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
 
@@ -376,29 +377,49 @@ export function ApprovalCenterClient() {
                                 </div>
                             </div>
                         ) : selectedRequest?.type === 'product_add' ? (
-                            <div className="p-6 bg-orange-500/5 rounded-3xl border border-orange-500/10 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <PackagePlus className="h-6 w-6 text-orange-600" />
-                                    <h4 className="text-lg font-black uppercase text-orange-900 tracking-tight">New SKU Identification</h4>
+                            <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-5 py-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                        <PackagePlus className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h4 className="text-sm font-semibold tracking-tight">Create product</h4>
+                                        <p className="text-xs text-muted-foreground">Confirm the details before adding this barcode to the registry.</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Asset Barcode</p>
-                                        <p className="font-mono text-xl font-black text-orange-900">{selectedRequest.reason}</p>
+                                <div className="space-y-4 p-5">
+                                    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                                        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Unregistered barcode</p>
+                                        <p className="break-all font-mono text-sm font-semibold text-foreground">{selectedRequest.reason || 'Barcode unavailable'}</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="approval-product-name" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Confirm product name *</Label>
-                                        <Input id="approval-product-name" value={createProductName} onChange={(event) => setCreateProductName(event.target.value)} placeholder="Product name from package" maxLength={180} className="bg-background text-foreground" />
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-name" className="text-xs font-medium">Product name <span className="text-destructive">*</span></Label>
+                                        <Input id="approval-product-name" value={createProductName} onChange={(event) => setCreateProductName(event.target.value)} placeholder="Enter confirmed product name" maxLength={180} className="h-10 bg-background" />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="approval-product-supplier" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Supplier name (optional)</Label>
-                                        <Input id="approval-product-supplier" value={createProductSupplier} onChange={(event) => setCreateProductSupplier(event.target.value)} placeholder="Supplier name" className="bg-background text-foreground" />
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-supplier" className="text-xs font-medium">Supplier <span className="text-muted-foreground">(optional)</span></Label>
+                                        <Select value={createProductSupplier || '__none__'} onValueChange={(value) => setCreateProductSupplier(value === '__none__' ? '' : value)}>
+                                            <SelectTrigger id="approval-product-supplier" className="h-10 bg-background">
+                                                <SelectValue placeholder="Select a supplier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="__none__">No supplier selected</SelectItem>
+                                                {suppliers
+                                                    .filter((supplier) => supplier.name?.trim())
+                                                    .slice()
+                                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                                    .map((supplier) => (
+                                                        <SelectItem key={supplier.id || supplier.name} value={supplier.name}>{supplier.name}</SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[11px] text-muted-foreground">Choose from the registered supplier list.</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="approval-product-cost" className="text-[10px] font-bold uppercase tracking-wider text-orange-900/70">Cost price (optional)</Label>
-                                        <Input id="approval-product-cost" type="number" min="0" step="any" value={createProductCost} onChange={(event) => setCreateProductCost(event.target.value)} placeholder="0.00" className="bg-background text-foreground" />
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-cost" className="text-xs font-medium">Cost price <span className="text-muted-foreground">(optional)</span></Label>
+                                        <Input id="approval-product-cost" type="number" min="0" step="any" value={createProductCost} onChange={(event) => setCreateProductCost(event.target.value)} placeholder="0.00" className="h-10 bg-background" />
                                     </div>
-                                    <p className="text-xs text-muted-foreground">Confirming creates the product and updates previous logs for this barcode.</p>
+                                    <p className="text-xs leading-relaxed text-muted-foreground">Creating this product registers the barcode and fills blank product/supplier fields in earlier inventory logs for the same barcode.</p>
                                 </div>
                             </div>
                         ) : (
