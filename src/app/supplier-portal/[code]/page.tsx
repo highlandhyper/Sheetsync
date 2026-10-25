@@ -22,6 +22,9 @@ import {
     ArrowLeft,
     ChevronRight,
     X,
+    Sun,
+    Moon,
+    MessageSquareWarning,
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -45,6 +48,43 @@ export default function SupplierPortalPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
+    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+    useEffect(() => {
+        try {
+            const savedTheme = window.localStorage.getItem('supplier-portal-theme');
+            const initialTheme = savedTheme === 'dark' ? 'dark' : 'light';
+            setTheme(initialTheme);
+            document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+        } catch {
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleTheme = useCallback(() => {
+        setTheme(current => {
+            const next = current === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', next === 'dark');
+            try {
+                window.localStorage.setItem('supplier-portal-theme', next);
+            } catch {
+                // Theme still works for the current page if storage is unavailable.
+            }
+            return next;
+        });
+    }, []);
+
+    const reportProductDispute = useCallback((product: (typeof groupedStock)[number]) => {
+        const message = [
+            'Hello Highland Hypermarket, I would like to dispute a product listed in my supplier stock portal.',
+            `Supplier: ${supplier?.name || 'Unknown'} (ID: ${supplier?.supplierCode || code})`,
+            `Product: ${product.productName}`,
+            `Barcode: ${product.barcode || 'No barcode'}`,
+            `Recorded quantity: ${product.quantity}`,
+            'Reason: This product does not belong to my company. Please verify and correct the supplier stock record.',
+        ].join('\\n');
+        window.open(`https://wa.me/97444728867?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    }, [supplier, code]);
 
     useEffect(() => {
         if (isCacheReady) {
@@ -190,6 +230,10 @@ export default function SupplierPortalPage() {
                             </div>
                         </div>
                     </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                    <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>
+                        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                    </Button>
                     <Badge variant="outline" className="hidden shrink-0 items-center gap-1.5 border-emerald-500/30 bg-emerald-500/5 text-[10px] text-emerald-700 sm:inline-flex">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> LIVE
                     </Badge>
@@ -288,10 +332,15 @@ export default function SupplierPortalPage() {
                                                 <p className="text-[10px] text-muted-foreground">total units</p>
                                             </div>
                                         </div>
-                                        <Button type="button" variant="ghost" className="mt-3 h-10 w-full justify-between rounded-xl px-3 text-primary hover:bg-primary/5" onClick={() => openProductDetails(product)}>
-                                            <span className="text-sm font-medium">View full list <span className="font-normal text-muted-foreground">({product.batches.length})</span></span>
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
+                                        <div className="mt-3 flex gap-2">
+                                            <Button type="button" variant="ghost" className="h-10 min-w-0 flex-1 justify-between rounded-xl px-3 text-primary hover:bg-primary/5" onClick={() => openProductDetails(product)}>
+                                                <span className="truncate text-sm font-medium">View full list <span className="font-normal text-muted-foreground">({product.batches.length})</span></span>
+                                                <ChevronRight className="h-4 w-4 shrink-0" />
+                                            </Button>
+                                            <Button type="button" variant="outline" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs" onClick={() => reportProductDispute(product)}>
+                                                <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
+                                            </Button>
+                                        </div>
                                     </article>
                                 ))}
                             </div>
@@ -304,7 +353,7 @@ export default function SupplierPortalPage() {
                                             <TableHead className="pl-6 text-xs">Product / barcode</TableHead>
                                             <TableHead className="text-right text-xs">Total quantity</TableHead>
                                             <TableHead className="text-center text-xs">Stock logs</TableHead>
-                                            <TableHead className="pr-6 text-right text-xs">Details</TableHead>
+                                            <TableHead className="text-right text-xs">Details</TableHead>\n                                            <TableHead className="pr-6 text-right text-xs">Dispute</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -316,8 +365,13 @@ export default function SupplierPortalPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right font-semibold tabular-nums">{product.quantity.toLocaleString()}</TableCell>
                                                 <TableCell className="text-center text-sm text-muted-foreground">{product.batches.length}</TableCell>
-                                                <TableCell className="pr-6 text-right">
+                                                <TableCell className="text-right">
                                                     <Button type="button" variant="ghost" size="sm" className="gap-1 rounded-lg" onClick={() => openProductDetails(product)}>View full list <ChevronRight className="h-4 w-4" /></Button>
+                                                </TableCell>
+                                                <TableCell className="pr-6 text-right">
+                                                    <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => reportProductDispute(product)}>
+                                                        <MessageSquareWarning className="h-3.5 w-3.5" /> Dispute
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
