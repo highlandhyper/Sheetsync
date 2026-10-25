@@ -242,7 +242,6 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string) {
 export async function createProductFromApprovalAction(requestId: string, productName: string, supplierName: string, costPrice: string, adminEmail: string) {
   try {
     const name = productName.trim();
-    const barcode = '';
     const meta = await getAppMetaData();
     const requests = meta.specialRequests || [];
     const req = requests.find(r => r.id === requestId && r.type === 'product_add' && r.status === 'pending');
