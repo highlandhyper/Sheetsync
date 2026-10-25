@@ -317,9 +317,12 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                       imageBase64: capturedScan.imageBase64,
                       staffName: allFormValues.staffName || 'Viewer',
                   });
-                  if (uploadResult.success) {
+                  if (uploadResult.success && uploadResult.data?.uploaded === true) {
                       console.info('[UNKNOWN_BARCODE_UPLOAD] Log New Item upload succeeded', { barcode });
                       toast({ title: 'Barcode photo uploaded', description: 'The unknown barcode photo was saved to Google Drive.' });
+                  } else if (uploadResult.success && uploadResult.data?.skipped === true) {
+                      console.info('[UNKNOWN_BARCODE_UPLOAD] Apps Script skipped upload because barcode already exists in master DB', { barcode });
+                      toast({ title: 'Barcode already registered', description: 'The master registry already contains this barcode, so no photo was saved.' });
                   } else {
                       console.error('[UNKNOWN_BARCODE_UPLOAD] Log New Item upload failed', {
                           barcode,
