@@ -180,7 +180,11 @@ export interface SpecialEntryRequest {
   reason?: string;
   suggestedProductName?: string;
   status: 'pending' | 'approved' | 'rejected' | 'used' | 'expired' | 'blocked';
-  type: 'single' | 'timed' | 'product_add' | 'inventory_edit' | 'on_display_request';
+  type: 'single' | 'timed' | 'product_add' | 'inventory_edit' | 'on_display_request' | 'supplier_dispute';
+  supplierName?: string;
+  supplierCode?: string;
+  disputedBarcode?: string;
+  disputedQuantity?: number;
   source?: 'on_display_expiry' | 'standard';
   durationMinutes?: number;
   requestedAt: string;

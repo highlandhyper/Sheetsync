@@ -96,7 +96,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
       localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
       return { success: true, role: determinedRole };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      const code = String(error?.code || '');
+      let message = 'Unable to sign in. Please try again.';
+      switch (code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+        case 'auth/invalid-email':
+          message = 'Invalid username or password. Please check your details and try again.';
+          break;
+        case 'auth/too-many-requests':
+          message = 'Too many failed sign-in attempts. Please wait a few minutes and try again.';
+          break;
+        case 'auth/network-request-failed':
+          message = 'Network connection failed. Check your internet connection and try again.';
+          break;
+        case 'auth/user-disabled':
+          message = 'This account has been disabled. Contact your administrator.';
+          break;
+        case 'auth/operation-not-allowed':
+          message = 'Sign-in is currently unavailable. Contact your administrator.';
+          break;
+        case 'auth/timeout':
+          message = 'Sign-in took too long. Check your connection and try again.';
+          break;
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[AUTH] Sign-in failed:', code || 'unknown-auth-error');
+      }
+      return { success: false, error: message };
     }
   }, [determineRole]);
 

@@ -42,23 +42,30 @@ export function LoginForm({ onBack, desktop = false }: LoginFormProps) {
   const passwordValue = watch('password');
 
   const onSubmit = async (data: LoginFormValues) => {
+    if (formIsSubmitting) return;
     setFormIsSubmitting(true);
-    const { success, error, role: determinedRole } = await login(data);
-    if (success) {
-      if (determinedRole === 'admin') {
-        router.push('/dashboard');
-      } else {
-        router.push('/inventory/add');
+    try {
+      const { success, error, role: determinedRole } = await login(data);
+      if (success) {
+        toast({ title: 'Signed in', description: 'Login successful.' });
+        router.replace(determinedRole === 'admin' ? '/dashboard' : '/inventory/add');
+        return;
       }
-      toast({ title: 'Success', description: 'Logged in successfully.' });
-    } else {
+
       toast({
-        title: 'Access Denied',
-        description: error || 'Invalid credentials.',
+        title: 'Sign-in failed',
+        description: error || 'Unable to sign in. Please try again.',
         variant: 'destructive',
       });
+    } catch {
+      toast({
+        title: 'Connection problem',
+        description: 'Unable to complete sign-in. Check your connection and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setFormIsSubmitting(false);
     }
-    setFormIsSubmitting(false);
   };
 
   const isLoading = authIsLoading || formIsSubmitting;

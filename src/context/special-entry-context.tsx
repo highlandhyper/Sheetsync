@@ -17,7 +17,7 @@ interface SpecialEntryContextType {
   pendingActivationSession: SpecialEntryRequest | null;
   isActivationDialogOpen: boolean;
   setActivationDialogOpen: (open: boolean) => void;
-  requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => Promise<void>;
+  requestSpecialEntry: (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => Promise<string | undefined>;
   requestInventoryEdit: (item: InventoryItem, updatedValues: Partial<InventoryItem>) => Promise<void>;
   grantProactiveEntry: (staffName: string, durationMinutes?: number) => Promise<void>;
   approveRequest: (id: string, durationMinutes?: number) => Promise<void>;
@@ -112,9 +112,10 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   }, [specialRequests, user, activatedSessionId, isInitialized, role, toast]);
 
   const requestSpecialEntry = useCallback(async (staffName: string, type: 'single' | 'timed' | 'product_add', reason?: string, suggestedName?: string) => {
-    if (!user) return;
+    if (!user) return undefined;
+    const requestId = 'req_' + Date.now();
     const newRequest: SpecialEntryRequest = {
-      id: `req_${Date.now()}`,
+      id: requestId,
       userEmail: user.email!.toLowerCase().trim(),
       staffName: staffName.toUpperCase(),
       reason,
@@ -127,6 +128,7 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
       isReadByUser: false,
     };
     await updateSpecialRequests([newRequest, ...specialRequests]);
+    return requestId;
   }, [user, specialRequests, updateSpecialRequests]);
 
   const requestInventoryEdit = useCallback(async (item: InventoryItem, updatedValues: Partial<InventoryItem>) => {

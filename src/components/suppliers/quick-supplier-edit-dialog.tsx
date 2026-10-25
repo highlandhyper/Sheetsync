@@ -257,12 +257,12 @@ export function QuickSupplierEditDialog({
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">SMS Node</Label>
-                            <Input {...register('phone')} className="h-11 font-bold bg-background border-border/60" placeholder="+974..." />
+                            <Input {...register('phone')} className="h-11 font-bold bg-background border-border/60" placeholder="+974 XXXXXXXX" required />
                         </div>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dispatch Email</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dispatch Email (Optional)</Label>
                         <Input type="email" {...register('email')} className="h-11 font-bold bg-background border-border/60" placeholder="vendor@domain.com" />
                     </div>
                   </div>
@@ -322,7 +322,7 @@ export function QuickSupplierEditDialog({
             </DialogHeader>
             <DialogFooter className="pt-4 flex gap-2">
                 <Button variant="ghost" onClick={() => setIsSyncWarningOpen(false)} className="font-bold h-12 flex-1">Abort</Button>
-                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-white shadow-xl shadow-primary/20">
+                <Button onClick={() => { setIsSyncWarningOpen(false); if (stagedData) executeSave(stagedData); }} className="h-12 flex-[2] font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/20">
                     Sync All Registry Nodes
                 </Button>
             </DialogFooter>

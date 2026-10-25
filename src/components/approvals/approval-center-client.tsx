@@ -24,9 +24,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
-import { approveRequestAction } from '@/app/actions';
+import { approveRequestAction, createProductFromApprovalAction } from '@/app/actions';
 import type { SpecialEntryRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -68,7 +70,7 @@ const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label:
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, rejectRequest } = useSpecialEntry();
-    const { refreshData } = useDataCache();
+    const { refreshData, suppliers } = useDataCache();
     const { user: authUser } = useAuth();
     const { toast } = useToast();
 
@@ -77,6 +79,10 @@ export function ApprovalCenterClient() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [createProductName, setCreateProductName] = useState('');
+    const [createProductSupplier, setCreateProductSupplier] = useState('');
+    const [createProductSupplierSearchOpen, setCreateProductSupplierSearchOpen] = useState(false);
+    const [createProductCost, setCreateProductCost] = useState('');
 
     const filteredPending = useMemo(() => {
         const lower = searchTerm.toLowerCase().trim();
@@ -91,15 +97,39 @@ export function ApprovalCenterClient() {
     }, [pendingRequests, searchTerm]);
 
     const handleActionClick = (req: SpecialEntryRequest) => {
+        setCreateProductName(req.suggestedProductName || '');
+        setCreateProductSupplier('');
+        setCreateProductCost('');
         setSelectedRequest(req);
         setIsDetailDialogOpen(true);
     };
 
-    const handleConfirmApproval = () => {
-        setIsDetailDialogOpen(false);
-        setIsAuthDialogOpen(true);
+    const handleConfirmApproval = async () => {
+        if (selectedRequest?.type === 'supplier_dispute') {
+            setIsProcessing(true);
+            try {
+                const result = await approveRequestAction(selectedRequest.id, authUser?.email || 'Admin');
+                if (result.success) { toast({ title: 'Dispute reviewed', description: 'The supplier dispute has been marked as reviewed.' }); setIsDetailDialogOpen(false); setSelectedRequest(null); await refreshData(); }
+                else toast({ title: 'Could not update dispute', description: result.message || 'Please retry.', variant: 'destructive' });
+            } catch { toast({ title: 'Connection error', description: 'The dispute status could not be updated.', variant: 'destructive' }); }
+            finally { setIsProcessing(false); }
+            return;
+        }
+        setIsDetailDialogOpen(false); setIsAuthDialogOpen(true);
     };
 
+    const handleCreateProductFromRequest = async () => {
+        if (!selectedRequest || selectedRequest.type !== 'product_add' || !authUser?.email) return;
+        if (!createProductName.trim()) { toast({ title: 'Product name required', description: 'Enter the confirmed product name.', variant: 'destructive' }); return; }
+        setIsProcessing(true);
+        try {
+            const result = await createProductFromApprovalAction(selectedRequest.id, createProductName, createProductSupplier, createProductCost, authUser.email);
+            if (!result.success) { toast({ title: 'Product not created', description: result.message || 'Please retry.', variant: 'destructive' }); return; }
+            toast({ title: 'Product created', description: 'Barcode registered and earlier inventory logs updated where details were blank.' });
+            setIsDetailDialogOpen(false); setSelectedRequest(null); await refreshData();
+        } catch { toast({ title: 'Creation failed', description: 'The product could not be created. Please retry.', variant: 'destructive' }); }
+        finally { setIsProcessing(false); }
+    };
     const handleRejectRequest = async (id: string) => {
         try {
             await rejectRequest(id);
@@ -131,6 +161,7 @@ export function ApprovalCenterClient() {
     };
 
     const requestTypeMeta = (req: SpecialEntryRequest) => {
+        if (req.type === "supplier_dispute") return { label: "Supplier Dispute", icon: AlertCircle, badge: "border-amber-500/20 bg-amber-500/10 text-amber-700", iconClass: "bg-amber-500/10 text-amber-700", dialogTitle: "Review Supplier Dispute" };
         if (req.type === "on_display_request") return { 
             label: "On-Display", 
             icon: ShieldAlert, 
@@ -162,6 +193,7 @@ export function ApprovalCenterClient() {
     };
 
     const getProposalSummary = (req: SpecialEntryRequest) => {
+        if (req.type === 'supplier_dispute') return 'DISPUTED: ' + (req.suggestedProductName || 'Unknown product') + ' · Barcode ' + (req.disputedBarcode || 'N/A');
         if ((req.type === 'inventory_edit' || req.type === 'on_display_request') && req.editDetails) {
             const d = req.editDetails;
             const o = req.originalDetails;
@@ -294,7 +326,19 @@ export function ApprovalCenterClient() {
                     </DialogHeader>
 
                     <div className="p-8 space-y-6">
-                        {(selectedRequest?.type === 'on_display_request' || selectedRequest?.type === 'inventory_edit') && selectedRequest.editDetails ? (
+                        {selectedRequest?.type === 'supplier_dispute' ? (
+                            <div className="space-y-4">
+                                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5"><p className="text-xs font-bold uppercase tracking-widest text-amber-700">Supplier says this product does not belong to them</p><h3 className="mt-2 text-lg font-bold">{selectedRequest.suggestedProductName || "Unknown product"}</h3></div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Supplier</p><p className="mt-1 font-semibold">{selectedRequest.supplierName || selectedRequest.staffName}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Supplier ID</p><p className="mt-1 font-semibold">{selectedRequest.supplierCode || "—"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Barcode</p><p className="mt-1 break-all font-mono font-semibold">{selectedRequest.disputedBarcode || "No barcode"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4"><p className="text-xs text-muted-foreground">Recorded quantity</p><p className="mt-1 font-semibold">{selectedRequest.disputedQuantity ?? "—"}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4 sm:col-span-2"><p className="text-xs text-muted-foreground">Reason</p><p className="mt-1">{selectedRequest.reason || "No reason supplied."}</p></div>
+                                    <div className="rounded-xl bg-muted/30 p-4 sm:col-span-2"><p className="text-xs text-muted-foreground">Submitted</p><p className="mt-1 font-medium">{format(parseISO(selectedRequest.requestedAt), "dd MMM yyyy, HH:mm")}</p></div>
+                                </div>
+                            </div>
+                        ) : (selectedRequest?.type === "on_display_request" || selectedRequest?.type === "inventory_edit") && selectedRequest.editDetails ? (
                             <div className="space-y-6">
                                 <div className="p-5 bg-primary/5 rounded-[1.5rem] border border-primary/10 flex items-start gap-4">
                                     <div className="h-10 w-10 bg-background rounded-xl flex items-center justify-center border border-primary/10 shadow-sm"><Database className="h-5 w-5 text-primary" /></div>
@@ -302,7 +346,7 @@ export function ApprovalCenterClient() {
                                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60 mb-1">Identification Node</p>
                                         <h4 className="text-lg font-black uppercase truncate leading-tight">{selectedRequest.editDetails.productName}</h4>
                                     </div>
-                                    <Badge className={cn("mt-1 uppercase font-black text-[9px] tracking-widest", selectedRequest.editDetails.requestType === 'delete' ? "bg-destructive text-white" : "bg-primary text-white")}>
+                                    <Badge className={cn("mt-1 uppercase font-black text-[9px] tracking-widest", selectedRequest.editDetails.requestType === 'delete' ? "bg-destructive text-white" : "bg-primary text-primary-foreground")}>
                                         {selectedRequest.editDetails.requestType === 'delete' ? 'PURGE' : 'ADJUST'}
                                     </Badge>
                                 </div>
@@ -335,22 +379,86 @@ export function ApprovalCenterClient() {
                                 </div>
                             </div>
                         ) : selectedRequest?.type === 'product_add' ? (
-                            <div className="p-6 bg-orange-500/5 rounded-3xl border border-orange-500/10 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <PackagePlus className="h-6 w-6 text-orange-600" />
-                                    <h4 className="text-lg font-black uppercase text-orange-900 tracking-tight">New SKU Identification</h4>
-                                </div>
-                                <div className="space-y-3">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Asset Barcode</p>
-                                        <p className="font-mono text-xl font-black text-orange-900">{selectedRequest.reason}</p>
+                            <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-5 py-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                        <PackagePlus className="h-5 w-5" />
                                     </div>
-                                    {selectedRequest.suggestedProductName && (
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase text-orange-900/40 tracking-widest">Optical Name Suggestion</p>
-                                            <p className="text-base font-bold text-orange-800">{selectedRequest.suggestedProductName}</p>
-                                        </div>
-                                    )}
+                                    <div className="min-w-0">
+                                        <h4 className="text-sm font-semibold tracking-tight">Create product</h4>
+                                        <p className="text-xs text-muted-foreground">Confirm the details before adding this barcode to the registry.</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-4 p-5">
+                                    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                                        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Unregistered barcode</p>
+                                        <p className="break-all font-mono text-sm font-semibold text-foreground">{selectedRequest.reason || 'Barcode unavailable'}</p>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-name" className="text-xs font-medium">Product name <span className="text-destructive">*</span></Label>
+                                        <Input id="approval-product-name" value={createProductName} onChange={(event) => setCreateProductName(event.target.value)} placeholder="Enter confirmed product name" maxLength={180} className="h-10 bg-background" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-supplier" className="text-xs font-medium">Supplier <span className="text-muted-foreground">(optional)</span></Label>
+                                        <Popover open={createProductSupplierSearchOpen} onOpenChange={setCreateProductSupplierSearchOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    id="approval-product-supplier"
+                                                    type="button"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={createProductSupplierSearchOpen}
+                                                    className="h-10 w-full justify-between bg-background font-normal"
+                                                >
+                                                    <span className={cn("truncate", !createProductSupplier && "text-muted-foreground")}>
+                                                        {createProductSupplier || "Search or select a supplier"}
+                                                    </span>
+                                                    <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[260px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search supplier name..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No supplier found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            <CommandItem
+                                                                value="no supplier selected"
+                                                                onSelect={() => {
+                                                                    setCreateProductSupplier('');
+                                                                    setCreateProductSupplierSearchOpen(false);
+                                                                }}
+                                                            >
+                                                                No supplier selected
+                                                            </CommandItem>
+                                                            {suppliers
+                                                                .filter((supplier) => supplier.name?.trim())
+                                                                .slice()
+                                                                .sort((a, b) => a.name.localeCompare(b.name))
+                                                                .map((supplier) => (
+                                                                    <CommandItem
+                                                                        key={supplier.id || supplier.name}
+                                                                        value={supplier.name}
+                                                                        onSelect={() => {
+                                                                            setCreateProductSupplier(supplier.name);
+                                                                            setCreateProductSupplierSearchOpen(false);
+                                                                        }}
+                                                                    >
+                                                                        {supplier.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <p className="text-[11px] text-muted-foreground">Choose from the registered supplier list.</p>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="approval-product-cost" className="text-xs font-medium">Cost price <span className="text-muted-foreground">(optional)</span></Label>
+                                        <Input id="approval-product-cost" type="number" min="0" step="any" value={createProductCost} onChange={(event) => setCreateProductCost(event.target.value)} placeholder="0.00" className="h-10 bg-background" />
+                                    </div>
+                                    <p className="text-xs leading-relaxed text-muted-foreground">Creating this product registers the barcode and fills blank product/supplier fields in earlier inventory logs for the same barcode.</p>
                                 </div>
                             </div>
                         ) : (
@@ -368,9 +476,15 @@ export function ApprovalCenterClient() {
                         <DialogClose asChild>
                             <Button variant="ghost" className="font-black uppercase tracking-widest text-[10px] h-12 flex-1">Abort</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirmApproval} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90">
-                            Authorize Change
-                        </Button>
+                        {selectedRequest?.type === 'product_add' ? (
+                            <Button onClick={handleCreateProductFromRequest} disabled={isProcessing || !createProductName.trim()} className="h-12 px-5 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
+                                {isProcessing ? "Creating…" : "Confirm & Create Product"}
+                            </Button>
+                        ) : (
+                            <Button onClick={handleConfirmApproval} disabled={isProcessing} className="h-12 px-10 flex-[2] font-black uppercase tracking-[0.1em] text-[10px] rounded-2xl shadow-xl shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90">
+                                {selectedRequest?.type === "supplier_dispute" ? (isProcessing ? "Updating…" : "Mark Reviewed") : "Authorize Change"}
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -24,6 +24,7 @@ import {
   addExpiryReminder,
   resolveExpiryWatch as dbResolveExpiryWatch,
   addProduct as dbAddProduct,
+  deleteProductByBarcode as dbDeleteProductByBarcode,
   getAllOnDisplayAlerts,
   saveSupplierContactsToSheet,
   updateSupplierAcrossRegistry,
@@ -97,13 +98,27 @@ export async function fetchAllDataAction(skipProducts: boolean = false) {
     
     const [inventoryItems, auditLogs, meta, expiryReminders, products] = await Promise.all(promises);
     
-    const calculatedSuppliers = skipProducts ? undefined : (products || []).reduce((acc: any[], p: any) => {
-        if (p.supplierName && !acc.some(s => s.name === p.supplierName)) {
-          const contact = meta.supplierContacts.find((c: Supplier) => c.name.toLowerCase() === p.supplierName.toLowerCase());
-          acc.push({ name: p.supplierName, id: `s_${acc.length}`, ...contact });
+    // Build supplier lookup indexes once. Avoid repeated linear scans across the
+    // full product registry (70k+ rows), which made initial sync unnecessarily slow.
+    const calculatedSuppliers = skipProducts ? undefined : (() => {
+        const contactsByName = new Map<string, Supplier>();
+        for (const contact of meta.supplierContacts || []) {
+          const key = String(contact.name || '').trim().toLowerCase();
+          if (key && !contactsByName.has(key)) contactsByName.set(key, contact);
         }
-        return acc;
-    }, []);
+
+        const seenNames = new Set<string>();
+        const result: Supplier[] = [];
+        for (const product of products || []) {
+          const name = String(product.supplierName || '').trim();
+          const key = name.toLowerCase();
+          if (!key || seenNames.has(key)) continue;
+          seenNames.add(key);
+          const contact = contactsByName.get(key);
+          result.push({ ...(contact || {}), name, id: contact?.id || `s_${result.length}` });
+        }
+        return result;
+    })();
 
     return { 
         success: true, 
@@ -139,6 +154,38 @@ export async function triggerManualOnDisplaySmsAction(staffName: string) {
 
 export async function sendManualSupplierReportAction(supplierName: string) {
     return dispatchToRegistry('sendManualSupplierReport', { supplierName });
+}
+
+export async function submitSupplierDisputeAction(input: { supplierCode: string; productName: string; barcode: string; quantity: number }) {
+  try {
+    const supplierCode = String(input.supplierCode || '').trim();
+    const productName = String(input.productName || '').trim();
+    const barcode = String(input.barcode || '').trim();
+    const quantity = Number(input.quantity);
+    if (!supplierCode || !productName || !Number.isFinite(quantity) || quantity < 0) return { success: false, message: 'Invalid supplier dispute details.' };
+    const meta = await getAppMetaData();
+    const supplier = (meta.supplierContacts || []).find((item: Supplier) => String(item.supplierCode || '').trim().toUpperCase() === supplierCode.toUpperCase());
+    if (!supplier) return { success: false, message: 'Supplier account could not be verified.' };
+    const requests = meta.specialRequests || [];
+    const duplicate = requests.find((request: SpecialEntryRequest) => request.type === 'supplier_dispute' && request.status === 'pending' && request.supplierCode?.toUpperCase() === supplierCode.toUpperCase() && request.disputedBarcode === barcode);
+    if (duplicate) return { success: false, message: 'A dispute for this product is already awaiting review.' };
+    const dispute: SpecialEntryRequest = {
+      id: `supplier_dispute_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      userEmail: supplier.email || `supplier-${supplierCode.toLowerCase()}@portal.local`,
+      staffName: supplier.name, supplierName: supplier.name, supplierCode: supplier.supplierCode || supplierCode,
+      disputedBarcode: barcode, disputedQuantity: quantity, suggestedProductName: productName,
+      reason: 'Supplier reports that this product does not belong to their company.',
+      status: 'pending', type: 'supplier_dispute', requestedAt: new Date().toISOString(),
+      isDismissedByAdmin: false, isReadByUser: false,
+    };
+    const saved = await saveSpecialRequestsToSheet([dispute, ...requests]);
+    if (!saved) return { success: false, message: 'Could not save the dispute to the registry. Please try again.' };
+    revalidatePath('/approvals');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SUPPLIER_DISPUTE] Submission failed:', error);
+    return { success: false, message: error.message || 'Could not submit dispute.' };
+  }
 }
 
 export async function fetchOnDisplayAlertsAction() {
@@ -207,6 +254,49 @@ export async function verifyOtpAction(requestId: string, enteredOtp: string) {
     }
 }
 
+export async function createProductFromApprovalAction(requestId: string, productName: string, supplierName: string, costPrice: string, adminEmail: string) {
+  try {
+    const name = productName.trim();
+    const meta = await getAppMetaData();
+    const requests = meta.specialRequests || [];
+    const req = requests.find(r => r.id === requestId && r.type === 'product_add' && r.status === 'pending');
+    if (!req) throw new Error('Pending product request not found.');
+    const requestedBarcode = String(req.reason || '').trim();
+    if (!requestedBarcode) throw new Error('The request does not contain a barcode.');
+    if (!name) throw new Error('Enter the confirmed product name.');
+    const existing = await getProductDetailsByBarcode(requestedBarcode);
+    if (existing) throw new Error('This barcode is already registered. Refresh the product list.');
+    const parsedCost = costPrice.trim() ? Number(costPrice) : undefined;
+    if (parsedCost !== undefined && (!Number.isFinite(parsedCost) || parsedCost < 0)) throw new Error('Cost price must be a valid non-negative number.');
+    await dbAddProduct(adminEmail || 'Admin', { barcode: requestedBarcode, productName: name, supplierName: supplierName.trim(), costPrice: parsedCost });
+    req.suggestedProductName = name;
+    req.status = 'approved';
+    req.approvedAt = new Date().toISOString();
+    req.isDismissedByAdmin = true;
+    await saveSpecialRequestsToSheet(requests);
+    revalidatePath('/approvals');
+    revalidatePath('/products/list');
+    revalidatePath('/inventory');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Could not create product.' };
+  }
+}
+
+export async function updateProductAddRequestAction(requestId: string, suggestedProductName: string) {
+  try {
+    const meta = await getAppMetaData();
+    const requests = meta.specialRequests || [];
+    const req = requests.find(r => r.id === requestId && r.type === 'product_add' && r.status === 'pending');
+    if (!req) throw new Error('Pending product request not found.');
+    req.suggestedProductName = suggestedProductName.trim().slice(0, 180) || 'Name not provided';
+    await saveSpecialRequestsToSheet(requests);
+    revalidatePath('/approvals');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Could not update product request.' };
+  }
+}
 export async function approveRequestAction(requestId: string, adminEmail: string, durationMinutes?: number) {
   try {
     const meta = await getAppMetaData();
@@ -278,30 +368,49 @@ export async function saveLocationListAction(locations: string[]) {
 
 export async function addSupplierAction(prevState: any, formData: FormData) {
     try {
-        const name = formData.get('supplierName') as string;
-        const email = formData.get('userEmail') as string || 'Admin';
-        const id = `s_${Date.now()}`;
-        const newSupplier: Supplier = { id, name };
+        const name = String(formData.get('supplierName') || '').trim();
+        const supplierCode = String(formData.get('supplierCode') || '').trim();
+        const phone = String(formData.get('phone') || '').trim();
+        const email = String(formData.get('email') || '').trim();
+        if (!name || !supplierCode || !phone) return { success: false, message: 'Supplier name, supplier code, and phone number are required.' };
+        if (email && (!email.includes('@') || !email.split('@')[1]?.includes('.'))) return { success: false, message: 'Enter a valid email address or leave it blank.' };
         const meta = await getAppMetaData();
-        await saveSupplierContactsToSheet([...meta.supplierContacts, newSupplier]);
+        const duplicateCode = (meta.supplierContacts || []).some((item: Supplier) => String(item.supplierCode || '').trim().toLowerCase() === supplierCode.toLowerCase());
+        if (duplicateCode) return { success: false, message: 'This supplier code already exists.' };
+        const newSupplier: Supplier = { id: `s_${Date.now()}`, name, supplierCode, phone, email, lastReportValue: 0 };
+        const saved = await saveSupplierContactsToSheet([...(meta.supplierContacts || []), newSupplier]);
+        if (!saved) return { success: false, message: 'Supplier could not be saved to the registry.' };
+        revalidatePath('/suppliers');
         return { success: true, data: sanitizeForJSON(newSupplier) };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        return { success: false, message: e.message || 'Could not save supplier.' };
     }
 }
 
 export async function updateSupplierAction(prevState: any, formData: FormData) {
     try {
-        const email = formData.get('userEmail') as string || 'Admin';
-        const supplierId = formData.get('supplierId') as string;
-        const oldName = formData.get('currentSupplierName') as string;
-        const newName = formData.get('newSupplierName') as string;
+        const email = String(formData.get('userEmail') || 'Admin');
+        const supplierId = String(formData.get('supplierId') || '').trim();
+        const oldName = String(formData.get('currentSupplierName') || '').trim();
+        const newName = String(formData.get('newSupplierName') || '').trim();
         const meta = {
-            supplierCode: formData.get('supplierCode') as string,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string
+            supplierCode: String(formData.get('supplierCode') || '').trim(),
+            email: String(formData.get('email') || '').trim(),
+            phone: String(formData.get('phone') || '').trim()
         };
-        await updateSupplierAcrossRegistry(email, supplierId, oldName, newName, meta);
+        if (!newName || !meta.supplierCode || !meta.phone) return { success: false, message: 'Supplier name, supplier code, and phone number are required.' };
+        if (meta.email && (!meta.email.includes('@') || !meta.email.split('@')[1]?.includes('.'))) return { success: false, message: 'Enter a valid email address or leave it blank.' };
+        if (!supplierId) {
+            const appMeta = await getAppMetaData();
+            const duplicateCode = (appMeta.supplierContacts || []).some((item: Supplier) => String(item.supplierCode || '').trim().toLowerCase() === meta.supplierCode.toLowerCase());
+            if (duplicateCode) return { success: false, message: 'This supplier code already exists.' };
+            const newSupplier: Supplier = { id: `s_${Date.now()}`, name: newName, ...meta, lastReportValue: 0 };
+            const saved = await saveSupplierContactsToSheet([...(appMeta.supplierContacts || []), newSupplier]);
+            if (!saved) return { success: false, message: 'Supplier could not be saved to the registry.' };
+        } else {
+            await updateSupplierAcrossRegistry(email, supplierId, oldName, newName, meta);
+        }
+        revalidatePath('/suppliers');
         return { success: true };
     } catch (e: any) {
         return { success: false, message: e.message };
@@ -460,6 +569,38 @@ export async function triggerManualExpirySmsAction(phone: string, productName: s
 
 export async function triggerResolvedSmsAction(phone: string, productName: string, staffName: string) {
     return dispatchToRegistry('triggerResolvedSms', { phone, productName, staffName });
+}
+
+export async function bulkDeleteProductsAction(email: string, ids: string[]) {
+    try {
+        const uniqueIds = Array.from(new Set((ids || []).map((id) => String(id || '').trim()).filter(Boolean)));
+        if (uniqueIds.length === 0) {
+            return { success: false, message: 'Select at least one product to delete.' };
+        }
+
+        const results: Array<{ id: string; success: boolean }> = [];
+        for (const id of uniqueIds) {
+            const deleted = await dbDeleteProductByBarcode(email || 'Admin', id);
+            results.push({ id, success: deleted });
+        }
+
+        const failed = results.filter((result) => !result.success);
+        revalidatePath('/products/list');
+        if (failed.length > 0) {
+            return {
+                success: false,
+                message: `Deleted ${results.length - failed.length} of ${results.length} selected products. ${failed.length} product(s) could not be found; refresh the catalog and try again.`,
+                data: results
+            };
+        }
+        return { success: true, data: results };
+    } catch (error: any) {
+        console.error('[PRODUCT_DELETE] Failed to delete catalog products:', error);
+        return {
+            success: false,
+            message: error?.message || 'Could not delete products from the catalog. Please refresh and try again.'
+        };
+    }
 }
 
 export async function bulkDeleteInventoryItemsAction(email: string, ids: string[]) {
