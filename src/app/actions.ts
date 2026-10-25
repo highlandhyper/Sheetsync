@@ -315,7 +315,7 @@ export async function addSupplierAction(prevState: any, formData: FormData) {
         const phone = String(formData.get('phone') || '').trim();
         const email = String(formData.get('email') || '').trim();
         if (!name || !supplierCode || !phone) return { success: false, message: 'Supplier name, supplier code, and phone number are required.' };
-        if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return { success: false, message: 'Enter a valid email address or leave it blank.' };
+        if (email && (!email.includes('@') || !email.split('@')[1]?.includes('.'))) return { success: false, message: 'Enter a valid email address or leave it blank.' };
         const meta = await getAppMetaData();
         const duplicateCode = (meta.supplierContacts || []).some((item: Supplier) => String(item.supplierCode || '').trim().toLowerCase() === supplierCode.toLowerCase());
         if (duplicateCode) return { success: false, message: 'This supplier code already exists.' };
