@@ -742,19 +742,32 @@ export default function SettingsPage() {
               <DialogTitle className="text-center text-lg font-semibold tracking-tight">Verify bulk import</DialogTitle>
               <DialogDescription className="mx-auto max-w-[280px] pt-1 text-center text-sm leading-5">Enter the 4-digit security code sent to your configured SMS number to continue.</DialogDescription>
             </DialogHeader>
-            <div className="flex justify-center gap-2.5" aria-label="4-digit verification code">
-              {Array.from({ length: 4 }, (_, index) => <div key={index} className={cn("flex h-12 w-11 items-center justify-center rounded-lg border bg-background text-lg font-semibold tabular-nums sm:h-14 sm:w-12", enteredBulkPin.length === index ? "border-primary ring-2 ring-primary/15" : "border-input", bulkPinError ? "border-destructive" : "")}>{enteredBulkPin[index] || <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />}</div>)}
+            <div className="relative mx-auto w-fit" aria-label="4-digit verification code">
+              <div className="flex justify-center gap-2.5 pointer-events-none" aria-hidden="true">
+                {Array.from({ length: 4 }, (_, index) => <div key={index} className={cn("flex h-12 w-11 items-center justify-center rounded-lg border bg-background text-lg font-semibold tabular-nums sm:h-14 sm:w-12", enteredBulkPin.length === index ? "border-primary ring-2 ring-primary/15" : "border-input", bulkPinError ? "border-destructive" : "")}>{enteredBulkPin[index] || <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />}</div>)}
+              </div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={4}
+                value={enteredBulkPin}
+                autoFocus
+                aria-label="Enter 4-digit security code"
+                className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
+                onChange={(event) => {
+                  const value = event.target.value.replace(/\\D/g, '').slice(0, 4);
+                  setEnteredBulkPin(value);
+                  setBulkPinError('');
+                  if (value.length === 4) {
+                    if (value === generatedBulkPin) {
+                      setIsBulkSmsDialogOpen(false); setIsImportTerminalOpen(true); setGeneratedBulkPin(''); setEnteredBulkPin('');
+                      toast({ title: 'Verified', description: 'Opening importer.' });
+                    } else setBulkPinError('That code is incorrect. Check the SMS and try again.');
+                  }
+                }}
+              />
             </div>
-            <Input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={enteredBulkPin} autoFocus aria-label="Enter 4-digit security code" className="mx-auto h-11 max-w-[260px] rounded-lg text-center text-base tracking-[0.2em]" placeholder="Enter code" onChange={(event) => {
-              const value = event.target.value.replace(/\D/g, '').slice(0, 4);
-              setEnteredBulkPin(value); setBulkPinError('');
-              if (value.length === 4) {
-                if (value === generatedBulkPin) {
-                  setIsBulkSmsDialogOpen(false); setIsImportTerminalOpen(true); setGeneratedBulkPin(''); setEnteredBulkPin('');
-                  toast({ title: 'Verified', description: 'Opening importer.' });
-                } else setBulkPinError('That code is incorrect. Check the SMS and try again.');
-              }
-            }} />
             {bulkPinError ? <p className="mt-2 text-center text-xs font-medium text-destructive">{bulkPinError}</p> : <p className="mt-2 text-center text-xs text-muted-foreground">The code is single-use. Keep it private.</p>}
             <div className="flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Verification protects bulk import from unauthorized access.</span></div>
           </div>
