@@ -27,7 +27,10 @@ export async function requireSignedInUser(request: NextRequest): Promise<Decoded
 
 export async function getTrustedRole(uid: string, email: string | undefined): Promise<Role | null> {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || 'highlandhiper@gmail.com').trim().toLowerCase();
+  const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
+  if (!initialAdminEmail) {
+    throw new Error('INITIAL_ADMIN_EMAIL must be configured in the server environment.');
+  }
   const ref = adminDb.collection('userRoles').doc(uid);
 
   return adminDb.runTransaction(async (transaction) => {
