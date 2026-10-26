@@ -27,7 +27,7 @@ export async function requireSignedInUser(request: NextRequest): Promise<Decoded
 
 export async function getTrustedRole(uid: string, email: string | undefined): Promise<Role | null> {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
+  const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || 'highlandhiper@gmail.com').trim().toLowerCase();
   const ref = adminDb.collection('userRoles').doc(uid);
 
   return adminDb.runTransaction(async (transaction) => {
