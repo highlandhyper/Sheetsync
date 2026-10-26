@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Trash2, ArrowLeftRight, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink, ShieldAlert } from 'lucide-react';
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ban, ArrowLeftRight, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink, ShieldAlert, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const createUserSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
-  password: z.string().min(8, 'Password must be at least 8 characters.'),
+  password: z.string().min(12, 'Use at least 12 characters for a stronger password.'),
   role: z.enum(['admin', 'viewer']),
 });
 
@@ -40,6 +40,7 @@ export function UserManager() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workingUid, setWorkingUid] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -131,6 +132,15 @@ export function UserManager() {
   };
 
   const updateUser = async (entry: ManagedUser, update: { role?: 'admin' | 'viewer'; active?: boolean }) => {
+    const action = update.role
+      ? `change ${entry.email} from ${entry.role} to ${update.role}`
+      : `${update.active ? 'enable' : 'DISABLE'} sign-in for ${entry.email}`;
+    const warning = update.role === 'admin'
+      ? '\n\nAdministrators can manage other accounts and roles.'
+      : update.active === false
+        ? '\n\nThis user will no longer be able to sign in. Historical records will remain.'
+        : '';
+    if (!window.confirm(`Confirm: ${action}?${warning}`)) return;
     setWorkingUid(entry.uid);
     try {
       await authorizedFetch(`/api/admin/users/${encodeURIComponent(entry.uid)}`, {
@@ -159,23 +169,27 @@ export function UserManager() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
-        <ShieldAlert className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Security & access</p><h2 className="mt-1 text-2xl font-bold tracking-tight">User management</h2><p className="mt-1 text-sm text-muted-foreground">Create accounts, assign least-privilege roles, and control sign-in access.</p></div>
+        <Badge variant="outline" className="w-fit gap-1.5 px-3 py-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Server-verified roles</Badge>
+      </div>
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+        <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
         <div className="text-sm">
-          <p className="font-bold">Server-managed access</p>
-          <p className="text-muted-foreground mt-1">Roles are verified on the server. The permanent initial Admin cannot be demoted or disabled. User changes are recorded in the management audit log.</p>
+          <p className="font-bold">Access changes require confirmation</p>
+          <p className="text-muted-foreground mt-1">Use Viewer by default. Grant Admin only when necessary. Role and account changes are checked by the server and recorded in the audit log. The protected Admin account cannot be changed here.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-primary/5 border-primary/10 shadow-none">
+        <Card className="bg-card shadow-sm">
           <CardContent className="p-4 flex items-center gap-4">
             <UsersIcon className="h-5 w-5 text-primary" />
             <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Registered</p><p className="text-2xl font-black">{stats.total}</p></div>
           </CardContent>
         </Card>
-        <Card className="bg-muted/30 shadow-none">
+        <Card className="bg-card shadow-sm">
           <CardContent className="p-4 flex items-center gap-4">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active Admins</p><p className="text-2xl font-black">{stats.admins}</p></div>
@@ -190,28 +204,32 @@ export function UserManager() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-            <UserPlus className="h-4 w-4" /> Create User
+        <div className="lg:col-span-1 space-y-4 rounded-xl border bg-card p-5 sm:p-6">
+          <h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-primary" /> Create account
           </h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6 border rounded-2xl bg-muted/10">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="new-email">Email address</Label>
               <Input id="new-email" type="email" autoComplete="off" placeholder="user@example.com" {...register('email')} />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-password">Initial password (minimum 8 characters)</Label>
-              <Input id="new-password" type="password" autoComplete="new-password" {...register('password')} />
+              <Label htmlFor="new-password">Temporary password</Label>
+              <div className="relative">
+                <Input id="new-password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" className="pr-11" placeholder="At least 12 characters" {...register('password')} />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Use a unique password. Share it securely and ask the user to change it after first sign-in.</p>
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>Access role</Label>
               <Select value={selectedRole} onValueChange={(value: 'admin' | 'viewer') => setValue('role', value)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="viewer">Viewer (restricted)</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="viewer">Viewer — limited access (recommended)</SelectItem>
+                  <SelectItem value="admin">Admin — can manage users</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -219,15 +237,15 @@ export function UserManager() {
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
               Create account
             </Button>
-            <p className="text-xs text-muted-foreground">The account is created in Firebase Authentication and its role is stored separately in Firestore.</p>
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground"><AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />Admin access is powerful. Select it only for trusted staff who need account-management permissions.</div>
           </form>
         </div>
 
-        <div className="lg:col-span-2 space-y-4 min-w-0">
+        <div className="lg:col-span-2 min-w-0 space-y-4 rounded-xl border bg-card p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" /> User access
-            </h3>
+            <div><h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" /> Accounts & permissions
+            </h3><p className="mt-1 text-xs text-muted-foreground">Review status, last sign-in, and role before making changes.</p></div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={openConsole}><ExternalLink className="mr-2 h-3.5 w-3.5" /> Firebase Console</Button>
               <Button variant="outline" size="icon" onClick={() => void loadUsers()} disabled={isLoading} aria-label="Refresh users">
@@ -245,7 +263,7 @@ export function UserManager() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Status / Last login</TableHead>
+                  <TableHead>Status & last sign-in</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -260,11 +278,11 @@ export function UserManager() {
                       <TableCell>
                         <div className="font-semibold text-sm">{entry.email}</div>
                         <div className="text-[10px] font-mono text-muted-foreground">{entry.uid}</div>
-                        {entry.permanent && <Badge variant="outline" className="mt-1">Permanent Admin</Badge>}
+                        {entry.permanent && <Badge variant="outline" className="mt-1 border-amber-500/40 text-amber-700">Protected Admin</Badge>}
                       </TableCell>
                       <TableCell><Badge variant={entry.role === 'admin' ? 'default' : 'secondary'}>{entry.role}</Badge></TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        <div>{entry.active ? 'Active' : 'Disabled'}</div>
+                        <Badge variant={entry.active ? 'outline' : 'destructive'} className="mb-1">{entry.active ? 'Active' : 'Disabled'}</Badge>
                         <div className="mt-1 flex items-center gap-1"><Clock className="h-3 w-3" />{entry.lastLoginAt ? new Date(entry.lastLoginAt).toLocaleString() : 'No login recorded'}</div>
                       </TableCell>
                       <TableCell>
@@ -287,7 +305,7 @@ export function UserManager() {
                             disabled={busy || isSelf || entry.permanent}
                             onClick={() => void updateUser(entry, { active: !entry.active })}
                           >
-                            {entry.active ? <Trash2 className="h-4 w-4 text-destructive" /> : <RefreshCw className="h-4 w-4" />}
+                            {entry.active ? <Ban className="h-4 w-4 text-destructive" /> : <RefreshCw className="h-4 w-4" />}
                           </Button>
                         </div>
                       </TableCell>
@@ -299,7 +317,7 @@ export function UserManager() {
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">Disabling an account blocks Firebase sign-in. It does not delete the account or erase historical records.</p>
+          <p className="text-xs text-muted-foreground">Disabling an account blocks Firebase sign-in but does not delete historical records. Your own account and the protected Admin cannot be changed here.</p>
         </div>
       </div>
     </div>
