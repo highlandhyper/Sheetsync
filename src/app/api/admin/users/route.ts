@@ -1,38 +1,38 @@
 import { NextRequest } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { authErrorResponse, requireAdmin, writeAdminAudit } from '@/lib/server-auth';
+import { authErrorResponse, getTrustedRole, requireAdmin, writeAdminAudit } from '@/lib/server-auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin(request);
-    const rolesSnapshot = await adminDb.collection('userRoles').get();
-    const users = await Promise.all(rolesSnapshot.docs.map(async (doc) => {
-      const data = doc.data();
-      try {
-        const authUser = await adminAuth.getUser(doc.id);
-        return {
-          uid: doc.id,
-          email: authUser.email || data.email || '',
-          role: data.role === 'admin' ? 'admin' : 'viewer',
-          active: data.active !== false && !authUser.disabled,
-          permanent: data.permanent === true,
-          createdAt: data.createdAt || authUser.metadata.creationTime || null,
-          lastLoginAt: authUser.metadata.lastSignInTime || null,
-        };
-      } catch {
-        return {
-          uid: doc.id,
-          email: data.email || '',
-          role: data.role === 'admin' ? 'admin' : 'viewer',
-          active: false,
-          permanent: data.permanent === true,
-          createdAt: data.createdAt || null,
-          lastLoginAt: null,
-        };
-      }
+
+    // Include existing Firebase Authentication accounts even if they have never
+    // opened the new role-management screen. Unknown accounts start as Viewers.
+    const authUsers = [];
+    let pageToken: string | undefined;
+    do {
+      const page = await adminAuth.listUsers(1000, pageToken);
+      authUsers.push(...page.users);
+      pageToken = page.pageToken;
+    } while (pageToken);
+
+    const users = await Promise.all(authUsers.map(async (authUser) => {
+      const role = await getTrustedRole(authUser.uid, authUser.email);
+      const roleSnapshot = await adminDb.collection('userRoles').doc(authUser.uid).get();
+      const data = roleSnapshot.data() || {};
+      return {
+        uid: authUser.uid,
+        email: authUser.email || data.email || '',
+        role: role === 'admin' ? 'admin' : 'viewer',
+        active: role !== null && !authUser.disabled,
+        permanent: data.permanent === true,
+        createdAt: data.createdAt || authUser.metadata.creationTime || null,
+        lastLoginAt: authUser.metadata.lastSignInTime || null,
+      };
     }));
+
     users.sort((a, b) => a.email.localeCompare(b.email));
     return Response.json({ success: true, users });
   } catch (error) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const password = typeof body.password === 'string' ? body.password : '';
     const role = body.role === 'admin' ? 'admin' : body.role === 'viewer' ? 'viewer' : null;
 
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    if (!/^\\S+@\\S+\\.\\S+$/.test(email)) {
       return Response.json({ success: false, error: 'Enter a valid email address.' }, { status: 400 });
     }
     if (password.length < 8) {
