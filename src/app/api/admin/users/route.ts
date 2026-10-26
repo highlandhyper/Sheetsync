@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return Response.json({ success: false, error: 'Enter a valid email address.' }, { status: 400 });
     }
-    if (password.length < 8) {
-      return Response.json({ success: false, error: 'Password must be at least 8 characters.' }, { status: 400 });
+    if (password.length < 12) {
+      return Response.json({ success: false, error: 'Password must be at least 12 characters.' }, { status: 400 });
     }
     if (!role) {
       return Response.json({ success: false, error: 'Choose a valid role.' }, { status: 400 });
