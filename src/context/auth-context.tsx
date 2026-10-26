@@ -1,7 +1,7 @@
 'use client';
 
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
@@ -9,7 +9,7 @@ import {
   onAuthStateChanged,
   signOut as firebaseSignOut,
   signInWithEmailAndPassword,
-  type UserCredential
+  type UserCredential,
 } from 'firebase/auth';
 import type { LoginFormValues } from '@/lib/schemas';
 import type { Role } from '@/lib/types';
@@ -30,71 +30,70 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ROLE_CACHE_KEY = 'sheetSync_cached_role';
+async function fetchTrustedRole(user: User): Promise<Role | null> {
+  const idToken = await user.getIdToken();
+  const response = await fetch('/api/auth/role', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${idToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) return null;
+  const result = await response.json();
+  if (!result?.success || result.active !== true) return null;
+  return result.role === 'admin' || result.role === 'viewer' ? result.role : null;
+}
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<Role | null>(null);
   const router = useRouter();
-  const initializedRef = useRef(false);
-
-  // SECURE HARDCODED LOGIC: Zero-latency role determination
-  const determineRole = useCallback((email: string | null): Role => {
-    if (!email) return 'viewer';
-    const lowerEmail = email.toLowerCase().trim();
-    // viewer@example.com is restricted, all others are global admins
-    if (lowerEmail === 'viewer@example.com') return 'viewer';
-    return 'admin';
-  }, []);
 
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
-    // HYDRATION SAFETY: Defer role loading from localStorage until after mount
-    const cachedRole = typeof window !== 'undefined' ? localStorage.getItem(ROLE_CACHE_KEY) as Role | null : null;
-    if (cachedRole) setRole(cachedRole);
-
     if (!auth) {
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let disposed = false;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
-      if (currentUser) {
-        const determinedRole = determineRole(currentUser.email);
-        setRole(determinedRole);
-        localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-      } else {
-        setRole(null);
-        localStorage.removeItem(ROLE_CACHE_KEY);
+      setRole(null);
+      if (!currentUser) {
+        setLoading(false);
+        return;
       }
-      
-      setLoading(false);
+
+      setLoading(true);
+      try {
+        const trustedRole = await fetchTrustedRole(currentUser);
+        if (!disposed) setRole(trustedRole);
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[AUTH] Trusted role lookup failed.');
+        }
+        if (!disposed) setRole(null);
+      } finally {
+        if (!disposed) setLoading(false);
+      }
     });
 
-    const safetyTimeout = setTimeout(() => {
-        setLoading(false);
-    }, 3000);
-
     return () => {
-        unsubscribe();
-        clearTimeout(safetyTimeout);
+      disposed = true;
+      unsubscribe();
     };
-  }, [determineRole]);
+  }, []);
 
   const login = useCallback(async (values: LoginFormValues): Promise<AuthContextLoginResponse> => {
-    if (!auth) return { success: false, error: "Auth service unavailable." };
+    if (!auth) return { success: false, error: 'Auth service unavailable.' };
 
     try {
-      const userCredential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const determinedRole = determineRole(userCredential.user.email);
-      setRole(determinedRole);
-      localStorage.setItem(ROLE_CACHE_KEY, determinedRole);
-      return { success: true, role: determinedRole };
+      const credential: UserCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      setUser(credential.user);
+      setRole(null);
+      const trustedRole = await fetchTrustedRole(credential.user);
+      setRole(trustedRole);
+      return { success: true, role: trustedRole };
     } catch (error: any) {
       const code = String(error?.code || '');
       let message = 'Unable to sign in. Please try again.';
@@ -117,25 +116,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
         case 'auth/operation-not-allowed':
           message = 'Sign-in is currently unavailable. Contact your administrator.';
           break;
-        case 'auth/timeout':
-          message = 'Sign-in took too long. Check your connection and try again.';
-          break;
+        default:
+          if (error instanceof Error && error.message.includes('Firebase Admin')) {
+            message = 'Role service is not configured correctly. Contact your administrator.';
+          }
       }
       if (process.env.NODE_ENV !== 'production') {
-        console.warn('[AUTH] Sign-in failed:', code || 'unknown-auth-error');
+        console.warn('[AUTH] Sign-in or role lookup failed:', code || 'role-lookup-error');
       }
       return { success: false, error: message };
     }
-  }, [determineRole]);
+  }, []);
 
   const logout = useCallback(async () => {
-    localStorage.removeItem(ROLE_CACHE_KEY);
-    if (auth) {
-      await firebaseSignOut(auth);
-      setUser(null);
-      setRole(null);
-      router.push('/login');
-    }
+    if (auth) await firebaseSignOut(auth);
+    setUser(null);
+    setRole(null);
+    router.push('/login');
   }, [router]);
 
   return (
