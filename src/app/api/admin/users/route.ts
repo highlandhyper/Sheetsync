@@ -48,7 +48,9 @@ export async function POST(request: NextRequest) {
     const password = typeof body.password === 'string' ? body.password : '';
     const role = body.role === 'admin' ? 'admin' : body.role === 'viewer' ? 'viewer' : null;
 
-    if (!/^\\S+@\\S+\\.\\S+$/.test(email)) {
+    // Keep this as a single-backslash regex: it validates the email rather than
+    // looking for literal backslash characters.
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
       return Response.json({ success: false, error: 'Enter a valid email address.' }, { status: 400 });
     }
     if (password.length < 8) {
