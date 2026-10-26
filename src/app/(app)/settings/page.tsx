@@ -32,11 +32,13 @@ import {
   BellDot,
   Settings2,
   Building,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/settings/theme-toggle';
 import { LocalCredentialsForm } from '@/components/settings/local-credentials-form';
 import { AccessControlManager } from '@/components/settings/access-control-manager';
+import { UserManager } from '@/components/settings/user-manager';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -89,7 +91,8 @@ type SectionId =
   | 'permissions'
   | 'bulk-import'
   | 'data-source'
-  | 'credentials';
+  | 'credentials'
+  | 'users';
 
 type NavItem = {
   id: SectionId;
@@ -118,6 +121,7 @@ const WAREHOUSE_ITEMS: NavItem[] = [
 ];
 
 const SYSTEM_ITEMS: NavItem[] = [
+  { id: 'users', label: 'User management', description: 'Manage accounts and roles', icon: Users, colorClass: 'text-violet-600 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-500/10' },
   { id: 'bulk-import', label: 'Bulk import', description: 'Import via SMS', icon: CloudUpload, colorClass: 'text-cyan-600 dark:text-cyan-400', bgClass: 'bg-cyan-50 dark:bg-cyan-500/10' },
   { id: 'data-source', label: 'Data source', description: 'Google Sheets registry', icon: Database, colorClass: 'text-teal-600 dark:text-teal-400', bgClass: 'bg-teal-50 dark:bg-teal-500/10' },
   { id: 'credentials', label: 'Admin credentials', description: 'Local access keys', icon: KeyRound, colorClass: 'text-red-600 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-500/10' },
@@ -476,6 +480,12 @@ export default function SettingsPage() {
         return (
           <SectionPanel title="Permissions" description="Viewer access control." icon={icon} colorClass={color}>
             <AccessControlManager />
+          </SectionPanel>
+        );
+      case 'users':
+        return (
+          <SectionPanel title="User management" description="Create accounts, assign roles, and control access." icon={icon} colorClass={color}>
+            <UserManager />
           </SectionPanel>
         );
       case 'credentials':
