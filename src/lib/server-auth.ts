@@ -30,43 +30,48 @@ export async function getTrustedRole(uid: string, email: string | undefined): Pr
   const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
   const ref = adminDb.collection('userRoles').doc(uid);
 
-  // The configured initial Admin is bootstrapped only by the server.
-  if (initialAdminEmail && normalizedEmail === initialAdminEmail) {
-    await ref.set({
-      uid,
-      email: normalizedEmail,
-      role: 'admin',
-      active: true,
-      permanent: true,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-    return 'admin';
-  }
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
 
-  const snapshot = await ref.get();
-  if (!snapshot.exists) {
-    await ref.create({
-      uid,
-      email: normalizedEmail,
-      role: 'viewer',
-      active: true,
-      permanent: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    return 'viewer';
-  }
+    // The configured initial Admin is bootstrapped only by the server.
+    if (initialAdminEmail && normalizedEmail === initialAdminEmail) {
+      transaction.set(ref, {
+        uid,
+        email: normalizedEmail,
+        role: 'admin',
+        active: true,
+        permanent: true,
+        updatedAt: new Date().toISOString(),
+        ...(!snapshot.exists ? { createdAt: new Date().toISOString() } : {}),
+      }, { merge: true });
+      return 'admin';
+    }
 
-  const data = snapshot.data();
-  if (data?.active === false) return null;
-  return data?.role === 'admin' || data?.role === 'viewer' ? data.role : 'viewer';
+    if (!snapshot.exists) {
+      const now = new Date().toISOString();
+      transaction.create(ref, {
+        uid,
+        email: normalizedEmail,
+        role: 'viewer',
+        active: true,
+        permanent: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return 'viewer';
+    }
+
+    const data = snapshot.data();
+    if (data?.active === false) return null;
+    return data?.role === 'admin' || data?.role === 'viewer' ? data.role : 'viewer';
+  });
 }
 
 export async function requireAdmin(request: NextRequest): Promise<DecodedIdToken> {
   const decoded = await requireSignedInUser(request);
   const role = await getTrustedRole(decoded.uid, decoded.email);
   if (role !== 'admin') {
-    throw new ApiAuthError(role === null ? 'This account is inactive.' : 'Administrator permission required.', role === null ? 403 : 403);
+    throw new ApiAuthError(role === null ? 'This account is inactive.' : 'Administrator permission required.', 403);
   }
   return decoded;
 }
