@@ -59,7 +59,11 @@ export async function POST(request: NextRequest) {
     if (!role) {
       return Response.json({ success: false, error: 'Choose a valid role.' }, { status: 400 });
     }
-    if (email === (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase()) {
+    const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
+    if (!initialAdminEmail) {
+      throw new Error('INITIAL_ADMIN_EMAIL must be configured in the server environment.');
+    }
+    if (email === initialAdminEmail) {
       return Response.json({ success: false, error: 'The permanent initial Admin already has protected access.' }, { status: 409 });
     }
 
