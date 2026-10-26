@@ -356,6 +356,8 @@ export default function SettingsPage() {
   const [isMasterDbDialogOpen, setIsMasterDbDialogOpen] = React.useState(false);
   const [isBulkSmsDialogOpen, setIsBulkSmsDialogOpen] = React.useState(false);
   const [generatedBulkPin, setGeneratedBulkPin] = React.useState('');
+  const [enteredBulkPin, setEnteredBulkPin] = React.useState('');
+  const [bulkPinError, setBulkPinError] = React.useState('');
   const [isSendingSms, setIsSendingSms] = React.useState(false);
   const [isImportTerminalOpen, setIsImportTerminalOpen] = React.useState(false);
   const [smsEnvStatus, setSmsEnvStatus] = React.useState<{ hasApiKey: boolean; hasDeviceId: boolean } | null>(null);
@@ -379,6 +381,8 @@ export default function SettingsPage() {
       const res = await sendSmsAction(`SHEETSYNC SECURITY: Bulk Import key: ${pin}. Single-use only.`, permissions.smsRecipientNumber);
       if (res.success) {
         setGeneratedBulkPin(pin);
+        setEnteredBulkPin('');
+        setBulkPinError('');
         setIsBulkSmsDialogOpen(true);
         toast({ title: 'Key Sent', description: 'Check your SMS.' });
       } else {
@@ -730,45 +734,36 @@ export default function SettingsPage() {
         actionDescription={`Verify identity for ${user?.email} to open the data source.`}
       />
 
-      <Dialog open={isBulkSmsDialogOpen} onOpenChange={setIsBulkSmsDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-sm rounded-2xl border border-border/60 bg-card p-0 shadow-2xl overflow-hidden">
-          <div className="p-5 border-b border-neutral-100 dark:border-white/5">
-            <DialogHeader className="text-left">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-50 dark:bg-cyan-500/10">
-                  <Key className="h-4 w-4 text-cyan-600 dark:text-cyan-300" strokeWidth={1.75} />
-                </div>
-                <DialogTitle className="text-base font-semibold text-black dark:text-white">Enter key</DialogTitle>
-              </div>
-              <DialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">4-digit code sent via SMS</DialogDescription>
+      <Dialog open={isBulkSmsDialogOpen} onOpenChange={(open) => { setIsBulkSmsDialogOpen(open); if (!open) { setEnteredBulkPin(''); setBulkPinError(''); } }}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-2xl">
+          <div className="p-6 sm:p-7">
+            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" strokeWidth={1.8} /></div>
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-xl font-semibold tracking-tight">Verify bulk import</DialogTitle>
+              <DialogDescription className="mx-auto max-w-xs pt-1 text-sm leading-6">Enter the 4-digit security code sent to your configured SMS number to continue.</DialogDescription>
             </DialogHeader>
+            <div className="mt-6 flex justify-center gap-3" aria-label="4-digit verification code">
+              {Array.from({ length: 4 }, (_, index) => <div key={index} className={cn("flex h-14 w-12 items-center justify-center rounded-xl border bg-background text-xl font-semibold tabular-nums sm:h-16 sm:w-14", enteredBulkPin.length === index ? "border-primary ring-2 ring-primary/15" : "border-input", bulkPinError ? "border-destructive" : "")}>{enteredBulkPin[index] || <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />}</div>)}
+            </div>
+            <Input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={enteredBulkPin} autoFocus aria-label="Enter 4-digit security code" className="mt-4 h-11 rounded-xl text-center text-sm tracking-widest" placeholder="Enter code" onChange={(event) => {
+              const value = event.target.value.replace(/\D/g, '').slice(0, 4);
+              setEnteredBulkPin(value); setBulkPinError('');
+              if (value.length === 4) {
+                if (value === generatedBulkPin) {
+                  setIsBulkSmsDialogOpen(false); setIsImportTerminalOpen(true); setGeneratedBulkPin(''); setEnteredBulkPin('');
+                  toast({ title: 'Verified', description: 'Opening importer.' });
+                } else setBulkPinError('That code is incorrect. Check the SMS and try again.');
+              }
+            }} />
+            {bulkPinError ? <p className="mt-2 text-center text-xs font-medium text-destructive">{bulkPinError}</p> : <p className="mt-2 text-center text-xs text-muted-foreground">The code is single-use. Keep it private.</p>}
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Verification protects bulk import from unauthorized access.</span></div>
           </div>
-          <div className="p-5">
-            <Input
-              type="text"
-              inputMode="numeric"
-              maxLength={4}
-              className="h-14 text-center text-2xl font-semibold tracking-[0.35em] bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 rounded-xl shadow-none focus-visible:ring-0"
-              placeholder="••••"
-              autoFocus
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '');
-                if (val.length === 4) {
-                  if (val === generatedBulkPin) {
-                    setIsBulkSmsDialogOpen(false);
-                    setIsImportTerminalOpen(true);
-                    setGeneratedBulkPin('');
-                    toast({ title: 'Verified', description: 'Opening importer.' });
-                  } else {
-                    toast({ variant: 'destructive', title: 'Invalid key' });
-                    e.target.value = '';
-                  }
-                }
-              }}
-            />
-          </div>
-          <DialogFooter className="p-3 border-t border-neutral-100 dark:border-white/5">
-            <Button variant="ghost" onClick={() => setIsBulkSmsDialogOpen(false)} className="w-full text-[13px] text-neutral-500">Cancel</Button>
+          <DialogFooter className="gap-2 border-t bg-muted/20 p-4 sm:flex-row">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsBulkSmsDialogOpen(false)}>Cancel</Button>
+            <Button type="button" className="w-full sm:w-auto" disabled={enteredBulkPin.length !== 4} onClick={() => {
+              if (enteredBulkPin === generatedBulkPin) { setIsBulkSmsDialogOpen(false); setIsImportTerminalOpen(true); setGeneratedBulkPin(''); setEnteredBulkPin(''); toast({ title: 'Verified', description: 'Opening importer.' }); }
+              else setBulkPinError('That code is incorrect. Check the SMS and try again.');
+            }}>Verify code</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
