@@ -1,59 +1,46 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { firebaseConfig } from '@/lib/firebase';
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ban, ArrowLeftRight, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink, ShieldAlert, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { 
-    Loader2, UserPlus, ShieldAlert, Eye, EyeOff, Mail, KeyRound, 
-    ShieldCheck, User as UserIcon, Trash2, ArrowLeftRight, 
-    AlertTriangle, RefreshCw, Search, Users as UsersIcon, Clock, ExternalLink, Info
-} from 'lucide-react';
-import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
-import type { Role, AppUser } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from '@/lib/utils';
-import { formatDistanceToNow, parseISO } from 'date-fns';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 
 const createUserSchema = z.object({
-  email: z.string().email("Invalid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  email: z.string().email('Enter a valid email address.'),
+  password: z.string().min(12, 'Use at least 12 characters for a stronger password.'),
   role: z.enum(['admin', 'viewer']),
 });
 
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
+type ManagedUser = {
+  uid: string;
+  email: string;
+  role: 'admin' | 'viewer';
+  active: boolean;
+  permanent: boolean;
+  createdAt?: string | null;
+  lastLoginAt?: string | null;
+};
 
 export function UserManager() {
   const { toast } = useToast();
-  const { users, updateUserRegistry, isSyncing, refreshData } = useDataCache();
   const { user: currentUser } = useAuth();
-  
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
+  const [workingUid, setWorkingUid] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -69,296 +56,270 @@ export function UserManager() {
 
   const selectedRole = watch('role');
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(u => u.email.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [users, searchTerm]);
+  const authorizedFetch = useCallback(async (url: string, init: RequestInit = {}) => {
+    if (!currentUser) throw new Error('Sign in again to continue.');
+    const token = await currentUser.getIdToken();
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(init.headers || {}),
+      },
+      cache: 'no-store',
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.success !== true) {
+      throw new Error(payload.error || 'The request failed.');
+    }
+    return payload;
+  }, [currentUser]);
 
-  const stats = useMemo(() => {
-    return {
-        total: users.length,
-        admins: users.filter(u => u.role === 'admin').length,
-        viewers: users.filter(u => u.role === 'viewer').length
-    };
-  }, [users]);
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await authorizedFetch('/api/admin/users');
+      setUsers(Array.isArray(result.users) ? result.users : []);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Unable to load users',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authorizedFetch, toast]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  const filteredUsers = useMemo(
+    () => users.filter((entry) => entry.email.toLowerCase().includes(searchTerm.toLowerCase())),
+    [users, searchTerm],
+  );
+
+  const stats = useMemo(() => ({
+    total: users.length,
+    admins: users.filter((entry) => entry.role === 'admin' && entry.active).length,
+    viewers: users.filter((entry) => entry.role === 'viewer' && entry.active).length,
+  }), [users]);
 
   const onSubmit = async (data: CreateUserFormValues) => {
     setIsSubmitting(true);
-    
-    // Check if email already in Registry
-    if (users.some(u => u.email.toLowerCase() === data.email.toLowerCase())) {
-        toast({ variant: "destructive", title: "Duplicate Entry", description: "This user is already in your personnel registry." });
-        setIsSubmitting(false);
-        return;
-    }
-
-    const tempAppName = `temp-app-${Date.now()}`;
-    let tempApp;
-
     try {
-      tempApp = initializeApp(firebaseConfig as any, tempAppName);
-      const tempAuth = getAuth(tempApp);
-      
-      // Attempt to create in Firebase Auth
-      const credential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
-      
-      const newRegistryUser: AppUser = {
-          uid: credential.user.uid,
-          email: data.email.toLowerCase().trim(),
+      await authorizedFetch('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
           role: data.role,
-          createdAt: new Date().toISOString()
-      };
-      
-      await updateUserRegistry([...users, newRegistryUser]);
-      toast({ title: "Account Provisioned", description: `User created in Firebase and added to Registry.` });
-      reset();
-    } catch (error: any) {
-      // HANDLE EXISTING FIREBASE USER (e.g. created in console)
-      if (error.code === 'auth/email-already-in-use') {
-          toast({ title: "Account Identified", description: "Found existing account in Firebase. Linking to Registry..." });
-          const newUser: AppUser = {
-              email: data.email.toLowerCase().trim(),
-              role: data.role,
-              createdAt: new Date().toISOString()
-          };
-          await updateUserRegistry([...users, newUser]);
-          reset();
-      } else {
-          toast({ variant: "destructive", title: "Provisioning Failed", description: error.message });
-      }
+        }),
+      });
+      toast({ title: 'User created', description: `${data.email} was added to Firebase Authentication and assigned the ${data.role} role.` });
+      reset({ email: '', password: '', role: 'viewer' });
+      await loadUsers();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'User creation failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
-      if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
     }
   };
 
-  const handleToggleRole = async (user: AppUser) => {
-    if (user.email === currentUser?.email) {
-        toast({ title: "Action Blocked", description: "You cannot modify your own administrative rights.", variant: "destructive" });
-        return;
+  const updateUser = async (entry: ManagedUser, update: { role?: 'admin' | 'viewer'; active?: boolean }) => {
+    const action = update.role
+      ? `change ${entry.email} from ${entry.role} to ${update.role}`
+      : `${update.active ? 'enable' : 'DISABLE'} sign-in for ${entry.email}`;
+    const warning = update.role === 'admin'
+      ? '\n\nAdministrators can manage other accounts and roles.'
+      : update.active === false
+        ? '\n\nThis user will no longer be able to sign in. Historical records will remain.'
+        : '';
+    if (!window.confirm(`Confirm: ${action}?${warning}`)) return;
+    setWorkingUid(entry.uid);
+    try {
+      await authorizedFetch(`/api/admin/users/${encodeURIComponent(entry.uid)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(update),
+      });
+      toast({
+        title: 'User updated',
+        description: update.role ? `${entry.email} is now ${update.role}.` : update.active ? `${entry.email} has been enabled.` : `${entry.email} has been disabled.`,
+      });
+      await loadUsers();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
+    } finally {
+      setWorkingUid(null);
     }
-    const newRole: Role = user.role === 'admin' ? 'viewer' : 'admin';
-    const updatedRegistry = users.map(u => u.email === user.email ? { ...u, role: newRole } : u);
-    await updateUserRegistry(updatedRegistry);
-    toast({ title: "Permissions Updated", description: `${user.email} is now a ${newRole.toUpperCase()}.` });
-  };
-
-  const confirmDelete = async () => {
-    if (!userToDelete) return;
-    const updated = users.filter(u => u.email !== userToDelete.email);
-    await updateUserRegistry(updated);
-    toast({ title: "Access Revoked", description: `${userToDelete.email} has been stripped of all roles.` });
-    setUserToDelete(null);
   };
 
   const openConsole = () => {
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    window.open(`https://console.firebase.google.com/project/${projectId}/authentication/users`, '_blank');
+    if (projectId) window.open(`https://console.firebase.google.com/project/${encodeURIComponent(projectId)}/authentication/users`, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* AUTH SYNC ALERT */}
-      <Alert className="bg-primary/5 border-primary/20 rounded-2xl">
-        <Info className="h-4 w-4 text-primary" />
-        <AlertTitle className="text-xs font-black uppercase tracking-widest text-primary">Unified Authentication Sync</AlertTitle>
-        <AlertDescription className="text-xs font-medium text-muted-foreground">
-            This dashboard manages <strong>App Roles</strong>. Accounts created in the Firebase Console will automatically sync here upon their first login.
-        </AlertDescription>
-      </Alert>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Security & access</p><h2 className="mt-1 text-2xl font-bold tracking-tight">User management</h2><p className="mt-1 text-sm text-muted-foreground">Create accounts, assign least-privilege roles, and control sign-in access.</p></div>
+        <Badge variant="outline" className="w-fit gap-1.5 px-3 py-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Server-verified roles</Badge>
+      </div>
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+        <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+        <div className="text-sm">
+          <p className="font-bold">Access changes require confirmation</p>
+          <p className="text-muted-foreground mt-1">Use Viewer by default. Grant Admin only when necessary. Role and account changes are checked by the server and recorded in the audit log. The protected Admin account cannot be changed here.</p>
+        </div>
+      </div>
 
-      {/* STATS OVERVIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-primary/5 border-primary/10 shadow-none">
-            <CardContent className="p-4 flex items-center gap-4">
-                <div className="bg-primary/10 p-2 rounded-lg"><UsersIcon className="h-5 w-5 text-primary" /></div>
-                <div><p className="text-[10px] font-black uppercase text-primary tracking-widest">Authenticated</p><p className="text-2xl font-black">{stats.total}</p></div>
-            </CardContent>
+        <Card className="bg-card shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <UsersIcon className="h-5 w-5 text-primary" />
+            <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Registered</p><p className="text-2xl font-black">{stats.total}</p></div>
+          </CardContent>
         </Card>
-        <Card className="bg-muted/30 border-muted-foreground/10 shadow-none">
-            <CardContent className="p-4 flex items-center gap-4">
-                <div className="bg-primary/5 p-2 rounded-lg"><ShieldCheck className="h-5 w-5 text-primary" /></div>
-                <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Admins</p><p className="text-2xl font-black">{stats.admins}</p></div>
-            </CardContent>
+        <Card className="bg-card shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active Admins</p><p className="text-2xl font-black">{stats.admins}</p></div>
+          </CardContent>
         </Card>
-        <Card className="bg-muted/30 border-muted-foreground/10 shadow-none">
-            <CardContent className="p-4 flex items-center gap-4">
-                <div className="bg-muted p-2 rounded-lg"><UserIcon className="h-5 w-5 text-muted-foreground" /></div>
-                <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Viewers</p><p className="text-2xl font-black">{stats.viewers}</p></div>
-            </CardContent>
+        <Card className="bg-muted/30 shadow-none">
+          <CardContent className="p-4 flex items-center gap-4">
+            <UserIcon className="h-5 w-5 text-muted-foreground" />
+            <div><p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active Viewers</p><p className="text-2xl font-black">{stats.viewers}</p></div>
+          </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* PROVISIONING FORM */}
-        <div className="lg:col-span-1 space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                <UserPlus className="h-4 w-4" /> Provision Personnel
-            </h3>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6 border-2 border-primary/10 rounded-3xl bg-muted/10 shadow-inner">
-                <div className="space-y-2">
-                    <Label htmlFor="new-email" className="text-xs font-bold uppercase text-muted-foreground">Login ID (Email)</Label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="new-email" type="email" placeholder="user@example.com" {...register('email')} className="pl-9 h-11" />
-                    </div>
-                    {errors.email && <p className="text-[10px] text-destructive font-bold">{errors.email.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="new-password" className="text-xs font-bold uppercase text-muted-foreground">Initial Key (Min 6 chars)</Label>
-                    <div className="relative">
-                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="new-password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...register('password')} className="pl-9 pr-10 h-11" />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                    </div>
-                    {errors.password && <p className="text-[10px] text-destructive font-bold">{errors.password.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Access Permissions</Label>
-                    <Select value={selectedRole} onValueChange={(v: any) => setValue('role', v)}>
-                        <SelectTrigger className="h-11 font-medium"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="viewer">Viewer (Restricted)</SelectItem>
-                            <SelectItem value="admin">Administrator (Global)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <Button type="submit" disabled={isSubmitting} className="w-full h-12 font-black uppercase tracking-tighter shadow-xl shadow-primary/20">
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                    Sync & Register
-                </Button>
-            </form>
+        <div className="lg:col-span-1 space-y-4 rounded-xl border bg-card p-5 sm:p-6">
+          <h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-primary" /> Create account
+          </h3>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-email">Email address</Label>
+              <Input id="new-email" type="email" autoComplete="off" placeholder="user@example.com" {...register('email')} />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Temporary password</Label>
+              <div className="relative">
+                <Input id="new-password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" className="pr-11" placeholder="At least 12 characters" {...register('password')} />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Use a unique password. Share it securely and ask the user to change it after first sign-in.</p>
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Access role</Label>
+              <Select value={selectedRole} onValueChange={(value: 'admin' | 'viewer') => setValue('role', value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="viewer">Viewer — limited access (recommended)</SelectItem>
+                  <SelectItem value="admin">Admin — can manage users</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={isSubmitting || isLoading} className="w-full">
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+              Create account
+            </Button>
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground"><AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />Admin access is powerful. Select it only for trusted staff who need account-management permissions.</div>
+          </form>
         </div>
 
-        {/* REGISTRY TABLE */}
-        <div className="lg:col-span-2 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" /> Personnel Registry
-                </h3>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black uppercase bg-primary/5 border-primary/20 text-primary" onClick={openConsole}>
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" /> Firebase Console
-                    </Button>
-                    <div className="relative flex-grow sm:w-48">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Filter registry..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 h-9 text-xs"
-                        />
-                    </div>
-                </div>
+        <div className="lg:col-span-2 min-w-0 space-y-4 rounded-xl border bg-card p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div><h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" /> Accounts & permissions
+            </h3><p className="mt-1 text-xs text-muted-foreground">Review status, last sign-in, and role before making changes.</p></div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={openConsole}><ExternalLink className="mr-2 h-3.5 w-3.5" /> Firebase Console</Button>
+              <Button variant="outline" size="icon" onClick={() => void loadUsers()} disabled={isLoading} aria-label="Refresh users">
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
-
-            <div className="rounded-2xl border-2 border-muted overflow-hidden bg-background">
-                <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow>
-                            <TableHead className="text-[10px] uppercase font-black">User Identity</TableHead>
-                            <TableHead className="text-[10px] uppercase font-black text-center">Role</TableHead>
-                            <TableHead className="text-[10px] uppercase font-black">Sync Status</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase font-black">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredUsers.length > 0 ? filteredUsers.map((user) => (
-                            <TableRow key={user.email} className="group hover:bg-muted/30 transition-colors">
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("p-2 rounded-xl", user.role === 'admin' ? "bg-primary/10" : "bg-muted")}>
-                                            {user.role === 'admin' ? <ShieldCheck className="h-4 w-4 text-primary" /> : <UserIcon className="h-4 w-4 text-muted-foreground" />}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-sm truncate max-w-[150px] sm:max-w-none">{user.email}</span>
-                                            {user.uid && <span className="text-[8px] font-mono text-muted-foreground opacity-50 uppercase tracking-tighter">ID: {user.uid}</span>}
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    <Badge variant={user.role === 'admin' ? "default" : "secondary"} className="text-[9px] uppercase font-black px-2 tracking-tighter">
-                                        {user.role}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-[10px] font-bold uppercase tracking-tight">
-                                    <div className="flex items-center gap-1.5">
-                                        <Clock className="h-3 w-3 text-primary" />
-                                        {user.lastLoginAt 
-                                            ? `Logged in ${formatDistanceToNow(parseISO(user.lastLoginAt), { addSuffix: true })}` 
-                                            : `Awaiting First Sync`}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8 text-primary hover:bg-primary/5"
-                                            title="Toggle Role"
-                                            onClick={() => handleToggleRole(user)}
-                                            disabled={user.email === currentUser?.email || isSyncing}
-                                        >
-                                            <ArrowLeftRight className="h-4 w-4" />
-                                        </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8 text-destructive hover:bg-destructive/5"
-                                            title="Revoke Access"
-                                            onClick={() => setUserToDelete(user)}
-                                            disabled={user.email === currentUser?.email || isSyncing}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        )) : (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">
-                                    No personnel records match your criteria.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-            {isSyncing && (
-                <div className="flex items-center justify-center gap-2 text-[10px] text-primary animate-pulse uppercase font-black tracking-widest pt-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Finalizing Registry Write...
-                </div>
-            )}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Search by email..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
+          </div>
+          <div className="rounded-xl border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status & last sign-in</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></TableCell></TableRow>
+                ) : filteredUsers.length ? filteredUsers.map((entry) => {
+                  const isSelf = entry.uid === currentUser?.uid;
+                  const busy = workingUid === entry.uid;
+                  return (
+                    <TableRow key={entry.uid}>
+                      <TableCell>
+                        <div className="font-semibold text-sm">{entry.email}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground">{entry.uid}</div>
+                        {entry.permanent && <Badge variant="outline" className="mt-1 border-amber-500/40 text-amber-700">Protected Admin</Badge>}
+                      </TableCell>
+                      <TableCell><Badge variant={entry.role === 'admin' ? 'default' : 'secondary'}>{entry.role}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <Badge variant={entry.active ? 'outline' : 'destructive'} className="mb-1">{entry.active ? 'Active' : 'Disabled'}</Badge>
+                        <div className="mt-1 flex items-center gap-1"><Clock className="h-3 w-3" />{entry.lastLoginAt ? new Date(entry.lastLoginAt).toLocaleString() : 'No login recorded'}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={entry.role === 'admin' ? 'Change to Viewer' : 'Promote to Admin'}
+                            aria-label={entry.role === 'admin' ? 'Change to Viewer' : 'Promote to Admin'}
+                            disabled={busy || isSelf || entry.permanent || !entry.active}
+                            onClick={() => void updateUser(entry, { role: entry.role === 'admin' ? 'viewer' : 'admin' })}
+                          >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={entry.active ? 'Disable account' : 'Enable account'}
+                            aria-label={entry.active ? 'Disable account' : 'Enable account'}
+                            disabled={busy || isSelf || entry.permanent}
+                            onClick={() => void updateUser(entry, { active: !entry.active })}
+                          >
+                            {entry.active ? <Ban className="h-4 w-4 text-destructive" /> : <RefreshCw className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }) : (
+                  <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No users found.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground">Disabling an account blocks Firebase sign-in but does not delete historical records. Your own account and the protected Admin cannot be changed here.</p>
         </div>
       </div>
-
-      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                <ShieldAlert className="h-6 w-6" />
-                Revoke App Access
-            </AlertDialogTitle>
-            <AlertDialogDescription className="pt-2">
-              Confirm access revocation for <span className="font-bold text-foreground">"{userToDelete?.email}"</span>. 
-              <br /><br />
-              <strong>Immediate Effect:</strong> This user will be stripped of their role and blocked from all app features instantly.
-              <br /><br />
-              <strong>Complete Removal:</strong> To permanently delete their Firebase identity, please use the <button onClick={openConsole} className="text-primary font-bold hover:underline">Firebase Console</button>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest text-[10px]">
-              Revoke & Block Access
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
