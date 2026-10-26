@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const createUserSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -41,6 +42,7 @@ export function UserManager() {
   const [workingUid, setWorkingUid] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingChange, setPendingChange] = useState<{ user: ManagedUser; update: { role?: 'admin' | 'viewer'; active?: boolean } } | null>(null);
 
   const {
     register,
@@ -132,15 +134,13 @@ export function UserManager() {
   };
 
   const updateUser = async (entry: ManagedUser, update: { role?: 'admin' | 'viewer'; active?: boolean }) => {
-    const action = update.role
-      ? `change ${entry.email} from ${entry.role} to ${update.role}`
-      : `${update.active ? 'enable' : 'DISABLE'} sign-in for ${entry.email}`;
-    const warning = update.role === 'admin'
-      ? '\n\nAdministrators can manage other accounts and roles.'
-      : update.active === false
-        ? '\n\nThis user will no longer be able to sign in. Historical records will remain.'
-        : '';
-    if (!window.confirm(`Confirm: ${action}?${warning}`)) return;
+    setPendingChange({ user: entry, update });
+  };
+
+  const confirmUserChange = async () => {
+    if (!pendingChange) return;
+    const { user: entry, update } = pendingChange;
+    setPendingChange(null);
     setWorkingUid(entry.uid);
     try {
       await authorizedFetch(`/api/admin/users/${encodeURIComponent(entry.uid)}`, {
@@ -153,11 +153,7 @@ export function UserManager() {
       });
       await loadUsers();
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Update failed',
-        description: error instanceof Error ? error.message : 'Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.' });
     } finally {
       setWorkingUid(null);
     }
@@ -320,6 +316,41 @@ export function UserManager() {
           <p className="text-xs text-muted-foreground">Disabling an account blocks Firebase sign-in but does not delete historical records. Your own account and the protected Admin cannot be changed here.</p>
         </div>
       </div>
+      <Dialog open={Boolean(pendingChange)} onOpenChange={(open) => { if (!open && !workingUid) setPendingChange(null); }}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border bg-card p-0 shadow-2xl">
+          {pendingChange && (() => {
+            const roleChange = Boolean(pendingChange.update.role);
+            const disabling = pendingChange.update.active === false;
+            const target = pendingChange.update.role;
+            const title = roleChange ? (target === 'viewer' ? 'Change role to Viewer?' : 'Grant Admin access?') : disabling ? 'Disable this account?' : 'Re-enable this account?';
+            const description = roleChange ? (target === 'viewer' ? 'This user will lose access to user management and Admin-only settings.' : 'This user will be able to manage accounts, roles, and protected settings.') : disabling ? 'This user will no longer be able to sign in. Existing records will remain.' : 'This user will be able to sign in to SheetSync again.';
+            return <>
+              <div className="p-5 sm:p-6">
+                <DialogHeader className="text-left">
+                  <div className={cn("mb-3 flex h-11 w-11 items-center justify-center rounded-xl", disabling ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>
+                    {disabling ? <Ban className="h-5 w-5" /> : roleChange ? <ShieldCheck className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
+                  </div>
+                  <DialogTitle className="text-lg font-semibold tracking-tight">{title}</DialogTitle>
+                  <DialogDescription className="pt-1 text-sm leading-6">{description}</DialogDescription>
+                </DialogHeader>
+                <div className={cn("mt-5 rounded-xl border p-3.5", disabling ? "border-destructive/20 bg-destructive/5" : "border-border bg-muted/40")}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background text-sm font-semibold uppercase">{pendingChange.user.email.slice(0,1)}</div>
+                    <div className="min-w-0 flex-1"><p className="break-all text-sm font-semibold">{pendingChange.user.email}</p><p className="mt-1 text-xs text-muted-foreground">{roleChange ? `Role: ${pendingChange.user.role} → ${target}` : `Status: ${pendingChange.user.active ? 'Active' : 'Disabled'} → ${disabling ? 'Disabled' : 'Active'}`}</p></div>
+                    <Badge variant={disabling ? "destructive" : "outline"}>{roleChange ? target : disabling ? "Disable" : "Enable"}</Badge>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs leading-5 text-muted-foreground">This change is checked by the server and recorded in the security audit log.</p>
+              </div>
+              <DialogFooter className="gap-2 border-t bg-muted/20 p-4 sm:flex-row">
+                <Button type="button" variant="outline" className="sm:flex-1" onClick={() => setPendingChange(null)}>Cancel</Button>
+                <Button type="button" variant={disabling ? "destructive" : "default"} className="sm:flex-1" onClick={() => void confirmUserChange()} disabled={Boolean(workingUid)}>{disabling ? "Disable account" : roleChange ? target === 'viewer' ? "Change to Viewer" : "Grant Admin" : "Enable account"}</Button>
+              </DialogFooter>
+            </>;
+          })()}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
