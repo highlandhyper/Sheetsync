@@ -735,17 +735,17 @@ export default function SettingsPage() {
       />
 
       <Dialog open={isBulkSmsDialogOpen} onOpenChange={(open) => { setIsBulkSmsDialogOpen(open); if (!open) { setEnteredBulkPin(''); setBulkPinError(''); } }}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-2xl">
-          <div className="p-6 sm:p-7">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" strokeWidth={1.8} /></div>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-2xl">
+          <div className="space-y-5 p-5 sm:p-6">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" strokeWidth={1.8} /></div>
             <DialogHeader className="text-center">
-              <DialogTitle className="text-xl font-semibold tracking-tight">Verify bulk import</DialogTitle>
-              <DialogDescription className="mx-auto max-w-xs pt-1 text-sm leading-6">Enter the 4-digit security code sent to your configured SMS number to continue.</DialogDescription>
+              <DialogTitle className="text-center text-lg font-semibold tracking-tight">Verify bulk import</DialogTitle>
+              <DialogDescription className="mx-auto max-w-[280px] pt-1 text-center text-sm leading-5">Enter the 4-digit security code sent to your configured SMS number to continue.</DialogDescription>
             </DialogHeader>
-            <div className="mt-6 flex justify-center gap-3" aria-label="4-digit verification code">
-              {Array.from({ length: 4 }, (_, index) => <div key={index} className={cn("flex h-14 w-12 items-center justify-center rounded-xl border bg-background text-xl font-semibold tabular-nums sm:h-16 sm:w-14", enteredBulkPin.length === index ? "border-primary ring-2 ring-primary/15" : "border-input", bulkPinError ? "border-destructive" : "")}>{enteredBulkPin[index] || <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />}</div>)}
+            <div className="flex justify-center gap-2.5" aria-label="4-digit verification code">
+              {Array.from({ length: 4 }, (_, index) => <div key={index} className={cn("flex h-12 w-11 items-center justify-center rounded-lg border bg-background text-lg font-semibold tabular-nums sm:h-14 sm:w-12", enteredBulkPin.length === index ? "border-primary ring-2 ring-primary/15" : "border-input", bulkPinError ? "border-destructive" : "")}>{enteredBulkPin[index] || <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />}</div>)}
             </div>
-            <Input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={enteredBulkPin} autoFocus aria-label="Enter 4-digit security code" className="mt-4 h-11 rounded-xl text-center text-sm tracking-widest" placeholder="Enter code" onChange={(event) => {
+            <Input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={enteredBulkPin} autoFocus aria-label="Enter 4-digit security code" className="mx-auto h-11 max-w-[260px] rounded-lg text-center text-base tracking-[0.2em]" placeholder="Enter code" onChange={(event) => {
               const value = event.target.value.replace(/\D/g, '').slice(0, 4);
               setEnteredBulkPin(value); setBulkPinError('');
               if (value.length === 4) {
@@ -756,9 +756,9 @@ export default function SettingsPage() {
               }
             }} />
             {bulkPinError ? <p className="mt-2 text-center text-xs font-medium text-destructive">{bulkPinError}</p> : <p className="mt-2 text-center text-xs text-muted-foreground">The code is single-use. Keep it private.</p>}
-            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Verification protects bulk import from unauthorized access.</span></div>
+            <div className="flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Verification protects bulk import from unauthorized access.</span></div>
           </div>
-          <DialogFooter className="gap-2 border-t bg-muted/20 p-4 sm:flex-row">
+          <DialogFooter className="grid grid-cols-2 gap-2 border-t bg-muted/20 p-4 sm:flex-row">
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsBulkSmsDialogOpen(false)}>Cancel</Button>
             <Button type="button" className="w-full sm:w-auto" disabled={enteredBulkPin.length !== 4} onClick={() => {
               if (enteredBulkPin === generatedBulkPin) { setIsBulkSmsDialogOpen(false); setIsImportTerminalOpen(true); setGeneratedBulkPin(''); setEnteredBulkPin(''); toast({ title: 'Verified', description: 'Opening importer.' }); }
