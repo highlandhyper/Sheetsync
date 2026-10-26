@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const existing = snapshot.data()!;
-    const permanentEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
+    const permanentEmail = (process.env.INITIAL_ADMIN_EMAIL || 'highlandhiper@gmail.com').trim().toLowerCase();
     const targetEmail = String(existing.email || '').trim().toLowerCase();
     const permanent = existing.permanent === true || (!!permanentEmail && targetEmail === permanentEmail);
     if (permanent) {
