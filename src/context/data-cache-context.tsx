@@ -84,6 +84,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   const lastProductSyncRef = useRef<number>(0);
+  const lastFocusSyncRef = useRef<number>(0);
   const syncFailureCountRef = useRef(0);
   
   const isCacheReady = isInitialized;
@@ -268,7 +269,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); processSyncQueue(); };
     const handleOffline = () => setIsOnline(false);
-    const handleFocus = () => { if (user && !isFetchingRef.current) fetchDataAndCache(); };
+    const handleFocus = () => {
+      const now = Date.now();
+      // Browser focus can fire repeatedly when users switch between windows.
+      // Avoid an immediate full Sheets refresh if a recent sync already ran.
+      if (user && !isFetchingRef.current && now - lastFocusSyncRef.current >= 30000) {
+        lastFocusSyncRef.current = now;
+        void fetchDataAndCache();
+      }
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('focus', handleFocus);
