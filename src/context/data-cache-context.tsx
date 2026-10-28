@@ -50,8 +50,8 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 60000; 
-const PRODUCT_SYNC_INTERVAL_MS = 1800000; 
+const SYNC_INTERVAL_MS = 30000; // Keep inventory, expiry, and metadata changes reasonably fresh.
+const PRODUCT_SYNC_INTERVAL_MS = 300000; // Refresh the full catalogue every 5 minutes; IndexedDB writes are now differential.
 
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v5'; 
 const OFFLINE_KEY = 'sheetSync_offlineActions_v4';
@@ -280,9 +280,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     const handleOffline = () => setIsOnline(false);
     const handleFocus = () => {
       const now = Date.now();
-      // Browser focus can fire repeatedly when users switch between windows.
-      // Avoid an immediate full Sheets refresh if a recent sync already ran.
-      if (user && !isFetchingRef.current && now - lastFocusSyncRef.current >= 30000) {
+      // Refresh when returning to the app. The product refresh is throttled
+      // separately, so focus does not force a 73k-row download each time.
+      if (user && !isFetchingRef.current && now - lastFocusSyncRef.current >= 10000) {
         lastFocusSyncRef.current = now;
         void fetchDataAndCache();
       }
