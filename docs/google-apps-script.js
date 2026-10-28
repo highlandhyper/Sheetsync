@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v8.2
+ * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v10.4
  * ============================================================
  * 
  * INDUSTRIAL NOTIFICATION & AUDIT ENGINE
@@ -47,7 +47,7 @@ const ODA_COL_USED = 9;
 // ============================================================
 
 function doGet(e) {
-  return ContentService.createTextOutput("SheetSync Registry Core v8.2 Active.");
+  return ContentService.createTextOutput("SheetSync Registry Core v10.4 Active.");
 }
 
 function doPost(e) {
@@ -57,20 +57,24 @@ function doPost(e) {
     const action = data.action || "";
     Logger.log("[REGISTRY_REQUEST] action=" + action);
 
-    // Security Handshake
+    // Staff PIN verification is the only public action and must validate
+    // the link token as well as the PIN. All administrative actions require ADMIN_PASSWORD.
+    if (action === "verifyOnDisplayPinOnly") {
+      return jsonResponse(verifyOnDisplayPinOnly_(data.token, data.pin));
+    }
+
     const props = PropertiesService.getScriptProperties();
     const systemPass = props.getProperty("ADMIN_PASSWORD");
-    if (data.password !== systemPass) throw new Error("Unauthorized Identity");
+    if (!systemPass || data.password !== systemPass) throw new Error("Unauthorized Identity");
 
     switch(action) {
       case "standardLog": return jsonResponse(submitData(data));
-      case "triggerOnDisplayAlerts": return jsonResponse(processOnDisplayAlerts_(data.staffName));
+      case "triggerOnDisplayAlerts": return jsonResponse(processOnDisplayAlerts_(data.staffName, true));
       case "triggerWeeklyReports": return jsonResponse(generateWeeklySupplierReports());
       case "triggerDailySmsSummary": return jsonResponse(generateDailySupplierSmsReports());
       case "sendManualSupplierReport": return jsonResponse(sendSingleSupplierReport_(data.supplierName));
       case "sendAdminExpiryAlert": return jsonResponse(handleAdminExpiryAlert_(data));
       case "uploadUnknownBarcodeImage": return jsonResponse(uploadUnknownBarcodeImage_(data));
-      case "verifyOnDisplayPinOnly": return jsonResponse(verifyOnDisplayPinOnly_(data.pin));
       default: throw new Error("Protocol Unknown: " + action);
     }
   } catch (error) {
@@ -294,3 +298,104 @@ function setSupplierFormula_(sheet, row) {
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
+
+
+// ============================================================
+// v10.4: MANUAL HISTORICAL SUPPLIER REPORT
+// Manual sends never modify Column K (automatic report tracking).
+// APP_SETTINGS!B contains JSON under the supplierContacts key.
+// ============================================================
+
+function getSupplierContactByName_(name) {
+  const wanted = String(name || "").trim().toLowerCase();
+  if (!wanted) return null;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(APP_SETTINGS_SHEET_NAME);
+  if (!sheet) throw new Error("APP_SETTINGS sheet not found.");
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || "").trim() !== SUPPLIER_CONTACTS_KEY) continue;
+    let contacts;
+    try { contacts = JSON.parse(rows[i][1] || "[]"); }
+    catch (e) { throw new Error("Supplier contacts JSON is invalid in APP_SETTINGS."); }
+    if (!Array.isArray(contacts)) throw new Error("Supplier contacts must be a JSON array.");
+    return contacts.find(s => String(s && s.name || "").trim().toLowerCase() === wanted) || null;
+  }
+  throw new Error("Supplier contacts setting was not found in APP_SETTINGS.");
+}
+
+function sendSingleSupplierReport_(name) {
+  const supplierName = String(name || "").trim();
+  if (!supplierName) throw new Error("Supplier name is required.");
+  const contact = getSupplierContactByName_(supplierName);
+  if (!contact || !String(contact.email || "").trim()) throw new Error("No dispatch email configured for " + supplierName + ".");
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
+  if (!sheet) throw new Error("Inventory log sheet not found: " + LOG_SHEET_NAME);
+  const values = sheet.getDataRange().getValues();
+  const items = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (String(row[INV_COL_SUPPLIER_NAME] || "").trim().toLowerCase() !== supplierName.toLowerCase()) continue;
+    items.push({
+      timestamp: row[INV_COL_TIMESTAMP],
+      barcode: row[INV_COL_BARCODE],
+      product: row[INV_COL_PRODUCT_NAME],
+      quantity: row[INV_COL_QTY],
+      expiry: row[INV_COL_EXPIRY],
+      location: row[INV_COL_LOCATION],
+      staff: row[INV_COL_STAFF],
+      type: row[INV_COL_TYPE]
+    });
+  }
+  if (!items.length) return { status: "no_data", message: "No historical logs found for this supplier." };
+  const esc = v => escapeHtml(v == null || v === "" ? "—" : String(v));
+  const rowsHtml = items.map(item => '<tr>' +
+    '<td style="padding:10px;border-bottom:1px solid #e5e7eb;">' + esc(item.product) + '</td>' +
+    '<td style="padding:10px;border-bottom:1px solid #e5e7eb;font-family:monospace;">' + esc(item.barcode) + '</td>' +
+    '<td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;">' + esc(item.quantity) + '</td>' +
+    '<td style="padding:10px;border-bottom:1px solid #e5e7eb;">' + esc(item.expiry) + '</td>' +
+    '<td style="padding:10px;border-bottom:1px solid #e5e7eb;">' + esc(item.location) + '</td></tr>').join("");
+  const html = '<div style="font-family:Arial,sans-serif;max-width:900px;margin:auto;color:#1f2937;">' +
+    '<div style="background:#111827;color:#fff;padding:24px;border-radius:12px 12px 0 0;">' +
+    '<div style="font-size:11px;letter-spacing:2px;color:#cbd5e1;font-weight:bold;">HIGHLAND HYPERMARKET</div>' +
+    '<h1 style="margin:10px 0 4px;font-size:22px;">Supplier Inventory Report</h1>' +
+    '<div style="color:#cbd5e1;font-size:13px;">Historical registry records for ' + esc(supplierName) + '</div></div>' +
+    '<div style="padding:20px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px;">' +
+    '<p style="font-size:13px;line-height:1.6;">This manual report includes all recorded inventory entries for the selected supplier. It does not change automatic-report tracking.</p>' +
+    '<p style="font-size:13px;"><b>Total records:</b> ' + items.length + '</p>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f3f4f6;text-align:left;">' +
+    '<th style="padding:10px;">Product</th><th style="padding:10px;">Barcode</th><th style="padding:10px;text-align:right;">Qty</th><th style="padding:10px;">Expiry</th><th style="padding:10px;">Location</th>' +
+    '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+    '<p style="font-size:11px;color:#6b7280;margin-top:20px;">SHEETSYNC REGISTRY · Automated inventory reporting</p></div></div>';
+  const textBody = "HIGHLAND HYPERMARKET - SUPPLIER INVENTORY REPORT\nSupplier: " + supplierName +
+    "\nTotal records: " + items.length + "\n\n" + items.map(i => [i.product, i.barcode, i.quantity, i.expiry, i.location].join(" | ")).join("\n");
+  MailApp.sendEmail({
+    to: String(contact.email).trim(),
+    subject: "Supplier Inventory Report — " + supplierName.replace(/[\\r\\n]/g, " "),
+    body: textBody,
+    htmlBody: html,
+    name: "Highland Hypermarket | SheetSync Registry"
+  });
+  return { status: "success", message: "Manual historical report sent to " + contact.email, items: items.length };
+}
+
+// ============================================================
+// v10.4: ADMIN EXPIRY EMAIL HANDLER + PROFESSIONAL TEMPLATE
+// ============================================================
+
+function handleAdminExpiryAlert_(data) {
+  const item = data && typeof data === "object" ? data : {};
+  const productName = String(item.productName || item.product || "").trim();
+  const barcode = String(item.barcode || "").trim();
+  if (!productName && !barcode) throw new Error("Product name or barcode is required.");
+  sendExpiryAlertEmail({
+    productName: productName || "Unknown product",
+    barcode: barcode || "—",
+    quantity: item.quantity != null ? item.quantity : (item.qty != null ? item.qty : "—"),
+    expiryDate: item.expiryDate || item.expiry || "",
+    staffName: item.staffName || item.staff || "Unknown",
+    location: item.location || "Not specified",
+    supplier: item.supplier || "Not specified"
+  }, new Date());
+  return { status: "success", message: "Admin expiry alert email sent." };
+}
+
