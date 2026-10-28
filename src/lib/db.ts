@@ -30,10 +30,12 @@ export async function saveInventory(items: InventoryItem[]) {
   if (!db) return;
   const tx = db.transaction('inventory', 'readwrite');
   const store = tx.objectStore('inventory');
-  await store.clear();
-  for (const item of items) {
-    await store.put(item);
+  const incomingIds = new Set(items.map(item => item.id));
+  const existingKeys = await store.getAllKeys();
+  for (const key of existingKeys) {
+    if (!incomingIds.has(String(key))) await store.delete(key);
   }
+  for (const item of items) await store.put(item);
   await tx.done;
 }
 
@@ -51,10 +53,12 @@ export async function saveAuditLogs(logs: AuditLogEntry[]) {
   if (!db) return;
   const tx = db.transaction('auditLogs', 'readwrite');
   const store = tx.objectStore('auditLogs');
-  await store.clear();
-  for (const log of logs) {
-    await store.put(log);
+  const incomingIds = new Set(logs.map(log => log.id));
+  const existingKeys = await store.getAllKeys();
+  for (const key of existingKeys) {
+    if (!incomingIds.has(String(key))) await store.delete(key);
   }
+  for (const log of logs) await store.put(log);
   await tx.done;
 }
 
@@ -72,11 +76,14 @@ export async function saveProducts(products: Product[]) {
   if (!db) return;
   const tx = db.transaction('products', 'readwrite');
   const store = tx.objectStore('products');
-  await store.clear();
-  // Batch write for performance with 54k rows
-  for (const product of products) {
-    await store.put(product);
+  const incomingBarcodes = new Set(products.map(product => product.barcode));
+  const existingKeys = await store.getAllKeys();
+  for (const key of existingKeys) {
+    if (!incomingBarcodes.has(String(key))) await store.delete(key);
   }
+  // IndexedDB writes are issued without awaiting each request, keeping the
+  // transaction active and avoiding one promise round-trip per product.
+  for (const product of products) store.put(product);
   await tx.done;
 }
 

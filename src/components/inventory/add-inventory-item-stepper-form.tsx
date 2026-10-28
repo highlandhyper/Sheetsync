@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useTransition, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useTransition, useRef, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -148,6 +148,22 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     isOnline,
     pendingActions,
   } = useDataCache();
+
+  // Index both exact and zero-stripped barcodes once per catalogue update.
+  // This avoids scanning tens of thousands of products for every scan.
+  const productBarcodeIndexes = useMemo(() => {
+    const exact = new Map<string, typeof cachedProducts[number]>();
+    const normalized = new Map<string, typeof cachedProducts[number]>();
+    for (const product of cachedProducts) {
+      const barcode = String(product.barcode || '').trim();
+      if (!barcode) continue;
+      if (!exact.has(barcode)) exact.set(barcode, product);
+      const key = barcode.replace(/^0+/, '') || '0';
+      if (!normalized.has(key)) normalized.set(key, product);
+    }
+    return { exact, normalized };
+  }, [cachedProducts]);
+
   const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry, requestSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -264,8 +280,9 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setProductAddRequestId(undefined);
       setFoundInGlobalRegistry(false);
       
-      const normalizedTerm = barcode.replace(/^0+/, '');
-      const cachedProduct = cachedProducts.find(p => p.barcode === barcode || p.barcode.replace(/^0+/, '') === normalizedTerm);
+      const normalizedTerm = barcode.replace(/^0+/, '') || '0';
+      const cachedProduct = productBarcodeIndexes.exact.get(barcode.trim())
+        || productBarcodeIndexes.normalized.get(normalizedTerm);
       
       if (cachedProduct) {
         if (capturedScanRef.current && normalizeBarcodeForLookup(capturedScanRef.current.barcode) === normalizeBarcodeForLookup(barcode)) {

@@ -50,8 +50,8 @@ interface DataCacheContextType extends AppData {
 
 const DataCacheContext = createContext<DataCacheContextType | undefined>(undefined);
 
-const SYNC_INTERVAL_MS = 15000; 
-const PRODUCT_SYNC_INTERVAL_MS = 900000; 
+const SYNC_INTERVAL_MS = 60000; 
+const PRODUCT_SYNC_INTERVAL_MS = 1800000; 
 
 const DATA_CACHE_KEY = 'sheetSync_metaCache_v5'; 
 const OFFLINE_KEY = 'sheetSync_offlineActions_v4';
@@ -84,6 +84,7 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   const processingQueueRef = useRef(false);
   const isDbLoadingRef = useRef(false);
   const lastProductSyncRef = useRef<number>(0);
+  const lastFocusSyncRef = useRef<number>(0);
   const syncFailureCountRef = useRef(0);
   
   const isCacheReady = isInitialized;
@@ -133,15 +134,34 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     bootstrap();
   }, []);
 
+  // Persist each cache independently so a metadata refresh does not trigger
+  // a full rewrite of inventory, audit logs, and the 70k+ product catalogue.
   useEffect(() => {
     if (!isInitialized) return;
+    const timeout = setTimeout(() => { void saveInventory(data.inventoryItems); }, 1500);
+    return () => clearTimeout(timeout);
+  }, [data.inventoryItems, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    const timeout = setTimeout(() => { void saveAuditLogs(data.auditLogs); }, 1500);
+    return () => clearTimeout(timeout);
+  }, [data.auditLogs, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    const timeout = setTimeout(() => { void saveProducts(data.products); }, 1500);
+    return () => clearTimeout(timeout);
+  }, [data.products, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    const { inventoryItems, auditLogs, products, ...metaOnly } = data;
     const timeout = setTimeout(() => {
-      saveInventory(data.inventoryItems);
-      saveAuditLogs(data.auditLogs);
-      saveProducts(data.products);
-      const { inventoryItems, auditLogs, products, ...metaOnly } = data;
-      localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly));
-    }, 1500);
+      try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(metaOnly)); } catch (error) {
+        console.warn('Unable to persist SheetSync metadata cache:', error);
+      }
+    }, 300);
     return () => clearTimeout(timeout);
   }, [data, isInitialized]);
 
@@ -249,7 +269,15 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); processSyncQueue(); };
     const handleOffline = () => setIsOnline(false);
-    const handleFocus = () => { if (user && !isFetchingRef.current) fetchDataAndCache(); };
+    const handleFocus = () => {
+      const now = Date.now();
+      // Browser focus can fire repeatedly when users switch between windows.
+      // Avoid an immediate full Sheets refresh if a recent sync already ran.
+      if (user && !isFetchingRef.current && now - lastFocusSyncRef.current >= 30000) {
+        lastFocusSyncRef.current = now;
+        void fetchDataAndCache();
+      }
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('focus', handleFocus);

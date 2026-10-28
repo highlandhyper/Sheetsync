@@ -36,7 +36,8 @@ import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEnt
  * Checks for both secure and legacy (NEXT_PUBLIC) environment variables
  */
 const APPSCRIPT_API_URL = process.env.GOOGLE_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "";
-const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ""; 
+// Keep registry credentials server-only. Do not fall back to NEXT_PUBLIC_* secrets.
+const APPSCRIPT_PASS = process.env.ADMIN_PASSWORD || ""; 
 
 /**
  * HIGH-PERFORMANCE JSON SANITIZER
