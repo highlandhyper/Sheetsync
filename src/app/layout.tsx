@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Roboto_Mono, Poppins } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { SplashScreen } from '@/components/layout/splash-screen';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#29abe2',
+  themeColor: '#F04416',
 };
 
 export const metadata: Metadata = {
@@ -52,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-       <head>
+      <head>
         <link rel="icon" href="/logo.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/logo-pwa.jpg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -65,12 +66,12 @@ export default function RootLayout({
                 function recover() {
                   const lastReload = sessionStorage.getItem('last_chunk_recovery');
                   const now = Date.now();
-                  
+
                   // Limit recovery to once per 10 seconds to prevent loops
                   if (!lastReload || (now - parseInt(lastReload)) > 10000) {
                     sessionStorage.setItem('last_chunk_recovery', now.toString());
                     console.warn('SheetSync: Version mismatch detected. Performing hard recovery...');
-                    
+
                     if ('caches' in window) {
                       caches.keys().then(names => {
                         for (let name of names) caches.delete(name);
@@ -82,17 +83,15 @@ export default function RootLayout({
 
                 window.addEventListener('error', function(e) {
                   const message = e.message || "";
-                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
+                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) ||
                                      /ChunkLoadError/i.test(message);
-                  
                   if (isChunkError) recover();
                 }, true);
 
                 window.addEventListener('unhandledrejection', function(e) {
                   const message = (e.reason && e.reason.message) || "";
-                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) || 
+                  const isChunkError = /Loading chunk [\\d]+ failed/i.test(message) ||
                                      /ChunkLoadError/i.test(message);
-                  
                   if (isChunkError) recover();
                 });
               })();
@@ -112,9 +111,8 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} ${poppins.variable} font-sans antialiased`} suppressHydrationWarning>
-        <Providers>
-          {children}
-        </Providers>
+        <SplashScreen />
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
