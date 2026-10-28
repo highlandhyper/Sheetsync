@@ -185,6 +185,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [isMobileDatePickerOpen, setIsMobileDatePickerOpen] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [productName, setProductName] = useState('');
+  const [requiresProductName, setRequiresProductName] = useState(false);
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
   const [suggestedProductName, setSuggestedProductName] = useState('');
@@ -256,6 +257,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       setIsFetchingProduct(true);
       setProductLookupError('');
       setProductName('');
+      setRequiresProductName(false);
       setProductSupplier('');
       setHasRequestedProduct(false);
       setSuggestedProductName('');
@@ -305,6 +307,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
           // Only the Log New Item camera scanner captures images. Upload only when
           // this exact scanned barcode is confirmed missing from the registry.
           const capturedScan = capturedScanRef.current;
+          const hasMatchingCapturedImage = Boolean(capturedScan && normalizeBarcodeForLookup(capturedScan.barcode) === normalizeBarcodeForLookup(barcode));
+          setRequiresProductName(!hasMatchingCapturedImage);
           if (capturedScan && normalizeBarcodeForLookup(capturedScan.barcode) === normalizeBarcodeForLookup(barcode)) {
               capturedScanRef.current = null;
               console.info('[UNKNOWN_BARCODE_UPLOAD] Log New Item: uploading captured unknown barcode', {
@@ -380,6 +384,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         reset({ ...data, barcode: '', quantity: 1 });
         setValue('staffName', savedStaffName); 
         setProductName('');
+        setRequiresProductName(false);
         setProductSupplier('');
         setProductLookupError('');
         setSuggestedProductName('');
@@ -459,6 +464,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         const currentBarcode = getValues('barcode');
         const barcodeOk = await handleBarcodeLookup(currentBarcode);
         if(!barcodeOk) return;
+    }
+    if (currentStep === 1 && requiresProductName && !productName.trim()) {
+        toast({ title: 'Product name required', description: 'No photo was captured for this barcode. Enter the product name before continuing.', variant: 'destructive' });
+        return;
     }
     setCurrentStep(step => step + 1);
   };
@@ -682,14 +691,18 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         <div className={cn(currentStep !== 1 && "hidden", "space-y-2.5 sm:space-y-3")}>
                             {productLookupError && (
                                 <div className="space-y-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                                    <Label htmlFor="suggested-product-name" className="text-xs font-semibold text-foreground">Product name for admin confirmation</Label>
-                                    <Input id="suggested-product-name" value={suggestedProductName} onChange={(event) => setSuggestedProductName(event.target.value)} onBlur={async () => {
+                                    <Label htmlFor="suggested-product-name" className="text-xs font-semibold text-foreground">{requiresProductName ? 'Product name (required)' : 'Product name for admin confirmation'}</Label>
+                                    <Input id="suggested-product-name" value={requiresProductName ? productName : suggestedProductName} onChange={(event) => {
+                                        const value = event.target.value;
+                                        setSuggestedProductName(value);
+                                        if (requiresProductName) setProductName(value);
+                                    }} onBlur={async () => {
                                         if (productAddRequestId && suggestedProductName.trim()) {
                                             const result = await updateProductAddRequestAction(productAddRequestId, suggestedProductName);
                                             if (!result.success) toast({ title: 'Could not update request', description: result.message, variant: 'destructive' });
                                         }
-                                    }} placeholder="Enter the name printed on the item" className="h-10 rounded-lg bg-background text-sm" maxLength={180} />
-                                    <p className="text-[10px] leading-relaxed text-muted-foreground">Admin will use this name to identify and confirm the product before registering it.</p>
+                                    }} placeholder={requiresProductName ? 'Enter the product name to continue' : 'Enter the name printed on the item'} className="h-10 rounded-lg bg-background text-sm" maxLength={180} aria-required={requiresProductName} />
+                                    <p className="text-[10px] leading-relaxed text-muted-foreground">{requiresProductName ? 'A camera photo was not available for this scan. Enter the product name before continuing.' : 'Admin will use this name to identify and confirm the product before registering it.'}</p>
                                 </div>
                             )}
                             {productName && (
