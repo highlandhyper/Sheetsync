@@ -266,37 +266,42 @@ body {
 
 /* -------------------------------------------------------
    PRINT OPTIMIZATION
+   Keep browser printing independent of screen breakpoints,
+   app theme, overflow wrappers and responsive table sizing.
 ------------------------------------------------------- */
 
 @media print {
   @page {
-    margin: 1cm;
-    size: auto;
-  }
-
-  :root {
-    --sidebar-width: 0px !important;
-    --sidebar-width-icon: 0px !important;
+    size: landscape;
+    margin: 10mm;
   }
 
   html,
   body {
-    background: white !important;
-    color: black !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  body {
-    font-size: 10pt !important;
-  }
-
-  * {
-    color: black !important;
-    background: transparent !important;
-    border-color: #333 !important;
+  *,
+  *::before,
+  *::after {
+    color: #000 !important;
     box-shadow: none !important;
     text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
   }
 
+  /* Controls and application chrome must never occupy print space. */
   .noprint,
   header,
   nav,
@@ -304,84 +309,154 @@ body {
   [data-sidebar="sidebar"],
   .group\/sidebar,
   button,
+  input,
+  textarea,
+  select,
+  [role="combobox"],
+  [role="dialog"],
+  [data-radix-popper-content-wrapper],
   .filters-card-noprint,
   .print-button-container,
-  [role="combobox"],
-  input[type="search"] {
+  .mobile-nav,
+  .bottom-nav {
     display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: absolute !important;
-    left: -9999px !important;
   }
 
   main,
   .flex-1,
   .container,
   [data-sidebar-inset="true"],
-  .sidebar-inset {
-    margin: 0 !important;
-    padding: 0 !important;
+  .sidebar-inset,
+  .printable-area {
     width: 100% !important;
     max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
     position: static !important;
     transform: none !important;
+    contain: none !important;
+    break-inside: auto !important;
   }
 
   .printable-area {
-    visibility: visible !important;
-    position: static !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 9pt !important;
   }
 
-  .printable-area::before {
-    content: "SheetSync Inventory System - Official Report";
-    display: block;
-    margin-bottom: 5mm;
-    padding-bottom: 2mm;
-    border-bottom: 2px solid #111 !important;
-    color: #111 !important;
-    text-align: center;
-    font-size: 18pt;
-    font-weight: 800;
+  /* Remove horizontal-scroll containers that clip columns on paper. */
+  .overflow-x-auto,
+  .overflow-auto,
+  [data-radix-scroll-area-viewport] {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  table {
+  /* Use the table layout itself rather than screen-only responsive sizing. */
+  .printable-area table {
+    display: table !important;
     width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
     border-collapse: collapse !important;
-    border: 1px solid #000 !important;
+    border-spacing: 0 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    line-height: 1.2 !important;
+    page-break-inside: auto !important;
   }
 
-  th {
-    border: 1px solid #000 !important;
-    background-color: #f0f0f0 !important;
-    color: black !important;
-    padding: 8px !important;
-    font-weight: 800 !important;
-    text-transform: uppercase !important;
+  .printable-area thead {
+    display: table-header-group !important;
   }
 
-  td {
-    border: 1px solid #000 !important;
-    padding: 6px !important;
-    color: black !important;
+  .printable-area tfoot {
+    display: table-footer-group !important;
   }
 
-  .card {
-    border: 1px solid #ddd !important;
+  .printable-area tr {
+    display: table-row !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .printable-area th,
+  .printable-area td {
+    display: table-cell !important;
+    max-width: none !important;
+    height: auto !important;
+    padding: 4px 5px !important;
+    border: 1px solid #444 !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    text-align: left;
+    vertical-align: top !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .printable-area th {
+    background: #eee !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .printable-area .font-mono,
+  .printable-area code,
+  .printable-area [data-barcode] {
+    font-family: "Courier New", Courier, monospace !important;
+  }
+
+  .printable-area img,
+  .printable-area svg {
+    max-width: 100% !important;
+    break-inside: avoid !important;
+  }
+
+  .printable-area .card,
+  .printable-area [class*="rounded"] {
+    border-color: #aaa !important;
     box-shadow: none !important;
   }
 
-  span,
-  p,
-  h1,
-  h2,
-  h3,
-  h4 {
-    color: black !important;
+  .printable-area h1,
+  .printable-area h2,
+  .printable-area h3,
+  .printable-area h4,
+  .printable-area p,
+  .printable-area span {
+    color: #000 !important;
+  }
+
+  .printable-area h1,
+  .printable-area h2,
+  .printable-area h3 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Avoid a synthetic title duplicating or replacing the report heading. */
+  .printable-area::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
   }
 }
