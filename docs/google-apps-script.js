@@ -399,3 +399,39 @@ function handleAdminExpiryAlert_(data) {
   return { status: "success", message: "Admin expiry alert email sent." };
 }
 
+
+
+// v10.4 security fix: verify the exact token and 4-digit PIN from the
+// On Display Alerts sheet. Sheet columns F:I = Token, PIN, Expires At, Used.
+function verifyOnDisplayPinOnly_(token, pin) {
+  const cleanToken = String(token || "").trim();
+  const cleanPin = String(pin || "").trim();
+  if (!/^[a-f0-9]{8}$/i.test(cleanToken)) return {status:"error", verified:false, message:"Invalid or expired access link."};
+  if (!/^\\d{4}$/.test(cleanPin)) return {status:"error", verified:false, message:"Enter the four-digit PIN."};
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return {status:"error", verified:false, message:"System busy. Please try again."};
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ON_DISPLAY_ALERTS_SHEET_NAME);
+    if (!sheet) throw new Error("On Display Alerts sheet not found.");
+    const last = sheet.getLastRow();
+    if (last < 2) return {status:"error", verified:false, message:"No active On Display alerts found."};
+    const rows = sheet.getRange(2, 6, last - 1, 4).getValues();
+    const now = new Date();
+    let found = false;
+    for (const row of rows) {
+      if (String(row[0] || "").trim() !== cleanToken) continue;
+      found = true;
+      if (String(row[1] || "").trim() !== cleanPin) return {status:"error", verified:false, message:"Invalid PIN."};
+      const expiry = row[2] instanceof Date ? row[2] : new Date(row[2]);
+      if (!row[2] || isNaN(expiry.getTime()) || now.getTime() > expiry.getTime()) return {status:"error", verified:false, message:"This access link has expired."};
+      const used = String(row[3] || "").trim().toLowerCase();
+      if (used === "yes" || used === "true") return {status:"error", verified:false, message:"This alert has already been used."};
+    }
+    return found ? {status:"success", verified:true, message:"PIN verified successfully."} : {status:"error", verified:false, message:"Invalid or expired access link."};
+  } catch (err) {
+    console.error("On Display PIN verification failed: " + (err.message || err));
+    return {status:"error", verified:false, message:"PIN verification failed. Please try again."};
+  } finally {
+    lock.releaseLock();
+  }
+}
