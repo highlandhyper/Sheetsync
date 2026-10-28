@@ -460,3 +460,107 @@ body {
     text-decoration: none !important;
   }
 }
+
+
+/* -------------------------------------------------------
+   SHEETSYNC OPENING SPLASH
+   Customize --sheetsync-splash-color and --sheetsync-splash-duration here.
+------------------------------------------------------- */
+:root {
+  --sheetsync-splash-color: #F04416;
+  --sheetsync-splash-duration: 3000ms;
+}
+
+.sheetsync-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background-color: var(--sheetsync-splash-color);
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.075) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.075) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 420ms ease, transform 520ms cubic-bezier(.2,.75,.25,1);
+  isolation: isolate;
+}
+
+.sheetsync-splash::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: radial-gradient(circle at center, rgb(255 255 255 / 0.07), transparent 48%);
+  pointer-events: none;
+}
+
+.sheetsync-splash__panel {
+  display: grid;
+  place-items: center;
+  width: clamp(112px, 24vw, 168px);
+  aspect-ratio: 1;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(95 22 8 / 0.12);
+  box-shadow: 0 16px 48px rgb(65 16 5 / 0.08), inset 0 1px rgb(255 255 255 / 0.08);
+  opacity: 0;
+  transform: translateY(8px) scale(.94);
+  animation: sheetsync-panel-in 480ms cubic-bezier(.2,.75,.25,1) 80ms forwards;
+}
+
+.sheetsync-splash__logo {
+  display: block;
+  width: 58%;
+  height: 58%;
+  object-fit: contain;
+  user-select: none;
+  filter: brightness(0) invert(1);
+  opacity: 0;
+  transform: scale(.78) rotate(-5deg);
+  animation: sheetsync-logo-in 780ms cubic-bezier(.2,.8,.2,1) 360ms forwards;
+}
+
+.sheetsync-splash--exit {
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(1.018);
+}
+
+.sheetsync-splash--exit .sheetsync-splash__panel {
+  animation: none;
+}
+
+@keyframes sheetsync-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sheetsync-logo-in {
+  0% { opacity: 0; transform: scale(.78) rotate(-5deg); }
+  65% { opacity: 1; transform: scale(1.045) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheetsync-splash,
+  .sheetsync-splash__panel,
+  .sheetsync-splash__logo {
+    animation: none !important;
+    transition-duration: 40ms !important;
+  }
+
+  .sheetsync-splash__panel,
+  .sheetsync-splash__logo {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media print {
+  .sheetsync-splash {
+    display: none !important;
+  }
+}
