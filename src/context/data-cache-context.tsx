@@ -182,8 +182,17 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 45000);
 
     try {
+      const clientSyncStartedAt = performance.now();
       const response = await fetchAllDataAction(shouldSkipProducts);
+      const actionRoundTripMs = Math.round(performance.now() - clientSyncStartedAt);
       if (response.success && response.data) {
+        console.info('[SHEETSYNC_SYNC_DIAGNOSTICS]', {
+          phase: 'server-action-round-trip',
+          actionRoundTripMs,
+          skipProducts: shouldSkipProducts,
+          productCount: response.data.products?.length ?? 0,
+          inventoryCount: response.data.inventoryItems?.length ?? 0
+        });
         syncFailureCountRef.current = 0;
         if (!shouldSkipProducts) {
             lastProductSyncRef.current = now;
