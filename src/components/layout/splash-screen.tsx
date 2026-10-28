@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const INTRO_DURATION_MS = 3000;
+const INTRO_DURATION_MS = 2580;
 const EXIT_DURATION_MS = 420;
 
 /**
