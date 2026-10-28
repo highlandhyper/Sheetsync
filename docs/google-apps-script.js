@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v10.4
+ * HIGHLAND HYPERMARKET - SHEETSYNC REGISTRY CORE v10.5
  * ============================================================
  * 
  * INDUSTRIAL NOTIFICATION & AUDIT ENGINE
@@ -47,7 +47,7 @@ const ODA_COL_USED = 9;
 // ============================================================
 
 function doGet(e) {
-  return ContentService.createTextOutput("SheetSync Registry Core v10.4 Active.");
+  return ContentService.createTextOutput("SheetSync Registry Core v10.5 Active.");
 }
 
 function doPost(e) {
@@ -152,7 +152,34 @@ function uploadUnknownBarcodeImage_(data) {
 // CORE LOGIC: INVENTORY HANDSHAKE
 // ============================================================
 
+function normalizeRegistryBarcode_(value) {
+  return String(value == null ? "" : value).trim().replace(/^0+/, "");
+}
+
+function registryContainsBarcode_(barcode) {
+  const wanted = String(barcode == null ? "" : barcode).trim();
+  if (!wanted) return false;
+  const db = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(DB_SHEET_NAME);
+  if (!db) throw new Error("Master product database sheet not found.");
+  const lastRow = db.getLastRow();
+  if (lastRow < 2) return false;
+  const normalized = normalizeRegistryBarcode_(wanted);
+  const values = db.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  return values.some(row => {
+    const saved = String(row[0] || "").trim();
+    return saved === wanted || normalizeRegistryBarcode_(saved) === normalized;
+  });
+}
+
 function submitData(item) {
+  const barcode = String(item && item.barcode || "").trim();
+  const productName = String(item && item.productName || "").trim();
+  // Enforce this on the server as well as in the UI: a new/unknown barcode
+  // must have a product name before it can be written to the inventory log.
+  if (barcode && !registryContainsBarcode_(barcode) && !productName) {
+    throw new Error("Product name is required for an unregistered barcode. Enter the product name and try again.");
+  }
+
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) throw new Error("Registry Busy. Try again.");
   
