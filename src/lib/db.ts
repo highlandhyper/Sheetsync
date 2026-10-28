@@ -72,19 +72,31 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
    PRODUCTS
 ========================= */
 export async function saveProducts(products: Product[]) {
+  const saveStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const db = await dbPromise;
   if (!db) return;
   const tx = db.transaction('products', 'readwrite');
   const store = tx.objectStore('products');
   const incomingBarcodes = new Set(products.map(product => product.barcode));
   const existingKeys = await store.getAllKeys();
+  let deletedCount = 0;
   for (const key of existingKeys) {
-    if (!incomingBarcodes.has(String(key))) await store.delete(key);
+    if (!incomingBarcodes.has(String(key))) {
+      await store.delete(key);
+      deletedCount++;
+    }
   }
-  // IndexedDB writes are issued without awaiting each request, keeping the
-  // transaction active and avoiding one promise round-trip per product.
+  // Queue writes without awaiting each individual request.
   for (const product of products) store.put(product);
   await tx.done;
+  const durationMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - saveStartedAt);
+  console.info('[SHEETSYNC_SYNC_DIAGNOSTICS]', {
+    phase: 'indexeddb-save-products',
+    productCount: products.length,
+    previousCount: existingKeys.length,
+    deletedCount,
+    durationMs
+  });
 }
 
 export async function getProducts(): Promise<Product[]> {

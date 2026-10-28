@@ -178,10 +178,22 @@ export async function fetchSupplierPortalData(supplierCodeInput: string) {
 }
 
 export async function fetchAllDataAction(skipProducts: boolean = false) {
+  const syncStartedAt = Date.now();
+  const timings: Record<string, number> = {};
   try {
-    const promises: any[] = [getInventoryItems(), getAuditLogs(), getAppMetaData(), getExpiryReminders()];
-    if (!skipProducts) promises.push(getProducts());
-    
+    const timed = async <T,>(name: string, task: Promise<T>): Promise<T> => {
+      const startedAt = Date.now();
+      try { return await task; }
+      finally { timings[name] = Date.now() - startedAt; }
+    };
+    const promises: any[] = [
+      timed('inventoryMs', getInventoryItems()),
+      timed('auditLogsMs', getAuditLogs()),
+      timed('metadataMs', getAppMetaData()),
+      timed('expiryRemindersMs', getExpiryReminders())
+    ];
+    if (!skipProducts) promises.push(timed('productsMs', getProducts()));
+
     const [inventoryItems, auditLogs, meta, expiryReminders, products] = await Promise.all(promises);
     
     // Build supplier lookup indexes once. Avoid repeated linear scans across the
@@ -206,22 +218,38 @@ export async function fetchAllDataAction(skipProducts: boolean = false) {
         return result;
     })();
 
-    return { 
-        success: true, 
-        data: sanitizeForJSON({
-            inventoryItems,
-            products,
-            suppliers: calculatedSuppliers,
-            uniqueLocations: meta.locations,
-            staffRegistry: meta.staff,
-            uniqueStaffNames: meta.staff.map((s: any) => s.name),
-            auditLogs,
-            specialRequests: meta.specialRequests,
-            expiryReminders,
-            supplierContacts: meta.supplierContacts
-        }) 
-    };
+    const sanitizeStartedAt = Date.now();
+    const data = sanitizeForJSON({
+      inventoryItems,
+      products,
+      suppliers: calculatedSuppliers,
+      uniqueLocations: meta.locations,
+      staffRegistry: meta.staff,
+      uniqueStaffNames: meta.staff.map((s: any) => s.name),
+      auditLogs,
+      specialRequests: meta.specialRequests,
+      expiryReminders,
+      supplierContacts: meta.supplierContacts
+    });
+    timings.sanitizeMs = Date.now() - sanitizeStartedAt;
+    const estimatedPayloadBytes = new TextEncoder().encode(JSON.stringify(data)).byteLength;
+    console.info('[SHEETSYNC_SYNC_DIAGNOSTICS]', JSON.stringify({
+      skipProducts,
+      productCount: products?.length || 0,
+      inventoryCount: inventoryItems?.length || 0,
+      auditLogCount: auditLogs?.length || 0,
+      estimatedPayloadBytes,
+      timings,
+      totalServerMs: Date.now() - syncStartedAt
+    }));
+    return { success: true, data };
   } catch (error: any) {
+    console.error('[SHEETSYNC_SYNC_DIAGNOSTICS]', JSON.stringify({
+      skipProducts,
+      timings,
+      totalServerMs: Date.now() - syncStartedAt,
+      error: error?.message || String(error)
+    }));
     return { success: false, message: "Registry error: " + error.message };
   }
 }
