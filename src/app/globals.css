@@ -359,7 +359,7 @@ body {
   }
 
   /* Use the table layout itself rather than screen-only responsive sizing. */
-  .printable-area table {
+  table {
     display: table !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -372,22 +372,22 @@ body {
     page-break-inside: auto !important;
   }
 
-  .printable-area thead {
+  thead {
     display: table-header-group !important;
   }
 
-  .printable-area tfoot {
+  tfoot {
     display: table-footer-group !important;
   }
 
-  .printable-area tr {
+  tr {
     display: table-row !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .printable-area th,
-  .printable-area td {
+  th,
+  td {
     display: table-cell !important;
     max-width: none !important;
     height: auto !important;
@@ -407,7 +407,7 @@ body {
     word-break: normal !important;
   }
 
-  .printable-area th {
+  th {
     background: #eee !important;
     font-weight: 700 !important;
     text-transform: none !important;
