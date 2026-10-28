@@ -75,25 +75,46 @@ export async function saveProducts(products: Product[]) {
   const saveStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const db = await dbPromise;
   if (!db) return;
+
+  // Read the existing catalogue once, then write only records that actually
+  // changed. The old implementation rewrote all ~73k products after every
+  // full sync, even when Google Sheets had no product changes.
   const tx = db.transaction('products', 'readwrite');
   const store = tx.objectStore('products');
-  const incomingBarcodes = new Set(products.map(product => product.barcode));
-  const existingKeys = await store.getAllKeys();
+  const existingProducts = await store.getAll();
+  const existingByBarcode = new Map(existingProducts.map(product => [String(product.barcode), product]));
+  const incomingBarcodes = new Set<string>();
+  let updatedCount = 0;
+  let unchangedCount = 0;
   let deletedCount = 0;
-  for (const key of existingKeys) {
-    if (!incomingBarcodes.has(String(key))) {
-      await store.delete(key);
+
+  for (const product of products) {
+    const barcode = String(product.barcode);
+    incomingBarcodes.add(barcode);
+    const existing = existingByBarcode.get(barcode);
+    if (existing && JSON.stringify(existing) === JSON.stringify(product)) {
+      unchangedCount++;
+      continue;
+    }
+    store.put(product);
+    updatedCount++;
+  }
+
+  for (const existing of existingProducts) {
+    if (!incomingBarcodes.has(String(existing.barcode))) {
+      store.delete(existing.barcode);
       deletedCount++;
     }
   }
-  // Queue writes without awaiting each individual request.
-  for (const product of products) store.put(product);
+
   await tx.done;
   const durationMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - saveStartedAt);
   console.info('[SHEETSYNC_SYNC_DIAGNOSTICS]', {
     phase: 'indexeddb-save-products',
     productCount: products.length,
-    previousCount: existingKeys.length,
+    previousCount: existingProducts.length,
+    updatedCount,
+    unchangedCount,
     deletedCount,
     durationMs
   });
