@@ -139,7 +139,7 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
 
   const productNameMatches = useMemo(() => {
     const term = barcodeToSearch.trim().toLocaleLowerCase();
-    if (term.length < 2 || /^\\d+$/.test(term)) return [];
+    if (term.length < 2 || /^\d+$/.test(term)) return [];
     return cachedProducts
       .filter((product) => product.productName.toLocaleLowerCase().includes(term))
       .slice(0, 40);
@@ -551,7 +551,7 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
                       value={barcodeToSearch}
                       onChange={(e) => { setBarcodeToSearch(e.target.value); setShowProductSuggestions(true); }}
                       onFocus={() => setShowProductSuggestions(true)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const term = barcodeToSearch.trim(); const looksLikeBarcode = /^\\d+$/.test(term) || barcodeMap.has(term) || (term.length >= 8 && !/\\s/.test(term)); if (looksLikeBarcode) { setShowProductSuggestions(false); handleSearchBarcode(); } else { setShowProductSuggestions(true); } } if (e.key === 'Escape') setShowProductSuggestions(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const term = barcodeToSearch.trim(); const looksLikeBarcode = /^\d+$/.test(term) || barcodeMap.has(term) || (term.length >= 8 && !/\s/.test(term)); if (looksLikeBarcode) { setShowProductSuggestions(false); handleSearchBarcode(); } else { setShowProductSuggestions(true); } } if (e.key === 'Escape') setShowProductSuggestions(false); }}
                       className="h-12 rounded-md border-border bg-background pl-11 pr-4 text-sm font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                     {showProductSuggestions && productNameMatches.length > 0 && (
