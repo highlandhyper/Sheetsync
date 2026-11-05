@@ -70,7 +70,16 @@ const DetailNode = ({ icon: Icon, label, original, edited }: { icon: any, label:
 
 export function ApprovalCenterClient() {
     const { pendingRequests, processedRequests, rejectRequest } = useSpecialEntry();
-    const { refreshData, suppliers } = useDataCache();
+    const { refreshData, suppliers, supplierContacts } = useDataCache();
+    const registeredSuppliers = useMemo(() => {
+        const byName = new Map<string, (typeof suppliers)[number]>();
+        [...(supplierContacts || []), ...(suppliers || [])].forEach((supplier) => {
+            const name = String(supplier.name || '').trim();
+            const key = name.toLocaleLowerCase();
+            if (key && !byName.has(key)) byName.set(key, supplier);
+        });
+        return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [supplierContacts, suppliers]);
     const { user: authUser } = useAuth();
     const { toast } = useToast();
 
@@ -432,11 +441,7 @@ export function ApprovalCenterClient() {
                                                             >
                                                                 No supplier selected
                                                             </CommandItem>
-                                                            {suppliers
-                                                                .filter((supplier) => supplier.name?.trim())
-                                                                .slice()
-                                                                .sort((a, b) => a.name.localeCompare(b.name))
-                                                                .map((supplier) => (
+                                                            {registeredSuppliers.map((supplier) => (
                                                                     <CommandItem
                                                                         key={supplier.id || supplier.name}
                                                                         value={supplier.name}
