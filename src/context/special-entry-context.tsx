@@ -211,9 +211,17 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   }, [specialRequests, updateSpecialRequests]);
 
   const rejectRequest = useCallback(async (id: string) => {
-    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);
+    const request = specialRequests.find(r => r.id === id);
+    if (!request) throw new Error('This request is no longer in the registry. Refresh Approval Center and try again.');
+    if (request.status !== 'pending') throw new Error('This request has already been processed. Refresh Approval Center.');
+
+    const updated = specialRequests.map(r => r.id === id
+      ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true }
+      : r
+    );
     await updateSpecialRequests(updated);
-  }, [specialRequests, updateSpecialRequests]);
+    await refreshData();
+  }, [specialRequests, updateSpecialRequests, refreshData]);
 
   const revokeRequest = useCallback(async (id: string) => {
     const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'expired' as const } : r);
