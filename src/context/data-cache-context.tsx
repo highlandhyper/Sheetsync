@@ -115,12 +115,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           getAuditLogs(),
           getProducts()
         ]);
-        setData({
+        const cachedProducts = products || [];
+      setData({
           ...metaData,
           inventoryItems: inventory || [],
           auditLogs: logs || [],
-          products: products || []
+          products: cachedProducts
         });
+      // A persisted catalogue is usable immediately. Do not redownload 70k+
+      // products on every app launch; refresh it on the normal product interval.
+      if (cachedProducts.length > 0) lastProductSyncRef.current = Date.now();
       } catch (e) {
         setData(metaData);
       }
@@ -175,11 +179,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
     const now = Date.now();
-    const shouldSkipProducts = !forceProducts && (now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS) && data.products.length > 0;
+    const shouldSkipProducts = !forceProducts && data.products.length > 0 && (lastProductSyncRef.current === 0 || now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS);
     
     isFetchingRef.current = true;
     setIsSyncing(true);
-    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 45000);
 
     try {
       const clientSyncStartedAt = performance.now();
@@ -231,11 +234,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     } catch (e) {
       console.warn("Data Sync Background Error:", e);
     } finally {
-      clearTimeout(safetyTimeout);
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [user, data.products.length, data.suppliers.length, toast]);
+  }, [user, data.products.length, toast]);
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
