@@ -455,10 +455,20 @@ export async function setPermissionsAction(perms: Permissions) {
 
 export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[]) {
     try {
-        await saveSpecialRequestsToSheet(requests);
+        const saved = await saveSpecialRequestsToSheet(requests);
+        if (!saved) {
+            return {
+                success: false,
+                message: 'Google Sheets could not save or verify the special-requests registry. Check APP_SETTINGS access and the service-account permissions.'
+            };
+        }
         return { success: true };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        console.error('[SPECIAL_REQUESTS] Update action failed:', e?.response?.data || e);
+        return {
+            success: false,
+            message: e?.message || 'Unexpected error while saving the special-requests registry.'
+        };
     }
 }
 
