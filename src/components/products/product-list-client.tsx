@@ -51,7 +51,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 const MAX_ITEMS_TO_DISPLAY = 150;
 
-export function ProductListClient() {
+interface ProductListClientProps {
+  onProductSelect?: (barcode: string) => void;
+}
+
+export function ProductListClient({ onProductSelect }: ProductListClientProps = {}) {
   const {
     products: allProducts,
     suppliers,
@@ -163,6 +167,11 @@ export function ProductListClient() {
   const handleProductClick = (product: Product) => {
     if (isMultiSelectEnabled) {
       handleToggleSelect(product.id);
+      return;
+    }
+
+    if (onProductSelect) {
+      onProductSelect(product.barcode);
       return;
     }
 
