@@ -13,6 +13,9 @@ import {
   Square,
   Trash2,
   X,
+  Boxes,
+  Truck,
+  ScanLine,
 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -62,6 +65,7 @@ export function ProductListClient() {
   const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState<
     'name-asc' | 'name-desc' | 'barcode-asc' | 'barcode-desc'
   >('name-asc');
@@ -77,7 +81,7 @@ export function ProductListClient() {
   const fuse = useMemo(
     () =>
       new Fuse(allProducts, {
-        keys: ['productName'],
+        keys: ['productName', 'barcode', 'supplierName'],
         threshold: 0.4,
         distance: 100,
         minMatchCharLength: 2,
@@ -88,6 +92,10 @@ export function ProductListClient() {
 
   const filteredAndSortedProducts = useMemo(() => {
     let items = [...allProducts];
+
+    if (supplierFilter !== 'all') {
+      items = items.filter((product) => product.supplierName === supplierFilter);
+    }
 
     if (searchTerm.trim()) {
       const term = searchTerm.trim();
@@ -106,6 +114,9 @@ export function ProductListClient() {
         items = exactBarcodeProducts;
       } else {
         items = fuse.search(term).map((result) => result.item);
+        if (supplierFilter !== 'all') {
+          items = items.filter((product) => product.supplierName === supplierFilter);
+        }
       }
     }
 
@@ -125,7 +136,7 @@ export function ProductListClient() {
     });
 
     return items;
-  }, [allProducts, searchTerm, sortOrder, fuse]);
+  }, [allProducts, searchTerm, sortOrder, fuse, supplierFilter]);
 
   const itemsToRender = useMemo(() => {
     if (filteredAndSortedProducts.length > MAX_ITEMS_TO_DISPLAY) {
@@ -233,11 +244,35 @@ export function ProductListClient() {
   };
 
   const hasSearch = searchTerm.trim().length > 0;
+  const supplierCount = useMemo(() => new Set(allProducts.map((p) => p.supplierName).filter(Boolean)).size, [allProducts]);
+  const unassignedCount = useMemo(() => allProducts.filter((p) => !p.supplierName?.trim()).length, [allProducts]);
   const isAllVisibleSelected =
     itemsToRender.length > 0 && selectedIds.size === itemsToRender.length;
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-3 overflow-x-hidden px-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:px-3 sm:pb-8 lg:px-4">
+      {/* Product overview */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+        <Card className="rounded-2xl border-border/60 shadow-none">
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Boxes className="h-4 w-4" /></div>
+            <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Total products</p><p className="text-lg font-bold tabular-nums">{allProducts.length.toLocaleString()}</p></div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-border/60 shadow-none">
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400"><Truck className="h-4 w-4" /></div>
+            <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Suppliers</p><p className="text-lg font-bold tabular-nums">{supplierCount.toLocaleString()}</p></div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-2 rounded-2xl border-border/60 shadow-none sm:col-span-1">
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><ScanLine className="h-4 w-4" /></div>
+            <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">No supplier assigned</p><p className="text-lg font-bold tabular-nums">{unassignedCount.toLocaleString()}</p></div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Toolbar / selection bar */}
       <div>
         {selectedIds.size > 0 && isMultiSelectEnabled ? (
@@ -346,6 +381,17 @@ export function ProductListClient() {
 
                 {/* Sort + Add */}
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:flex md:items-center md:justify-end">
+                  <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                    <SelectTrigger className="h-10 w-full rounded-xl border-0 bg-background/70 px-3 text-[11px] font-semibold shadow-none focus:ring-0 md:h-11 md:w-[210px] md:text-xs">
+                      <Truck className="mr-2 h-4 w-4 text-primary" />
+                      <SelectValue placeholder="Filter supplier" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-0 shadow-xl">
+                      <SelectItem value="all">All suppliers</SelectItem>
+                      {suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+
                   <Select
                     value={sortOrder}
                     onValueChange={(value) =>
@@ -386,13 +432,13 @@ export function ProductListClient() {
               {/* Result summary */}
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-0.5 pt-0.5">
                 <p className="min-w-0 truncate text-[11px] text-muted-foreground sm:text-xs">
-                  {hasSearch ? (
+                  {hasSearch || supplierFilter !== 'all' ? (
                     <>
                       <span className="font-semibold text-foreground">
                         {filteredAndSortedProducts.length.toLocaleString()}
                       </span>{' '}
                       result{filteredAndSortedProducts.length === 1 ? '' : 's'}
-                      {' '}for “{searchTerm.trim()}”
+                      {searchTerm.trim() ? ` for “${searchTerm.trim()}”` : ''}{supplierFilter !== 'all' ? ` · ${supplierFilter}` : ''}
                     </>
                   ) : (
                     <>
