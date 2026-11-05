@@ -60,6 +60,8 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
+import { bulkDeleteProductsAction } from '@/app/actions';
 
 interface EditOrCreateProductFormProps {
   allSuppliers: Supplier[];
@@ -88,7 +90,7 @@ const getActionColor = (action: string) => {
 export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selectionVersion }: EditOrCreateProductFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const isMobile = useIsMobile();
   const { 
     products: cachedProducts, 
@@ -110,6 +112,9 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [productNotFound, setProductNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+  const [isDeleteAuthOpen, setIsDeleteAuthOpen] = useState(false);
+  const [isDeletePending, setIsDeletePending] = useState(false);
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   
@@ -132,6 +137,14 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
   const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
+
+  const productNameMatches = useMemo(() => {
+    const term = barcodeToSearch.trim().toLocaleLowerCase();
+    if (term.length < 2 || /^\\d+$/.test(term)) return [];
+    return cachedProducts
+      .filter((product) => product.productName.toLocaleLowerCase().includes(term))
+      .slice(0, 40);
+  }, [cachedProducts, barcodeToSearch]);
 
   const barcodeMap = useMemo(() => {
     const map = new Map<string, Product>();
@@ -270,6 +283,29 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
       setShowForm(true); 
       setTimeout(() => nameInputRef.current?.focus(), 150);
     });
+  };
+
+  const handleDeleteAuthorization = async () => {
+    if (role !== 'admin' || !searchedBarcode) return;
+    const productId = barcodeMap.get(searchedBarcode)?.id || searchedBarcode;
+    setIsDeletePending(true);
+    try {
+      const result = await bulkDeleteProductsAction(user?.email || 'Admin', [productId]);
+      if (result.success) {
+        toast({ title: 'Product deleted', description: 'The product was removed from the catalog.' });
+        setIsDeleteAuthOpen(false);
+        handleReset();
+        await refreshData();
+      } else {
+        toast({ title: 'Delete failed', description: result.message || 'The product could not be deleted.', variant: 'destructive' });
+        await refreshData();
+      }
+    } catch {
+      toast({ title: 'Delete failed', description: 'Could not complete the delete request. Refresh and try again.', variant: 'destructive' });
+      await refreshData();
+    } finally {
+      setIsDeletePending(false);
+    }
   };
 
   const processFormSubmit = (data: AddProductFormValues) => {
@@ -495,9 +531,9 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
               <div className="mb-3 flex items-center justify-between gap-3 px-0.5">
                 <div>
                   <Label htmlFor="catalog-barcode-search" className="text-sm font-semibold text-foreground">
-                    Barcode
+                    Find product
                   </Label>
-                  <p className="mt-1 text-xs text-muted-foreground">Scan or enter a product barcode.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Enter a barcode and press Enter, or type a product name to see matches.</p>
                 </div>
                 <Badge variant="outline" className="hidden rounded-lg border-border/70 bg-background/70 text-[9px] font-medium text-muted-foreground sm:inline-flex">
                   MASTER LOOKUP
@@ -511,14 +547,36 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
                     <Input
                       id="catalog-barcode-search"
                       ref={searchInputRef}
-                      inputMode="numeric"
                       autoComplete="off"
-                      placeholder="Enter barcode"
+                      placeholder="Barcode or product name"
                       value={barcodeToSearch}
-                      onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                      className="h-12 rounded-md border-border bg-background pl-11 pr-4 text-sm font-medium tracking-wide shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                      onChange={(e) => { setBarcodeToSearch(e.target.value); setShowProductSuggestions(true); }}
+                      onFocus={() => setShowProductSuggestions(true)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setShowProductSuggestions(false); handleSearchBarcode(); } if (e.key === 'Escape') setShowProductSuggestions(false); }}
+                      className="h-12 rounded-md border-border bg-background pl-11 pr-4 text-sm font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
+                    {showProductSuggestions && productNameMatches.length > 0 && (
+                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
+                        <div className="border-b border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Matching products · {productNameMatches.length}{productNameMatches.length === 40 ? '+' : ''}
+                        </div>
+                        <ScrollArea className="max-h-72">
+                          <div className="p-1">
+                            {productNameMatches.map((product) => (
+                              <button key={product.id} type="button" onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => { setShowProductSuggestions(false); setBarcodeToSearch(product.barcode); handleSearchBarcode(product.barcode); }}
+                                className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
+                                <span className="min-w-0">
+                                  <span className="block truncate text-xs font-semibold text-foreground">{product.productName}</span>
+                                  <span className="mt-1 block truncate font-mono text-[10px] text-muted-foreground">{product.barcode}</span>
+                                </span>
+                                <span className="shrink-0 text-[10px] font-semibold text-primary">Select to edit</span>
+                              </button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </div>
                   {isMobile && (
                     <Button 
@@ -799,6 +857,14 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
                     <p className="text-[11px] text-muted-foreground">
                       {isDirty ? "You have unsaved changes." : "Product information is up to date."}
                     </p>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+                    {role === 'admin' && editMode === 'edit' && (
+                      <Button type="button" variant="destructive" disabled={isDeletePending || isSavePending}
+                        onClick={() => setIsDeleteAuthOpen(true)}
+                        className="h-11 w-full rounded-md px-5 text-sm font-semibold shadow-none sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4" />Delete product
+                      </Button>
+                    )}
                     <Button
                       type="submit"
                       disabled={isSavePending || !isDirty}
@@ -807,6 +873,7 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
                       {isSavePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       {editMode === 'create' ? "Create product" : "Save changes"}
                     </Button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -925,6 +992,11 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
           </div>
         </DialogContent>
       </Dialog>
+
+      <AuthorizeActionDialog isOpen={isDeleteAuthOpen} onOpenChange={setIsDeleteAuthOpen}
+        onAuthorizationSuccess={handleDeleteAuthorization}
+        actionDescription={'Permanently delete ' + (watch('productName') || 'this product') + ' (' + searchedBarcode + ') from the product catalog. This cannot be undone.'}
+      />
 
       {/* SCANNER MODAL */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
