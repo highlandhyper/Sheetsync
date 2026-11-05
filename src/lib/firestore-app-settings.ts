@@ -57,7 +57,7 @@ async function writeRequests(requests: SpecialEntryRequest[]): Promise<void> {
     const batch = adminDb.batch();
     for (const request of entries.slice(offset, offset + 450)) {
       const id = String(request.id);
-      batch.set(collection.doc(requestDocId(id)), safeData({ ...request, id }), { merge: true });
+      batch.set(collection.doc(requestDocId(id)), safeData({ ...request, id }) as any, { merge: true });
     }
     await batch.commit();
   }
