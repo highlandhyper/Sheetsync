@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Package } from 'lucide-react';
 
 import { ProductListClient } from '@/components/products/product-list-client';
@@ -33,7 +34,10 @@ function ProductManagementContent() {
 }
 
 export default function ProductsPage() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'manage'>('catalog');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'catalog' | 'manage'>(() =>
+    searchParams.get('tab') === 'manage' ? 'manage' : 'catalog',
+  );
 
   return (
     <div className="w-full space-y-4 py-1 sm:py-2">
