@@ -64,6 +64,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface EditOrCreateProductFormProps {
   allSuppliers: Supplier[];
   selectedBarcode?: string;
+  selectionVersion?: number;
 }
 
 const SCANNER_REGION_ID = 'manage-product-scanner';
@@ -84,7 +85,7 @@ const getActionColor = (action: string) => {
     return "bg-muted text-muted-foreground border-transparent";
 };
 
-export function EditOrCreateProductForm({ allSuppliers, selectedBarcode }: EditOrCreateProductFormProps) {
+export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selectionVersion }: EditOrCreateProductFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -195,7 +196,7 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode }: EditO
     if (!selectedBarcode) return;
     setBarcodeToSearch(selectedBarcode);
     handleSearchBarcode(selectedBarcode);
-  }, [selectedBarcode]);
+  }, [selectedBarcode, selectionVersion]);
 
   const handleMagicLookup = async (barcode: string, skipFieldOverwrite: boolean = false) => {
     if (!barcode) return;
