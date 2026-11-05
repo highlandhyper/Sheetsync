@@ -115,12 +115,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           getAuditLogs(),
           getProducts()
         ]);
-        setData({
+        const cachedProducts = products || [];
+      setData({
           ...metaData,
           inventoryItems: inventory || [],
           auditLogs: logs || [],
-          products: products || []
+          products: cachedProducts
         });
+      // A persisted catalogue is usable immediately. Do not redownload 70k+
+      // products on every app launch; refresh it on the normal product interval.
+      if (cachedProducts.length > 0) lastProductSyncRef.current = Date.now();
       } catch (e) {
         setData(metaData);
       }
@@ -175,11 +179,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
     if (isFetchingRef.current || !navigator.onLine || !user) return;
     
     const now = Date.now();
-    const shouldSkipProducts = !forceProducts && (now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS) && data.products.length > 0;
+    const shouldSkipProducts = !forceProducts && data.products.length > 0 && (lastProductSyncRef.current === 0 || now - lastProductSyncRef.current < PRODUCT_SYNC_INTERVAL_MS);
     
     isFetchingRef.current = true;
     setIsSyncing(true);
-    const safetyTimeout = setTimeout(() => { isFetchingRef.current = false; }, 45000);
 
     try {
       const clientSyncStartedAt = performance.now();
@@ -229,13 +232,16 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           }
       }
     } catch (e) {
+      syncFailureCountRef.current++;
       console.warn("Data Sync Background Error:", e);
+      if (syncFailureCountRef.current >= 3) {
+        toast({ variant: "destructive", title: "Sync Failed", description: "Could not refresh registry data. Check your connection and retry." });
+      }
     } finally {
-      clearTimeout(safetyTimeout);
       setIsSyncing(false);
       isFetchingRef.current = false;
     }
-  }, [user, data.products.length, data.suppliers.length, toast]);
+  }, [user, data.products.length, toast]);
 
   const processSyncQueue = useCallback(async () => {
     if (processingQueueRef.current || pendingActions.length === 0 || !navigator.onLine) return;
@@ -309,7 +315,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         toast({ title: "No Connection", description: "Refresh unavailable while offline.", variant: "destructive" });
         return;
     }
-    await fetchDataAndCache(true);
+    // Approval and metadata refreshes must not force a full 70k+ product download.
+    // The catalogue refresh is independently throttled by PRODUCT_SYNC_INTERVAL_MS.
+    await fetchDataAndCache(false);
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
