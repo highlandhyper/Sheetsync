@@ -1,6 +1,6 @@
 
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
-import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
+import { readSheetData, appendSheetData, updateSheetData, updateSheetDataRaw, appendSheetDataRaw, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
@@ -337,26 +337,53 @@ export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]): P
     if (String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY) lastIdx = index;
   });
 
+  const targetRange = lastIdx !== -1
+    ? `${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`
+    : `${APP_SETTINGS_SHEET_NAME}!A:B`;
   const saved = lastIdx !== -1
-    ? await updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[serialized]])
-    : await appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, serialized]]);
+    ? await updateSheetDataRaw(targetRange, [[serialized]])
+    : await appendSheetDataRaw(targetRange, [[SPECIAL_REQUESTS_KEY, serialized]]);
 
   if (!saved) {
-    console.error('[SPECIAL_REQUESTS] Google Sheets rejected the APP_SETTINGS write.');
+    console.error('[SPECIAL_REQUESTS] Sheets API write failed. Check the detailed [GOOGLE_SHEETS_RAW_UPDATE/APPEND] log above.');
     return false;
   }
 
-  // Read-after-write verification catches permission/range/registry mismatches.
+  // Verify the stored JSON structurally. RAW writes preserve the JSON text exactly,
+  // but parsing also tolerates harmless serialization differences.
   const verifyData = await readSheetData(APP_SETTINGS_READ_RANGE);
   if (verifyData === null) {
-    console.error('[SPECIAL_REQUESTS] Write returned success but verification read failed.');
+    console.error('[SPECIAL_REQUESTS] Write succeeded but APP_SETTINGS read-back failed.');
     return false;
   }
-  const verified = verifyData.some(row =>
-    String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY &&
-    String(row[SETTINGS_COL_VALUE] || '') === serialized
+  const storedRow = [...verifyData].reverse().find(row =>
+    String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY
   );
-  if (!verified) console.error('[SPECIAL_REQUESTS] Saved value could not be verified in APP_SETTINGS.');
+  if (!storedRow) {
+    console.error('[SPECIAL_REQUESTS] Write succeeded but specialRequests key was not found on read-back.');
+    return false;
+  }
+  let storedRequests: any;
+  try {
+    storedRequests = JSON.parse(String(storedRow[SETTINGS_COL_VALUE] || ''));
+  } catch (error) {
+    console.error('[SPECIAL_REQUESTS] Read-back value is not valid JSON:', error);
+    return false;
+  }
+  const expected = reqs.slice(0, 200);
+  const verified = Array.isArray(storedRequests) &&
+    storedRequests.length === expected.length &&
+    storedRequests.every((stored: any, index: number) =>
+      stored?.id === expected[index]?.id &&
+      stored?.status === expected[index]?.status
+    );
+  if (!verified) {
+    console.error('[SPECIAL_REQUESTS] Read-back verification mismatch.', {
+      expectedCount: expected.length,
+      actualCount: Array.isArray(storedRequests) ? storedRequests.length : null,
+      targetRange
+    });
+  }
   return verified;
 }
 
