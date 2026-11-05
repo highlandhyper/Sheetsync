@@ -323,12 +323,41 @@ export async function savePermissionsToSheet(perms: Permissions) {
   return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[PERMISSIONS_KEY, JSON.stringify(perms)]]);
 }
 
-export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]) {
+export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]): Promise<boolean> {
+  // Never append a second registry key when the APP_SETTINGS read failed.
   const data = await readSheetData(APP_SETTINGS_READ_RANGE);
+  if (data === null) {
+    console.error('[SPECIAL_REQUESTS] Could not read APP_SETTINGS before saving.');
+    return false;
+  }
+
+  const serialized = JSON.stringify(reqs.slice(0, 200));
   let lastIdx = -1;
-  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === SPECIAL_REQUESTS_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(reqs.slice(0, 200))]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, JSON.stringify(reqs.slice(0, 200))]]);
+  data.forEach((row, index) => {
+    if (String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY) lastIdx = index;
+  });
+
+  const saved = lastIdx !== -1
+    ? await updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[serialized]])
+    : await appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SPECIAL_REQUESTS_KEY, serialized]]);
+
+  if (!saved) {
+    console.error('[SPECIAL_REQUESTS] Google Sheets rejected the APP_SETTINGS write.');
+    return false;
+  }
+
+  // Read-after-write verification catches permission/range/registry mismatches.
+  const verifyData = await readSheetData(APP_SETTINGS_READ_RANGE);
+  if (verifyData === null) {
+    console.error('[SPECIAL_REQUESTS] Write returned success but verification read failed.');
+    return false;
+  }
+  const verified = verifyData.some(row =>
+    String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY &&
+    String(row[SETTINGS_COL_VALUE] || '') === serialized
+  );
+  if (!verified) console.error('[SPECIAL_REQUESTS] Saved value could not be verified in APP_SETTINGS.');
+  return verified;
 }
 
 export async function saveStaffListToSheet(staff: StaffMember[]) {
