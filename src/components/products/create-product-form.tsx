@@ -425,7 +425,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   return (
     <div
       className={cn(
-        "relative z-10 grid grid-cols-1 items-start gap-5 lg:gap-6 xl:grid-cols-12",
+        "relative z-10 grid grid-cols-1 items-start gap-4 lg:gap-5 xl:grid-cols-12",
         showForm && "xl:min-h-[calc(100vh-13rem)]"
       )}
     >
@@ -436,8 +436,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
           !showForm && "mx-auto w-full max-w-5xl xl:col-span-12"
         )}
       >
-        <Card className="overflow-hidden rounded-2xl border-border/60 bg-card shadow-sm sm:rounded-3xl">
-          <CardHeader className="border-b border-border/60 bg-muted/20 p-4 sm:p-6 lg:p-7">
+        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card shadow-[0_2px_12px_rgba(15,23,42,0.04)] sm:rounded-[1.35rem]">
+          <CardHeader className="border-b border-border/70 bg-card p-5 sm:p-6 lg:p-7">
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12 sm:rounded-2xl">
@@ -445,7 +445,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </div>
                 <div className="min-w-0">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Product catalog</CardTitle>
+                    <CardTitle className="text-xl font-semibold tracking-tight sm:text-2xl">Product details</CardTitle>
                     {showForm && (
                       <Badge
                         variant="outline"
@@ -460,7 +460,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       </Badge>
                     )}
                   </div>
-                  <CardDescription className="max-w-xl text-xs leading-5 sm:text-sm">
+                  <CardDescription className="max-w-xl text-sm leading-6 text-muted-foreground">
                     Search by barcode, review the product, and update the master catalog.
                   </CardDescription>
                 </div>
@@ -483,13 +483,13 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
           <CardContent className="p-4 sm:p-6 lg:p-7">
             {/* BARCODE SEARCH */}
-            <div className="rounded-2xl border border-border/60 bg-muted/[0.18] p-3 sm:p-4">
-              <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+            <div className="rounded-xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3 px-0.5">
                 <div>
-                  <Label htmlFor="catalog-barcode-search" className="text-xs font-semibold text-foreground">
+                  <Label htmlFor="catalog-barcode-search" className="text-sm font-semibold text-foreground">
                     Barcode
                   </Label>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Scan or enter a product barcode.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Scan or enter a product barcode.</p>
                 </div>
                 <Badge variant="outline" className="hidden rounded-lg border-border/70 bg-background/70 text-[9px] font-medium text-muted-foreground sm:inline-flex">
                   MASTER LOOKUP
@@ -509,7 +509,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       value={barcodeToSearch}
                       onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
                       onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                      className="h-12 rounded-xl border-border/70 bg-background pl-11 pr-3 text-base font-semibold tracking-wide shadow-none sm:h-11"
+                      className="h-14 rounded-lg border-border/70 bg-background pl-12 pr-4 text-base font-medium tracking-wide shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-12"
                     />
                   </div>
                   {isMobile && (
@@ -528,7 +528,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   type="button"
                   onClick={() => handleSearchBarcode()}
                   disabled={isFetchPending || !barcodeToSearch.trim()}
-                  className="h-12 min-w-[130px] rounded-xl px-5 font-semibold shadow-sm sm:h-11"
+                  className="h-14 min-w-[150px] rounded-lg px-6 font-semibold shadow-none sm:h-12"
                 >
                   {isFetchPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -612,15 +612,15 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
                 {/* PRODUCT FORM */}
                 <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-5 sm:space-y-6">
-                  <div className="rounded-2xl border border-border/60 bg-background p-4 sm:p-5">
-                    <div className="mb-5">
-                      <h3 className="text-sm font-bold text-foreground">Product information</h3>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Keep the product name, supplier and cost accurate.</p>
+                  <div className="rounded-xl border border-border/70 bg-card p-4 sm:p-6">
+                    <div className="mb-6">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">Product information</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">Enter the core details used across inventory and supplier records.</p>
                     </div>
 
                     <div className="space-y-5">
                       <div className="space-y-2">
-                        <Label htmlFor="productName" className="text-xs font-semibold">
+                        <Label htmlFor="productName" className="text-sm font-medium">
                           Product name
                         </Label>
                         <div className="relative">
@@ -635,7 +635,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             }}
                             onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
                             className={cn(
-                              "h-12 rounded-xl border-border/70 bg-muted/[0.12] pl-10 text-sm font-semibold shadow-none focus:bg-background sm:h-11",
+                              "h-12 rounded-lg border-border/70 bg-background pl-10 text-sm font-medium shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20",
                               formErrors.productName && "border-destructive focus-visible:ring-destructive/20"
                             )}
                           />
@@ -648,7 +648,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-3">
-                            <Label className="text-xs font-semibold">Supplier</Label>
+                            <Label className="text-sm font-medium">Supplier</Label>
                             <div className="flex items-center gap-1">
                                 <Button
                                   type="button"
@@ -756,7 +756,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="costPrice" className="text-xs font-semibold">
+                          <Label htmlFor="costPrice" className="text-sm font-medium">
                             Cost price
                           </Label>
                           <div className="relative">
@@ -774,7 +774,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                               }}
                               onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
                               className={cn(
-                                "h-12 rounded-xl border-border/70 bg-muted/[0.12] pl-12 pr-4 text-right text-base font-bold tabular-nums shadow-none focus:bg-background sm:h-11",
+                                "h-12 rounded-lg border-border/70 bg-background pl-12 pr-4 text-right text-base font-semibold tabular-nums shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20",
                                 formErrors.costPrice && "border-destructive focus-visible:ring-destructive/20"
                               )}
                             />
@@ -787,14 +787,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </div>
                   </div>
 
-                  <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[11px] text-muted-foreground">
                       {isDirty ? "You have unsaved changes." : "Product information is up to date."}
                     </p>
                     <Button
                       type="submit"
                       disabled={isSavePending || !isDirty}
-                      className="h-12 w-full rounded-xl px-6 font-semibold shadow-sm sm:h-11 sm:w-auto sm:min-w-[180px]"
+                      className="h-12 w-full rounded-lg px-7 font-semibold shadow-none sm:w-auto sm:min-w-[190px]"
                     >
                       {isSavePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       {editMode === 'create' ? "Create product" : "Save changes"}
@@ -906,7 +906,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-slate-300">
                 <ImageIcon className="h-14 w-14 opacity-30" />
-                <p className="text-xs font-semibold">No image available</p>
+                <p className="text-sm font-medium">No image available</p>
               </div>
             )}
           </div>
