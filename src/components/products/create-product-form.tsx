@@ -52,7 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { fetchProductAction, saveProductAction, fetchProductExternalDataAction, addSupplierAction } from '@/app/actions';
+import { fetchProductAction, saveProductAction, fetchProductExternalDataAction, addSupplierAction, bulkDeleteProductsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -61,7 +61,6 @@ import { useAuth } from '@/context/auth-context';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
-import { bulkDeleteProductsAction } from '@/app/actions';
 
 interface EditOrCreateProductFormProps {
   allSuppliers: Supplier[];
@@ -552,7 +551,7 @@ export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selecti
                       value={barcodeToSearch}
                       onChange={(e) => { setBarcodeToSearch(e.target.value); setShowProductSuggestions(true); }}
                       onFocus={() => setShowProductSuggestions(true)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setShowProductSuggestions(false); handleSearchBarcode(); } if (e.key === 'Escape') setShowProductSuggestions(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const term = barcodeToSearch.trim(); const looksLikeBarcode = /^\\d+$/.test(term) || barcodeMap.has(term) || (term.length >= 8 && !/\\s/.test(term)); if (looksLikeBarcode) { setShowProductSuggestions(false); handleSearchBarcode(); } else { setShowProductSuggestions(true); } } if (e.key === 'Escape') setShowProductSuggestions(false); }}
                       className="h-12 rounded-md border-border bg-background pl-11 pr-4 text-sm font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                     {showProductSuggestions && productNameMatches.length > 0 && (
