@@ -36,27 +36,15 @@ const ProductCardComponent = ({
   onDelete,
 }: ProductCardProps) => {
   const handleActivate = () => {
-    if (isMultiSelect) {
-      onSelect?.();
-    } else {
-      onClick();
-    }
+    if (isMultiSelect) onSelect?.();
+    else onClick();
   };
 
   return (
     <Card
       className={cn(
-        `
-          group relative w-full cursor-pointer overflow-hidden
-          rounded-2xl border-0 bg-muted/20 shadow-none
-          transition-colors duration-200
-          hover:bg-muted/35
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-primary/25
-          focus-visible:ring-offset-0
-        `,
-        isSelected && 'bg-primary/[0.075] ring-2 ring-primary/30',
+        'group relative w-full cursor-pointer overflow-hidden rounded-xl border border-border bg-card shadow-none transition-colors hover:border-primary/30 hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
+        isSelected && 'border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20',
       )}
       onClick={handleActivate}
       onKeyDown={(event) => {
@@ -69,53 +57,24 @@ const ProductCardComponent = ({
       tabIndex={0}
       aria-pressed={isMultiSelect ? !!isSelected : undefined}
     >
-      {/* Selection indicator */}
       {isMultiSelect && (
-        <div className="absolute right-2.5 top-2.5 z-10">
-          <div
-            className={cn(
-              `
-                flex h-7 w-7 items-center justify-center
-                rounded-lg bg-background/80 shadow-sm
-                transition-colors
-              `,
-              isSelected
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground/50',
-            )}
-          >
-            {isSelected ? (
-              <Check className="h-4 w-4" strokeWidth={3} />
-            ) : (
-              <Circle className="h-4 w-4" />
-            )}
+        <div className="absolute right-3 top-3 z-10">
+          <div className={cn(
+            'flex h-6 w-6 items-center justify-center rounded-md border bg-background',
+            isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground',
+          )}>
+            {isSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Circle className="h-3.5 w-3.5" />}
           </div>
         </div>
       )}
 
-      {/* Delete action */}
       {!isMultiSelect && onDelete && (
-        <div
-          className="
-            absolute right-2 top-2 z-10
-            opacity-100
-            transition-opacity
-            sm:opacity-0
-            sm:group-hover:opacity-100
-            sm:group-focus-within:opacity-100
-          "
-        >
+        <div className="absolute right-2 top-2 z-10 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="
-              h-8 w-8 rounded-lg
-              bg-background/75 text-muted-foreground
-              shadow-sm backdrop-blur-sm
-              hover:bg-destructive/10
-              hover:text-destructive
-            "
+            className="h-8 w-8 rounded-md bg-background text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={(event) => {
               event.stopPropagation();
               onDelete();
@@ -127,76 +86,35 @@ const ProductCardComponent = ({
         </div>
       )}
 
-      <CardHeader className="p-3 pb-2 sm:p-3.5 sm:pb-2">
+      <CardHeader className="p-4 pb-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={cn(
-              `
-                flex h-10 w-10 shrink-0 items-center justify-center
-                rounded-xl bg-background/70
-                transition-colors
-                sm:h-11 sm:w-11
-              `,
-              isSelected && 'bg-primary/10 text-primary',
-            )}
-          >
-            <Package
-              className={cn(
-                'h-4.5 w-4.5 sm:h-5 sm:w-5',
-                isSelected ? 'text-primary' : 'text-muted-foreground',
-              )}
-            />
+          <div className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground',
+            isSelected && 'bg-primary/10 text-primary',
+          )}>
+            <Package className="h-5 w-5" />
           </div>
-
-          <div
-            className={cn(
-              'min-w-0 flex-1',
-              (isMultiSelect || onDelete) && 'pr-7',
-            )}
-          >
-            <CardTitle
-              className="
-                truncate text-sm font-semibold
-                leading-5 tracking-tight text-foreground
-                sm:text-[15px]
-              "
-              title={product.productName}
-            >
+          <div className={cn('min-w-0 flex-1', (isMultiSelect || onDelete) && 'pr-7')}>
+            <CardTitle className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 tracking-tight text-foreground" title={product.productName}>
               {product.productName}
             </CardTitle>
-
-            <CardDescription className="mt-1 flex min-w-0 items-center text-[10px] text-muted-foreground sm:text-[11px]">
+            <CardDescription className="mt-1.5 flex min-w-0 items-center text-xs text-muted-foreground">
               <BarcodeIcon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
-
-              <span className="truncate font-mono">
-                {product.barcode}
-              </span>
+              <span className="truncate font-mono">{product.barcode}</span>
             </CardDescription>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="px-3 pb-3 pt-0 sm:px-3.5 sm:pb-3.5">
-        <div className="min-h-[26px]">
-          {product.supplierName ? (
-            <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-background/45 px-2 py-1.5">
-              <Building className="h-3.5 w-3.5 shrink-0 text-primary/65" />
-
-              <span
-                className="truncate text-[10px] font-medium text-muted-foreground sm:text-[11px]"
-                title={product.supplierName}
-              >
-                {product.supplierName}
-              </span>
-            </div>
-          ) : (
-            <div className="flex h-[26px] items-center px-0.5">
-              <span className="text-[10px] text-muted-foreground/45">
-                No supplier
-              </span>
-            </div>
-          )}
-        </div>
+      <CardContent className="border-t border-border/70 px-4 py-3">
+        {product.supplierName ? (
+          <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <Building className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate" title={product.supplierName}>{product.supplierName}</span>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground/70">No supplier assigned</p>
+        )}
       </CardContent>
     </Card>
   );
