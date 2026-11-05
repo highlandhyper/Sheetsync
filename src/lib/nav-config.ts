@@ -12,7 +12,6 @@ export interface NavItem {
 export const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'], exact: true },
   { href: '/approvals', label: 'Approval Center', icon: ShieldCheck, roles: ['admin'], exact: true },
-  { href: '/products/list', label: 'Products', icon: Package, roles: ['admin', 'viewer'] },
   { href: '/expiry-watch', label: 'Diary Registry', icon: Eye, roles: ['admin', 'viewer'] },
   { href: '/products/by-supplier', label: 'Return by Supplier', icon: Undo, roles: ['admin'] },
   { href: '/products', label: 'Return by Staff', icon: UserCheck, roles: ['admin', 'viewer'], exact: true },
@@ -24,5 +23,6 @@ export const allNavItems: NavItem[] = [
 ];
 
 export const accountNavItems: NavItem[] = [
+   { href: '/products/list', label: 'Products', icon: Package, roles: ['admin', 'viewer'] },
    { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'viewer'], exact: true },
 ];
