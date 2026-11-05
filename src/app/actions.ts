@@ -473,7 +473,26 @@ export async function rejectSpecialRequestAction(id: string, adminEmail: string)
                 ? { ...request, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true }
                 : request
             );
-            await saveSpecialRequestsToSheet(updated);
+            // Google Sheets helpers return false on API/write failures instead of throwing.
+            // Never report a rejection as successful unless the registry confirms the write.
+            const saved = await saveSpecialRequestsToSheet(updated);
+            if (!saved) {
+                console.error('[APPROVAL_REJECT] Registry write returned false:', { requestId });
+                return { success: false, message: 'Google Sheets did not save the rejection. Check registry access and retry.' };
+            }
+
+            // Read-after-write verification prevents a success toast when the stored
+            // APP_SETTINGS value still contains the request as pending.
+            const verifiedMeta = await getAppMetaData();
+            const verifiedRequest = (verifiedMeta.specialRequests || []).find(request => request.id === requestId);
+            if (!verifiedRequest || verifiedRequest.status !== 'rejected') {
+                console.error('[APPROVAL_REJECT] Registry verification failed:', {
+                    requestId,
+                    storedStatus: verifiedRequest?.status || 'missing',
+                });
+                return { success: false, message: 'The registry did not confirm the rejection. Refresh and retry.' };
+            }
+
             revalidatePath('/approvals');
             return { success: true };
         } catch (error: any) {
