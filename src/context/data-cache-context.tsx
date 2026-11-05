@@ -313,8 +313,17 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
+      if (typeof navigator === 'undefined' || !navigator.onLine) {
+        throw new Error('You must be online to update the approval registry. No changes were saved.');
+      }
+
+      const result = await updateSpecialRequestsAction(requests);
+      if (!result?.success) {
+        throw new Error(result?.message || 'Google Sheets did not save the approval registry update.');
+      }
+
+      // Update the client cache only after the server confirms the Sheets write.
       setData(prev => ({ ...prev, specialRequests: requests }));
-      if (navigator.onLine) await updateSpecialRequestsAction(requests);
   }, []);
 
   const updateStaffList = useCallback(async (staff: StaffMember[]) => {
