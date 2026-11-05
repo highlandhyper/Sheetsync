@@ -232,7 +232,11 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
           }
       }
     } catch (e) {
+      syncFailureCountRef.current++;
       console.warn("Data Sync Background Error:", e);
+      if (syncFailureCountRef.current >= 3) {
+        toast({ variant: "destructive", title: "Sync Failed", description: "Could not refresh registry data. Check your connection and retry." });
+      }
     } finally {
       setIsSyncing(false);
       isFetchingRef.current = false;
@@ -311,7 +315,9 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
         toast({ title: "No Connection", description: "Refresh unavailable while offline.", variant: "destructive" });
         return;
     }
-    await fetchDataAndCache(true);
+    // Approval and metadata refreshes must not force a full 70k+ product download.
+    // The catalogue refresh is independently throttled by PRODUCT_SYNC_INTERVAL_MS.
+    await fetchDataAndCache(false);
   }, [fetchDataAndCache, toast]);
 
   const updateSpecialRequests = useCallback(async (requests: SpecialEntryRequest[]) => {
