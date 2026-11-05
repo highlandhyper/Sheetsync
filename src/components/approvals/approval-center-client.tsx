@@ -133,9 +133,10 @@ export function ApprovalCenterClient() {
     const handleRejectRequest = async (id: string) => {
         try {
             await rejectRequest(id);
-            toast({ title: 'Request Rejected', description: 'The submission has been declined.' });
+            toast({ title: 'Request Rejected', description: 'The submission has been declined and saved to the registry.' });
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to reject request.', variant: 'destructive' });
+            const message = error instanceof Error ? error.message : 'Google Sheets could not save the rejection.';
+            toast({ title: 'Rejection Failed', description: message, variant: 'destructive' });
         }
     };
 
