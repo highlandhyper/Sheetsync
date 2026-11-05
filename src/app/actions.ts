@@ -26,6 +26,7 @@ import {
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
 import {
   getFirestoreAppMetaData as getAppMetaData,
+  loadPermissionsFromFirestore as loadPermissionsFromSheet,
   savePermissionsToFirestore as savePermissionsToSheet,
   saveSpecialRequestsToFirestore as saveSpecialRequestsToSheet,
   saveStaffListToFirestore as saveStaffListToSheet,
