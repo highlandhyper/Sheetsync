@@ -250,16 +250,16 @@ export function ProductListClient() {
     itemsToRender.length > 0 && selectedIds.size === itemsToRender.length;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-3 overflow-x-hidden px-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:px-3 sm:pb-8 lg:px-4">
+    <div className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-hidden px-0 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:pb-8">
       {/* Product overview */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-        <Card className="rounded-2xl border-border/60 shadow-none">
+        <Card className="rounded-xl border border-border bg-card shadow-none">
           <CardContent className="flex items-center gap-3 p-3 sm:p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Boxes className="h-4 w-4" /></div>
             <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Total products</p><p className="text-lg font-bold tabular-nums">{allProducts.length.toLocaleString()}</p></div>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-border/60 shadow-none">
+        <Card className="rounded-xl border border-border bg-card shadow-none">
           <CardContent className="flex items-center gap-3 p-3 sm:p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400"><Truck className="h-4 w-4" /></div>
             <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Suppliers</p><p className="text-lg font-bold tabular-nums">{supplierCount.toLocaleString()}</p></div>
@@ -324,8 +324,8 @@ export function ProductListClient() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="rounded-2xl border-0 bg-muted/20 shadow-none">
-            <CardContent className="p-2.5 sm:p-3">
+          <Card className="rounded-xl border border-border bg-card shadow-none">
+            <CardContent className="p-3 sm:p-4">
               <div className="space-y-2.5">
                 {/* Search + view toggle */}
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -337,7 +337,7 @@ export function ProductListClient() {
                       placeholder="Search products or barcode"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
-                      className="h-11 w-full rounded-xl border-0 bg-background/75 pl-9 pr-9 text-base font-medium shadow-none focus-visible:bg-background focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-sm"
+                      className="h-11 w-full rounded-lg border-border bg-background pl-10 pr-9 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
 
                     {hasSearch && (
@@ -382,7 +382,7 @@ export function ProductListClient() {
                 {/* Sort + Add */}
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:flex md:items-center md:justify-end">
                   <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-                    <SelectTrigger className="h-10 w-full rounded-xl border-0 bg-background/70 px-3 text-[11px] font-semibold shadow-none focus:ring-0 md:h-11 md:w-[210px] md:text-xs">
+                    <SelectTrigger className="h-10 w-full rounded-lg border-border bg-background px-3 text-xs font-medium shadow-none md:w-[210px]">
                       <Truck className="mr-2 h-4 w-4 text-primary" />
                       <SelectValue placeholder="Filter supplier" />
                     </SelectTrigger>
@@ -404,7 +404,7 @@ export function ProductListClient() {
                       )
                     }
                   >
-                    <SelectTrigger className="h-10 w-full rounded-xl border-0 bg-background/70 px-3 text-[11px] font-semibold shadow-none focus:ring-0 md:h-11 md:w-[190px] md:text-xs">
+                    <SelectTrigger className="h-10 w-full rounded-lg border-border bg-background px-3 text-xs font-medium shadow-none md:w-[190px]">
                       <ListFilter className="mr-2 h-4 w-4 text-primary" />
                       <SelectValue placeholder="Sort products" />
                     </SelectTrigger>
@@ -500,7 +500,7 @@ export function ProductListClient() {
               ))}
             </div>
           ) : (
-            <Card className="mb-4 overflow-hidden rounded-2xl border-0 bg-muted/15 shadow-none">
+            <Card className="mb-4 overflow-hidden rounded-xl border border-border bg-card shadow-none">
               <div className="overflow-x-auto">
                 <Table className="min-w-[820px]">
                   <TableHeader className="bg-muted/35">
