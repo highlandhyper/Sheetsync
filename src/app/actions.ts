@@ -7,16 +7,12 @@ import {
   updateInventoryItemDetails as dbUpdateInventoryItemDetails,
   updateProductAndSupplierLinks as dbUpdateProductAndSupplierLinks, 
   deleteInventoryItemById as dbDeleteInventoryItemById,
-  loadPermissionsFromSheet,
-  savePermissionsToSheet,
+
   getInventoryItems,
   getProducts,
   getAuditLogs,
   logAuditEvent,
-  saveSpecialRequestsToSheet,
-  saveStaffListToSheet,
-  saveLocationListToSheet,
-  getAppMetaData,
+
   getOnDisplayItemByToken,
   getOnDisplayItemByPin,
   markOnDisplayTokenUsed,
@@ -26,10 +22,17 @@ import {
   addProduct as dbAddProduct,
   deleteProductByBarcode as dbDeleteProductByBarcode,
   getAllOnDisplayAlerts,
-  saveSupplierContactsToSheet,
-  updateSupplierAcrossRegistry,
 } from '@/lib/data';
 import type { Product, InventoryItem, Supplier, SpecialEntryRequest, AuditLogEntry, Permissions, StaffMember, ExpiryReminder, OnDisplayAlert } from '@/lib/types';
+import {
+  getFirestoreAppMetaData as getAppMetaData,
+  savePermissionsToFirestore as savePermissionsToSheet,
+  saveSpecialRequestsToFirestore as saveSpecialRequestsToSheet,
+  saveStaffListToFirestore as saveStaffListToSheet,
+  saveLocationListToFirestore as saveLocationListToSheet,
+  saveSupplierContactsToFirestore as saveSupplierContactsToSheet,
+} from '@/lib/firestore-app-settings';
+import { updateSupplierAcrossRegistryInFirestore as updateSupplierAcrossRegistry } from '@/lib/firestore-supplier-settings';
 
 /**
  * REGISTRY CONFIGURATION
@@ -459,7 +462,7 @@ export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[
         if (!saved) {
             return {
                 success: false,
-                message: 'Google Sheets could not save or verify the special-requests registry. Check APP_SETTINGS access and the service-account permissions.'
+                message: 'Firestore could not save the special-requests registry. Check the Firebase Admin connection and Firestore permissions.'
             };
         }
         return { success: true };
