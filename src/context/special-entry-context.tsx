@@ -7,7 +7,7 @@ import { useDataCache } from './data-cache-context';
 import { useGeneralSettings } from './general-settings-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction, resendOtpAction } from '@/app/actions';
+import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction, rejectSpecialRequestAction, resendOtpAction } from '@/app/actions';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -211,9 +211,18 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
   }, [specialRequests, updateSpecialRequests]);
 
   const rejectRequest = useCallback(async (id: string) => {
-    const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true } : r);
-    await updateSpecialRequests(updated);
-  }, [specialRequests, updateSpecialRequests]);
+    if (!user?.email) {
+      toast({ variant: "destructive", title: "Rejection Failed", description: "Admin session is not available. Sign in again and retry." });
+      return;
+    }
+    const result = await rejectSpecialRequestAction(id, user.email);
+    if (!result.success) {
+      toast({ variant: "destructive", title: "Rejection Failed", description: result.message || "The request was not changed. Please retry." });
+      return;
+    }
+    await refreshData();
+    toast({ title: "Request Rejected", description: "The decision was saved to the registry." });
+  }, [user, refreshData, toast]);
 
   const revokeRequest = useCallback(async (id: string) => {
     const updated = specialRequests.map(r => r.id === id ? { ...r, status: 'expired' as const } : r);
