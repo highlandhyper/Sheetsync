@@ -156,6 +156,10 @@ export async function getFirestoreAppMetaData() {
   };
 }
 
+export async function loadPermissionsFromFirestore() {
+  return (await getFirestoreAppMetaData()).permissions;
+}
+
 export async function savePermissionsToFirestore(value: Permissions) {
   await ensureFirestoreAppSettingsMigrated();
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
