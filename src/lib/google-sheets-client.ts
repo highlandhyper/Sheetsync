@@ -125,6 +125,43 @@ export async function updateSheetData(range: string, values: any[][]): Promise<b
   }
 }
 
+// Use RAW for JSON/config cells so Sheets never interprets the payload as a formula,
+// date, number, or locale-dependent value.
+export async function updateSheetDataRaw(range: string, values: any[][]): Promise<boolean> {
+  const currentSheetsClient = await getSheetsClient();
+  if (!currentSheetsClient || !GOOGLE_SHEET_ID) return false;
+  try {
+    await currentSheetsClient.spreadsheets.values.update({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range,
+      valueInputOption: 'RAW',
+      requestBody: { values },
+    });
+    return true;
+  } catch (error: any) {
+    console.error('[GOOGLE_SHEETS_RAW_UPDATE]', range, error?.response?.data || error?.message || error);
+    return false;
+  }
+}
+
+export async function appendSheetDataRaw(range: string, values: any[][]): Promise<boolean> {
+  const currentSheetsClient = await getSheetsClient();
+  if (!currentSheetsClient || !GOOGLE_SHEET_ID) return false;
+  try {
+    await currentSheetsClient.spreadsheets.values.append({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values },
+    });
+    return true;
+  } catch (error: any) {
+    console.error('[GOOGLE_SHEETS_RAW_APPEND]', range, error?.response?.data || error?.message || error);
+    return false;
+  }
+}
+
 export async function clearSheetData(range: string): Promise<boolean> {
   const currentSheetsClient = await getSheetsClient();
   if (!currentSheetsClient || !GOOGLE_SHEET_ID) return false;
