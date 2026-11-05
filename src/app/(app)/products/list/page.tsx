@@ -33,7 +33,7 @@ function ProductManagementContent() {
   );
 }
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'catalog' | 'manage'>(() =>
     searchParams.get('tab') === 'manage' ? 'manage' : 'catalog',
@@ -80,5 +80,14 @@ export default function ProductsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsSkeleton />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
