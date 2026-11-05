@@ -7,7 +7,7 @@ import { useDataCache } from './data-cache-context';
 import { useGeneralSettings } from './general-settings-context';
 import { SpecialEntryActivationDialog } from '@/components/auth/special-entry-activation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { approveRequestAction, verifyOtpAction, updateSpecialRequestsAction, resendOtpAction } from '@/app/actions';
+import { approveRequestAction, verifyOtpAction, resendOtpAction } from '@/app/actions';
 
 interface SpecialEntryContextType {
   pendingRequests: SpecialEntryRequest[];
@@ -180,11 +180,11 @@ export function SpecialEntryProvider({ children }: PropsWithChildren) {
     };
 
     const updated = [newRequest, ...specialRequests];
-    await updateSpecialRequestsAction(updated);
+    await updateSpecialRequests(updated);
     
     await approveRequestAction(id, user.email, durationMinutes);
     await refreshData();
-  }, [user, specialRequests, updateSpecialRequestsAction, refreshData]);
+  }, [user, specialRequests, updateSpecialRequests, refreshData]);
 
   const approveRequest = useCallback(async (id: string, durationMinutes?: number) => {
     if (!user?.email) return;

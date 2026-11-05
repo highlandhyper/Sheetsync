@@ -1,20 +1,15 @@
 
 import { Product, Supplier, InventoryItem, DashboardMetrics, StockBySupplier, Permissions, StockTrendData, AuditLogEntry, SpecialEntryRequest, ExpiryReminder, StaffMember, OnDisplayAlert } from '@/lib/types';
-import { readSheetData, appendSheetData, updateSheetData, updateSheetDataRaw, appendSheetDataRaw, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
+import { getFirestoreAppMetaData, savePermissionsToFirestore, saveSpecialRequestsToFirestore, saveStaffListToFirestore, saveLocationListToFirestore, saveSupplierContactsToFirestore } from './firestore-app-settings';
+import { readSheetData, appendSheetData, updateSheetData, findRowByUniqueValue, deleteSheetRow, batchUpdateSheetCells, deleteSheetRowsRange, deleteSheetRowsBatch, clearSheetData, ensureSheetRows } from './google-sheets-client';
 import { format, parseISO, isValid, parse as dateParse, addDays, isBefore, isAfter, startOfDay, isSameDay, endOfDay, subDays } from 'date-fns';
 
 const FORM_RESPONSES_SHEET_NAME = "Form responses 2";
 const DB_SHEET_NAME = "DB"; 
-const APP_SETTINGS_SHEET_NAME = "APP_SETTINGS"; 
 const AUDIT_LOG_SHEET_NAME = "Audit Log";
 const EXPIRY_WATCH_SHEET_NAME = "Expiry Watch";
 const ON_DISPLAY_ALERTS_SHEET_NAME = "On Display Alerts";
 
-const STAFF_LIST_KEY = "staffList";
-const PERMISSIONS_KEY = "permissions";
-const SPECIAL_REQUESTS_KEY = "specialRequests";
-const LOCATION_LIST_KEY = "locationList";
-const SUPPLIER_CONTACTS_KEY = "supplierContacts";
 
 const INV_COL_TIMESTAMP = 0;
 const INV_COL_BARCODE = 1;
@@ -34,8 +29,6 @@ const DB_COL_SUPPLIER_NAME = 3;
 const DB_COL_COST_PRICE = 4;
 const DB_COL_UNIQUE_ID = 7; 
 
-const SETTINGS_COL_KEY = 0;
-const SETTINGS_COL_VALUE = 1;
 
 const AUDIT_COL_TIMESTAMP = 0;
 const AUDIT_COL_USER = 1;
@@ -67,7 +60,6 @@ const ODA_COL_LOG_ID = 12;
 
 const DB_READ_RANGE = `${DB_SHEET_NAME}!A2:H`; 
 const INVENTORY_READ_RANGE = `${FORM_RESPONSES_SHEET_NAME}!A2:J`;
-const APP_SETTINGS_READ_RANGE = `${APP_SETTINGS_SHEET_NAME}!A2:B`;
 const AUDIT_LOG_READ_RANGE = `${AUDIT_LOG_SHEET_NAME}!A2:E`;
 const EXPIRY_WATCH_READ_RANGE = `${EXPIRY_WATCH_SHEET_NAME}!A2:N`;
 const ON_DISPLAY_ALERTS_READ_RANGE = `${ON_DISPLAY_ALERTS_SHEET_NAME}!A2:L`;
@@ -293,122 +285,37 @@ export async function logAuditEvent(user: string, action: string, target: string
   await appendSheetData(`${AUDIT_LOG_SHEET_NAME}!A:E`, [[ts, user, action, target, details]]);
 }
 
+// Backward-compatible exports. The application settings repository is Firestore-backed.
 export async function getAppMetaData() {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  if (data === null) throw new Error("System configuration offline.");
-  const findJson = (key: string) => {
-    const rows = data.filter(r => r[SETTINGS_COL_KEY] === key);
-    if (!rows || rows.length === 0) return null;
-    const lastRow = rows[rows.length - 1];
-    try { return lastRow ? JSON.parse(lastRow[SETTINGS_COL_VALUE]) : null; } catch { return null; }
-  };
-  const rawStaff = findJson(STAFF_LIST_KEY);
-  const processedStaff = Array.isArray(rawStaff) ? rawStaff.map(s => typeof s === 'string' ? { name: s.toUpperCase() } : s) : [];
-  return {
-    permissions: findJson(PERMISSIONS_KEY) as Permissions | null,
-    specialRequests: (findJson(SPECIAL_REQUESTS_KEY) as SpecialEntryRequest[]) || [],
-    staff: processedStaff,
-    locations: (findJson(LOCATION_LIST_KEY) as string[]) || ["Back side", "On Display", "Front Side"],
-    supplierContacts: (findJson(SUPPLIER_CONTACTS_KEY) as Supplier[]) || []
-  };
+  return getFirestoreAppMetaData();
 }
 
-export async function loadPermissionsFromSheet() { return (await getAppMetaData()).permissions; }
+export async function loadPermissionsFromSheet() {
+  return (await getAppMetaData()).permissions;
+}
 
 export async function savePermissionsToSheet(perms: Permissions) {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  let lastIdx = -1;
-  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === PERMISSIONS_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(perms)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[PERMISSIONS_KEY, JSON.stringify(perms)]]);
+  await savePermissionsToFirestore(perms);
+  return true;
 }
 
 export async function saveSpecialRequestsToSheet(reqs: SpecialEntryRequest[]): Promise<boolean> {
-  // Never append a second registry key when the APP_SETTINGS read failed.
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  if (data === null) {
-    console.error('[SPECIAL_REQUESTS] Could not read APP_SETTINGS before saving.');
-    return false;
-  }
-
-  const serialized = JSON.stringify(reqs.slice(0, 200));
-  let lastIdx = -1;
-  data.forEach((row, index) => {
-    if (String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY) lastIdx = index;
-  });
-
-  const targetRange = lastIdx !== -1
-    ? `${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`
-    : `${APP_SETTINGS_SHEET_NAME}!A:B`;
-  const saved = lastIdx !== -1
-    ? await updateSheetDataRaw(targetRange, [[serialized]])
-    : await appendSheetDataRaw(targetRange, [[SPECIAL_REQUESTS_KEY, serialized]]);
-
-  if (!saved) {
-    console.error('[SPECIAL_REQUESTS] Sheets API write failed. Check the detailed [GOOGLE_SHEETS_RAW_UPDATE/APPEND] log above.');
-    return false;
-  }
-
-  // Verify the stored JSON structurally. RAW writes preserve the JSON text exactly,
-  // but parsing also tolerates harmless serialization differences.
-  const verifyData = await readSheetData(APP_SETTINGS_READ_RANGE);
-  if (verifyData === null) {
-    console.error('[SPECIAL_REQUESTS] Write succeeded but APP_SETTINGS read-back failed.');
-    return false;
-  }
-  const storedRow = [...verifyData].reverse().find(row =>
-    String(row[SETTINGS_COL_KEY] || '').trim() === SPECIAL_REQUESTS_KEY
-  );
-  if (!storedRow) {
-    console.error('[SPECIAL_REQUESTS] Write succeeded but specialRequests key was not found on read-back.');
-    return false;
-  }
-  let storedRequests: any;
-  try {
-    storedRequests = JSON.parse(String(storedRow[SETTINGS_COL_VALUE] || ''));
-  } catch (error) {
-    console.error('[SPECIAL_REQUESTS] Read-back value is not valid JSON:', error);
-    return false;
-  }
-  const expected = reqs.slice(0, 200);
-  const verified = Array.isArray(storedRequests) &&
-    storedRequests.length === expected.length &&
-    storedRequests.every((stored: any, index: number) =>
-      stored?.id === expected[index]?.id &&
-      stored?.status === expected[index]?.status
-    );
-  if (!verified) {
-    console.error('[SPECIAL_REQUESTS] Read-back verification mismatch.', {
-      expectedCount: expected.length,
-      actualCount: Array.isArray(storedRequests) ? storedRequests.length : null,
-      targetRange
-    });
-  }
-  return verified;
+  return saveSpecialRequestsToFirestore(reqs);
 }
 
 export async function saveStaffListToSheet(staff: StaffMember[]) {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  let lastIdx = -1;
-  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === STAFF_LIST_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(staff)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[STAFF_LIST_KEY, JSON.stringify(staff)]]);
+  await saveStaffListToFirestore(staff);
+  return true;
 }
 
 export async function saveLocationListToSheet(locations: string[]) {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  let lastIdx = -1;
-  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === LOCATION_LIST_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(locations)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[LOCATION_LIST_KEY, JSON.stringify(locations)]]);
+  await saveLocationListToFirestore(locations);
+  return true;
 }
 
 export async function saveSupplierContactsToSheet(contacts: Supplier[]) {
-  const data = await readSheetData(APP_SETTINGS_READ_RANGE);
-  let lastIdx = -1;
-  data?.forEach((r, i) => { if (r[SETTINGS_COL_KEY] === SUPPLIER_CONTACTS_KEY) lastIdx = i; });
-  if (lastIdx !== -1) return updateSheetData(`${APP_SETTINGS_SHEET_NAME}!B${lastIdx + 2}`, [[JSON.stringify(contacts)]]);
-  return appendSheetData(`${APP_SETTINGS_SHEET_NAME}!A:B`, [[SUPPLIER_CONTACTS_KEY, JSON.stringify(contacts)]]);
+  await saveSupplierContactsToFirestore(contacts);
+  return true;
 }
 
 export async function getProductDetailsByBarcode(barcode: string): Promise<Product | null> {

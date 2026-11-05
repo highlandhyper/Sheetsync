@@ -319,21 +319,29 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
       const result = await updateSpecialRequestsAction(requests);
       if (!result?.success) {
-        throw new Error(result?.message || 'Google Sheets did not save the approval registry update.');
+        throw new Error(result?.message || 'Firestore did not save the approval registry update.');
       }
 
-      // Update the client cache only after the server confirms the Sheets write.
+      // Update the client cache only after the server confirms the Firestore write.
       setData(prev => ({ ...prev, specialRequests: requests }));
   }, []);
 
   const updateStaffList = useCallback(async (staff: StaffMember[]) => {
+      if (typeof navigator === 'undefined' || !navigator.onLine) {
+        throw new Error('You must be online to update staff settings. No changes were saved.');
+      }
+      const result = await saveStaffListAction(staff as any);
+      if (!result?.success) throw new Error(result?.message || 'Firestore did not save the staff list.');
       setData(prev => ({ ...prev, staffRegistry: staff }));
-      if (navigator.onLine) await saveStaffListAction(staff as any);
   }, []);
 
   const updateLocationList = useCallback(async (locations: string[]) => {
+      if (typeof navigator === 'undefined' || !navigator.onLine) {
+        throw new Error('You must be online to update location settings. No changes were saved.');
+      }
+      const result = await saveLocationListAction(locations);
+      if (!result?.success) throw new Error(result?.message || 'Firestore did not save the location list.');
       setData(prev => ({ ...prev, uniqueLocations: locations }));
-      if (navigator.onLine) await saveLocationListAction(locations);
   }, []);
 
   const resolveExpiryReminder = useCallback(async (id: string) => {
