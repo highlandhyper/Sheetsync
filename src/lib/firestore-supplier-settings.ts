@@ -2,6 +2,7 @@ import 'server-only';
 
 import { getFirestoreAppMetaData, saveSupplierContactsToFirestore } from '@/lib/firestore-app-settings';
 import { readSheetData, batchUpdateSheetCells, appendSheetData } from '@/lib/google-sheets-client';
+import type { Supplier } from '@/lib/types';
 
 const DB_RANGE = 'DB!A2:H';
 const INVENTORY_RANGE = 'Form responses 2!A2:J';
@@ -12,7 +13,7 @@ export async function updateSupplierAcrossRegistryInFirestore(
   supplierId: string,
   oldName: string,
   newName: string,
-  meta: Record<string, unknown>,
+  meta: Partial<Supplier>,
 ) {
   const appMeta = await getFirestoreAppMetaData();
   const updatedContacts = appMeta.supplierContacts.map((supplier: any) =>
