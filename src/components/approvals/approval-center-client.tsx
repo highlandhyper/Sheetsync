@@ -432,8 +432,7 @@ export function ApprovalCenterClient() {
                                             </PopoverTrigger>
                                             <PopoverContent
                                                 className="z-[100] w-[--radix-popover-trigger-width] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border-border/70 p-0 shadow-xl"
-                                                align="start" side="bottom" sideOffset={4}
-                                                onOpenAutoFocus={(event) => event.preventDefault()}>
+                                                align="start" side="bottom" sideOffset={4}>
                                                 <div className="border-b border-border p-2">
                                                     <Input
                                                         autoFocus
