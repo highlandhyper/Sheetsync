@@ -52,7 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 import { addProductSchema, type AddProductFormValues } from '@/lib/schemas';
-import { fetchProductAction, saveProductAction, fetchProductExternalDataAction, addSupplierAction } from '@/app/actions';
+import { fetchProductAction, saveProductAction, fetchProductExternalDataAction, addSupplierAction, bulkDeleteProductsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Supplier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -60,9 +60,12 @@ import { useDataCache } from '@/context/data-cache-context';
 import { useAuth } from '@/context/auth-context';
 import { EditSupplierDialog } from '@/components/suppliers/edit-supplier-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AuthorizeActionDialog } from '@/components/inventory/authorize-action-dialog';
 
 interface EditOrCreateProductFormProps {
   allSuppliers: Supplier[];
+  selectedBarcode?: string;
+  selectionVersion?: number;
 }
 
 const SCANNER_REGION_ID = 'manage-product-scanner';
@@ -83,10 +86,10 @@ const getActionColor = (action: string) => {
     return "bg-muted text-muted-foreground border-transparent";
 };
 
-export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFormProps) {
+export function EditOrCreateProductForm({ allSuppliers, selectedBarcode, selectionVersion }: EditOrCreateProductFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const isMobile = useIsMobile();
   const { 
     products: cachedProducts, 
@@ -108,6 +111,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [productNotFound, setProductNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+  const [isDeleteAuthOpen, setIsDeleteAuthOpen] = useState(false);
+  const [isDeletePending, setIsDeletePending] = useState(false);
   const [supplierComboboxOpen, setSupplierComboboxOpen] = useState(false);
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   
@@ -130,6 +136,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   const nameInputRef = useRef<HTMLInputElement>(null);
   const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
+
+  const productNameMatches = useMemo(() => {
+    const term = barcodeToSearch.trim().toLocaleLowerCase();
+    if (term.length < 2 || /^\d+$/.test(term)) return [];
+    return cachedProducts
+      .filter((product) => product.productName.toLocaleLowerCase().includes(term))
+      .slice(0, 40);
+  }, [cachedProducts, barcodeToSearch]);
 
   const barcodeMap = useMemo(() => {
     const map = new Map<string, Product>();
@@ -189,6 +203,12 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       handleSearchBarcode(barcodeFromUrl);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!selectedBarcode) return;
+    setBarcodeToSearch(selectedBarcode);
+    handleSearchBarcode(selectedBarcode);
+  }, [selectedBarcode, selectionVersion]);
 
   const handleMagicLookup = async (barcode: string, skipFieldOverwrite: boolean = false) => {
     if (!barcode) return;
@@ -262,6 +282,29 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
       setShowForm(true); 
       setTimeout(() => nameInputRef.current?.focus(), 150);
     });
+  };
+
+  const handleDeleteAuthorization = async () => {
+    if (role !== 'admin' || !searchedBarcode) return;
+    const productId = barcodeMap.get(searchedBarcode)?.id || searchedBarcode;
+    setIsDeletePending(true);
+    try {
+      const result = await bulkDeleteProductsAction(user?.email || 'Admin', [productId]);
+      if (result.success) {
+        toast({ title: 'Product deleted', description: 'The product was removed from the catalog.' });
+        setIsDeleteAuthOpen(false);
+        handleReset();
+        await refreshData();
+      } else {
+        toast({ title: 'Delete failed', description: result.message || 'The product could not be deleted.', variant: 'destructive' });
+        await refreshData();
+      }
+    } catch {
+      toast({ title: 'Delete failed', description: 'Could not complete the delete request. Refresh and try again.', variant: 'destructive' });
+      await refreshData();
+    } finally {
+      setIsDeletePending(false);
+    }
   };
 
   const processFormSubmit = (data: AddProductFormValues) => {
@@ -425,27 +468,27 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
   return (
     <div
       className={cn(
-        "relative z-10 grid grid-cols-1 items-start gap-4 lg:gap-5 xl:grid-cols-12",
+        "relative z-10 grid grid-cols-1 items-start gap-5 xl:grid-cols-12",
         showForm && "xl:min-h-[calc(100vh-13rem)]"
       )}
     >
       {/* PRODUCT EDITOR */}
       <section
         className={cn(
-          "flex min-w-0 flex-col xl:col-span-7",
-          !showForm && "mx-auto w-full max-w-5xl xl:col-span-12"
+          "flex min-w-0 flex-col xl:col-span-8",
+          !showForm && "mx-auto w-full max-w-4xl xl:col-span-12"
         )}
       >
-        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card shadow-[0_2px_12px_rgba(15,23,42,0.04)] sm:rounded-[1.35rem]">
-          <CardHeader className="border-b border-border/70 bg-card p-5 sm:p-6 lg:p-7">
+        <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <CardHeader className="border-b border-border bg-card p-4 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12 sm:rounded-2xl">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground sm:h-11 sm:w-11">
                   <Package className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div className="min-w-0">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-xl font-semibold tracking-tight sm:text-2xl">Product details</CardTitle>
+                    <CardTitle className="text-lg font-semibold tracking-tight sm:text-xl">Product details</CardTitle>
                     {showForm && (
                       <Badge
                         variant="outline"
@@ -460,7 +503,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       </Badge>
                     )}
                   </div>
-                  <CardDescription className="max-w-xl text-sm leading-6 text-muted-foreground">
+                  <CardDescription className="max-w-xl text-sm leading-5 text-muted-foreground">
                     Search by barcode, review the product, and update the master catalog.
                   </CardDescription>
                 </div>
@@ -481,15 +524,15 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             </div>
           </CardHeader>
 
-          <CardContent className="p-4 sm:p-6 lg:p-7">
+          <CardContent className="p-4 sm:p-5">
             {/* BARCODE SEARCH */}
-            <div className="rounded-xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5">
+            <div className="rounded-lg border border-border bg-muted/25 p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3 px-0.5">
                 <div>
                   <Label htmlFor="catalog-barcode-search" className="text-sm font-semibold text-foreground">
-                    Barcode
+                    Find product
                   </Label>
-                  <p className="mt-1 text-xs text-muted-foreground">Scan or enter a product barcode.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Enter a barcode and press Enter, or type a product name to see matches.</p>
                 </div>
                 <Badge variant="outline" className="hidden rounded-lg border-border/70 bg-background/70 text-[9px] font-medium text-muted-foreground sm:inline-flex">
                   MASTER LOOKUP
@@ -503,14 +546,36 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     <Input
                       id="catalog-barcode-search"
                       ref={searchInputRef}
-                      inputMode="numeric"
                       autoComplete="off"
-                      placeholder="Enter barcode"
+                      placeholder="Barcode or product name"
                       value={barcodeToSearch}
-                      onChange={(e) => setBarcodeToSearch(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearchBarcode()}
-                      className="h-14 rounded-lg border-border/70 bg-background pl-12 pr-4 text-base font-medium tracking-wide shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-12"
+                      onChange={(e) => { setBarcodeToSearch(e.target.value); setShowProductSuggestions(true); }}
+                      onFocus={() => setShowProductSuggestions(true)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const term = barcodeToSearch.trim(); const looksLikeBarcode = /^\d+$/.test(term) || barcodeMap.has(term) || (term.length >= 8 && !/\s/.test(term)); if (looksLikeBarcode) { setShowProductSuggestions(false); handleSearchBarcode(); } else { setShowProductSuggestions(true); } } if (e.key === 'Escape') setShowProductSuggestions(false); }}
+                      className="h-12 rounded-md border-border bg-background pl-11 pr-4 text-sm font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
+                    {showProductSuggestions && productNameMatches.length > 0 && (
+                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
+                        <div className="border-b border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Matching products · {productNameMatches.length}{productNameMatches.length === 40 ? '+' : ''}
+                        </div>
+                        <ScrollArea className="max-h-72">
+                          <div className="p-1">
+                            {productNameMatches.map((product) => (
+                              <button key={product.id} type="button" onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => { setShowProductSuggestions(false); setBarcodeToSearch(product.barcode); handleSearchBarcode(product.barcode); }}
+                                className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
+                                <span className="min-w-0">
+                                  <span className="block truncate text-xs font-semibold text-foreground">{product.productName}</span>
+                                  <span className="mt-1 block truncate font-mono text-[10px] text-muted-foreground">{product.barcode}</span>
+                                </span>
+                                <span className="shrink-0 text-[10px] font-semibold text-primary">Select to edit</span>
+                              </button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </div>
                   {isMobile && (
                     <Button 
@@ -528,7 +593,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                   type="button"
                   onClick={() => handleSearchBarcode()}
                   disabled={isFetchPending || !barcodeToSearch.trim()}
-                  className="h-14 min-w-[150px] rounded-lg px-6 font-semibold shadow-none sm:h-12"
+                  className="h-12 min-w-[140px] rounded-md px-5 text-sm font-semibold shadow-none"
                 >
                   {isFetchPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -543,8 +608,8 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
             </div>
 
             {!showForm ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center px-4 py-10 text-center sm:min-h-[320px]">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/15 bg-primary/[0.06] text-primary sm:h-20 sm:w-20 sm:rounded-3xl">
+              <div className="flex min-h-[260px] flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[300px]">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-muted-foreground sm:h-16 sm:w-16">
                   <Barcode className="h-7 w-7 sm:h-9 sm:w-9" />
                 </div>
                 <h3 className="text-base font-bold text-foreground sm:text-lg">Search for a product to begin</h3>
@@ -553,14 +618,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </p>
               </div>
             ) : (
-              <div className="mt-5 space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300 sm:mt-6 sm:space-y-6">
+              <div className="mt-5 space-y-5 border-t border-border pt-5 animate-in fade-in slide-in-from-bottom-2 duration-300 sm:mt-6">
                 {/* STATUS / QUICK STATS */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-2">
                     <Badge
                       variant="outline"
                       className={cn(
-                        "h-8 rounded-lg px-2.5 text-[10px] font-semibold",
+                        "h-7 rounded-md px-2 text-[10px] font-semibold",
                         productNotFound
                           ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                           : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -577,7 +642,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     variant="outline"
                     onClick={() => handleMagicLookup(searchedBarcode)}
                     disabled={isMagicLoading}
-                    className="h-10 w-full rounded-xl border-primary/20 bg-primary/[0.035] text-xs font-semibold text-primary hover:bg-primary/10 sm:w-auto"
+                    className="h-9 w-full rounded-md border-border bg-background text-xs font-medium text-foreground hover:bg-muted sm:w-auto"
                   >
                     <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isMagicLoading && "animate-spin")} />
                     Visual lookup
@@ -585,14 +650,14 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                  <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Box className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[9px] font-semibold uppercase tracking-wide">Stock</span>
                     </div>
                     <p className="mt-2 text-lg font-bold tabular-nums sm:text-xl">{skuStats.total.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                  <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <AlertTriangle className={cn("h-3.5 w-3.5", skuStats.damaged > 0 ? "text-amber-500" : "text-muted-foreground")} />
                       <span className="text-[9px] font-semibold uppercase tracking-wide">Damaged</span>
@@ -601,7 +666,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                       {skuStats.damaged.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:rounded-2xl sm:p-4">
+                  <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Layers className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[9px] font-semibold uppercase tracking-wide">Locations</span>
@@ -612,9 +677,9 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
                 {/* PRODUCT FORM */}
                 <form onSubmit={handleSubmit(processFormSubmit)} className="space-y-5 sm:space-y-6">
-                  <div className="rounded-xl border border-border/70 bg-card p-4 sm:p-6">
+                  <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
                     <div className="mb-6">
-                      <h3 className="text-base font-semibold tracking-tight text-foreground">Product information</h3>
+                      <h3 className="text-sm font-semibold tracking-tight text-foreground">Product information</h3>
                       <p className="mt-1 text-xs text-muted-foreground">Enter the core details used across inventory and supplier records.</p>
                     </div>
 
@@ -635,7 +700,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                             }}
                             onKeyDown={(e) => e.key === 'Enter' && supplierTriggerRef.current?.focus()}
                             className={cn(
-                              "h-12 rounded-lg border-border/70 bg-background pl-10 text-sm font-medium shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20",
+                              "h-11 rounded-md border-border bg-background pl-10 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary/20",
                               formErrors.productName && "border-destructive focus-visible:ring-destructive/20"
                             )}
                           />
@@ -683,7 +748,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                                 role="combobox"
                                 aria-expanded={supplierComboboxOpen}
                                 className={cn(
-                                  "relative h-12 w-full justify-between rounded-xl border-border/70 bg-muted/[0.12] pl-10 pr-3 text-sm font-semibold shadow-none sm:h-11",
+                                  "relative h-11 w-full justify-between rounded-md border-border bg-background pl-10 pr-3 text-sm font-medium shadow-none",
                                   !supplierNameValue && "text-muted-foreground",
                                   formErrors.supplierName && "border-destructive"
                                 )}
@@ -774,7 +839,7 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                               }}
                               onKeyDown={(e) => e.key === 'Enter' && handleSubmit(processFormSubmit)()}
                               className={cn(
-                                "h-12 rounded-lg border-border/70 bg-background pl-12 pr-4 text-right text-base font-semibold tabular-nums shadow-none transition focus-visible:ring-2 focus-visible:ring-primary/20",
+                                "h-11 rounded-md border-border bg-background pl-12 pr-4 text-right text-sm font-semibold tabular-nums shadow-none focus-visible:ring-2 focus-visible:ring-primary/20",
                                 formErrors.costPrice && "border-destructive focus-visible:ring-destructive/20"
                               )}
                             />
@@ -787,18 +852,27 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
                     </div>
                   </div>
 
-                  <div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[11px] text-muted-foreground">
                       {isDirty ? "You have unsaved changes." : "Product information is up to date."}
                     </p>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+                    {role === 'admin' && editMode === 'edit' && (
+                      <Button type="button" variant="destructive" disabled={isDeletePending || isSavePending}
+                        onClick={() => setIsDeleteAuthOpen(true)}
+                        className="h-11 w-full rounded-md px-5 text-sm font-semibold shadow-none sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4" />Delete product
+                      </Button>
+                    )}
                     <Button
                       type="submit"
                       disabled={isSavePending || !isDirty}
-                      className="h-12 w-full rounded-lg px-7 font-semibold shadow-none sm:w-auto sm:min-w-[190px]"
+                      className="h-11 w-full rounded-md px-6 text-sm font-semibold shadow-none sm:w-auto sm:min-w-[180px]"
                     >
                       {isSavePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       {editMode === 'create' ? "Create product" : "Save changes"}
                     </Button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -809,16 +883,16 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
 
       {/* ACTIVITY / HISTORY */}
       {showForm && (
-        <aside className="min-w-0 xl:col-span-5 xl:self-stretch animate-in fade-in slide-in-from-bottom-3 duration-300 xl:slide-in-from-right-3">
-          <Card className="flex h-full max-h-[720px] min-h-[360px] flex-col overflow-hidden rounded-2xl border-border/60 bg-card shadow-sm sm:rounded-3xl xl:max-h-[calc(100vh-13rem)]">
-            <CardHeader className="shrink-0 border-b border-border/60 bg-muted/20 p-4 sm:p-6">
+        <aside className="min-w-0 xl:col-span-4 xl:self-stretch animate-in fade-in duration-300">
+          <Card className="flex h-full max-h-[720px] min-h-[360px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm xl:max-h-[calc(100vh-13rem)]">
+            <CardHeader className="shrink-0 border-b border-border bg-card p-4 sm:p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <History className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <CardTitle className="text-base font-bold tracking-tight sm:text-lg">Product activity</CardTitle>
+                    <CardTitle className="text-sm font-semibold tracking-tight sm:text-base">Product activity</CardTitle>
                     <CardDescription className="mt-0.5 text-[11px]">Recent audit events for this barcode.</CardDescription>
                   </div>
                 </div>
@@ -917,6 +991,11 @@ export function EditOrCreateProductForm({ allSuppliers }: EditOrCreateProductFor
           </div>
         </DialogContent>
       </Dialog>
+
+      <AuthorizeActionDialog isOpen={isDeleteAuthOpen} onOpenChange={setIsDeleteAuthOpen}
+        onAuthorizationSuccess={handleDeleteAuthorization}
+        actionDescription={'Permanently delete ' + (watch('productName') || 'this product') + ' (' + searchedBarcode + ') from the product catalog. This cannot be undone.'}
+      />
 
       {/* SCANNER MODAL */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
