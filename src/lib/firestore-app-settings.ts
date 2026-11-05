@@ -38,6 +38,14 @@ function safeData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function stableSerialize(value: any): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  return `{${Object.keys(value).sort().map(key =>
+    `${JSON.stringify(key)}:${stableSerialize(value[key])}`
+  ).join(',')}}`;
+}
+
 function requestDocId(id: string): string {
   const normalized = String(id || '').trim();
   if (!normalized) throw new Error('A special request is missing its ID.');
@@ -168,7 +176,26 @@ export async function savePermissionsToFirestore(value: Permissions) {
 
 export async function saveSpecialRequestsToFirestore(value: SpecialEntryRequest[]): Promise<boolean> {
   await ensureFirestoreAppSettingsMigrated();
-  await writeRequests(value);
+
+  const collection = adminDb.collection(REQUESTS_COLLECTION);
+  const existingSnapshot = await collection.get();
+  const existingById = new Map<string, Record<string, any>>();
+  existingSnapshot.docs.forEach(document => {
+    const data = document.data();
+    const id = String(data.id || decodeURIComponent(document.id));
+    existingById.set(id, data);
+  });
+
+  // The client still submits its current list, but only changed/new request
+  // documents are written. Rejecting one request therefore does not rewrite
+  // every other request in the collection.
+  const changed = (value || []).filter(request => {
+    if (!request?.id) throw new Error('Cannot save a special request without an ID.');
+    const current = existingById.get(String(request.id));
+    return !current || stableSerialize(safeData(request)) !== stableSerialize(current);
+  });
+
+  await writeRequests(changed);
   return true;
 }
 
