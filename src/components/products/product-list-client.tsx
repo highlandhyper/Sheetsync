@@ -20,7 +20,6 @@ import {
 
 import { Input } from '@/components/ui/input';
 import { ProductCard } from './product-card';
-import { AddProductDialog } from './add-product-dialog';
 import type { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -434,7 +433,6 @@ export function ProductListClient({ onProductSelect }: ProductListClientProps = 
                     </SelectContent>
                   </Select>
 
-                  <AddProductDialog />
                 </div>
               </div>
 
