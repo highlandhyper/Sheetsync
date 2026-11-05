@@ -22,11 +22,13 @@ function ProductsSkeleton() {
 function ProductsWorkspace() {
   const { suppliers, isCacheReady } = useDataCache();
   const [selectedBarcode, setSelectedBarcode] = useState('');
+  const [selectionVersion, setSelectionVersion] = useState(0);
 
   if (!isCacheReady) return <ProductsSkeleton />;
 
   const handleProductSelect = (barcode: string) => {
     setSelectedBarcode(barcode);
+    setSelectionVersion((version) => version + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -58,6 +60,7 @@ function ProductsWorkspace() {
           <EditOrCreateProductForm
             allSuppliers={suppliers}
             selectedBarcode={selectedBarcode}
+            selectionVersion={selectionVersion}
           />
         </section>
 
