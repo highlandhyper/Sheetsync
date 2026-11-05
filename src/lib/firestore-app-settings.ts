@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { adminDb } from '@/lib/firebase-admin';
-import { readSheetData } from '@/lib/google-sheets-client';
+import { readSheetData, updateSheetDataRaw, appendSheetDataRaw } from '@/lib/google-sheets-client';
 import type { Permissions, SpecialEntryRequest, StaffMember, Supplier } from '@/lib/types';
 
 const LEGACY_SETTINGS_RANGE = 'APP_SETTINGS!A2:B';
@@ -172,10 +172,30 @@ export async function saveSpecialRequestsToFirestore(value: SpecialEntryRequest[
   return true;
 }
 
+async function mirrorStaffListForAppsScript(value: StaffMember[]): Promise<void> {
+  // Code.gs still reads staff phone numbers from APP_SETTINGS for SMS delivery.
+  // Keep only this small compatibility row mirrored; Firestore remains the app's source of truth.
+  const rows = await readSheetData(LEGACY_SETTINGS_RANGE);
+  if (rows === null) throw new Error('Staff list could not be mirrored to the Apps Script compatibility row.');
+
+  let rowIndex = -1;
+  rows.forEach((row, index) => {
+    if (String(row?.[0] || '').trim() === LEGACY_KEYS.staff) rowIndex = index;
+  });
+
+  const serialized = JSON.stringify(value);
+  const saved = rowIndex >= 0
+    ? await updateSheetDataRaw(`APP_SETTINGS!B${rowIndex + 2}`, [[serialized]])
+    : await appendSheetDataRaw('APP_SETTINGS!A:B', [[LEGACY_KEYS.staff, serialized]]);
+
+  if (!saved) throw new Error('Firestore staff settings were not mirrored to APP_SETTINGS for Apps Script SMS delivery.');
+}
+
 export async function saveStaffListToFirestore(value: StaffMember[]) {
   await ensureFirestoreAppSettingsMigrated();
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
     .set({ staff: safeData(value) }, { merge: true });
+  await mirrorStaffListForAppsScript(value);
 }
 
 export async function saveLocationListToFirestore(value: string[]) {
