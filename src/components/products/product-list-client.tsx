@@ -114,6 +114,9 @@ export function ProductListClient() {
         items = exactBarcodeProducts;
       } else {
         items = fuse.search(term).map((result) => result.item);
+        if (supplierFilter !== 'all') {
+          items = items.filter((product) => product.supplierName === supplierFilter);
+        }
       }
     }
 
