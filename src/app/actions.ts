@@ -453,6 +453,40 @@ export async function setPermissionsAction(perms: Permissions) {
     }
 }
 
+// Serialize request-status mutations within a server instance so two admin
+// actions cannot both read the same stale list and overwrite each other.
+let specialRequestMutationQueue: Promise<unknown> = Promise.resolve();
+
+export async function rejectSpecialRequestAction(id: string, adminEmail: string) {
+    const requestId = String(id || '').trim();
+    if (!requestId) return { success: false, message: 'Missing request ID.' };
+
+    const mutation = async () => {
+        try {
+            const meta = await getAppMetaData();
+            const requests: SpecialEntryRequest[] = Array.isArray(meta.specialRequests) ? meta.specialRequests : [];
+            const target = requests.find(request => request.id === requestId);
+            if (!target) return { success: false, message: 'Request no longer exists. Refresh approvals and try again.' };
+            if (target.status !== 'pending') return { success: true, message: 'Request was already processed.' };
+
+            const updated = requests.map(request => request.id === requestId
+                ? { ...request, status: 'rejected' as const, approvedAt: new Date().toISOString(), isDismissedByAdmin: true }
+                : request
+            );
+            await saveSpecialRequestsToSheet(updated);
+            revalidatePath('/approvals');
+            return { success: true };
+        } catch (error: any) {
+            console.error('[APPROVAL_REJECT] Failed to persist rejection:', error);
+            return { success: false, message: error?.message || 'Could not save rejection. Please retry.' };
+        }
+    };
+
+    const operation = specialRequestMutationQueue.then(mutation, mutation);
+    specialRequestMutationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
+}
+
 export async function updateSpecialRequestsAction(requests: SpecialEntryRequest[]) {
     try {
         await saveSpecialRequestsToSheet(requests);
