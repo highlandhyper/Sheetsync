@@ -15,7 +15,7 @@ SheetSync application configuration is stored server-side through the Firebase A
   - One special-entry request per document.
   - The original request ID is retained in the `id` field.
 
-The existing `userRoles/{uid}` collection is unchanged.
+The existing `userRoles/{uid}` collection is unchanged. The `staffList` row in `APP_SETTINGS` is retained as a compatibility mirror because the deployed Apps Script `Code.gs` still reads staff phone numbers from that row to send expiry SMS. Firestore remains the source of truth for the Next.js application; staff-list saves update the Firestore document and this small Apps Script mirror.
 
 ## Migration
 
@@ -23,7 +23,7 @@ The first server-side application metadata read checks the migration marker. If 
 
 The migration:
 - Preserves already-populated Firestore settings.
-- Does not delete or modify the old `APP_SETTINGS` sheet.
+- Does not delete the old `APP_SETTINGS` sheet. Only the `staffList` compatibility row continues to be updated for Apps Script SMS delivery.
 - Writes the completion marker only after the special-request documents and settings have been written.
 - Stops with an error if a legacy JSON value cannot be parsed or the sheet cannot be read.
 
