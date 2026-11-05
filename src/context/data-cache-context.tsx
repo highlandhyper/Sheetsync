@@ -319,10 +319,10 @@ export function DataCacheProvider({ children }: PropsWithChildren) {
 
       const result = await updateSpecialRequestsAction(requests);
       if (!result?.success) {
-        throw new Error(result?.message || 'Google Sheets did not save the approval registry update.');
+        throw new Error(result?.message || 'Firestore did not save the approval registry update.');
       }
 
-      // Update the client cache only after the server confirms the Sheets write.
+      // Update the client cache only after the server confirms the Firestore write.
       setData(prev => ({ ...prev, specialRequests: requests }));
   }, []);
 
