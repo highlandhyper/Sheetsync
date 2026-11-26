@@ -164,16 +164,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     return { exact, normalized };
   }, [cachedProducts]);
 
-  // Search the already-loaded product catalogue locally; selecting a result does not
-  // trigger an additional Firestore/API lookup.
-  const matchingProductsByName = useMemo(() => {
-    const term = productNameSearch.trim().toLocaleLowerCase();
-    if (term.length < 2) return [];
-    return cachedProducts
-      .filter(product => String(product.productName || '').toLocaleLowerCase().includes(term))
-      .slice(0, 30);
-  }, [cachedProducts, productNameSearch]);
-
   const { activeSession, pendingActivationSession, setActivationDialogOpen, consumeSpecialEntry, requestSpecialEntry } = useSpecialEntry(); 
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -220,6 +210,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productAddRequestId, setProductAddRequestId] = useState<string | undefined>();
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
   const [foundInGlobalRegistry, setFoundInGlobalRegistry] = useState(false);
+
+  // Search the already-loaded product catalogue locally; selecting a result does not
+  // trigger an additional Firestore/API lookup.
+  const matchingProductsByName = useMemo(() => {
+    const term = productNameSearch.trim().toLocaleLowerCase();
+    if (term.length < 2) return [];
+    return cachedProducts
+      .filter(product => String(product.productName || '').toLocaleLowerCase().includes(term))
+      .slice(0, 30);
+  }, [cachedProducts, productNameSearch]);
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
