@@ -134,9 +134,11 @@ export async function ensureFirestoreAppSettingsMigrated(): Promise<void> {
 const METADATA_CACHE_TTL_MS = 20_000;
 let metadataCache: { value: any; expiresAt: number } | null = null;
 let metadataInFlight: Promise<any> | null = null;
+let metadataCacheGeneration = 0;
 
 export function invalidateFirestoreAppMetaDataCache() {
   metadataCache = null;
+  metadataCacheGeneration += 1;
   metadataInFlight = null;
 }
 
@@ -180,10 +182,13 @@ export async function getFirestoreAppMetaData() {
   if (metadataCache && metadataCache.expiresAt > now) return metadataCache.value;
   if (metadataInFlight) return metadataInFlight;
 
+  const generation = metadataCacheGeneration;
   metadataInFlight = buildFirestoreAppMetaData();
   try {
     const value = await metadataInFlight;
-    metadataCache = { value, expiresAt: Date.now() + METADATA_CACHE_TTL_MS };
+    if (generation === metadataCacheGeneration) {
+      metadataCache = { value, expiresAt: Date.now() + METADATA_CACHE_TTL_MS };
+    }
     return value;
   } finally {
     metadataInFlight = null;
