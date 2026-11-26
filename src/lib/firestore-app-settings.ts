@@ -129,7 +129,18 @@ export async function ensureFirestoreAppSettingsMigrated(): Promise<void> {
   });
 }
 
-export async function getFirestoreAppMetaData() {
+// A short-lived cache is safe for this read-heavy configuration data and avoids
+// repeatedly reading every specialRequests document on each sync/page request.
+const METADATA_CACHE_TTL_MS = 20_000;
+let metadataCache: { value: any; expiresAt: number } | null = null;
+let metadataInFlight: Promise<any> | null = null;
+
+export function invalidateFirestoreAppMetaDataCache() {
+  metadataCache = null;
+  metadataInFlight = null;
+}
+
+async function buildFirestoreAppMetaData() {
   await ensureFirestoreAppSettingsMigrated();
 
   const configRef = adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT);
@@ -164,6 +175,21 @@ export async function getFirestoreAppMetaData() {
   };
 }
 
+export async function getFirestoreAppMetaData() {
+  const now = Date.now();
+  if (metadataCache && metadataCache.expiresAt > now) return metadataCache.value;
+  if (metadataInFlight) return metadataInFlight;
+
+  metadataInFlight = buildFirestoreAppMetaData();
+  try {
+    const value = await metadataInFlight;
+    metadataCache = { value, expiresAt: Date.now() + METADATA_CACHE_TTL_MS };
+    return value;
+  } finally {
+    metadataInFlight = null;
+  }
+}
+
 export async function loadPermissionsFromFirestore() {
   return (await getFirestoreAppMetaData()).permissions;
 }
@@ -172,6 +198,7 @@ export async function savePermissionsToFirestore(value: Permissions) {
   await ensureFirestoreAppSettingsMigrated();
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
     .set({ permissions: safeData(value) }, { merge: true });
+  invalidateFirestoreAppMetaDataCache();
 }
 
 export async function saveSpecialRequestsToFirestore(value: SpecialEntryRequest[]): Promise<boolean> {
@@ -196,6 +223,7 @@ export async function saveSpecialRequestsToFirestore(value: SpecialEntryRequest[
   });
 
   await writeRequests(changed);
+  invalidateFirestoreAppMetaDataCache();
   return true;
 }
 
@@ -223,16 +251,18 @@ export async function saveStaffListToFirestore(value: StaffMember[]) {
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
     .set({ staff: safeData(value) }, { merge: true });
   await mirrorStaffListForAppsScript(value);
-}
+  invalidateFirestoreAppMetaDataCache();
 
 export async function saveLocationListToFirestore(value: string[]) {
   await ensureFirestoreAppSettingsMigrated();
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
     .set({ locations: safeData(value) }, { merge: true });
+  invalidateFirestoreAppMetaDataCache();
 }
 
 export async function saveSupplierContactsToFirestore(value: Supplier[]) {
   await ensureFirestoreAppSettingsMigrated();
   await adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOCUMENT)
     .set({ supplierContacts: safeData(value) }, { merge: true });
+  invalidateFirestoreAppMetaDataCache();
 }
