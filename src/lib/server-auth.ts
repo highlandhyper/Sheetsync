@@ -25,15 +25,24 @@ export async function requireSignedInUser(request: NextRequest): Promise<Decoded
   }
 }
 
+// Role reads are frequently repeated by route guards. A brief per-instance TTL
+// reduces Firestore transactions while keeping role changes responsive.
+const TRUSTED_ROLE_CACHE_TTL_MS = 15_000;
+const trustedRoleCache = new Map<string, { role: Role | null; expiresAt: number }>();
+
 export async function getTrustedRole(uid: string, email: string | undefined): Promise<Role | null> {
   const normalizedEmail = (email || '').trim().toLowerCase();
   const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || '').trim().toLowerCase();
   if (!initialAdminEmail) {
     throw new Error('INITIAL_ADMIN_EMAIL must be configured in the server environment.');
   }
-  const ref = adminDb.collection('userRoles').doc(uid);
 
-  return adminDb.runTransaction(async (transaction) => {
+  const cached = trustedRoleCache.get(uid);
+  if (cached && cached.expiresAt > Date.now()) return cached.role;
+  if (cached) trustedRoleCache.delete(uid);
+
+  const ref = adminDb.collection('userRoles').doc(uid);
+  const role = await adminDb.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
 
     // The configured initial Admin is bootstrapped only by the server.
@@ -47,7 +56,7 @@ export async function getTrustedRole(uid: string, email: string | undefined): Pr
         updatedAt: new Date().toISOString(),
         ...(!snapshot.exists ? { createdAt: new Date().toISOString() } : {}),
       }, { merge: true });
-      return 'admin';
+      return 'admin' as Role;
     }
 
     if (!snapshot.exists) {
@@ -61,13 +70,22 @@ export async function getTrustedRole(uid: string, email: string | undefined): Pr
         createdAt: now,
         updatedAt: now,
       });
-      return 'viewer';
+      return 'viewer' as Role;
     }
 
     const data = snapshot.data();
     if (data?.active === false) return null;
-    return data?.role === 'admin' || data?.role === 'viewer' ? data.role : 'viewer';
+    return data?.role === 'admin' || data?.role === 'viewer' ? data.role as Role : 'viewer' as Role;
   });
+
+  // Bound cache size so long-lived server instances cannot accumulate user IDs.
+  if (trustedRoleCache.size >= 500) {
+    for (const [key, value] of trustedRoleCache) {
+      if (value.expiresAt <= Date.now() || trustedRoleCache.size >= 400) trustedRoleCache.delete(key);
+    }
+  }
+  trustedRoleCache.set(uid, { role, expiresAt: Date.now() + TRUSTED_ROLE_CACHE_TTL_MS });
+  return role;
 }
 
 export async function requireAdmin(request: NextRequest): Promise<DecodedIdToken> {
