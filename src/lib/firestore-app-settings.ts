@@ -252,6 +252,8 @@ export async function saveStaffListToFirestore(value: StaffMember[]) {
     .set({ staff: safeData(value) }, { merge: true });
   await mirrorStaffListForAppsScript(value);
   invalidateFirestoreAppMetaDataCache();
+}
+
 
 export async function saveLocationListToFirestore(value: string[]) {
   await ensureFirestoreAppSettingsMigrated();
