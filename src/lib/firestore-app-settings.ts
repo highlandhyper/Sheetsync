@@ -183,17 +183,19 @@ export async function getFirestoreAppMetaData() {
   if (metadataInFlight) return metadataInFlight;
 
   const generation = metadataCacheGeneration;
-  metadataInFlight = buildFirestoreAppMetaData();
+  const pending = buildFirestoreAppMetaData();
+  metadataInFlight = pending;
   try {
-    const value = await metadataInFlight;
+    const value = await pending;
     if (generation === metadataCacheGeneration) {
       metadataCache = { value, expiresAt: Date.now() + METADATA_CACHE_TTL_MS };
     }
     return value;
   } finally {
-    metadataInFlight = null;
+    if (metadataInFlight === pending) metadataInFlight = null;
   }
 }
+
 
 export async function loadPermissionsFromFirestore() {
   return (await getFirestoreAppMetaData()).permissions;
