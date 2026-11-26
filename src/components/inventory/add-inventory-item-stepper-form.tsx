@@ -201,6 +201,8 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [isMobileDatePickerOpen, setIsMobileDatePickerOpen] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [productName, setProductName] = useState('');
+  const [productNameSearch, setProductNameSearch] = useState('');
+  const [selectedProductBarcode, setSelectedProductBarcode] = useState('');
   const [requiresProductName, setRequiresProductName] = useState(false);
   const [productSupplier, setProductSupplier] = useState('');
   const [productLookupError, setProductLookupError] = useState('');
@@ -208,6 +210,16 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
   const [productAddRequestId, setProductAddRequestId] = useState<string | undefined>();
   const [hasRequestedProduct, setHasRequestedProduct] = useState(false);
   const [foundInGlobalRegistry, setFoundInGlobalRegistry] = useState(false);
+
+  // Search the already-loaded product catalogue locally; selecting a result does not
+  // trigger an additional Firestore/API lookup.
+  const matchingProductsByName = useMemo(() => {
+    const term = productNameSearch.trim().toLocaleLowerCase();
+    if (term.length < 2) return [];
+    return cachedProducts
+      .filter(product => String(product.productName || '').toLocaleLowerCase().includes(term))
+      .slice(0, 30);
+  }, [cachedProducts, productNameSearch]);
 
   const [isScannerDialogOpen, setIsScannerDialogOpen] = useState(false);
   const html5QrcodeScannerRef = useRef<Html5Qrcode | null>(null);
@@ -479,8 +491,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
     if (!output) return;
     if (currentStep === 0) {
         const currentBarcode = getValues('barcode');
-        const barcodeOk = await handleBarcodeLookup(currentBarcode);
-        if(!barcodeOk) return;
+        if (currentBarcode !== selectedProductBarcode) {
+            const barcodeOk = await handleBarcodeLookup(currentBarcode);
+            if (!barcodeOk) return;
+        }
     }
     if (currentStep === 1 && requiresProductName && !productName.trim()) {
         toast({ title: 'Product name required', description: 'No photo was captured for this barcode. Enter the product name before continuing.', variant: 'destructive' });
@@ -659,6 +673,54 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                     <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="min-w-0 space-y-2.5 sm:space-y-3">
                         {/* STEP 1: BARCODE */}
                         <div className={cn(currentStep !== 0 && "hidden", "space-y-2.5 sm:space-y-3")}>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="product-name-search" className="ml-0.5 block text-[11px] font-semibold text-foreground">Search by product name</Label>
+                                <Input
+                                    id="product-name-search"
+                                    value={productNameSearch}
+                                    onChange={(event) => setProductNameSearch(event.target.value)}
+                                    placeholder="Type product name..."
+                                    autoComplete="off"
+                                    className="h-11 rounded-xl border-0 bg-muted/40 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
+                                />
+                                {productNameSearch.trim().length >= 2 && (
+                                    <div className="max-h-52 overflow-y-auto rounded-xl border bg-background shadow-sm">
+                                        {matchingProductsByName.length > 0 ? matchingProductsByName.map((product) => (
+                                            <button
+                                                key={product.barcode}
+                                                type="button"
+                                                onClick={() => {
+                                                    const barcode = String(product.barcode || '').trim();
+                                                    setValue('barcode', barcode, { shouldValidate: true });
+                                                    setSelectedProductBarcode(barcode);
+                                                    setProductName(product.productName);
+                                                    setProductSupplier(product.supplierName || 'N/A');
+                                                    setProductLookupError('');
+                                                    setRequiresProductName(false);
+                                                    setHasRequestedProduct(false);
+                                                    setSuggestedProductName('');
+                                                    setProductNameSearch('');
+                                                }}
+                                                className="flex w-full items-center justify-between gap-3 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60"
+                                            >
+                                                <span className="min-w-0">
+                                                    <span className="block truncate text-xs font-semibold">{product.productName}</span>
+                                                    <span className="block truncate text-[10px] text-muted-foreground">Barcode: {product.barcode}</span>
+                                                </span>
+                                                <span className="shrink-0 text-[10px] text-muted-foreground">{product.supplierName || ''}</span>
+                                            </button>
+                                        )) : (
+                                            <p className="px-3 py-4 text-center text-xs text-muted-foreground">No matching products found.</p>
+                                        )}
+                                    </div>
+                                )}
+                                <p className="px-0.5 text-[10px] text-muted-foreground">Select a registered product, or scan / enter its barcode below.</p>
+                            </div>
+                            <div className="flex items-center gap-2 py-0.5">
+                                <div className="h-px flex-1 bg-border" />
+                                <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">Or use barcode</span>
+                                <div className="h-px flex-1 bg-border" />
+                            </div>
                             <Label htmlFor="barcode" className="ml-0.5 block text-[11px] font-semibold text-foreground">Barcode</Label>
                             <div className="flex w-full min-w-0 items-start gap-2">
                                 <div className="group relative min-w-0 flex-1">
@@ -667,6 +729,10 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         id="barcode"
                                         placeholder="Scan or enter barcode"
                                         {...barcodeFieldProps}
+                                        onChange={(event) => {
+                                            barcodeFieldProps.onChange(event);
+                                            setSelectedProductBarcode('');
+                                        }}
                                         ref={(element) => {
                                             barcodeFormRef(element);
                                             barcodeInputRef.current = element;
