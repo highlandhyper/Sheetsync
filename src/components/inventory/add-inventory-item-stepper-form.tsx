@@ -413,6 +413,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
         reset({ ...data, barcode: '', quantity: 1 });
         setValue('staffName', savedStaffName); 
         setProductName('');
+        setProductNameSearch('');
         setRequiresProductName(false);
         setProductSupplier('');
         setProductLookupError('');
@@ -517,6 +518,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
       ? { barcode: decodedText.trim(), imageBase64 }
       : null;
 
+    setProductNameSearch('');
     setValue('barcode', decodedText, { shouldValidate: true });
     setIsScannerDialogOpen(false);
     if (html5QrcodeScannerRef.current) {
