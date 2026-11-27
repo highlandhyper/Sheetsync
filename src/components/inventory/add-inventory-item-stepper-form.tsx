@@ -674,15 +674,43 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                         {/* STEP 1: BARCODE */}
                         <div className={cn(currentStep !== 0 && "hidden", "space-y-2.5 sm:space-y-3")}>
                             <div className="space-y-1.5">
-                                <Label htmlFor="product-name-search" className="ml-0.5 block text-[11px] font-semibold text-foreground">Search by product name</Label>
-                                <Input
-                                    id="product-name-search"
-                                    value={productNameSearch}
-                                    onChange={(event) => setProductNameSearch(event.target.value)}
-                                    placeholder="Type product name..."
-                                    autoComplete="off"
-                                    className="h-11 rounded-xl border-0 bg-muted/40 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
-                                />
+                                <Label htmlFor="barcode" className="ml-0.5 block text-[11px] font-semibold text-foreground">Product or barcode</Label>
+                                <div className="flex w-full min-w-0 items-start gap-2">
+                                    <div className="group relative min-w-0 flex-1">
+                                        <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                                        <Input
+                                            id="barcode"
+                                            value={productNameSearch || String(allFormValues.barcode || '')}
+                                            placeholder="Type product name or scan barcode"
+                                            autoComplete="off"
+                                            onChange={(event) => {
+                                                const value = event.target.value;
+                                                setSelectedProductBarcode('');
+                                                if (/^[0-9\\s]*$/.test(value)) {
+                                                    setProductNameSearch('');
+                                                    setValue('barcode', value.trim(), { shouldValidate: true });
+                                                } else {
+                                                    setProductNameSearch(value);
+                                                    setValue('barcode', '', { shouldValidate: true });
+                                                }
+                                            }}
+                                            ref={(element) => { barcodeInputRef.current = element; }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (productNameSearch.trim() && matchingProductsByName.length > 0) return;
+                                                    nextStep();
+                                                }
+                                            }}
+                                            autoFocus
+                                            className={cn("h-11 w-full min-w-0 rounded-xl border-0 bg-muted/40 pl-10 pr-3 text-base font-semibold shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm", errors.barcode && "bg-destructive/10")}
+                                        />
+                                        {errors.barcode && !productNameSearch && <p className="text-[9px] text-destructive mt-1 font-bold">{errors.barcode.message}</p>}
+                                    </div>
+                                    <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-0 bg-primary/10 shadow-none hover:bg-primary/15">
+                                        <Scan className="h-5 w-5 text-primary" />
+                                    </Button>
+                                </div>
                                 {productNameSearch.trim().length >= 2 && (
                                     <div className="max-h-52 overflow-y-auto rounded-xl border bg-background shadow-sm">
                                         {matchingProductsByName.length > 0 ? matchingProductsByName.map((product) => (
@@ -714,38 +742,7 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                         )}
                                     </div>
                                 )}
-                                <p className="px-0.5 text-[10px] text-muted-foreground">Select a registered product, or scan / enter its barcode below.</p>
-                            </div>
-                            <div className="flex items-center gap-2 py-0.5">
-                                <div className="h-px flex-1 bg-border" />
-                                <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">Or use barcode</span>
-                                <div className="h-px flex-1 bg-border" />
-                            </div>
-                            <Label htmlFor="barcode" className="ml-0.5 block text-[11px] font-semibold text-foreground">Barcode</Label>
-                            <div className="flex w-full min-w-0 items-start gap-2">
-                                <div className="group relative min-w-0 flex-1">
-                                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
-                                    <Input 
-                                        id="barcode"
-                                        placeholder="Scan or enter barcode"
-                                        {...barcodeFieldProps}
-                                        onChange={(event) => {
-                                            barcodeFieldProps.onChange(event);
-                                            setSelectedProductBarcode('');
-                                        }}
-                                        ref={(element) => {
-                                            barcodeFormRef(element);
-                                            barcodeInputRef.current = element;
-                                        }}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setValue('barcode', e.currentTarget.value, { shouldValidate: true }); nextStep(); } }} 
-                                        autoFocus 
-                                        className={cn("h-11 w-full min-w-0 rounded-xl border-0 bg-muted/40 pl-10 pr-3 text-base font-semibold shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm", errors.barcode && "bg-destructive/10")} 
-                                    />
-                                    {errors.barcode && <p className="text-[9px] text-destructive mt-1 font-bold">{errors.barcode.message}</p>}
-                                </div>
-                                <Button type="button" onClick={() => setIsScannerDialogOpen(true)} variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-0 bg-primary/10 shadow-none hover:bg-primary/15">
-                                    <Scan className="h-5 w-5 text-primary" />
-                                </Button>
+                                <p className="px-0.5 text-[10px] text-muted-foreground">Type a product name to choose from suggestions, or enter / scan its barcode in the same field.</p>
                             </div>
                             
                             {productLookupError && !isFetchingProduct && (
