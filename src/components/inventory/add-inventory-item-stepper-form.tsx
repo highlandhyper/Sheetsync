@@ -737,7 +737,6 @@ export function AddInventoryItemStepperForm({ uniqueLocations: initialLocations,
                                                     <span className="block truncate text-xs font-semibold">{product.productName}</span>
                                                     <span className="block truncate text-[10px] text-muted-foreground">Barcode: {product.barcode}</span>
                                                 </span>
-                                                <span className="shrink-0 text-[10px] text-muted-foreground">{product.supplierName || ''}</span>
                                             </button>
                                         )) : (
                                             <p className="px-3 py-4 text-center text-xs text-muted-foreground">No matching products found.</p>
